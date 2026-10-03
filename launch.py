@@ -14,7 +14,6 @@ import json
 import os
 import shutil
 import subprocess
-import time
 import sys
 import urllib.request
 import zipfile
@@ -37,12 +36,21 @@ def local_version():
     return p.read_text().strip() if p.exists() else "0"
 
 
+def remote_version():
+    """GitHub's API answers with the newest VERSION; raw.githubusercontent.com can serve an old one for minutes."""
+    try:
+        api = f"https://api.github.com/repos/{REPO}/contents/VERSION?ref={BRANCH}"
+        req = urllib.request.Request(api, headers={"Accept": "application/vnd.github.raw", "User-Agent": "agent-hq-launcher"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            return r.read().decode().strip()
+    except Exception:   # API limit reached or unreachable: fall back to the raw file
+        with urllib.request.urlopen(f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/VERSION", timeout=8) as r:
+            return r.read().decode().strip()
+
+
 def update():
     try:
-        # a unique query string skips GitHub's download cache, which can serve the old VERSION for minutes after a push
-        url = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/VERSION?t={int(time.time())}"
-        with urllib.request.urlopen(url, timeout=8) as r:
-            remote = r.read().decode().strip()
+        remote = remote_version()
     except Exception:
         say("Couldn't check for updates (offline, or the GitHub repo isn't set up yet). Using this version.")
         return
