@@ -57,6 +57,9 @@ def order(path, body, started):
 
 def status():
     s = json.loads(agents.company_status())
+    models = {a["name"]: a["model"] for a in cp.agents_overview()}
+    for member in s["team"]:
+        member["model"] = "Claude Code (owner's Claude subscription)" if member["name"] == "Atlas" else models.get(member["name"])
     s["spend_today_by_agent"] = _by_agent(date.today().isoformat())
     show(s)
 
@@ -96,6 +99,9 @@ def spend():
           "by_agent_today": _by_agent(date.today().isoformat()),
           "agent_daily_caps_usd": getattr(settings, "AGENT_DAILY_BUDGET_USD", {}),
           "per_idea_cap_usd": settings.PER_IDEA_BUDGET_USD,
+          "models": settings.MODELS, "prices_per_million_tokens_usd_in_out": settings.PRICES_PER_MTOK,
+          "web_search_usd_each": settings.WEB_SEARCH_PRICE_USD,
+          "cost_per_idea": {i["id"]: i["cost_usd"] for i in cp.list_ideas(10)},
           "last_7_days": {r["day"]: r["usd"] for r in week}, "all_time_usd": round(total, 3),
           "note": "API spend only (Doulya, Sage, Vera, backup Atlas). Atlas in Claude Code runs on the Claude subscription."})
 

@@ -95,11 +95,15 @@ def find_claude():
     if found:
         return found
     cands = list(Path.home().glob(".local/bin/claude.exe"))
-    app = Path(os.environ.get("APPDATA", "")) / "Claude" / "claude-code"
-    if app.is_dir():
-        def ver(exe):
-            return tuple(int(x) for x in re.findall(r"\d+", exe.parent.parent.name)[:3])
-        cands += sorted(app.glob("*/*/claude.exe"), key=ver, reverse=True)
+
+    def ver(exe):
+        return tuple(int(x) for x in re.findall(r"\d+", exe.parent.parent.name)[:3])
+    # The Claude desktop app ships Claude Code. The Microsoft Store version keeps its AppData in a package folder
+    # that programs outside the app (like START-HERE) can only reach by its real path.
+    bundled = list((Path(os.environ.get("APPDATA", "")) / "Claude" / "claude-code").glob("*/*/claude.exe"))
+    bundled += Path(os.environ.get("LOCALAPPDATA", "")).glob(
+        "Packages/Claude_*/LocalCache/Roaming/Claude/claude-code/*/*/claude.exe")
+    cands += sorted(bundled, key=ver, reverse=True)
     return str(cands[0]) if cands else None
 
 

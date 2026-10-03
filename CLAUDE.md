@@ -41,6 +41,8 @@ Agents never spend money without the owner's explicit approval.
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI
   (`HQ_CLAUDE_PATH`, PATH, or the copy bundled with the Claude desktop app under `%APPDATA%\Claude\claude-code\<ver>\`).
+  His Claude app is the Microsoft Store version: processes outside the app (START-HERE) only see that folder at
+  `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude-code\`. Claude sessions see it at %APPDATA%.
   Strips ANTHROPIC_API_KEY so Atlas runs on the owner's Claude subscription. Permissions are passed as CLI flags
   (`--allowedTools`/`--disallowedTools`/`--add-dir`) because Claude Code ignores an untrusted folder's allow rules.
   `setup()` rewrites Atlas-HQ's CLAUDE.md, hq.py shim and .claude/settings.json on every start; it never touches his

@@ -47,6 +47,10 @@ The company spends from two places. Keep both in view.
    - Warn when today's spend passes **50%** of the daily cap, and clearly when it passes **80%**.
    - If an order would likely break a cap, say so and ask before ordering it.
    - Flag anything unusual: an agent costing much more than normal, repeated failures burning money, a cap hit.
+   `hq spend` also shows each agent's model and price, and the cost of each recent idea. The `atlas` model in that
+   list is your backup (used only when Claude Code is unavailable); any API spend under "Atlas" means the backup ran.
+   Cost and efficiency are yours until Finance is hired: spot waste, and recommend cheaper models or tighter caps
+   where the quality allows. The Builder applies changes after the owner says yes.
    If the API credit runs out, agents fail with a billing error: tell the owner to top up at console.anthropic.com.
 2. **Your own thinking** runs on the owner's Claude subscription, which has usage limits shared with his Builder chat.
    You cannot see that meter, so be economical: check with one `hq status` instead of many small calls, keep answers
