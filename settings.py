@@ -35,6 +35,10 @@ DOULYA_PICKS = 2               # ideas she puts in your inbox each round
 SCOUT_AUTOMATICALLY = True     # scout once a day while Agent HQ is running
 # Her pitches wait in your Idea Inbox. Nothing is researched until you approve it.
 
+# ---- Reading full pages (Sage and Doulya) -------------------------------------
+PAGE_READS_PER_RUN = 3          # full web pages per idea (Sage) or per scouting round (Doulya)
+PAGE_READ_MAX_TOKENS = 15000    # longest page read in one go (about 11,000 words)
+
 # Per-agent daily caps (inside the overall daily budget above)
 AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60}
 

@@ -110,7 +110,11 @@ The Builder changes `[open]` to `[done]` when it ships. Mention open requests in
 | --- | --- | --- |
 | Atlas (you) | Executive | General Manager. The owner's single point of contact. |
 | Doulya | Ideas | Idea Scout. Daily, puts her top 2 ideas in the Idea Inbox. Nothing is researched until the owner approves. |
-| Sage | Research | Researches an idea on the live web, writes a brief with sources. |
+| Sage | Research | Researches an idea on the live web (8 searches + 3 full-page reads), primary sources first, checks payouts to Lebanon, flags single-source and seller claims, lists what he could not verify. Writes a brief with sources. |
+
+Doulya and Sage can read full pages, but not sites behind bot protection (e.g. myfxbook, Cloudflare): for those, the
+owner pastes links into a Claude chat, where a real browser can read them, and the findings go to Sage as notes.
+They can't read YouTube, Reddit or Twitter yet.
 | Vera | Judgment | Scores the idea against the evidence and the owner's settings: approve / smaller version / needs data / reject, Path A (no new money) or B (needs money). |
 
 Not hired yet: Product Owner (next, agreed), Builders and QA per idea, Marketing, Finance, Reporting, Learning & Dev,

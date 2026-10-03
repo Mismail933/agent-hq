@@ -546,6 +546,7 @@ function handleEvent(e) {
     case 'idea_routed': if (A) { A.activity = 'Routing your idea'; assign(A, deliver(d.to === 'Vera' ? V : S, 'New idea: ' + short(d.idea, 40), 'On it!')); } break;
     case 'task_started': if (me) { me.working = true; me.activity = 'Working on: ' + short(d.idea, 60); } break;
     case 'web_search': if (me) { me.working = true; me.activity = 'Searching: ' + d.query; say(me, 'Scanning: ' + short(d.query, 36), 4); } break;
+    case 'page_read': if (me) { me.working = true; me.activity = 'Reading: ' + d.url; say(me, 'Reading a page…', 3); } break;
     case 'brief_written': if (me) { say(me, `Brief ready: ${d.sources} sources`, 4); me.activity = 'Filed the research brief'; } break;
     case 'handoff': if (S) { S.working = false; assign(S, deliver(V, 'Research brief', 'Received. Analysing.')); } break;
     case 'verdict': { const lbl = VERDICT[d.verdict] || d.verdict;
@@ -566,6 +567,7 @@ function feedLine(e) {
     case 'idea_routed': return [w, `sent ${d.from === 'inbox' ? "Doulya's idea " : ''}"${short(d.idea, 70)}" to ${d.to || 'Sage'}`, ''];
     case 'task_started': return [w, `started work on "${short(d.idea, 70)}"`, ''];
     case 'web_search': return [w, `searched the web: ${d.query}`, ''];
+    case 'page_read': return [w, `read a page: ${short(d.url, 90)}`, ''];
     case 'brief_written': return [w, `wrote the research brief (${d.sources} sources)`, 'good'];
     case 'handoff': return [w, 'handed the brief to Vera in Judgment', ''];
     case 'verdict': return [w, `decided: ${VERDICT[d.verdict] || d.verdict} (Path ${d.path})`, d.verdict === 'reject' ? 'bad' : 'good'];

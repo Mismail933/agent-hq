@@ -48,6 +48,8 @@ def run(agent, model, system, messages, tools=None, tool_choice=None,
         for b in resp.content:
             if b.type == "server_tool_use" and b.name == "web_search":
                 cp.log(agent, "web_search", idea_id, {"query": b.input.get("query", "")})
+            elif b.type == "server_tool_use" and b.name == "web_fetch":
+                cp.log(agent, "page_read", idea_id, {"url": b.input.get("url", "")[:200]})
         cp.log(agent, "model_call", idea_id, {"usd": round(usd, 4), "stop": resp.stop_reason})
 
         messages.append({"role": "assistant", "content": resp.content})
