@@ -540,6 +540,7 @@ setInterval(renderPipe, 1000);
 /* ---------- Live events -> animation ---------- */
 function handleEvent(e) {
   const A = agents.Atlas, S = agents.Sage, V = agents.Vera, me = agents[e.agent], d = e.detail || {};
+  if (e.agent === 'Doulya') { if (e.kind === 'scout_started') miroSay('mrrp?'); else if (e.kind === 'scout_done') miroSay('*purr*', 3); }
   switch (e.kind) {
     case 'chat_received': if (A) { A.working = true; A.activity = 'Reading your message'; say(A, 'Message received'); } break;
     case 'idea_routed': if (A) { A.activity = 'Routing your idea'; assign(A, deliver(d.to === 'Vera' ? V : S, 'New idea: ' + short(d.idea, 40), 'On it!')); } break;
@@ -813,6 +814,84 @@ function drawAgent(g, a, t) {
   } else { g.fillStyle = '#94A3B8'; rrect(g, hx - 4 - side * 2, hy - 3, 6, 7, 2); g.fill(); g.fillStyle = look.visor; g.fillRect(hx - side * 7.5 - 1, hy - 1, 2, 3); }
   if (killOn) g.filter = 'none';
 }
+/* ---------- Miro, Doulya's cat: sits beside her and follows in her footsteps ---------- */
+let miro = null;
+const MIRO_GAP = 26, MIRO_SAYS = ['meow', '*purr*', 'mrrp?', '*stretches*'];
+function miroSay(text, dur = 2.5) { if (miro) miro.bubble = {text, t:dur}; }
+function miroRest(d) { return seatedNow(d) ? {x:d.seat.x + 24, y:d.seat.y + 4} : {x:d.x + 16, y:d.y + 10}; }
+function moveMiro(dt) {
+  const d = agents.Doulya; if (!d) return;
+  if (!miro) { const r = miroRest(d); miro = {x:r.x, y:r.y, face:Math.PI / 2, walkPh:0, trail:[], moving:false, bubble:null, blink:0, nextBlink:rnd(2, 5), chatter:rnd(40, 90)}; }
+  const m = miro;
+  if (m.bubble) { m.bubble.t -= dt; if (m.bubble.t <= 0) m.bubble = null; }
+  // drop breadcrumbs while she walks, so he follows her through doors instead of through walls
+  const lastPt = m.trail[m.trail.length - 1] || m;
+  if (d.path.length && Math.hypot(d.x - lastPt.x, d.y - lastPt.y) > 8) m.trail.push({x:d.x, y:d.y});
+  let left = 0, px = m.x, py = m.y;
+  for (const p of m.trail) { left += Math.hypot(p.x - px, p.y - py); px = p.x; py = p.y; }
+  left += Math.hypot(d.x - px, d.y - py);
+  let target = null;
+  if (m.trail.length && left > MIRO_GAP) target = m.trail[0];
+  else if (!d.path.length) { m.trail = []; target = miroRest(d); }
+  m.moving = false;
+  if (target) {
+    const dx = target.x - m.x, dy = target.y - m.y, dist = Math.hypot(dx, dy), step = SPEED * (left > 90 ? 1.6 : 1.15) * dt;
+    if (dist > .5) { m.moving = true; m.walkPh += dt * 16; m.face = Math.atan2(dy, dx); }
+    if (dist <= step) { m.x = target.x; m.y = target.y; if (target === m.trail[0]) m.trail.shift(); }
+    else { m.x += dx / dist * step; m.y += dy / dist * step; }
+  }
+  if (!m.moving && !d.path.length) m.face = Math.atan2(d.y - m.y, d.x - m.x);
+  m.nextBlink -= dt; if (m.nextBlink <= 0) { m.blink = .15; m.nextBlink = rnd(2.5, 6); } else m.blink -= dt;
+  m.chatter -= dt; if (m.chatter <= 0 && !m.moving) { miroSay(MIRO_SAYS[Math.floor(Math.random() * MIRO_SAYS.length)]); m.chatter = rnd(50, 120); }
+}
+function drawMiro(g, m, t) {
+  const [X, Y] = iso(m.x, m.y, 0);
+  const fx = Math.cos(m.face), fy = Math.sin(m.face), s = Math.sign(fx - fy) || 1, toward = (fx + fy) > .15, sideOn = Math.abs(fx - fy) > .5;
+  const fur = '#A8B3C4', dark = '#4B5563', eye = LOOKS.Doulya.visor, neon = ROOM.ideas.color, walking = m.moving && !killOn;
+  const sway = Math.sin(t * (walking ? 9 : 2.2));
+  if (killOn) g.filter = 'grayscale(100%) brightness(.7)';
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(X, Y, 9, 3.5, 0, 0, Math.PI * 2); g.fill();
+  g.lineCap = 'round';
+  let hx, hy;
+  if (walking) {
+    g.strokeStyle = dark; g.lineWidth = 1.8;
+    for (const [lx, o] of [[-5, 0], [-3, Math.PI], [3, Math.PI], [5, 0]]) {
+      const sw = Math.sin(m.walkPh + o) * 1.8; g.beginPath(); g.moveTo(X + s * lx, Y - 5); g.lineTo(X + s * (lx + sw), Y - .5); g.stroke();
+    }
+    g.strokeStyle = fur; g.lineWidth = 2.2; g.beginPath(); g.moveTo(X - s * 6, Y - 7); g.quadraticCurveTo(X - s * 12, Y - 9, X - s * (10 + sway), Y - 16); g.stroke();
+    g.fillStyle = fur; g.beginPath(); g.ellipse(X, Y - 7, 7.5, 3.8, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = dark; g.lineWidth = 1; for (const k of [-2.5, 0, 2.5]) { g.beginPath(); g.moveTo(X + k, Y - 10.2); g.lineTo(X + k - s, Y - 8); g.stroke(); }
+    hx = X + s * 7.5; hy = Y - 10.5;
+  } else {
+    g.strokeStyle = fur; g.lineWidth = 2.2; g.beginPath(); g.moveTo(X - s * 3, Y - 2); g.quadraticCurveTo(X - s * 10, Y - .5 + sway * .6, X - s * (7 + sway), Y - 6); g.stroke();
+    g.fillStyle = fur; g.beginPath(); g.ellipse(X - s * .5, Y - 6.5, 4.8, 6.2, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = dark; g.fillRect(X + s * 1.2 - 1.5, Y - 1.8, 2, 1.8); g.fillRect(X + s * 3.4 - 1.5, Y - 1.8, 2, 1.8);
+    hx = X + s * 1.5; hy = Y - 14;
+  }
+  g.strokeStyle = neon; g.lineWidth = 1.2; g.beginPath(); g.arc(hx - s * .8, hy + 1.5, 3.2, .15 * Math.PI, .85 * Math.PI); g.stroke();
+  g.fillStyle = fur; g.beginPath(); g.arc(hx, hy, 3.9, 0, Math.PI * 2); g.fill();
+  for (const e of [-1, 1]) { g.beginPath(); g.moveTo(hx + e * 3.7, hy - 1.2); g.lineTo(hx + e * 2.8, hy - 6.8); g.lineTo(hx + e * .5, hy - 3.4); g.closePath(); g.fill(); }
+  g.fillStyle = '#F9A8D4'; for (const e of [-1, 1]) { g.beginPath(); g.moveTo(hx + e * 3, hy - 2); g.lineTo(hx + e * 2.7, hy - 5); g.lineTo(hx + e * 1.4, hy - 3.2); g.closePath(); g.fill(); }
+  if (m.blink <= 0 && (toward || sideOn)) {
+    g.fillStyle = eye; g.shadowColor = eye; g.shadowBlur = 5;
+    if (toward) { g.fillRect(hx - 2.3, hy - .9, 1.4, 1.7); g.fillRect(hx + .9, hy - .9, 1.4, 1.7); }
+    else g.fillRect(hx + s * 1.7 - .7, hy - .9, 1.4, 1.7);
+    g.shadowBlur = 0;
+  }
+  g.lineCap = 'butt';
+  if (killOn) g.filter = 'none';
+}
+function drawMiroTag(g) {
+  if (!miro) return;
+  const [sx, sy] = toScreen(miro.x, miro.y, 27);
+  g.font = '600 10px "Exo 2", system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(252,211,77,.8)'; g.fillText('Miro', sx, sy);
+  const b = miro.bubble; if (!b) return;
+  g.save(); g.globalAlpha = Math.max(0, Math.min(1, b.t / .4));
+  g.font = 'italic 500 11.5px "Exo 2", system-ui, sans-serif'; const w = g.measureText(b.text).width + 14, by = sy - 10;
+  g.fillStyle = 'rgba(5,14,30,.95)'; g.strokeStyle = '#FCD34D'; g.lineWidth = 1; g.fillRect(sx - w / 2, by - 20, w, 20); g.strokeRect(sx - w / 2 + .5, by - 19.5, w - 1, 19);
+  g.fillStyle = '#FDE68A'; g.textBaseline = 'middle'; g.fillText(b.text, sx, by - 10); g.textBaseline = 'alphabetic';
+  g.restore();
+}
 function drawFloors(g) {
   for (const f of floors) {
     g.fillStyle = f.fill; g.fill(f.path);
@@ -851,6 +930,7 @@ function drawOverlays(g, t) {
     g.fillStyle = '#E6F1FF'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(b.text, bx + w / 2, by - 12); g.textBaseline = 'alphabetic';
     g.restore();
   }
+  drawMiroTag(g);
   if (killOn) {
     g.fillStyle = 'rgba(244,63,94,.08)'; g.fillRect(0, 0, CW, CH);
     g.font = '700 14px Orbitron, system-ui, sans-serif'; const msg = 'KILL SWITCH ENGAGED · ALL AGENTS HALTED'; const w = g.measureText(msg).width + 36;
@@ -873,10 +953,13 @@ function drawFrame(t) {
     gl.addColorStop(0, on ? 'rgba(34,211,238,.22)' : 'rgba(34,211,238,.07)'); gl.addColorStop(1, 'rgba(34,211,238,0)');
     ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(X, Y, r, r * .58, 0, 0, Math.PI * 2); ctx.fill();
   }
-  const ags = Object.values(agents).map(a => ({a, key: a.x + a.y + (seatedNow(a) ? 2 : .5)})).sort((p, q) => p.key - q.key);
+  const ags = Object.values(agents).map(a => ({a, key: a.x + a.y + (seatedNow(a) ? 2 : .5)}));
+  if (miro) ags.push({a:miro, key:miro.x + miro.y + .4, pet:true});
+  ags.sort((p, q) => p.key - q.key);
+  const drawOne = o => o.pet ? drawMiro(ctx, o.a, t) : drawAgent(ctx, o.a, t);
   let i = 0;
-  for (const s of scene) { while (i < ags.length && ags[i].key < s.key) drawAgent(ctx, ags[i++].a, t); s.draw(ctx, t); }
-  while (i < ags.length) drawAgent(ctx, ags[i++].a, t);
+  for (const s of scene) { while (i < ags.length && ags[i].key < s.key) drawOne(ags[i++]); s.draw(ctx, t); }
+  while (i < ags.length) drawOne(ags[i++]);
   for (const p of parts) { const [X, Y] = iso(p.x, p.y, p.z); ctx.fillStyle = p.c; ctx.globalAlpha = Math.min(1, p.life); ctx.fillRect(X - 2, Y - 2, 4, 4); }
   ctx.globalAlpha = 1;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -896,6 +979,7 @@ function tick(now) {
     }
     a.timer -= dt; if (a.timer <= 0) runNext(a);
   }
+  if (!killOn) moveMiro(dt);
   for (let k = parts.length - 1; k >= 0; k--) { const p = parts[k]; p.vz -= 320 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z = Math.max(0, p.z + p.vz * dt); p.life -= dt; if (p.life <= 0) parts.splice(k, 1); }
   drawFrame(wall);
   requestAnimationFrame(tick);
