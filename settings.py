@@ -63,6 +63,15 @@ PLAN_MAX_REVISIONS = 2          # times the owner can "ask for changes" on one p
 CALINA_BATCH_SIZE = 6           # scripts per batch, unless the owner asks for another number
 CALINA_MAX_SEARCHES = 12        # web searches per batch, to find and check sources
 
+# ---- The Shorts pipeline (shorts.py) -----------------------------------------------
+# It runs in its own Python environment because the Kokoro voice needs PyTorch. One-time setup, in PowerShell:
+#   py -3 -m venv $env:USERPROFILE\.agent-hq-shorts
+#   & $env:USERPROFILE\.agent-hq-shorts\Scripts\python.exe -m pip install kokoro soundfile pillow certifi
+#   winget install -e --id Gyan.FFmpeg
+SHORTS_PYTHON = None            # None = ~/.agent-hq-shorts/Scripts/python.exe
+SHORTS_VOICE = "bm_george"      # Kokoro voice: bm_george (British man), am_michael (American man), bf_emma, af_heart ...
+FFMPEG = None                   # None = find it (PATH or winget's folder)
+
 # Per-agent daily caps (inside the overall daily budget above)
 AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60, "Serge": 1.00, "Calina": 1.50}
 # Agents with their own cap per idea, outside PER_IDEA_BUDGET_USD (all of Serge's plan revisions for one idea)

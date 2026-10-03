@@ -218,6 +218,10 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .ep .script{white-space:pre-wrap;font-size:13.5px;line-height:1.5;color:var(--ink)}
 .ep .src{font-size:12.5px;color:var(--ink-2)}
 .ep .src a{color:var(--cyan-ink)}
+.ep video{width:100%;max-width:300px;aspect-ratio:9/16;background:#000;border:1px solid var(--line-2);border-radius:4px;align-self:center}
+.ep .copy{display:flex;flex-direction:column;gap:4px}
+.ep .copy label{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);text-transform:uppercase}
+.ep .copy textarea,.ep .copy input{width:100%;border:1px solid var(--line-2);border-radius:4px;padding:6px 8px;font:inherit;font-size:12.5px;background:rgba(4,8,18,.8);color:var(--ink);resize:vertical}
 .limits{display:flex;flex-direction:column;gap:10px}
 .lim{border:1px solid var(--line);border-radius:4px;padding:10px 12px;background:rgba(13,23,41,.5);display:flex;flex-direction:column;gap:8px}
 .lim strong{font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
@@ -592,6 +596,9 @@ function handleEvent(e) {
     case 'episode_rejected': if (agents.Calina) say(agents.Calina, 'Noted. I will do better.', 4); break;
     case 'review_started': if (me) { me.working = true; me.activity = 'Reading the channel stats'; say(me, 'Crunching the numbers…', 4); } break;
     case 'review_ready': if (me) { me.working = false; me.activity = 'Learning note written'; } break;
+    case 'render_started': if (me) { me.working = true; me.activity = 'Making Short #' + d.episode; say(me, 'Rendering a Short…', 4); } break;
+    case 'video_ready': if (me) { me.working = false; me.activity = 'Short #' + d.episode + ' ready to upload'; say(me, 'Video ready!', 4); burst(ROOM.marketing.cx, ROOM.marketing.cy, 22); } break;
+    case 'video_failed': if (me) { me.working = false; say(me, 'The video failed', 5); } break;
   }
 }
 function feedLine(e) {
@@ -622,6 +629,10 @@ function feedLine(e) {
     case 'episode_approved': return ['You', `approved script #${d.episode}: ${short(d.title, 70)}`, 'good'];
     case 'episode_rejected': return ['You', `rejected script #${d.episode}${d.note ? ' (' + short(d.note, 80) + ')' : ''}`, ''];
     case 'review_ready': return [w, 'wrote the weekly learning note', 'good'];
+    case 'render_started': return [w, `started making Short #${d.episode}: ${short(d.title, 70)}`, ''];
+    case 'video_ready': return [w, `finished Short #${d.episode} (${Math.round(d.seconds)} s): ready for you to upload`, 'good'];
+    case 'video_failed': return [w, `couldn't make Short #${d.episode}: ${short(d.reason, 120)}`, 'bad'];
+    case 'episode_published': return ['You', `published Short #${d.episode}: ${short(d.title, 70)}`, 'good'];
     case 'fallback_api': return [w, `couldn't use the Claude subscription (${short(d.reason, 90)}), so this run used the API key`, 'alert'];
     case 'limit_changed': { const f = v => v == null ? 'no cap' : typeof v === 'number' ? '$' + v.toFixed(2) : (LIM_LABEL[v] || v); return [w === 'Owner' ? 'You' : w, `changed ${d.label}: ${f(d.old)} → ${f(d.new)}`, 'alert']; }
     case 'kill_switch': return ['You', d.on ? 'turned the kill switch ON. All agents stop.' : 'turned the kill switch off.', d.on ? 'bad' : 'good'];
@@ -1090,7 +1101,7 @@ let feed = [], chat = [], ideas = [], agentInfo = [], ideasKey = '', feedDirty =
 let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = null, pending = {};
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
-let episodes = [], episodesKey = '', producing = false, waitingEps = 0;
+let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
@@ -1155,7 +1166,23 @@ function renderPlans() {
       ${planActs(p)}</li>`).join('')
     : `<li class="empty">${planning ? 'Serge is writing the first plan…' : 'No plans yet. Open an approved idea under <b>Judged</b> and click <b>Make a plan</b>, or ask Atlas.'}</li>`;
 }
-const EP_STATUS = {awaiting_approval:'Waiting for you', approved:'Approved', rejected:'Rejected', rendered:'Video made', published:'Published'};
+const EP_STATUS = {awaiting_approval:'Waiting for you', approved:'Approved', rejected:'Rejected', rendered:'Video ready to upload', published:'Published'};
+function epActions(e) {
+  if (e.status === 'approved') {
+    if (rendering === e.id) return '<p class="src"><b>Calina is making the video…</b> about 3 minutes.</p>';
+    return `<div class="acts"><button class="btn sm" type="button" data-eact="render" ${rendering ? 'disabled' : ''}>${rendering ? 'Another video is being made' : 'Make the video'}</button></div>`;
+  }
+  if (e.status === 'rendered') {
+    const u = e.upload || {};
+    return `<video controls preload="metadata" src="/api/video/${e.id}?v=${Math.round(e.ts)}"></video>
+      <div class="copy"><label for="t${e.id}">Title</label><input id="t${e.id}" readonly value="${esc(u.title || e.title)}"></div>
+      <div class="copy"><label for="d${e.id}">Description</label><textarea id="d${e.id}" rows="5" readonly>${esc(u.description || '')}</textarea></div>
+      <p class="src">Upload it on YouTube with this title and description, and turn on the altered/synthetic content setting.</p>
+      <div class="acts"><button class="btn sm ghost" type="button" data-copy="t${e.id}">Copy title</button><button class="btn sm ghost" type="button" data-copy="d${e.id}">Copy description</button><button class="btn sm" type="button" data-eact="published">Mark as published</button><button class="btn sm ghost" type="button" data-eact="render" ${rendering ? 'disabled' : ''}>Remake</button></div>`;
+  }
+  if (e.status === 'published') return '<p class="src">On the channel.</p>';
+  return '';
+}
 function renderContent() {
   const live = projects.filter(p => p.status === 'approved');
   const waiting = episodes.filter(e => e.status === 'awaiting_approval');
@@ -1167,7 +1194,7 @@ function renderContent() {
       : '<p class="empty" style="margin:0">No approved content project yet. Approve one of Serge\'s plans first.</p>';
   const order = [...waiting, ...episodes.filter(e => e.status !== 'awaiting_approval')];
   $('#episodes').innerHTML = order.length ? order.map(e => { const d = e.data || {}, busy = pending['e' + e.id];
-    return `<li class="ep" data-eid="${e.id}"><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${e.status === 'approved' ? 'approve' : e.status === 'rejected' ? 'reject' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
+    return `<li class="ep" data-eid="${e.id}"><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${['approved', 'published'].includes(e.status) ? 'approve' : e.status === 'rejected' ? 'reject' : e.status === 'rendered' ? 'work' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
       <span class="t">${esc(e.title)}</span>
       <div class="meta"><span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span><span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span></div>
       ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p><div class="script">${esc(d.script || '')}</div>
@@ -1175,7 +1202,7 @@ function renderContent() {
       <div class="src">${(d.sources || []).map(x => `${/^https?:\/\//.test(x.url || '') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.publisher || 'source')}</a>` : esc(x.publisher || 'source')}: “${esc(short(x.quote || '', 160))}”`).join('<br>')}</div>
       <div class="acts"><button class="btn sm" type="button" data-eact="approve" ${busy ? 'disabled' : ''}>Approve</button><button class="btn sm ghost" type="button" data-eact="reject" ${busy ? 'disabled' : ''}>Reject</button></div>
       <form class="why" hidden><input type="text" maxlength="1000" placeholder="Why not? (teaches Calina)" aria-label="Reason for rejecting"><button class="btn sm ghost" type="submit">Confirm</button></form>`
-      : (e.owner_note ? `<p class="src">Your note: ${esc(e.owner_note)}</p>` : '')}</li>`; }).join('')
+      : (e.owner_note ? `<p class="src">Your note: ${esc(e.owner_note)}</p>` : '')}${epActions(e)}</li>`; }).join('')
     : `<li class="empty">${producing ? 'Calina is writing the first batch…' : 'No scripts yet. Click <b>New batch of scripts</b> above, or ask Atlas.'}</li>`;
 }
 async function contentAct(url, body, okMsg) {
@@ -1340,7 +1367,7 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
-  producing = !!s.producing; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + JSON.stringify(projects.map(p => p.status));
+  producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => p.status));
   if (ek !== episodesKey) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
@@ -1433,8 +1460,12 @@ $('#contentTop').addEventListener('submit', e => {
   f.querySelector('input').value = '';
 });
 $('#episodes').addEventListener('click', e => {
+  const c = e.target.closest('[data-copy]');
+  if (c) { const el = $('#' + c.dataset.copy); el.select(); navigator.clipboard?.writeText(el.value).then(() => toast('Copied.'), () => toast('Select the text and copy it.')); return; }
   const b = e.target.closest('[data-eact]'); if (!b) return; const li = b.closest('li[data-eid]'), id = +li.dataset.eid;
   if (b.dataset.eact === 'approve') { pending['e' + id] = 1; renderContent(); contentAct(`/api/episode/${id}/approve`, {}, 'Approved.').then(() => delete pending['e' + id]); }
+  else if (b.dataset.eact === 'render') { rendering = id; renderContent(); contentAct(`/api/episode/${id}/render`, {}, 'Calina is making the video.'); }
+  else if (b.dataset.eact === 'published') contentAct(`/api/episode/${id}/published`, {}, 'Marked as published.');
   else { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); }
 });
 $('#episodes').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-eid]'); contentAct(`/api/episode/${li.dataset.eid}/reject`, {note:e.target.querySelector('input').value}, 'Rejected.'); });

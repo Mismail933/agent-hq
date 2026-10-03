@@ -154,6 +154,54 @@ def run_batch(project_id, count, notes):
         atlas_says(out)
 
 
+RENDERING = {"lock": threading.Lock(), "episode": None}
+
+
+def with_upload_text(episodes):
+    """Made videos carry their title and description, ready to copy into YouTube."""
+    for e in episodes:
+        if e["video_path"]:
+            folder = (ROOT / e["video_path"]).parent
+            e["upload"] = {k: (folder / f"{k}.txt").read_text(encoding="utf-8").strip() if (folder / f"{k}.txt").exists() else ""
+                           for k in ("title", "description")}
+    return episodes
+
+
+def shorts_python():
+    p = getattr(settings, "SHORTS_PYTHON", None) or Path.home() / ".agent-hq-shorts" / "Scripts" / "python.exe"
+    return str(p) if Path(p).exists() else None
+
+
+def run_render(eid):
+    """Calina runs the Shorts pipeline (shorts.py) on one approved script."""
+    with RENDERING["lock"]:
+        RENDERING["episode"] = eid
+        e = cp.get_episode(eid)
+        cp.log("Calina", "render_started", None, {"episode": eid, "title": e["title"] if e else ""})
+        try:
+            py = shorts_python()
+            if not py:
+                raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+            p = subprocess.run([py, str(ROOT / "shorts.py"), "render", str(eid)], cwd=ROOT, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=1800,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            lines = (p.stdout or "").splitlines()
+            result = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
+            if not result:
+                blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+                raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+            r = json.loads(result)
+            cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
+            atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {r['images']} public-domain images).\n\n"
+                       "Watch it in Ideas → Content. If it's good, upload it by hand with the title and description shown "
+                       "there, turn on YouTube's altered/synthetic content setting, then click **Mark as published**.")
+        except Exception as ex:
+            cp.log("Calina", "video_failed", None, {"episode": eid, "reason": str(ex)[:300]})
+            atlas_says(f"Short #{eid} couldn't be made: {ex}")
+        finally:
+            RENDERING["episode"] = None
+
+
 def run_review(project_id, stats):
     text = agents.calina_review(project_id, stats)
     atlas_says(f"**Calina's learning note is ready.**\n\n{text[:1500]}" + ("…" if len(text) > 1500 else ""))
@@ -235,6 +283,36 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _send_file(self, path, ctype):
+        """Serve a file, with Range support so the browser's video player can seek."""
+        size = path.stat().st_size
+        start, end, code = 0, size - 1, 200
+        rng = self.headers.get("Range", "")
+        if rng.startswith("bytes="):
+            a, _, b = rng[6:].partition("-")
+            start = int(a) if a else max(0, size - int(b))
+            end = min(int(b), size - 1) if a and b else size - 1
+            code = 206
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(end - start + 1))
+        if code == 206:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.end_headers()
+        with open(path, "rb") as f:
+            f.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = f.read(min(1 << 16, left))
+                if not chunk:
+                    break
+                try:
+                    self.wfile.write(chunk)
+                except (ConnectionError, OSError):
+                    return
+                left -= len(chunk)
+
     def _json_body(self):
         n = int(self.headers.get("Content-Length") or 0)
         try:
@@ -256,7 +334,8 @@ class Handler(BaseHTTPRequestHandler):
                 "ideas": cp.list_ideas(),
                 "inbox": cp.list_inbox(),
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
-                "episodes": cp.list_episodes(limit=40), "producing": agents.PRODUCING.locked(),
+                "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(),
+                "rendering": RENDERING["episode"],
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
                 "engines": {a: workers.engine(a) for a in cp.WORKERS},
                 "limits": cp.limits_view(),
@@ -270,11 +349,25 @@ class Handler(BaseHTTPRequestHandler):
                 "simulated": os.environ.get("HQ_SIMULATE") == "1",
                 "has_key": bool(os.environ.get("ANTHROPIC_API_KEY")) or os.environ.get("HQ_SIMULATE") == "1",
             })
+        if u.path.startswith("/api/video/"):
+            try:
+                e = cp.get_episode(int(u.path.rsplit("/", 1)[1]))
+            except ValueError:
+                e = None
+            path = ROOT / e["video_path"] if e and e["video_path"] else None
+            if not path or not path.exists():
+                return self._send(404, {"error": "no video"})
+            return self._send_file(path, "video/mp4")
         if u.path.startswith("/api/episode/"):
             try:
                 e = cp.get_episode(int(u.path.rsplit("/", 1)[1]))
             except ValueError:
                 e = None
+            if e and e["video_path"]:
+                folder = (ROOT / e["video_path"]).parent
+                e["upload"] = {k: (folder / f"{k}.txt").read_text(encoding="utf-8").strip() if (folder / f"{k}.txt").exists() else ""
+                               for k in ("title", "description")}
+                e["folder"] = str(folder)
             return self._send(200 if e else 404, e or {"error": "not found"})
         if u.path.startswith("/api/project/"):
             try:
@@ -414,6 +507,18 @@ class Handler(BaseHTTPRequestHandler):
                 eid, action = int(parts[2]), parts[3]
             except (IndexError, ValueError):
                 return self._send(400, {"error": "bad request"})
+            if action == "render":
+                e = cp.get_episode(eid)
+                if not e or e["status"] not in ("approved", "rendered"):
+                    return self._send(409, {"error": "Only an approved script can be made into a video."})
+                if RENDERING["lock"].locked():
+                    return self._send(409, {"error": f"Calina is already making Short #{RENDERING['episode']}. Try again when it's done."})
+                threading.Thread(target=run_render, args=(eid,), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Calina is making the video. It takes about 3 minutes."})
+            if action == "published":
+                msg = agents.mark_published(eid)
+                ok = msg.startswith(f"Episode {eid} marked")
+                return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
             msg = agents.decide_episode(eid, action, clip(self._json_body().get("note", ""), "note")[0])
             e = cp.get_episode(eid)
             ok = e is not None and e["status"] in ("approved", "rejected") and msg.startswith(f"Episode {eid} ")

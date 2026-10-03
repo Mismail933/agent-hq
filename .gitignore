@@ -9,3 +9,4 @@ settings_local.py
 __pycache__/
 *.pyc
 .port
+_art/

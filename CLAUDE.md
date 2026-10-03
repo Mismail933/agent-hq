@@ -65,6 +65,15 @@ Agents never spend money without the owner's explicit approval.
   office's Limits tab (`POST /api/limits`, by Owner) or by Atlas with `hq limit <key> <value>` (by Atlas) only when
   the owner asks; every change logs `limit_changed`. Ranges are validated. To add a new kind of limit, extend LIMITS
   and `_target`.
+- `shorts.py` (2.9.0): approved episode → Short. Runs in its own venv `~/.agent-hq-shorts` (kokoro 0.9.4, torch CPU,
+  soundfile, pillow, certifi; `settings.SHORTS_PYTHON`) because Kokoro needs PyTorch. FFmpeg from winget
+  (Gyan.FFmpeg, found under WinGet/Packages). Steps: checklist (linked+quoted source, 70-160 words, no repeated
+  place/year or hook opening) → Kokoro voice `bm_george` with word timings (re-read up to 1.25x if > 58 s) →
+  Wikimedia Commons images, PD/CC0 only, licence logged (`images.json`; the Met's search API is gone, 410; space
+  namesakes skipped) → per-image zoompan segments + ASS captions (Arial Black, 3 words) → `short.mp4` + title.txt,
+  description.txt (Calina's + disclosure + image credits), sources.txt in content/project-N/videos/ep-NNN/. Python's
+  Windows cert store is stale on his PC: shorts.py uses certifi. The office runs it (`run_render`, one at a time),
+  serves `/api/video/<id>` with Range, shows title/description to copy, and "Mark as published".
 - `hq.py`: Atlas's controls. Reads hq.db directly; actions POST to the running office (port in `.port`).
 
 ## How to ship a change
@@ -89,9 +98,8 @@ Agents never spend money without the owner's explicit approval.
 ## Roadmap (agreed)
 - Done 2026-10-03: Product Owner **Serge** (owner named him; 3 price searches; starts only when the owner says so).
 - Done 2026-10-03: Content Producer **Calina** (owner named her) for the YouTube project (plan 1, idea #6).
-- Next: the Shorts pipeline (Atlas's open request): Kokoro voice, public-domain image fetcher with licence log,
-  FFmpeg 1080x1920 render with captions, output folder; no API upload. Needs FFmpeg + Kokoro installed on his PC
-  (Claude Code's safety check may block installing them: give him the commands).
+- Done 2026-10-04: the Shorts pipeline (`shorts.py`, 2.9.0) and channel art (content/project-1/branding/, made with
+  _art/branding.py in the dev folder from a public-domain 1664 Blaeu map, LoC 98687202).
 - Next: Builders + QA chosen per idea (e.g. a YouTube idea needs script/voice/video/upload agents, not web devs).
 - Later: Reporter (daily summary), Efficiency (token cost), Learning & Dev + its own QA, Marketing, Finance, Security & Legal.
 - Candidate sources for agent prompts: msitarzewski/agency-agents, wshobson/agents, affaan-m/everything-claude-code.

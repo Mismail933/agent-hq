@@ -492,7 +492,9 @@ Every script:
 - Has its own little storyline (setting, a turn, a payoff) and one surprising, true fact.
 - Is backed by at least one reputable source you actually found: a museum, archive, university, encyclopedia or
   scholarly page. Quote the line that supports the fact. If you can't source a fact, drop it.
-- Lists 3-5 image search queries for public-domain archives (Wikimedia Commons, Library of Congress, Met Open Access).
+- Lists 3-5 image search queries for Wikimedia Commons. The search is literal, so name the artwork you want, not just
+  a person: "Eratosthenes engraving", "ancient Alexandria 19th century illustration", "Roman fort plan", "Edo period
+  woodblock print fire". Never put the archive's name in a query.
 - Has a title under 70 characters, a description that lists the sources and ends with this disclosure line:
   "AI-assisted: script and voice made with AI; facts sourced below.", and 3-5 hashtags including #history #shorts.
 - Avoids finance, health, legal and political topics, gore, and anything that breaks YouTube's rules.
@@ -626,6 +628,17 @@ def decide_episode(eid, action, note=""):
     cp.update_episode(e["id"], status=status, owner_note=(note or "")[:1000])
     cp.log("Owner", f"episode_{status}", None, {"episode": e["id"], "title": e["title"], "note": note or ""})
     return f"Episode {e['id']} {status}: {e['title']}"
+
+
+def mark_published(eid):
+    e = cp.get_episode(int(eid))
+    if not e:
+        return f"No episode {eid}."
+    if e["status"] != "rendered":
+        return f"Episode {e['id']} is {e['status'].replace('_', ' ')}; only a made video can be marked published."
+    cp.update_episode(e["id"], status="published")
+    cp.log("Owner", "episode_published", None, {"episode": e["id"], "title": e["title"]})
+    return f"Episode {e['id']} marked as published: {e['title']}"
 
 
 def calina_review(project_id, stats):
