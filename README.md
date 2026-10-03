@@ -13,6 +13,15 @@ Doulya's picks wait in your Idea Inbox. Nothing is researched until you click **
 Dismiss an idea with a reason and Doulya steers away from similar ones. You can also pitch your own ideas to Atlas.
 The full research is saved in the `briefs/` folder.
 
+## Atlas runs on Claude Code
+
+Atlas, in the office chat, is Claude Code working in your `Atlas-HQ` folder (in your user folder). He uses your
+Claude subscription, not the API key, so only the other agents spend API credit. The first time, START-HERE asks you
+to sign in to your Claude account once. His role and rules are in `atlas/CLAUDE.md`; he checks and runs the company
+with `hq.py`, keeps a journal of your decisions in `Atlas-HQ/atlas-journal.md`, and queues work that needs code in
+`Atlas-HQ/requests-for-builder.md`. You can also open the `Atlas-HQ` folder in the Claude app to talk to him there.
+If Claude Code isn't available, a small backup Atlas on the API key answers instead and says so.
+
 ## Setup on Windows (easiest)
 
 1. Get an API key at https://console.anthropic.com (add a few dollars of credit and set a spend limit).
@@ -64,7 +73,8 @@ model call, and the agent stops when one is reached.
 - `control_plane.py` — plain code, no AI: agent registry, tool permissions (default deny),
   audit log, cost tracking, budget caps, kill switch. Everything is stored in `hq.db`.
 - `llm.py` — the agent loop: call the model, run the tools it asks for, repeat.
-- `agents.py` — Atlas, Sage and Vera: their instructions and tools.
+- `agents.py` — Doulya, Sage, Vera and the backup Atlas: their instructions and tools.
+- `atlas_engine.py` + `atlas/CLAUDE.md` — Atlas on Claude Code; `hq.py` — his controls.
 - `server.py` + `office.html` — the live office in your browser (http://localhost:8765).
 - `main.py` — the same chat in a terminal.
 - `simulate.py` — fake model for free testing.
@@ -77,5 +87,5 @@ version and installs it. Your key (.env), your data (hq.db, briefs/) and your ow
 
 ## Next steps
 
-- Add the Ideas department, so new ideas arrive without you pitching them.
-- Add Finance and the owner inbox for Path B funding requests.
+- Hire the Product Owner: turns an approved idea into a plan and a budget request for your approval.
+- Then Builders and QA chosen per idea, Finance, Marketing and Reporting.

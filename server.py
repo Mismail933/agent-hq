@@ -38,6 +38,7 @@ def load_env():
 
 load_env()
 import agents             # noqa: E402
+import atlas_engine       # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -54,6 +55,7 @@ CHAT = [{"from": "atlas", "ts": time.time(),
                  "You can also pitch me your own idea."}]
 STATE = {"busy": False}
 LOCK = threading.Lock()
+NEWS = []   # what the office posted in Atlas's name since his last reply; he hears about it with the next message
 
 
 def friendly_error(e):
@@ -75,6 +77,7 @@ def friendly_error(e):
 def atlas_says(text):
     with LOCK:
         CHAT.append({"from": "atlas", "ts": time.time(), "text": text})
+        NEWS.append(text)
 
 
 def run_scout(trigger):
@@ -93,16 +96,26 @@ def run_scout(trigger):
         atlas_says(f"Doulya couldn't finish scouting: {out}")
 
 
-def run_inbox_research(idea_id):
-    idea = cp.get_idea(idea_id)
-    out = agents.research_inbox_idea(idea_id)
+def announce_verdict(out):
     try:
         r = json.loads(out)
-        v = r["verdict"]
-        atlas_says(f"**Verdict on #{idea_id}: {idea['title']}**\n\nVera says **{v['verdict'].replace('_', ' ')}** (Path {v['path']}). "
+        v, idea = r["verdict"], cp.get_idea(r["idea_id"])
+        atlas_says(f"**Verdict on #{idea['id']}: {idea['title']}**\n\nVera says **{v['verdict'].replace('_', ' ')}** (Path {v['path']}). "
                    f"{v.get('one_line_summary', '')}\n\nOpen it under Ideas → Judged for the scores, evidence and Sage's full brief.")
     except (ValueError, KeyError, TypeError):
         atlas_says(out)
+
+
+def run_inbox_research(idea_id, notes=""):
+    announce_verdict(agents.research_inbox_idea(idea_id, notes))
+
+
+def run_pitch(idea, notes=""):
+    announce_verdict(agents.route_idea(idea, notes))
+
+
+def run_retry(idea_id):
+    announce_verdict(agents.retry_idea(idea_id))
 
 
 def scheduler():
@@ -117,10 +130,31 @@ def scheduler():
         time.sleep(600)
 
 
+def ask_atlas(text):
+    """Atlas in Claude Code when available; the small in-app Atlas on the API key otherwise."""
+    with LOCK:
+        news = NEWS[:]
+        NEWS.clear()
+    if atlas_engine.engine() == "claude_code":
+        prompt = text
+        if news:
+            prompt = ("[Office updates the system posted in your name since your last reply; the owner has seen them]\n"
+                      + "\n\n".join(news) + "\n\n[The owner's message]\n" + text)
+        try:
+            reply, info = atlas_engine.ask(prompt)
+            cp.log("Atlas", "model_call", None, info)
+            return reply
+        except atlas_engine.Unavailable as e:
+            cp.log("Atlas", "halted", None, {"reason": f"Claude Code unavailable, backup Atlas answered: {e}"})
+            print("Atlas via Claude Code unavailable:", e, flush=True)
+            return f"_(Backup Atlas answering: Claude Code isn't available right now. {e})_\n\n" + (ATLAS.chat(text) or "")
+    return ATLAS.chat(text)
+
+
 def run_chat(text):
     cp.log("Atlas", "chat_received", None, {"text": text[:200]})
     try:
-        reply = ATLAS.chat(text) or "(no reply)"
+        reply = ask_atlas(text) or "(no reply)"
     except Exception as e:  # API errors, network errors
         reply = friendly_error(e)
         print("ERROR:", repr(e), flush=True)
@@ -165,7 +199,7 @@ class Handler(BaseHTTPRequestHandler):
                 "inbox": cp.list_inbox(),
                 "scouting": agents.SCOUTING.locked(),
                 "last_scout": cp.last_event_time("scout_done", "Doulya"),
-                "chat": chat, "busy": busy,
+                "chat": chat, "busy": busy, "atlas_engine": atlas_engine.engine(),
                 "spend_today": round(cp.spend_today(), 4),
                 "daily_cap": settings.DAILY_AI_BUDGET_USD,
                 "idea_cap": settings.PER_IDEA_BUDGET_USD,
@@ -211,12 +245,35 @@ class Handler(BaseHTTPRequestHandler):
             if action == "research":
                 if agents.PIPELINE.locked():
                     return self._send(409, {"error": "The team is busy with another idea. Try again when it finishes."})
-                threading.Thread(target=run_inbox_research, args=(idea_id,), daemon=True).start()
+                notes = str(self._json_body().get("notes", "")).strip()[:1000]
+                threading.Thread(target=run_inbox_research, args=(idea_id, notes), daemon=True).start()
                 return self._send(202, {"ok": True})
             if action == "dismiss":
                 reason = str(self._json_body().get("reason", "")).strip()[:300]
                 return self._send(200, {"ok": True, "message": agents.dismiss_inbox_idea(idea_id, reason)})
             return self._send(404, {"error": "unknown action"})
+        if u.path == "/api/pitch":
+            body = self._json_body()
+            idea = str(body.get("idea", "")).strip()[:300]
+            if not idea:
+                return self._send(400, {"error": "No idea given."})
+            if agents.PIPELINE.locked():
+                return self._send(409, {"error": "The team is busy with another idea. Try again when it finishes."})
+            threading.Thread(target=run_pitch, args=(idea, str(body.get("notes", ""))[:1000]), daemon=True).start()
+            return self._send(202, {"ok": True})
+        if u.path.startswith("/api/retry/"):
+            try:
+                idea = cp.get_idea(int(u.path.rsplit("/", 1)[1]))
+            except ValueError:
+                idea = None
+            if not idea:
+                return self._send(404, {"error": "No such idea."})
+            if idea["verdict"]:
+                return self._send(409, {"error": f"Idea #{idea['id']} already has a verdict."})
+            if agents.PIPELINE.locked():
+                return self._send(409, {"error": "The team is busy with another idea. Try again when it finishes."})
+            threading.Thread(target=run_retry, args=(idea["id"],), daemon=True).start()
+            return self._send(202, {"ok": True})
         if u.path == "/api/stop":
             cp.STOP_FILE.write_text("stop")
             cp.log("Owner", "kill_switch", None, {"on": True})
@@ -228,7 +285,24 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
 
+def prepare_atlas():
+    if atlas_engine.engine() != "claude_code":
+        return
+    try:
+        atlas_engine.setup()
+        exe = atlas_engine.find_claude()
+        if not exe:
+            print("  Atlas: Claude Code not found, so the backup Atlas will answer.\n", flush=True)
+            return
+        if not atlas_engine.logged_in(exe):
+            atlas_engine.offer_login(exe)
+        print(f"  Atlas's folder: {atlas_engine.HOME}\n", flush=True)
+    except Exception as e:
+        print("  Atlas setup failed:", repr(e), flush=True)
+
+
 def main():
+    prepare_atlas()
     port = int(os.environ.get("HQ_PORT", "8765"))
     for p in range(port, port + 10):
         try:
@@ -239,6 +313,7 @@ def main():
     else:
         print("No free port found between", port, "and", port + 9); return
     url = f"http://localhost:{srv.server_port}"
+    (ROOT / ".port").write_text(str(srv.server_port))   # hq.py finds the office here
     print(f"\n  Agent HQ is running at {url}")
     print("  Your browser should open by itself. If not, open that address.")
     print("  Keep this window open while you use the office (you can minimize it).")

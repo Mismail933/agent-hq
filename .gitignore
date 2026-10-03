@@ -6,3 +6,4 @@ STOP
 settings_local.py
 __pycache__/
 *.pyc
+.port

@@ -38,6 +38,15 @@ SCOUT_AUTOMATICALLY = True     # scout once a day while Agent HQ is running
 # Per-agent daily caps (inside the overall daily budget above)
 AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60}
 
+# ---- Atlas, the General Manager ----------------------------------------------
+# "claude_code": the office chat is Claude Code running in your Atlas-HQ folder (C:\Users\<you>\Atlas-HQ),
+#                on your Claude subscription, not the API key. His role is in atlas/CLAUDE.md.
+# "api":         the small built-in Atlas on the API key. It also answers automatically when Claude Code can't.
+ATLAS_ENGINE = "claude_code"
+ATLAS_CLAUDE_MODEL = "opus"      # Claude Code model for Atlas; None = your Claude Code default
+ATLAS_TIMEOUT_SECONDS = 300      # longest Atlas may take for one reply
+ATLAS_MAX_TURNS = 20             # most steps (checks, notes) Atlas may take for one reply
+
 # ---- What you want from the business ----------------------------------------
 # Vera judges every idea against these. Change them to match your goals.
 OWNER = {

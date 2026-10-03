@@ -1000,7 +1000,7 @@ const clockOf = ts => new Date(ts * 1000).toLocaleTimeString([], {hour:'2-digit'
 function renderChat() {
   const box = $('#msgs'); const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   box.innerHTML = chat.map(m => m.from === 'you' ? `<div class="msg you">${esc(m.text)}</div>` : `<div class="msg atlas"><span class="from">ATLAS</span>${md(m.text)}</div>`).join('')
-    + (busy ? '<div class="working"><span class="dots"><i></i><i></i><i></i></span>Crew is working. Watch the pipeline.</div>' : '');
+    + (busy ? '<div class="working"><span class="dots"><i></i><i></i><i></i></span>Atlas is thinking. Checking the company can take up to a minute.</div>' : '');
   if (atBottom || busy) box.scrollTop = box.scrollHeight;
   $('#sendBtn').disabled = busy; $('#suggest').hidden = chat.length > 2;
 }
