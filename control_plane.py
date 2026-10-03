@@ -45,6 +45,9 @@ def init():
             id INTEGER PRIMARY KEY, ts REAL, title TEXT, source TEXT,
             status TEXT, brief_path TEXT, verdict TEXT);
         """)
+        cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
+        if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
+            con.execute("ALTER TABLE ideas ADD COLUMN pitch TEXT")
 
 
 # ---- Registry & permissions -------------------------------------------------
@@ -77,6 +80,11 @@ def check_can_run(agent, idea_id=None):
     today = spend_today()
     if today >= settings.DAILY_AI_BUDGET_USD:
         raise Halt(f"Daily AI budget reached: ${today:.2f} of ${settings.DAILY_AI_BUDGET_USD:.2f}.")
+    cap = getattr(settings, "AGENT_DAILY_BUDGET_USD", {}).get(agent)
+    if cap is not None:
+        used = spend_today(agent)
+        if used >= cap:
+            raise Halt(f"{agent}'s daily budget reached: ${used:.2f} of ${cap:.2f}.")
     if idea_id is not None:
         used = spend_for_idea(idea_id)
         if used >= settings.PER_IDEA_BUDGET_USD:
@@ -105,9 +113,12 @@ def record_cost(agent, model, usage, idea_id=None):
     return usd
 
 
-def spend_today():
+def spend_today(agent=None):
+    q, args = "SELECT COALESCE(SUM(usd),0) s FROM costs WHERE day=?", [date.today().isoformat()]
+    if agent:
+        q += " AND agent=?"; args.append(agent)
     with _db() as con:
-        r = con.execute("SELECT COALESCE(SUM(usd),0) s FROM costs WHERE day=?", (date.today().isoformat(),)).fetchone()
+        r = con.execute(q, args).fetchone()
     return r["s"]
 
 
@@ -139,32 +150,67 @@ def log(agent, kind, idea_id=None, detail=None):
 
 
 # ---- Ideas -------------------------------------------------------------------
-def new_idea(title, source):
+def new_idea(title, source, status="research", pitch=None):
     with _db() as con:
-        cur = con.execute("INSERT INTO ideas(ts,title,source,status) VALUES(?,?,?,?)",
-                          (time.time(), title, source, "research"))
+        cur = con.execute("INSERT INTO ideas(ts,title,source,status,pitch) VALUES(?,?,?,?,?)",
+                          (time.time(), title, source, status, json.dumps(pitch) if pitch else None))
         return cur.lastrowid
 
 
 def update_idea(idea_id, **fields):
-    if "verdict" in fields and not isinstance(fields["verdict"], str):
-        fields["verdict"] = json.dumps(fields["verdict"])
+    for k in ("verdict", "pitch"):
+        if k in fields and fields[k] is not None and not isinstance(fields[k], str):
+            fields[k] = json.dumps(fields[k])
     cols = ", ".join(f"{k}=?" for k in fields)
     with _db() as con:
         con.execute(f"UPDATE ideas SET {cols} WHERE id=?", (*fields.values(), idea_id))
 
 
+HIDDEN = ("inbox", "dismissed", "archived")
+
+
 def list_ideas(limit=20):
+    """Ideas that entered the pipeline (not Doulya's unreviewed or dismissed pitches)."""
     with _db() as con:
-        rows = con.execute("SELECT * FROM ideas ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        rows = con.execute("SELECT * FROM ideas WHERE status NOT IN (?,?,?) ORDER BY id DESC LIMIT ?",
+                           (*HIDDEN, limit)).fetchall()
     out = []
     for r in rows:
         v = json.loads(r["verdict"]) if r["verdict"] else None
         out.append({"id": r["id"], "title": r["title"], "status": r["status"],
                     "verdict": v and v.get("verdict"), "path": v and v.get("path"),
-                    "one_line": v and v.get("one_line_summary"),
+                    "one_line": v and v.get("one_line_summary"), "source": r["source"],
                     "cost_usd": round(spend_for_idea(r["id"]), 3)})
     return out
+
+
+def list_inbox():
+    """Doulya's pitches waiting for the owner's yes or no."""
+    with _db() as con:
+        rows = con.execute("SELECT * FROM ideas WHERE status='inbox' ORDER BY id ASC").fetchall()
+    return [{"id": r["id"], "ts": r["ts"], "title": r["title"], "pitch": json.loads(r["pitch"] or "{}")} for r in rows]
+
+
+def idea_memory(limit=60):
+    """Every idea seen so far, plus why the owner dismissed some. Doulya reads this to avoid repeats."""
+    with _db() as con:
+        rows = con.execute("SELECT title,status,pitch FROM ideas ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    seen, dismissed = [], []
+    for r in rows:
+        seen.append(r["title"])
+        if r["status"] == "dismissed":
+            p = json.loads(r["pitch"] or "{}")
+            dismissed.append({"title": r["title"], "owner_reason": p.get("dismiss_reason", "")})
+    return seen, dismissed
+
+
+def last_event_time(kind, agent=None):
+    q, args = "SELECT ts FROM events WHERE kind=?", [kind]
+    if agent:
+        q += " AND agent=?"; args.append(agent)
+    with _db() as con:
+        r = con.execute(q + " ORDER BY id DESC LIMIT 1", args).fetchone()
+    return r["ts"] if r else None
 
 
 # ---- Live view helpers (used by server.py) ---------------------------------
@@ -210,7 +256,8 @@ def get_idea(idea_id):
             p = ROOT / p
         if p.exists():
             brief = p.read_text(encoding="utf-8")
-    return {"id": r["id"], "title": r["title"], "status": r["status"],
+    return {"id": r["id"], "title": r["title"], "status": r["status"], "source": r["source"],
+            "pitch": json.loads(r["pitch"]) if r["pitch"] else None,
             "verdict": json.loads(r["verdict"]) if r["verdict"] else None,
             "brief": brief, "cost_usd": round(spend_for_idea(idea_id), 3)}
 

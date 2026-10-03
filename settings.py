@@ -12,6 +12,7 @@ MODELS = {
     "atlas": "claude-haiku-4-5-20251001",
     "sage": "claude-sonnet-5-5",
     "vera": "claude-sonnet-5-5",
+    "doulya": "claude-sonnet-5-5",
 }
 
 # Price per million tokens (input, output) in USD. Matched by model-name prefix.
@@ -27,6 +28,15 @@ WEB_SEARCH_PRICE_USD = 0.01  # $10 per 1,000 searches
 DAILY_AI_BUDGET_USD = 3.00     # all agents together, per calendar day
 PER_IDEA_BUDGET_USD = 1.00     # research + judgment for one idea
 SAGE_MAX_SEARCHES = 8          # web searches Sage may run per idea
+
+# ---- Doulya, the Idea Scout ----------------------------------------------------
+DOULYA_MAX_SEARCHES = 6        # web searches per scouting round
+DOULYA_PICKS = 2               # ideas she puts in your inbox each round
+SCOUT_AUTOMATICALLY = True     # scout once a day while Agent HQ is running
+# Her pitches wait in your Idea Inbox. Nothing is researched until you approve it.
+
+# Per-agent daily caps (inside the overall daily budget above)
+AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60}
 
 # ---- What you want from the business ----------------------------------------
 # Vera judges every idea against these. Change them to match your goals.

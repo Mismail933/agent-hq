@@ -164,6 +164,34 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .pill.work{border-color:var(--cyan);color:var(--cyan-ink);background:rgba(34,211,238,.08)}
 .empty{color:var(--ink-2);font-size:13px;line-height:1.55;padding:24px 18px;text-align:center}
 
+/* ---- Idea inbox ---- */
+.mini{min-height:32px;padding:0 10px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);border-radius:3px;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#FCD34D;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.mini:hover{background:rgba(251,191,36,.18)}
+.mini:disabled{opacity:.5;cursor:default}
+.mini svg{width:14px;height:14px}
+.scoutline{font-family:var(--mono);font-size:12px;color:var(--ink-2);padding:8px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.scoutline b{color:#FCD34D;font-weight:400}
+.inbox{list-style:none;margin:0;padding:0}
+.inbox li.empty{display:block;border:0;background:none}
+.inbox li{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:7px;border-left:2px solid #FBBF24;background:rgba(251,191,36,.03)}
+.inbox .ptop{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:12px;color:#FCD34D;text-transform:uppercase}
+.inbox .t{all:unset;cursor:pointer;font-weight:600;line-height:1.35;color:var(--ink)}
+.inbox .t:hover{text-decoration:underline;text-decoration-color:var(--line-2)}
+.inbox .t:focus-visible{outline:2px solid var(--cyan-ink);outline-offset:2px}
+.inbox p{margin:0;font-size:13px;line-height:1.5;color:var(--ink-2)}
+.inbox .meta{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.btn.sm{min-height:36px;padding:0 12px;font-size:10.5px}
+.btn.ghost{border-color:var(--line-2);background:transparent;color:var(--ink-2)}
+.btn.ghost:hover{border-color:var(--bad);color:#FDA4AF;background:rgba(244,63,94,.08);box-shadow:none}
+.why{display:flex;gap:6px}
+.why input{flex:1;min-width:0;border:1px solid var(--line-2);border-radius:4px;padding:8px 10px;font:inherit;font-size:13px;background:rgba(4,8,18,.8);color:var(--ink)}
+.why input::placeholder{color:#6F84A3}
+.tabcount{font-family:var(--mono);margin-left:6px;color:#FCD34D}
+.ev{margin:0;padding-left:18px;line-height:1.55}
+.ev a{color:var(--cyan-ink)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:50;background:#07101F;border:1px solid var(--line-2);color:var(--ink);border-radius:4px;padding:10px 14px;font-size:13.5px;box-shadow:0 0 30px rgba(34,211,238,.15);max-width:min(560px,calc(100% - 32px))}
+
 /* ---- Activity / crew ---- */
 .seg{display:flex;gap:4px}
 .seg button{min-height:32px;padding:0 12px;border:1px solid var(--line);background:transparent;border-radius:3px;font-family:var(--display);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
@@ -248,7 +276,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 
   <section class="kpis" aria-label="Key numbers">
     <div class="card kpi"><span>AI spend today</span><b id="sSpend">$0.000</b><div class="meter" id="sMeterBox"><i id="sMeter"></i></div><small id="sCap">of $0.00 daily cap</small></div>
-    <div class="card kpi"><span>Ideas judged</span><b id="sIdeas">0</b><small id="sIdeasSub">0 in progress</small></div>
+    <div class="card kpi"><span>Ideas judged</span><b id="sIdeas">0</b><small id="sIdeasSub">0 in progress · 0 in inbox</small></div>
     <div class="card kpi good"><span>Approved</span><b id="sApproved">0</b><small>go-ahead from Vera</small></div>
     <div class="card kpi"><span>Crew online</span><b id="sTeam">0</b><small>of 14 planned roles</small></div>
     <div class="card kpi"><span>Cost per idea</span><b id="sAvg">$0.00</b><small id="sIdeaCap">cap $0.00 per idea</small></div>
@@ -304,13 +332,13 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
     </section>
 
     <section class="card a-chat" aria-labelledby="hChat">
-      <div class="ch"><span class="blip" style="background:#A78BFA;box-shadow:0 0 8px #A78BFA"></span><h2 id="hChat">Comms · Atlas</h2><small>orchestrator</small></div>
+      <div class="ch"><span class="blip" style="background:#A78BFA;box-shadow:0 0 8px #A78BFA"></span><h2 id="hChat">Comms · Atlas</h2><small>general manager</small></div>
       <div class="chat">
         <div class="msgs" id="msgs" aria-live="polite"></div>
         <div class="suggest" id="suggest">
+          <button type="button">Give me a briefing</button>
+          <button type="button">What's in my Idea Inbox?</button>
           <button type="button">I want to create a YouTube channel with AI-generated videos</button>
-          <button type="button">What ideas have we looked at?</button>
-          <button type="button">Retry the YouTube idea</button>
         </div>
         <form class="compose" id="compose">
           <textarea id="chatIn" placeholder="Pitch an idea or ask Atlas anything" aria-label="Message to Atlas"></textarea>
@@ -320,8 +348,14 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
     </section>
 
     <section class="card a-ideas" aria-labelledby="hIdeas">
-      <div class="ch"><span class="blip"></span><h2 id="hIdeas">Ideas &amp; verdicts</h2><small id="ideasCount"></small></div>
-      <div class="cb"><ul class="ideas" id="ideas"></ul></div>
+      <div class="ch"><span class="blip" style="background:#FBBF24;box-shadow:0 0 8px #FBBF24"></span><h2 id="hIdeas">Ideas</h2>
+        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button></div>
+      </div>
+      <div class="cb" id="p-inbox">
+        <div class="scoutline"><span id="scoutInfo" style="flex:1">Doulya hasn't scouted yet</span><button class="mini" id="scoutBtn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Scout now</button></div>
+        <ul class="inbox" id="inbox"></ul>
+      </div>
+      <div class="cb" id="p-judged" hidden><ul class="ideas" id="ideas"></ul></div>
     </section>
 
     <section class="card a-side" aria-label="Activity and crew">
@@ -334,6 +368,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
   </main>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="overlay" id="overlay" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
     <header><div><span class="pill" id="ovPill"></span><h2 id="ovTitle"></h2></div><button class="x" id="ovClose" type="button" aria-label="Close"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
@@ -400,11 +435,11 @@ const SPOTS = {
 const MTY = MT.cy + 30;
 
 /* ---------- Agents (only real, registered ones are drawn) ---------- */
-const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment'};
+const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas'};
 const agents = {};
 function addAgent(info) {
   const dept = DEPT_OF[info.dept] || 'orch';
-  const R = ROOM[dept];
+  const R = ROOM[dept]; R.open = true;   // a room comes online when someone is hired into it
   const a = {name:info.name, dept, role:info.role, model:info.model, x:0, y:0, face:-Math.PI/2,
     path:[], plan:[], jobs:[], job:false, mode:'idle', timer:rnd(1, 4), working:false, carry:false, bubble:null,
     walkPh:0, room:dept, lane:null, activity:'At station'};
@@ -480,12 +515,12 @@ function pipeEvent(e) {
   const d = e.detail || {}; NOW = e.ts * 1000;
   switch (e.kind) {
     case 'idea_routed': setJob(d.to === 'Vera' ? 'judgment' : 'research', short(d.idea, 80)); note(`<b>Atlas</b> routed the idea to ${d.to === 'Vera' ? 'Vera (reusing the brief)' : 'Sage in Research'}`); break;
-    case 'web_search': JOB.searches++; note(`<b>${esc(e.agent)}</b> searching: ${esc(short(d.query, 90))}`); break;
+    case 'web_search': if (e.agent !== 'Sage') break; JOB.searches++; note(`<b>${esc(e.agent)}</b> searching: ${esc(short(d.query, 90))}`); break;
     case 'brief_written': JOB.sources = d.sources || 0; note(`<b>${esc(e.agent)}</b> filed the research brief · ${esc(d.sources)} sources`); break;
     case 'handoff': setJob('judgment'); note('<b>Sage</b> handed the brief to <b>Vera</b> for judgment'); break;
     case 'verdict': setJob('report'); note(`<b>Vera</b> verdict: ${esc(VERDICT[d.verdict] || d.verdict)}${d.path ? ' · Path ' + esc(d.path) : ''}`); break;
     case 'reply': if (JOB.step === 'report') { setJob('done'); note('<b>Atlas</b> sent you the report. Open it in Ideas &amp; verdicts.'); } break;
-    case 'halted': if (JOB.step && JOB.step !== 'done') { JOB.stopped = true; setJob('done'); note('<b>Halted:</b> ' + esc(short(d.reason, 140))); } break;
+    case 'halted': if (e.agent === 'Doulya') break; if (JOB.step && JOB.step !== 'done') { JOB.stopped = true; setJob('done'); note('<b>Halted:</b> ' + esc(short(d.reason, 140))); } break;
   }
 }
 function renderPipe() {
@@ -517,13 +552,17 @@ function handleEvent(e) {
     case 'reply': if (A) { A.working = false; assign(A, [{fn:a => a.carry = true}, {go:SPOTS.ownerDrop, room:'owner', label:'Bringing you the answer'}, {fn:a => { a.carry = false; say(a, 'Report delivered', 4); }}, {stay:2.5, anim:'talk', label:'Reporting to you'}, {goSeat:true, label:'Returning to station'}]); } break;
     case 'halted': Object.values(agents).forEach(a => a.working = false); say(me || A, 'Halted: ' + short(d.reason, 40), 6); break;
     case 'permission_denied': say(me, 'Blocked: no access to ' + d.tool, 5); break;
+    case 'scout_started': if (me) { me.working = true; me.activity = 'Scouting for ideas that make money now'; say(me, 'Scouting the markets…', 4); } break;
+    case 'pitched': if (me) say(me, 'Found: ' + short(d.title, 34), 4); break;
+    case 'scout_done': if (me) { me.working = false; me.activity = `Pitched ${d.count} idea${d.count === 1 ? '' : 's'} to your inbox`; if (d.count) assign(me, deliver(A, `${d.count} new idea${d.count === 1 ? '' : 's'} for the boss`, "Thanks. I'll tell him.")); } break;
+    case 'idea_dismissed': if (agents.Doulya) say(agents.Doulya, 'Noted. I will avoid ideas like that.', 4); break;
   }
 }
 function feedLine(e) {
   const d = e.detail || {}, w = e.agent;
   switch (e.kind) {
     case 'chat_received': return ['You', `messaged Atlas: "${short(d.text, 90)}"`, ''];
-    case 'idea_routed': return [w, `sent "${short(d.idea, 70)}" to ${d.to || 'Sage'}`, ''];
+    case 'idea_routed': return [w, `sent ${d.from === 'inbox' ? "Doulya's idea " : ''}"${short(d.idea, 70)}" to ${d.to || 'Sage'}`, ''];
     case 'task_started': return [w, `started work on "${short(d.idea, 70)}"`, ''];
     case 'web_search': return [w, `searched the web: ${d.query}`, ''];
     case 'brief_written': return [w, `wrote the research brief (${d.sources} sources)`, 'good'];
@@ -532,6 +571,10 @@ function feedLine(e) {
     case 'reply': return [w, 'sent you an answer', ''];
     case 'halted': return [w, 'stopped: ' + d.reason, 'bad'];
     case 'permission_denied': return [w, `was blocked from using ${d.tool}`, 'alert'];
+    case 'scout_started': return [w, 'started scouting for new ideas', ''];
+    case 'pitched': return [w, `pitched "${short(d.title, 80)}" to your Idea Inbox`, 'good'];
+    case 'scout_done': return [w, `finished scouting: ${d.count} new idea${d.count === 1 ? '' : 's'} in your inbox`, 'good'];
+    case 'idea_dismissed': return ['You', `dismissed "${short(d.title, 60)}"${d.reason ? ' (' + d.reason + ')' : ''}`, ''];
     case 'kill_switch': return ['You', d.on ? 'turned the kill switch ON. All agents stop.' : 'turned the kill switch off.', d.on ? 'bad' : 'good'];
     default: return null;
   }
@@ -559,7 +602,7 @@ function fit() {
   cam.user = false;
 }
 function focusActive() {
-  fit(); const s = cam.fitS * (CW / CH > 1.6 ? 2.1 : 1.9); const [X, Y] = iso(520, 190, 0);
+  fit(); const s = cam.fitS * (CW / CH > 1.6 ? 1.85 : 1.7); const [X, Y] = iso(640, 180, 0);
   cam.s = s; cam.ox = CW / 2 - X * s; cam.oy = CH / 2 - Y * s; cam.user = false;
 }
 function resize() {
@@ -711,6 +754,7 @@ function furnish(d) {
       addCyl(x1 - 28, y0 + 150, 13, 0, 46, HSL(190, 80, 50, .22, 'rgba(103,232,249,.8)'), null, (g, t, X, Y) => { g.fillStyle = 'rgba(103,232,249,.35)'; g.fillRect(X - 3, Y, 6, 40); });
       addCyl(cx + 30, y1 - 74, 18, 0, 18, METAL, null, (g, t, X, Y, rx, ry) => { g.strokeStyle = 'rgba(34,211,238,.7)'; g.lineWidth = 1; g.beginPath(); g.ellipse(X, Y, rx * .8, ry * .8, 0, 0, Math.PI * 2); g.stroke(); });
       break;
+    case 'ideas': holoBoard(x0 + 18, y0 + 4, x0 + 104, ['#FBBF24', '#F59E0B', '#22D3EE', '#FCD34D']); rack(x1 - 70, y0 + 6, x1 - 16); break;
     case 'meeting':
       for (let k = 0; k < 6; k++) { const an = k / 6 * Math.PI * 2 + Math.PI / 6; addCyl(cx + Math.cos(an) * 74, MTY + Math.sin(an) * 74, 9, 0, 13, HSL(222, 25, 16)); }
       addCyl(cx, MTY, 50, 0, 18, METAL, null, (g, t, X, Y, rx, ry) => {
@@ -727,7 +771,7 @@ function furnish(d) {
   }
 }
 
-const LOOKS = {Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}};
+const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}};
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function seatedNow(a) { return atSeat(a) && !a.path.length && a.mode !== 'stretch'; }
 function drawAgent(g, a, t) {
@@ -908,6 +952,50 @@ function md(text) {
 /* ---------- UI ---------- */
 let lastId = -1, killOn = false, busy = false, selected = null, sidePane = 'feed';
 let feed = [], chat = [], ideas = [], agentInfo = [], ideasKey = '', feedDirty = true;
+let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = null, pending = {};
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
+function showIdeaTab(id) {
+  ideaTab = id;
+  document.querySelectorAll('.seg button[data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === id));
+  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged';
+}
+function renderInbox() {
+  $('#inboxCount').textContent = inbox.length ? inbox.length : '';
+  $('#inbox').innerHTML = inbox.length ? inbox.map((i, n) => { const p = i.pitch || {}, busy = pending[i.id];
+    const bits = [p.startup_cost_usd != null ? `START ~$${p.startup_cost_usd}` : '', p.hours_per_week != null ? `${p.hours_per_week} H/WEEK` : '', (p.evidence || []).length ? `${p.evidence.length} SOURCES` : ''].filter(Boolean);
+    return `<li data-id="${i.id}"><div class="ptop"><span>Doulya's pick ${n + 1}</span>${p.confidence ? `<span class="pill">${esc(p.confidence)} confidence</span>` : ''}</div>
+      <button class="t" type="button" data-act="open">${esc(i.title)}</button>
+      <p>${esc(p.pitch || '')}</p>${p.why_now ? `<p><b style="color:var(--ink)">Why now:</b> ${esc(p.why_now)}</p>` : ''}
+      ${bits.length ? `<div class="meta">${bits.map(esc).join('<span aria-hidden="true">·</span>')}</div>` : ''}
+      <div class="acts"><button class="btn sm" type="button" data-act="research" ${busy ? 'disabled' : ''}>${busy === 'research' ? 'Sending…' : 'Research it'}</button><button class="btn sm ghost" type="button" data-act="dismiss" ${busy ? 'disabled' : ''}>Dismiss</button></div>
+      <form class="why" data-act="why" hidden><input type="text" maxlength="300" placeholder="Why not? (teaches Doulya, optional)" aria-label="Reason for dismissing"><button class="btn sm ghost" type="submit">Confirm</button></form></li>`; }).join('')
+    : '<li class="empty">Inbox empty. Doulya scouts once a day and drops her top picks here; nothing is researched until you click <b>Research it</b>.</li>';
+}
+function renderScout() {
+  const b = $('#scoutBtn'); b.disabled = scouting; b.lastChild.textContent = scouting ? 'Scouting…' : 'Scout now';
+  $('#scoutInfo').innerHTML = scouting ? '<b>Doulya is scouting now…</b>' : lastScout ? `Doulya last scouted <b>${new Date(lastScout * 1000).toLocaleString([], {weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false})}</b>` : "Doulya hasn't scouted yet";
+}
+async function inboxAct(id, action, reason) {
+  pending[id] = action; renderInbox();
+  try {
+    const r = await fetch(`/api/inbox/${id}/${action}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reason:reason || ''})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) toast(j.error || 'That did not work.');
+    else toast(action === 'research' ? 'Sent to Sage and Vera. Watch the Mission pipeline.' : 'Dismissed. Doulya will learn from it.');
+  } catch { toast("Can't reach the engine."); }
+  delete pending[id]; poll();
+}
+function openPitch(id) {
+  const i = inbox.find(x => x.id === +id); if (!i) return; const p = i.pitch || {};
+  $('#ovTitle').textContent = i.title; const pill = $('#ovPill'); pill.className = 'pill'; pill.style.color = '#FCD34D'; pill.textContent = "Doulya's pitch · waiting for you";
+  $('#ovBody').innerHTML = pitchHtml(p) + `<div class="acts"><button class="btn" type="button" data-ov="research" data-id="${i.id}">Research it</button><button class="btn ghost" type="button" data-ov="dismiss" data-id="${i.id}">Dismiss</button></div>`;
+  $('#overlay').hidden = false; $('#ovClose').focus();
+}
+function pitchHtml(p) {
+  const li = a => (a || []).map(x => `<li>${esc(x)}</li>`).join('');
+  return `<div class="verdict"><div>${esc(p.pitch || '')}</div><dl class="kv">${p.why_now ? `<dt>Why now</dt><dd>${esc(p.why_now)}</dd>` : ''}${p.who_pays ? `<dt>Who pays</dt><dd>${esc(p.who_pays)}</dd>` : ''}${p.how_it_makes_money ? `<dt>Money</dt><dd>${esc(p.how_it_makes_money)}</dd>` : ''}${p.startup_cost_usd != null ? `<dt>Start cost</dt><dd class="num">~$${esc(p.startup_cost_usd)}</dd>` : ''}${p.hours_per_week != null ? `<dt>Your time</dt><dd class="num">${esc(p.hours_per_week)} h/week</dd>` : ''}${p.confidence ? `<dt>Confidence</dt><dd>${esc(p.confidence)}</dd>` : ''}</dl></div>
+    <div class="two"><div><h4>Evidence</h4><ul class="ev">${(p.evidence || []).map(e => `<li>${esc(e.fact)}${/^https?:\/\//.test(e.url || '') ? ` <a href="${esc(e.url)}" target="_blank" rel="noopener">source</a>` : ''}</li>`).join('') || '<li>None given</li>'}</ul></div><div><h4>Risks</h4><ul>${li(p.risks) || '<li>None listed</li>'}</ul></div></div>`;
+}
 const clockOf = ts => new Date(ts * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
 function renderChat() {
   const box = $('#msgs'); const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
@@ -927,7 +1015,7 @@ function stagePill(i) {
   return `<span class="pill work">In ${esc(i.status)}</span>`;
 }
 function renderIdeas() {
-  $('#ideasCount').textContent = ideas.length ? ideas.length + ' total' : '';
+  $('#ideasCount').textContent = ideas.length ? ideas.length : '';
   $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
     : '<li class="empty" style="cursor:default">No ideas yet. Pitch one to Atlas; it lands here with Vera\'s verdict and Sage\'s full research.</li>';
 }
@@ -952,7 +1040,7 @@ function renderHud(s) {
   const pct = Math.min(100, s.spend_today / s.daily_cap * 100); $('#sMeter').style.width = pct + '%'; $('#sMeterBox').classList.toggle('hot', pct > 75);
   const judged = ideas.filter(i => i.verdict), ok = judged.filter(i => i.verdict === 'approve' || i.verdict === 'approve_smaller_version');
   const open = ideas.filter(i => !i.verdict && !['stopped','error','interrupted'].includes(i.status)).length;
-  $('#sIdeas').textContent = judged.length; $('#sIdeasSub').textContent = `${open} in progress`;
+  $('#sIdeas').textContent = judged.length; $('#sIdeasSub').textContent = `${open} in progress · ${inbox.length} in inbox`;
   $('#sApproved').textContent = ok.length;
   $('#sTeam').textContent = agentInfo.length;
   const avg = judged.length ? judged.reduce((t, i) => t + (+i.cost_usd || 0), 0) / judged.length : 0;
@@ -964,11 +1052,16 @@ function renderHud(s) {
 }
 function showSide(id) {
   sidePane = id;
-  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.pane === id));
+  document.querySelectorAll('.seg button[data-pane]').forEach(b => b.setAttribute('aria-pressed', b.dataset.pane === id));
   $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team';
   if (id === 'feed') renderFeed(); else renderTeam();
 }
+let polling = false;
 async function poll() {
+  if (polling) return; polling = true;
+  try { await pollOnce(); } finally { polling = false; }
+}
+async function pollOnce() {
   let s;
   try { const r = await fetch('/api/state?since=' + lastId, {cache:'no-store'}); s = await r.json(); $('#offline').hidden = true; $('#sLink').textContent = 'OK'; }
   catch { $('#offline').hidden = false; $('#sLink').textContent = 'LOST'; return; }
@@ -985,6 +1078,9 @@ async function poll() {
   const newChat = s.chat.length !== chat.length; chat = s.chat;
   if (newChat || busy !== wasBusy) renderChat();
   ideas = s.ideas; const k = JSON.stringify(ideas); if (k !== ideasKey) { ideasKey = k; renderIdeas(); }
+  inbox = s.inbox || []; const ik = JSON.stringify(inbox); if (ik !== inboxKey) { const grew = inbox.length > (inboxKey ? JSON.parse(inboxKey).length : 0); inboxKey = ik; renderInbox(); if (grew && ideaTab !== 'inbox') showIdeaTab('inbox'); }
+  if (ideaTab === null) showIdeaTab(inbox.length || !ideas.length ? 'inbox' : 'judged');
+  scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   if (sidePane === 'feed' && feedDirty) renderFeed();
   if (s.events.length) renderPipe();
   renderTeam(); renderHud(s); renderSel();
@@ -1000,7 +1096,7 @@ async function openIdea(id) {
   const r = await fetch('/api/idea/' + id); if (!r.ok) return; const i = await r.json();
   const v = i.verdict;
   $('#ovTitle').textContent = i.title;
-  const pill = $('#ovPill'); pill.className = 'pill ' + (v ? v.verdict : 'work'); pill.textContent = v ? (VERDICT[v.verdict] || v.verdict) : 'In ' + i.status;
+  const pill = $('#ovPill'); pill.style.color = ''; pill.className = 'pill ' + (v ? v.verdict : 'work'); pill.textContent = v ? (VERDICT[v.verdict] || v.verdict) : 'In ' + i.status;
   let h = '';
   if (v) {
     const sc = v.scores || {}, good = k => k === 'demand';
@@ -1012,11 +1108,32 @@ async function openIdea(id) {
       <div class="two"><div><h4>Key evidence</h4><ul>${li(v.key_evidence)}</ul></div><div><h4>Main risks</h4><ul>${li(v.main_risks)}</ul></div></div>
       <dl class="kv">${v.recommended_version ? `<dt>Build this</dt><dd>${esc(v.recommended_version)}</dd>` : ''}${v.new_money_needed ? `<dt>New money</dt><dd>${esc(v.new_money_needed)}</dd>` : ''}${v.estimated_monthly_revenue ? `<dt>Revenue</dt><dd>${esc(v.estimated_monthly_revenue)}</dd>` : ''}<dt>Kill rule</dt><dd>${esc(v.kill_criteria)}</dd>${v.first_step ? `<dt>First step</dt><dd>${esc(v.first_step)}</dd>` : ''}</dl>`;
   }
+  if (i.pitch && i.source === 'doulya') h += `<h4 style="margin:4px 0 0;font-family:var(--display);font-size:10.5px;letter-spacing:.14em;color:#FCD34D;text-transform:uppercase">Doulya's original pitch</h4>` + pitchHtml(i.pitch);
   h += i.brief ? `<div class="brief"><h4>Sage's research brief</h4>${md(i.brief)}</div>` : '<p class="empty">Sage is still researching this one.</p>';
   $('#ovBody').innerHTML = h; $('#overlay').hidden = false; $('#ovClose').focus();
 }
 
-document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => showSide(b.dataset.pane)));
+document.querySelectorAll('.seg button[data-pane]').forEach(b => b.addEventListener('click', () => showSide(b.dataset.pane)));
+document.querySelectorAll('.seg button[data-tab]').forEach(b => b.addEventListener('click', () => showIdeaTab(b.dataset.tab)));
+$('#scoutBtn').addEventListener('click', async () => {
+  scouting = true; renderScout();
+  try { const r = await fetch('/api/scout', {method:'POST'}); if (!r.ok) { const j = await r.json().catch(() => ({})); toast(j.error || 'Could not start scouting.'); } else toast('Doulya is out scouting. Her picks will land here in a few minutes.'); }
+  catch { toast("Can't reach the engine."); }
+  poll();
+});
+$('#inbox').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'), li = e.target.closest('li[data-id]'); if (!b || !li) return;
+  const id = +li.dataset.id;
+  if (b.dataset.act === 'open') openPitch(id);
+  else if (b.dataset.act === 'research') inboxAct(id, 'research');
+  else if (b.dataset.act === 'dismiss') { const f = li.querySelector('form.why'); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('input').focus(); }
+});
+$('#inbox').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-id]'); inboxAct(+li.dataset.id, 'dismiss', e.target.querySelector('input').value); });
+$('#ovBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-ov]'); if (!b) return; const id = +b.dataset.id;
+  if (b.dataset.ov === 'research') { $('#overlay').hidden = true; inboxAct(id, 'research'); }
+  else { $('#overlay').hidden = true; showIdeaTab('inbox'); const li = $(`#inbox li[data-id="${id}"]`); if (li) { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); } }
+});
 $('#compose').addEventListener('submit', e => { e.preventDefault(); const t = $('#chatIn').value; $('#chatIn').value = ''; send(t); });
 $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#compose').requestSubmit(); } });
 $('#suggest').addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.textContent); });
@@ -1034,7 +1151,7 @@ tickClock(); setInterval(tickClock, 1000);
 $('#killBtn').innerHTML = ICON.stop; $('#killBtn').dataset.st = 'false';
 new ResizeObserver(resize).observe(cv); resize();
 if (document.fonts) document.fonts.ready.then(buildScene);
-renderChat(); renderFeed(); renderIdeas(); renderPipe();
+renderChat(); renderFeed(); renderIdeas(); renderInbox(); renderPipe();
 poll(); setInterval(poll, 1000);
 requestAnimationFrame(tick);
 })();

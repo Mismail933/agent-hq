@@ -1,14 +1,16 @@
-# Agent HQ — Phase 1
+# Agent HQ
 
-Your first three real AI agents:
+Your AI company. The team so far:
 
 | Agent | Department | Job |
 | --- | --- | --- |
-| Atlas | Executive | The one you talk to. Routes your ideas and reports back. |
+| Atlas | Executive | General Manager. The only one you talk to. Briefs you on everything and routes work. |
+| Doulya | Ideas | Idea Scout. Once a day she finds ideas that are making money now and puts her top 2 in your Idea Inbox. |
 | Sage | Research | Researches an idea on the live web and writes a brief with sources. |
 | Vera | Judgment | Scores the idea against the evidence and your settings, picks Path A or B. |
 
-You pitch an idea to Atlas. Sage researches it, Vera judges it, Atlas tells you the verdict.
+Doulya's picks wait in your Idea Inbox. Nothing is researched until you click **Research it** (or tell Atlas yes).
+Dismiss an idea with a reason and Doulya steers away from similar ones. You can also pitch your own ideas to Atlas.
 The full research is saved in the `briefs/` folder.
 
 ## Setup on Windows (easiest)

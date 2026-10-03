@@ -49,8 +49,9 @@ if _n:
 
 ATLAS = agents.Atlas()
 CHAT = [{"from": "atlas", "ts": time.time(),
-         "text": "Hi, I'm Atlas. Pitch me a business idea and I'll send it to Sage in Research and Vera in Judgment, "
-                 "then report back with an honest verdict. You can also ask what we're working on or what we've spent."}]
+         "text": "Hi, I'm Atlas, your General Manager. Ask me for a briefing any time. Doulya scouts for ideas every day and "
+                 "puts her top picks in your Idea Inbox; nothing gets researched until you approve it. "
+                 "You can also pitch me your own idea."}]
 STATE = {"busy": False}
 LOCK = threading.Lock()
 
@@ -69,6 +70,51 @@ def friendly_error(e):
     if "Connection" in name:
         return "I couldn't reach the Anthropic API. Check your internet connection."
     return f"Something went wrong: {name}: {msg[:300]}"
+
+
+def atlas_says(text):
+    with LOCK:
+        CHAT.append({"from": "atlas", "ts": time.time(), "text": text})
+
+
+def run_scout(trigger):
+    out = agents.doulya_scout(trigger)
+    try:
+        got = json.loads(out)
+        items = got.get("new_inbox_ideas", [])
+        if items:
+            lines = "\n".join(f"- #{i['id']} {i['title']}" for i in items)
+            atlas_says(f"Doulya just brought {len(items)} new idea{'s' if len(items) != 1 else ''} to your Idea Inbox:\n{lines}\n\n"
+                       "Open the Inbox to read her pitches. Click **Research it** on any you like, or **Dismiss** with a reason "
+                       "so she learns. Nothing is researched until you say so.")
+        else:
+            atlas_says("Doulya finished scouting but found nothing strong enough to pitch today.")
+    except ValueError:
+        atlas_says(f"Doulya couldn't finish scouting: {out}")
+
+
+def run_inbox_research(idea_id):
+    idea = cp.get_idea(idea_id)
+    out = agents.research_inbox_idea(idea_id)
+    try:
+        r = json.loads(out)
+        v = r["verdict"]
+        atlas_says(f"**Verdict on #{idea_id}: {idea['title']}**\n\nVera says **{v['verdict'].replace('_', ' ')}** (Path {v['path']}). "
+                   f"{v.get('one_line_summary', '')}\n\nOpen it under Ideas → Judged for the scores, evidence and Sage's full brief.")
+    except (ValueError, KeyError, TypeError):
+        atlas_says(out)
+
+
+def scheduler():
+    """Doulya scouts once a day while the engine is running."""
+    time.sleep(20)
+    while True:
+        try:
+            if getattr(settings, "SCOUT_AUTOMATICALLY", False) and not cp.STOP_FILE.exists() and not agents.scouted_today():
+                run_scout("schedule")
+        except Exception as e:
+            print("scheduler:", repr(e), flush=True)
+        time.sleep(600)
 
 
 def run_chat(text):
@@ -116,6 +162,9 @@ class Handler(BaseHTTPRequestHandler):
                 "events": cp.events_since(since),
                 "agents": cp.agents_overview(),
                 "ideas": cp.list_ideas(),
+                "inbox": cp.list_inbox(),
+                "scouting": agents.SCOUTING.locked(),
+                "last_scout": cp.last_event_time("scout_done", "Doulya"),
                 "chat": chat, "busy": busy,
                 "spend_today": round(cp.spend_today(), 4),
                 "daily_cap": settings.DAILY_AI_BUDGET_USD,
@@ -145,6 +194,29 @@ class Handler(BaseHTTPRequestHandler):
                 CHAT.append({"from": "you", "ts": time.time(), "text": text})
             threading.Thread(target=run_chat, args=(text,), daemon=True).start()
             return self._send(202, {"ok": True})
+        if u.path == "/api/scout":
+            if agents.SCOUTING.locked():
+                return self._send(409, {"error": "Doulya is already scouting."})
+            threading.Thread(target=run_scout, args=("owner",), daemon=True).start()
+            return self._send(202, {"ok": True})
+        if u.path.startswith("/api/inbox/"):
+            parts = u.path.strip("/").split("/")   # api inbox <id> <action>
+            try:
+                idea_id, action = int(parts[2]), parts[3]
+            except (IndexError, ValueError):
+                return self._send(400, {"error": "bad request"})
+            idea = cp.get_idea(idea_id)
+            if not idea or idea["status"] != "inbox":
+                return self._send(404, {"error": "That idea is no longer in the inbox."})
+            if action == "research":
+                if agents.PIPELINE.locked():
+                    return self._send(409, {"error": "The team is busy with another idea. Try again when it finishes."})
+                threading.Thread(target=run_inbox_research, args=(idea_id,), daemon=True).start()
+                return self._send(202, {"ok": True})
+            if action == "dismiss":
+                reason = str(self._json_body().get("reason", "")).strip()[:300]
+                return self._send(200, {"ok": True, "message": agents.dismiss_inbox_idea(idea_id, reason)})
+            return self._send(404, {"error": "unknown action"})
         if u.path == "/api/stop":
             cp.STOP_FILE.write_text("stop")
             cp.log("Owner", "kill_switch", None, {"on": True})
@@ -171,6 +243,7 @@ def main():
     print("  Your browser should open by itself. If not, open that address.")
     print("  Keep this window open while you use the office (you can minimize it).")
     print("  Close this window to stop everything.\n", flush=True)
+    threading.Thread(target=scheduler, daemon=True).start()
     if os.environ.get("HQ_NO_BROWSER") != "1":
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

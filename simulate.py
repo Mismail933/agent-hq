@@ -30,13 +30,37 @@ class _Messages:
     def create(self, model, system, messages, max_tokens, tools=None, tool_choice=None):
         time.sleep(float(os.environ.get("HQ_SIM_DELAY", "0")))
         last = messages[-1]["content"]
+        if system.startswith("You are Doulya"):
+            key = id(messages)
+            if key not in self.paused:
+                self.paused.add(key)
+                q = NS(type="server_tool_use", id="srvtoolu_" + uuid.uuid4().hex[:8], name="web_search",
+                       input={"query": "trending digital products selling now"})
+                r = NS(type="web_search_tool_result", tool_use_id=q.id,
+                       content=[NS(type="web_search_result", url="https://example.com/trending", title="Example trends")])
+                return NS(stop_reason="pause_turn", usage=_usage(3000, 100, 1), content=[q, r])
+            n = len([m for m in messages if m["role"] == "assistant"])
+            pitches = [{"title": f"Simulated idea {n}{k}: AI-made printable planners for a niche", "pitch": "Simulated pitch.",
+                        "why_now": "Simulated signal.", "who_pays": "Simulated buyers", "how_it_makes_money": "One-off sales",
+                        "startup_cost_usd": 20, "hours_per_week": 3, "risks": ["Simulated risk"],
+                        "evidence": [{"fact": "Simulated fact", "url": "https://example.com/evidence"}],
+                        "confidence": "medium"} for k in "ab"]
+            return NS(stop_reason="tool_use", usage=_usage(6000, 700, 1),
+                      content=[NS(type="tool_use", id=_id(), name="submit_pitches", input={"pitches": pitches})])
+
         if system.startswith("You are Atlas"):
             if isinstance(last, list):  # tool results came back
                 res = last[0]["content"]
                 return NS(stop_reason="end_turn", usage=_usage(1800, 220),
                           content=[_text("[Simulated Atlas] Here is what the team found:\n" + res[:900])])
             low = last.lower()
-            if any(w in low for w in ["working on", "ideas", "status"]):
+            if "scout" in low:
+                call = NS(type="tool_use", id=_id(), name="scout_now", input={})
+            elif any(w in low for w in ["inbox", "doulya"]):
+                call = NS(type="tool_use", id=_id(), name="list_inbox", input={})
+            elif any(w in low for w in ["update", "briefing", "going on"]):
+                call = NS(type="tool_use", id=_id(), name="company_status", input={})
+            elif any(w in low for w in ["working on", "ideas", "status"]):
                 call = NS(type="tool_use", id=_id(), name="list_ideas", input={})
             elif any(w in low for w in ["spend", "cost", "budget"]):
                 call = NS(type="tool_use", id=_id(), name="spend_report", input={})
