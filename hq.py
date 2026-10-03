@@ -5,6 +5,8 @@ Atlas's controls for Agent HQ.
                  pitch "idea" ["notes"] | scout | retry <id> | spend | activity [n] | stop | resume
                  plan <idea id> ["notes"] | plans | project <id> | approve <id> | reject <id> "why" | changes <id> "what"
                  limits | limit <key> <value>
+                 batch <project id> [count] ["notes"] | episodes [project id] | episode <id>
+                 approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
 same guardrails (budgets, one idea at a time, kill switch).
@@ -105,7 +107,7 @@ def spend():
     show({"api_spend_today_usd": round(today, 3), "daily_cap_usd": cap, "used_pct": round(100 * today / cap) if cap else None,
           "by_agent_today": _by_agent(date.today().isoformat()),
           "subscription_today": cp.usage_today(), "subscription_daily_allowance_api_value": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
-          "workers_engine": {a: workers.engine(a) for a in ("Doulya", "Sage", "Vera", "Serge")},
+          "workers_engine": {a: workers.engine(a) for a in cp.WORKERS},
           "agent_daily_caps_usd": getattr(settings, "AGENT_DAILY_BUDGET_USD", {}),
           "per_idea_cap_usd": settings.PER_IDEA_BUDGET_USD,
           "models": settings.MODELS, "prices_per_million_tokens_usd_in_out": settings.PRICES_PER_MTOK,
@@ -169,6 +171,24 @@ def main(argv):
         elif cmd in ("approve", "reject", "changes"):
             code, reply = office(f"/api/project/{int(args[0])}/{cmd}", {"note": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "batch":
+            count = args[1] if len(args) > 1 and args[1].isdigit() else None
+            notes = " ".join(args[2:] if count else args[1:])
+            order(f"/api/content/{int(args[0])}/batch", {"count": count, "notes": notes},
+                  "Calina is writing the batch. The scripts will land in Ideas → Content and in the office chat.")
+        elif cmd == "episodes":
+            eps = cp.list_episodes(int(args[0]) if args else None, limit=100)
+            show([{"id": e["id"], "project": e["project_id"], "batch": e["batch"], "status": e["status"], "title": e["title"],
+                   "owner_note": e["owner_note"], "video": e["video_path"]} for e in eps] if eps else "No episodes yet.")
+        elif cmd == "episode":
+            e = cp.get_episode(int(args[0]))
+            show(e if e else f"No episode {args[0]}.")
+        elif cmd in ("approve-episode", "reject-episode"):
+            code, reply = office(f"/api/episode/{int(args[0])}/{cmd.split('-')[0]}", {"note": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "review":
+            order(f"/api/content/{int(args[0])}/review", {"stats": " ".join(args[1:])},
+                  "Calina is writing the learning note. It will appear in the office chat.")
         elif cmd == "limits":
             show({k: {"now": v["value"], "what": v["label"], "allowed": v["options"] or f"${v['min']}-${v['max']}"}
                   for k, v in cp.limits_view().items()})

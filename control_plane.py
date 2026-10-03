@@ -52,6 +52,9 @@ def init():
             input_tokens INTEGER, output_tokens INTEGER, cache_tokens INTEGER, searches INTEGER, turns INTEGER,
             secs REAL, value_usd REAL, ok INTEGER);
         CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, value TEXT, ts REAL, changed_by TEXT);
+        CREATE TABLE IF NOT EXISTS episodes (
+            id INTEGER PRIMARY KEY, project_id INTEGER, batch INTEGER, ts REAL, status TEXT, title TEXT,
+            data TEXT, owner_note TEXT, video_path TEXT);
         """)
         cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
         if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
@@ -62,7 +65,7 @@ def init():
 # ---- Limits the owner changes in the office (or Atlas, when the owner asks) -------
 # Stored in hq.db and applied on top of settings.py / settings_local.py, so they take effect at once and
 # survive updates. Each one is validated against a sane range so a typo can't open the floodgates.
-WORKERS = ("Doulya", "Sage", "Vera", "Serge")
+WORKERS = ("Doulya", "Sage", "Vera", "Serge", "Calina")
 LIMITS = {
     "daily_api": ("usd", 0, 100, "Daily API cap, whole company"),
     "per_idea": ("usd", 0, 20, "API cap per idea (research + judgment)"),
@@ -264,6 +267,50 @@ def usage_today(agent=None):
 
 def subscription_value_today(agent):
     return (usage_today(agent).get(agent) or {}).get("value_usd") or 0
+
+
+# ---- Episodes: Calina's scripts for a content project ----------------------------------
+# status: awaiting_approval -> approved | rejected; later rendered (video_path) -> published
+def add_episode(project_id, batch, data):
+    with _db() as con:
+        return con.execute("INSERT INTO episodes(project_id,batch,ts,status,title,data) VALUES(?,?,?,?,?,?)",
+                           (project_id, batch, time.time(), "awaiting_approval", data.get("title", "")[:300],
+                            json.dumps(data))).lastrowid
+
+
+def update_episode(eid, **fields):
+    assert set(fields) <= {"status", "owner_note", "video_path", "data"}, fields
+    if isinstance(fields.get("data"), dict):
+        fields["data"] = json.dumps(fields["data"])
+    with _db() as con:
+        con.execute(f"UPDATE episodes SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?", (*fields.values(), eid))
+
+
+def _episode_row(r):
+    e = {k: r[k] for k in ("id", "project_id", "batch", "ts", "status", "title", "owner_note", "video_path")}
+    e["data"] = json.loads(r["data"] or "{}")
+    return e
+
+
+def get_episode(eid):
+    with _db() as con:
+        r = con.execute("SELECT * FROM episodes WHERE id=?", (eid,)).fetchone()
+    return _episode_row(r) if r else None
+
+
+def list_episodes(project_id=None, limit=60):
+    q, args = "SELECT * FROM episodes", []
+    if project_id is not None:
+        q += " WHERE project_id=?"; args.append(project_id)
+    with _db() as con:
+        rows = con.execute(q + " ORDER BY id DESC LIMIT ?", (*args, limit)).fetchall()
+    return [_episode_row(r) for r in rows]
+
+
+def next_batch(project_id):
+    with _db() as con:
+        r = con.execute("SELECT COALESCE(MAX(batch),0)+1 n FROM episodes WHERE project_id=?", (project_id,)).fetchone()
+    return r["n"]
 
 
 # ---- Projects: Serge's plans and the owner's decisions on them -------------------

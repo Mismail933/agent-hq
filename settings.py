@@ -14,17 +14,19 @@ MODELS = {
     "vera": "claude-sonnet-5-5",
     "doulya": "claude-sonnet-5-5",
     "serge": "claude-sonnet-5-5",
+    "calina": "claude-sonnet-5-5",
 }
 
 # ---- Where the workers run ----------------------------------------------------
 # "claude_code": on your Claude subscription through Claude Code, like Atlas. If that can't run (not signed in,
 #                plan limit reached, the agent's daily allowance below used up), the run falls back to the API.
 # "api":         on your API key, with the dollar caps further down.
-WORKER_ENGINE = {"Doulya": "claude_code", "Sage": "claude_code", "Vera": "claude_code", "Serge": "claude_code"}
-WORKER_MODELS = {"Doulya": "sonnet", "Sage": "sonnet", "Vera": "sonnet", "Serge": "sonnet"}   # or "opus"
+WORKER_ENGINE = {"Doulya": "claude_code", "Sage": "claude_code", "Vera": "claude_code", "Serge": "claude_code",
+                 "Calina": "claude_code"}
+WORKER_MODELS = {"Doulya": "sonnet", "Sage": "sonnet", "Vera": "sonnet", "Serge": "sonnet", "Calina": "sonnet"}   # or "opus"
 # Daily allowance per agent on the subscription, measured as what the same work would cost on the API
 # (the only meter Claude Code reports). Protects your plan's limits for you, the Builder and Atlas.
-SUBSCRIPTION_DAILY_VALUE_USD = {"Doulya": 2.00, "Sage": 6.00, "Vera": 2.00, "Serge": 3.00}
+SUBSCRIPTION_DAILY_VALUE_USD = {"Doulya": 2.00, "Sage": 6.00, "Vera": 2.00, "Serge": 3.00, "Calina": 6.00}
 WORKER_TIMEOUT_SECONDS = 900
 
 # Price per million tokens (input, output) in USD. Matched by model-name prefix.
@@ -57,8 +59,12 @@ PLAN_MAX_REVISIONS = 2          # times the owner can "ask for changes" on one p
 # Serge only plans when the owner says so. His budget request is checked against
 # OWNER["max_new_spend_per_project_usd"] and OWNER["max_monthly_spend_per_project_usd"] below.
 
+# ---- Calina, the Content Producer ------------------------------------------------
+CALINA_BATCH_SIZE = 6           # scripts per batch, unless the owner asks for another number
+CALINA_MAX_SEARCHES = 12        # web searches per batch, to find and check sources
+
 # Per-agent daily caps (inside the overall daily budget above)
-AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60, "Serge": 1.00}
+AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60, "Serge": 1.00, "Calina": 1.50}
 # Agents with their own cap per idea, outside PER_IDEA_BUDGET_USD (all of Serge's plan revisions for one idea)
 AGENT_IDEA_BUDGET_USD = {"Serge": 0.60}
 

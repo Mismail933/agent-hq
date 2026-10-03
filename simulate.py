@@ -123,6 +123,20 @@ class _Messages:
                     "kill_criteria": "No paying customer in 6 weeks"}
             return NS(stop_reason="tool_use", usage=_usage(7000, 1500, 0 if fitted else 1),
                       content=[NS(type="tool_use", id=_id(), name="submit_plan", input=plan)])
+        if system.startswith("You are Calina"):
+            if "Your job now: read the owner's stats" in system:
+                return NS(stop_reason="end_turn", usage=_usage(3000, 400),
+                          content=[_text("## What worked\nSimulated learning note.\n## Next batch\nMore Roman-era hooks.")])
+            eps = [{"title": f"POV: you live in {place}", "place": place.split(",")[0], "year": place.split(", ")[-1],
+                    "hook": f"It's {place.split(', ')[-1]} and the city smells of smoke.",
+                    "script": "Simulated script of about 120 words. " * 6, "surprising_fact": "A simulated fact.",
+                    "storyline": "Setting, turn, payoff (simulated).",
+                    "sources": [{"url": "https://example.com/source", "quote": "Simulated quote", "publisher": "Example Museum"}],
+                    "image_queries": ["simulated query"], "description": "Simulated description.\nAI-assisted: script and voice "
+                    "made with AI; facts sourced below.", "hashtags": ["#history", "#shorts"]}
+                   for place in ("Pompeii, 79 AD", "Edo, 1657", "London, 1858")]
+            return NS(stop_reason="tool_use", usage=_usage(9000, 2500, 2),
+                      content=[NS(type="tool_use", id=_id(), name="submit_batch", input={"episodes": eps, "batch_note": "Simulated batch."})])
         raise ValueError("Unknown agent in simulation")
 
 

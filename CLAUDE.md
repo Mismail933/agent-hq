@@ -30,6 +30,7 @@ Agents never spend money without the owner's explicit approval.
 | Sage | Research | web_search (8) + web_fetch (3 pages), primary-source prompt, writes `briefs/NNN-slug.md`. |
 | Vera | Judgment | `submit_verdict` tool (asked, then reminded once; the 5.5 models reject forced tool_choice): approve / approve_smaller_version / needs_more_data / reject, Path A/B. |
 | Serge | Product | Product Owner (2.5.0). Only on the owner's request (office "Make a plan" button, or `hq plan`). Reads brief + verdict, 3 price searches, `submit_plan`. Over the owner's per-project limits → told once to fit; still over → `over_limit` (approval blocked in code). Writes `plans/NNN-slug.md`; `projects` table; owner Approve / Ask for changes (max `PLAN_MAX_REVISIONS`) / Reject. Approval only records a budget ceiling. Own cap per idea: `AGENT_IDEA_BUDGET_USD["Serge"]`. |
+| Calina | Content | Content Producer (2.8.0). `calina_batch(project, count, notes)` on approved projects only: one run, WebSearch+WebFetch, `BATCH_TOOL` schema (episodes with sources/quotes/image queries); episodes without sources are dropped; `episodes` table + `content/project-N/batch-NN/ep-NNN.json` (the future pipeline's input). Owner approves/rejects each episode (`decide_episode`); earlier titles, rejection notes and the latest learning note go into the next batch. `calina_review(project, stats)` writes `content/project-N/notes/<date>-learning-note.md`. Prompt is history-Shorts specific. |
 
 ## Code map
 - `settings.py`: models, prices, budgets (daily $3, per idea $1, Doulya $0.60/day), owner profile and off-limits list. The owner's overrides go in `settings_local.py` (never touched by updates).
@@ -87,6 +88,10 @@ Agents never spend money without the owner's explicit approval.
 
 ## Roadmap (agreed)
 - Done 2026-10-03: Product Owner **Serge** (owner named him; 3 price searches; starts only when the owner says so).
+- Done 2026-10-03: Content Producer **Calina** (owner named her) for the YouTube project (plan 1, idea #6).
+- Next: the Shorts pipeline (Atlas's open request): Kokoro voice, public-domain image fetcher with licence log,
+  FFmpeg 1080x1920 render with captions, output folder; no API upload. Needs FFmpeg + Kokoro installed on his PC
+  (Claude Code's safety check may block installing them: give him the commands).
 - Next: Builders + QA chosen per idea (e.g. a YouTube idea needs script/voice/video/upload agents, not web devs).
 - Later: Reporter (daily summary), Efficiency (token cost), Learning & Dev + its own QA, Marketing, Finance, Security & Legal.
 - Candidate sources for agent prompts: msitarzewski/agency-agents, wshobson/agents, affaan-m/everything-claude-code.

@@ -141,6 +141,24 @@ def run_retry(idea_id):
     announce_verdict(agents.retry_idea(idea_id))
 
 
+def run_batch(project_id, count, notes):
+    out = agents.calina_batch(project_id, count, notes)
+    try:
+        r = json.loads(out)
+        titles = "\n".join(f"- #{e['id']} {e['title']}" for e in r["episodes"])
+        dropped = f" She dropped {r['dropped_without_source']} script(s) she couldn't source." if r["dropped_without_source"] else ""
+        atlas_says(f"**Calina's batch {r['batch']} is ready: {len(r['episodes'])} scripts.**{dropped}\n{titles}\n\n"
+                   + (f"{r['batch_note']}\n\n" if r.get("batch_note") else "")
+                   + "Open Ideas → Content to read each script and its sources, then approve or reject it.")
+    except (ValueError, KeyError, TypeError):
+        atlas_says(out)
+
+
+def run_review(project_id, stats):
+    text = agents.calina_review(project_id, stats)
+    atlas_says(f"**Calina's learning note is ready.**\n\n{text[:1500]}" + ("…" if len(text) > 1500 else ""))
+
+
 def run_plan(idea_id, notes=""):
     out = agents.serge_plan(idea_id, notes)
     try:
@@ -238,8 +256,9 @@ class Handler(BaseHTTPRequestHandler):
                 "ideas": cp.list_ideas(),
                 "inbox": cp.list_inbox(),
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
+                "episodes": cp.list_episodes(limit=40), "producing": agents.PRODUCING.locked(),
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
-                "engines": {a: workers.engine(a) for a in ("Doulya", "Sage", "Vera", "Serge")},
+                "engines": {a: workers.engine(a) for a in cp.WORKERS},
                 "limits": cp.limits_view(),
                 "scouting": agents.SCOUTING.locked(),
                 "last_scout": cp.last_event_time("scout_done", "Doulya"),
@@ -251,6 +270,12 @@ class Handler(BaseHTTPRequestHandler):
                 "simulated": os.environ.get("HQ_SIMULATE") == "1",
                 "has_key": bool(os.environ.get("ANTHROPIC_API_KEY")) or os.environ.get("HQ_SIMULATE") == "1",
             })
+        if u.path.startswith("/api/episode/"):
+            try:
+                e = cp.get_episode(int(u.path.rsplit("/", 1)[1]))
+            except ValueError:
+                e = None
+            return self._send(200 if e else 404, e or {"error": "not found"})
         if u.path.startswith("/api/project/"):
             try:
                 p = cp.get_project(int(u.path.rsplit("/", 1)[1]))
@@ -360,6 +385,39 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(202, {"ok": True, "message": "Serge is revising the plan."})
             ok = p is not None and p["status"] in ("approved", "rejected")
             return self._send(200 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
+        if u.path.startswith("/api/content/"):   # api content <project id> batch|review
+            parts = u.path.strip("/").split("/")
+            try:
+                pid, action = int(parts[2]), parts[3]
+            except (IndexError, ValueError):
+                return self._send(400, {"error": "bad request"})
+            p = cp.get_project(pid, with_text=False)
+            if not p or p["status"] != "approved":
+                return self._send(409, {"error": "Calina only works on approved plans."})
+            body = self._json_body()
+            if action == "batch":
+                if agents.PRODUCING.locked():
+                    return self._send(409, {"error": "Calina is already writing a batch. Try again when it's done."})
+                notes, warning = clip(body.get("notes", ""), "notes")
+                threading.Thread(target=run_batch, args=(pid, body.get("count"), notes), daemon=True).start()
+                return self._send(202, accepted(warning))
+            if action == "review":
+                stats, warning = clip(body.get("stats", ""), "notes")
+                if not stats:
+                    return self._send(400, {"error": "Paste the channel's stats first."})
+                threading.Thread(target=run_review, args=(pid, stats), daemon=True).start()
+                return self._send(202, accepted(warning))
+            return self._send(404, {"error": "unknown action"})
+        if u.path.startswith("/api/episode/"):   # api episode <id> approve|reject
+            parts = u.path.strip("/").split("/")
+            try:
+                eid, action = int(parts[2]), parts[3]
+            except (IndexError, ValueError):
+                return self._send(400, {"error": "bad request"})
+            msg = agents.decide_episode(eid, action, clip(self._json_body().get("note", ""), "note")[0])
+            e = cp.get_episode(eid)
+            ok = e is not None and e["status"] in ("approved", "rejected") and msg.startswith(f"Episode {eid} ")
+            return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
         if u.path == "/api/limits":   # the owner in the office, or Atlas on the owner's word
             body = self._json_body()
             key, by = str(body.get("key", "")), ("Atlas" if body.get("by") == "Atlas" else "Owner")

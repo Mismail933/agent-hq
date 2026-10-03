@@ -2,6 +2,7 @@
 hq.db
 briefs/
 plans/
+content/
 .installed
 STOP
 settings_local.py

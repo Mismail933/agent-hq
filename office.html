@@ -212,6 +212,12 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .crew strong{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .crew small{display:block;color:var(--ink-2);font-size:12.5px}
 .h3{font-family:var(--display);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);margin:6px 0 0}
+.ctop{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.ctop .proj{border:1px solid var(--line);border-radius:4px;padding:10px 12px;background:rgba(13,23,41,.5);display:flex;flex-direction:column;gap:8px}
+.ctop .proj b{font-size:13.5px}
+.ep .script{white-space:pre-wrap;font-size:13.5px;line-height:1.5;color:var(--ink)}
+.ep .src{font-size:12.5px;color:var(--ink-2)}
+.ep .src a{color:var(--cyan-ink)}
 .limits{display:flex;flex-direction:column;gap:10px}
 .lim{border:1px solid var(--line);border-radius:4px;padding:10px 12px;background:rgba(13,23,41,.5);display:flex;flex-direction:column;gap:8px}
 .lim strong{font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
@@ -363,7 +369,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 
     <section class="card a-ideas" aria-labelledby="hIdeas">
       <div class="ch"><span class="blip" style="background:#FBBF24;box-shadow:0 0 8px #FBBF24"></span><h2 id="hIdeas">Ideas</h2>
-        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button><button type="button" data-tab="plans" aria-pressed="false">Plans<span class="tabcount" id="plansCount"></span></button></div>
+        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button><button type="button" data-tab="plans" aria-pressed="false">Plans<span class="tabcount" id="plansCount"></span></button><button type="button" data-tab="content" aria-pressed="false">Content<span class="tabcount" id="contentCount"></span></button></div>
       </div>
       <div class="cb" id="p-inbox">
         <div class="scoutline"><span id="scoutInfo" style="flex:1">Doulya hasn't scouted yet</span><button class="mini" id="scoutBtn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Scout now</button></div>
@@ -371,6 +377,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
       </div>
       <div class="cb" id="p-judged" hidden><ul class="ideas" id="ideas"></ul></div>
       <div class="cb" id="p-plans" hidden><ul class="inbox" id="plans"></ul></div>
+      <div class="cb" id="p-content" hidden><div class="ctop" id="contentTop"></div><ul class="inbox" id="episodes"></ul></div>
     </section>
 
     <section class="card a-side" aria-label="Activity and crew">
@@ -418,7 +425,7 @@ const DEPTS = [
   {id:'ideas',name:'Ideas',hue:48,row:1,slot:4},
   {id:'report',name:'Reporting',hue:200,row:1,slot:5},
   {id:'product',name:'Product · Dev · QA',hue:214,row:2,slot:0},
-  {id:'marketing',name:'Marketing & Sales',hue:18,row:2,slot:1},
+  {id:'marketing',name:'Content & Marketing',hue:18,row:2,slot:1},
   {id:'security',name:'Security & Legal',hue:355,row:2,slot:2},
   {id:'ops',name:'Operations',hue:150,row:2,slot:3},
   {id:'break',name:'Recharge bay',hue:28,row:3,slot:0,open:true},
@@ -451,7 +458,7 @@ const SPOTS = {
 const MTY = MT.cy + 30;
 
 /* ---------- Agents (only real, registered ones are drawn) ---------- */
-const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product'};
+const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product', Content:'marketing'};
 const agents = {};
 function addAgent(info) {
   const dept = DEPT_OF[info.dept] || 'orch';
@@ -579,6 +586,12 @@ function handleEvent(e) {
     case 'plan_approved': if (agents.Serge) { say(agents.Serge, 'Approved! Budget ceiling recorded.', 5); burst(ROOM.product.cx, ROOM.product.cy, 26); } break;
     case 'plan_rejected': if (agents.Serge) say(agents.Serge, 'Understood. Shelving it.', 4); break;
     case 'plan_changes': if (agents.Serge) say(agents.Serge, 'Noted. Revising.', 4); break;
+    case 'batch_started': if (me) { me.working = true; me.activity = `Writing batch ${d.batch}: ${d.count} scripts`; say(me, 'Digging through the archives…', 4); } break;
+    case 'batch_ready': if (me) { me.working = false; me.activity = `Batch ${d.batch} waiting for your approval`; assign(me, deliver(A, `${d.count} scripts for the boss`, "Great. I'll show him.")); } break;
+    case 'episode_approved': if (agents.Calina) say(agents.Calina, 'Approved! Into production.', 4); break;
+    case 'episode_rejected': if (agents.Calina) say(agents.Calina, 'Noted. I will do better.', 4); break;
+    case 'review_started': if (me) { me.working = true; me.activity = 'Reading the channel stats'; say(me, 'Crunching the numbers…', 4); } break;
+    case 'review_ready': if (me) { me.working = false; me.activity = 'Learning note written'; } break;
   }
 }
 function feedLine(e) {
@@ -604,6 +617,11 @@ function feedLine(e) {
     case 'plan_approved': return ['You', `approved plan ${d.project}: $${(+d.one_off).toFixed(2)} one-off, $${(+d.monthly).toFixed(2)}/month ceiling`, 'good'];
     case 'plan_rejected': return ['You', `rejected plan ${d.project}${d.reason ? ' (' + d.reason + ')' : ''}`, ''];
     case 'plan_changes': return ['You', `asked Serge to change plan ${d.project}${d.note ? ': ' + d.note : ''}`, ''];
+    case 'batch_started': return [w, `started batch ${d.batch}: ${d.count} scripts`, ''];
+    case 'batch_ready': return [w, `finished batch ${d.batch}: ${d.count} scripts waiting for your approval`, 'good'];
+    case 'episode_approved': return ['You', `approved script #${d.episode}: ${short(d.title, 70)}`, 'good'];
+    case 'episode_rejected': return ['You', `rejected script #${d.episode}${d.note ? ' (' + short(d.note, 80) + ')' : ''}`, ''];
+    case 'review_ready': return [w, 'wrote the weekly learning note', 'good'];
     case 'fallback_api': return [w, `couldn't use the Claude subscription (${short(d.reason, 90)}), so this run used the API key`, 'alert'];
     case 'limit_changed': { const f = v => v == null ? 'no cap' : typeof v === 'number' ? '$' + v.toFixed(2) : (LIM_LABEL[v] || v); return [w === 'Owner' ? 'You' : w, `changed ${d.label}: ${f(d.old)} → ${f(d.new)}`, 'alert']; }
     case 'kill_switch': return ['You', d.on ? 'turned the kill switch ON. All agents stop.' : 'turned the kill switch off.', d.on ? 'bad' : 'good'];
@@ -802,7 +820,7 @@ function furnish(d) {
   }
 }
 
-const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}};
+const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}};
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function seatedNow(a) { return atSeat(a) && !a.path.length && a.mode !== 'stretch'; }
 function drawAgent(g, a, t) {
@@ -1072,11 +1090,12 @@ let feed = [], chat = [], ideas = [], agentInfo = [], ideasKey = '', feedDirty =
 let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = null, pending = {};
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
+let episodes = [], episodesKey = '', producing = false, waitingEps = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
   document.querySelectorAll('.seg button[data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === id));
-  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged'; $('#p-plans').hidden = id !== 'plans';
+  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged'; $('#p-plans').hidden = id !== 'plans'; $('#p-content').hidden = id !== 'content';
 }
 function renderInbox() {
   $('#inboxCount').textContent = inbox.length ? inbox.length : '';
@@ -1136,6 +1155,37 @@ function renderPlans() {
       ${planActs(p)}</li>`).join('')
     : `<li class="empty">${planning ? 'Serge is writing the first plan…' : 'No plans yet. Open an approved idea under <b>Judged</b> and click <b>Make a plan</b>, or ask Atlas.'}</li>`;
 }
+const EP_STATUS = {awaiting_approval:'Waiting for you', approved:'Approved', rejected:'Rejected', rendered:'Video made', published:'Published'};
+function renderContent() {
+  const live = projects.filter(p => p.status === 'approved');
+  const waiting = episodes.filter(e => e.status === 'awaiting_approval');
+  $('#contentCount').textContent = waiting.length ? waiting.length : '';
+  if (!(document.activeElement && $('#contentTop').contains(document.activeElement)))
+    $('#contentTop').innerHTML = live.length ? live.map(p => `<div class="proj" data-pid="${p.id}"><div><b>${esc(short(p.title, 90))}</b> <span class="pill approve">Plan ${p.id} approved</span></div>
+      <form class="why" data-cform="batch"><input type="text" maxlength="12000" placeholder="Notes for Calina's next batch (optional)" aria-label="Notes for Calina"><button class="btn sm" type="submit" ${producing ? 'disabled' : ''}>${producing ? 'Calina is writing…' : 'New batch of scripts'}</button></form>
+      <form class="why" data-cform="review"><input type="text" maxlength="12000" placeholder="Paste this week's channel stats for a learning note" aria-label="Channel stats"><button class="btn sm ghost" type="submit">Weekly review</button></form></div>`).join('')
+      : '<p class="empty" style="margin:0">No approved content project yet. Approve one of Serge\'s plans first.</p>';
+  const order = [...waiting, ...episodes.filter(e => e.status !== 'awaiting_approval')];
+  $('#episodes').innerHTML = order.length ? order.map(e => { const d = e.data || {}, busy = pending['e' + e.id];
+    return `<li class="ep" data-eid="${e.id}"><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${e.status === 'approved' ? 'approve' : e.status === 'rejected' ? 'reject' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
+      <span class="t">${esc(e.title)}</span>
+      <div class="meta"><span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span><span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span></div>
+      ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p><div class="script">${esc(d.script || '')}</div>
+      <p><b style="color:var(--ink)">Surprising fact:</b> ${esc(d.surprising_fact || '')}</p>
+      <div class="src">${(d.sources || []).map(x => `${/^https?:\/\//.test(x.url || '') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.publisher || 'source')}</a>` : esc(x.publisher || 'source')}: “${esc(short(x.quote || '', 160))}”`).join('<br>')}</div>
+      <div class="acts"><button class="btn sm" type="button" data-eact="approve" ${busy ? 'disabled' : ''}>Approve</button><button class="btn sm ghost" type="button" data-eact="reject" ${busy ? 'disabled' : ''}>Reject</button></div>
+      <form class="why" hidden><input type="text" maxlength="1000" placeholder="Why not? (teaches Calina)" aria-label="Reason for rejecting"><button class="btn sm ghost" type="submit">Confirm</button></form>`
+      : (e.owner_note ? `<p class="src">Your note: ${esc(e.owner_note)}</p>` : '')}</li>`; }).join('')
+    : `<li class="empty">${producing ? 'Calina is writing the first batch…' : 'No scripts yet. Click <b>New batch of scripts</b> above, or ask Atlas.'}</li>`;
+}
+async function contentAct(url, body, okMsg) {
+  try {
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const j = await r.json().catch(() => ({}));
+    toast(r.ok ? (j.warning ? okMsg + ' ' + j.warning : (j.message || okMsg)) : (j.error || 'That did not work.'));
+  } catch { toast("Can't reach the engine."); }
+  poll();
+}
 async function openPlan(id) {
   const r = await fetch('/api/project/' + id); if (!r.ok) return; const p = await r.json();
   $('#ovTitle').textContent = p.title; const pill = $('#ovPill'); pill.style.color = '';
@@ -1183,7 +1233,7 @@ function renderIdeas() {
   $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}${i.plan_status ? `<span>PLAN: ${esc((PLAN_STATUS[i.plan_status] || i.plan_status).toUpperCase())}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
     : '<li class="empty" style="cursor:default">No ideas yet. Pitch one to Atlas; it lands here with Vera\'s verdict and Sage\'s full research.</li>';
 }
-const OPEN_ROLES = ['Reporting','Builders & QA','Marketing & Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','Learning & Dev','L&D QA','Efficiency'];
+const OPEN_ROLES = ['Reporting','Builders & QA','Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','Learning & Dev','L&D QA','Efficiency'];
 function statusOf(a) { if (killOn) return 'Halted'; if (a.path.length) return a.carry ? 'Delivering' : 'Moving'; if (a.working) return 'Working'; if (['drink','talk'].includes(a.mode) && a.room === 'break') return 'Recharging'; return 'Standing by'; }
 const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n || 0);
 function runsOn(name) {
@@ -1208,7 +1258,7 @@ function renderLimits(force) {
   if (!force && document.activeElement && $('#limits').contains(document.activeElement)) return;   // don't clobber typing
   limitsKey = k;
   const row = (label, key, note) => `<div class="lrow"><label>${label}${note ? `<small>${note}</small>` : ''}</label>${limField(key)}</div>`;
-  const workers = ['Doulya', 'Sage', 'Vera', 'Serge'].filter(a => limits['engine.' + a]);
+  const workers = ['Doulya', 'Sage', 'Vera', 'Serge', 'Calina'].filter(a => limits['engine.' + a]);
   $('#limits').innerHTML = `<p class="note">Changes apply at once and show in Activity. Atlas can change these too, but only when you ask him.</p>`
     + workers.map(a => { const u = usage[a] || {}; return `<div class="lim"><strong>${esc(a)}</strong>
       ${row('Runs on', 'engine.' + a)}${row('Model on the subscription', 'model.' + a)}
@@ -1290,6 +1340,8 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
+  producing = !!s.producing; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + JSON.stringify(projects.map(p => p.status));
+  if (ek !== episodesKey) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();
@@ -1374,6 +1426,18 @@ $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shif
 $('#suggest').addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.textContent); });
 $('#ideas').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) openIdea(li.dataset.id); });
 $('#ideas').addEventListener('keydown', e => { const li = e.target.closest('li[data-id]'); if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openIdea(li.dataset.id); } });
+$('#contentTop').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target, pid = +f.closest('[data-pid]').dataset.pid, v = f.querySelector('input').value;
+  if (f.dataset.cform === 'batch') { producing = true; renderContent(); contentAct(`/api/content/${pid}/batch`, {notes:v}, 'Calina is writing the batch. It takes a few minutes.'); }
+  else contentAct(`/api/content/${pid}/review`, {stats:v}, 'Calina is writing the learning note.');
+  f.querySelector('input').value = '';
+});
+$('#episodes').addEventListener('click', e => {
+  const b = e.target.closest('[data-eact]'); if (!b) return; const li = b.closest('li[data-eid]'), id = +li.dataset.eid;
+  if (b.dataset.eact === 'approve') { pending['e' + id] = 1; renderContent(); contentAct(`/api/episode/${id}/approve`, {}, 'Approved.').then(() => delete pending['e' + id]); }
+  else { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); }
+});
+$('#episodes').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-eid]'); contentAct(`/api/episode/${li.dataset.eid}/reject`, {note:e.target.querySelector('input').value}, 'Rejected.'); });
 $('#limits').addEventListener('change', e => { const el = e.target.closest('[data-key]'); if (el) setLimit(el); });
 $('#limits').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[data-key]')) e.target.blur(); });
 $('#team').addEventListener('keydown', e => { const c = e.target.closest('.crew'); if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); } });
