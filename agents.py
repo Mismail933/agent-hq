@@ -452,7 +452,7 @@ def decide_plan(project_id, action, note=""):
         return f"No plan with id {project_id}."
     if p["status"] not in ("awaiting_approval", "over_limit"):
         return f"Plan {p['id']} is {p['status'].replace('_', ' ')}, not waiting for a decision."
-    note = (note or "")[:500]
+    note = note or ""
     if action == "approve":
         if over_limits(p["one_off_usd"] or 0, p["monthly_usd"] or 0):
             return (f"Plan {p['id']} asks for ${p['one_off_usd']:.2f} one-off and ${p['monthly_usd']:.2f} a month, over "
@@ -685,7 +685,7 @@ def dismiss_inbox_idea(idea_id, reason=""):
     if not idea or idea["status"] != "inbox":
         return f"Idea {idea_id} is not waiting in the inbox."
     p = idea["pitch"] or {}
-    p["dismiss_reason"] = (reason or "")[:300]
+    p["dismiss_reason"] = (reason or "")[:1000]
     cp.update_idea(idea["id"], status="dismissed", pitch=p)
     cp.log("Owner", "idea_dismissed", idea["id"], {"title": idea["title"], "reason": p["dismiss_reason"]})
     return f"Dismissed idea {idea['id']}. Doulya will steer away from ideas like it."

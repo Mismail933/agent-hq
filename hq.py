@@ -56,6 +56,8 @@ def office(path, body=None):
 def order(path, body, started):
     code, reply = office(path, body)
     show(started if code < 300 else f"Not done: {reply.get('error') or reply}")
+    if reply.get("warning"):
+        show("WARNING: " + reply["warning"] + " Tell the owner, and send the rest in a follow-up if it matters.")
 
 
 def status():

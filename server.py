@@ -61,6 +61,26 @@ LOCK = threading.Lock()
 NEWS = []   # what the office posted in Atlas's name since his last reply; he hears about it with the next message
 
 
+# How much text the office accepts. Anything longer is cut visibly, never silently.
+TEXT_LIMITS = {"chat": 12000, "notes": 12000, "idea": 300, "note": 4000, "reason": 1000}
+
+
+def clip(text, kind):
+    """(text, warning): the text cut to its limit with a visible marker, and a warning to pass back, or None."""
+    text, n = str(text or "").strip(), TEXT_LIMITS[kind]
+    if len(text) <= n:
+        return text, None
+    return (text[:n] + f"\n[cut off here: {len(text) - n:,} more characters did not fit]",
+            f"Your {kind} were {len(text):,} characters, so only the first {n:,} were kept.")
+
+
+def accepted(warning, **extra):
+    body = {"ok": True, **extra}
+    if warning:
+        body["warning"] = warning
+    return body
+
+
 def friendly_error(e):
     name = type(e).__name__
     msg = str(e)
@@ -248,7 +268,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urlparse(self.path)
         if u.path == "/api/chat":
-            text = str(self._json_body().get("text", "")).strip()[:2000]
+            text, warning = clip(self._json_body().get("text", ""), "chat")
             if not text:
                 return self._send(400, {"error": "empty"})
             with LOCK:
@@ -257,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
                 STATE["busy"] = True
                 CHAT.append({"from": "you", "ts": time.time(), "text": text})
             threading.Thread(target=run_chat, args=(text,), daemon=True).start()
-            return self._send(202, {"ok": True})
+            return self._send(202, accepted(warning))
         if u.path == "/api/scout":
             if agents.SCOUTING.locked():
                 return self._send(409, {"error": "Doulya is already scouting."})
@@ -275,22 +295,26 @@ class Handler(BaseHTTPRequestHandler):
             if action == "research":
                 if agents.PIPELINE.locked():
                     return self._send(409, {"error": "The team is busy with another idea. Try again when it finishes."})
-                notes = str(self._json_body().get("notes", "")).strip()[:1000]
+                notes, warning = clip(self._json_body().get("notes", ""), "notes")
                 threading.Thread(target=run_inbox_research, args=(idea_id, notes), daemon=True).start()
-                return self._send(202, {"ok": True})
+                return self._send(202, accepted(warning))
             if action == "dismiss":
-                reason = str(self._json_body().get("reason", "")).strip()[:300]
+                reason, _ = clip(self._json_body().get("reason", ""), "reason")
                 return self._send(200, {"ok": True, "message": agents.dismiss_inbox_idea(idea_id, reason)})
             return self._send(404, {"error": "unknown action"})
         if u.path == "/api/pitch":
             body = self._json_body()
-            idea = str(body.get("idea", "")).strip()[:300]
+            idea, notes = str(body.get("idea", "")).strip(), str(body.get("notes", "")).strip()
             if not idea:
                 return self._send(400, {"error": "No idea given."})
+            if len(idea) > TEXT_LIMITS["idea"]:   # a long idea keeps a short title; the full text goes to Sage in the notes
+                notes = f"The full idea: {idea}\n\n{notes}".strip()
+                idea = idea[:TEXT_LIMITS["idea"]].rsplit(" ", 1)[0] + "…"
+            notes, warning = clip(notes, "notes")
             if agents.PIPELINE.locked():
                 return self._send(409, {"error": "The team is busy with another idea. Try again when it finishes."})
-            threading.Thread(target=run_pitch, args=(idea, str(body.get("notes", ""))[:1000]), daemon=True).start()
-            return self._send(202, {"ok": True})
+            threading.Thread(target=run_pitch, args=(idea, notes), daemon=True).start()
+            return self._send(202, accepted(warning))
         if u.path.startswith("/api/retry/"):
             try:
                 idea = cp.get_idea(int(u.path.rsplit("/", 1)[1]))
@@ -318,9 +342,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(409, {"error": f"This idea already has a plan ({existing['status'].replace('_', ' ')})."})
             if agents.PLANNING.locked():
                 return self._send(409, {"error": "Serge is already working on a plan. Try again when it's done."})
-            notes = str(self._json_body().get("notes", "")).strip()[:1000]
+            notes, warning = clip(self._json_body().get("notes", ""), "notes")
             threading.Thread(target=run_plan, args=(idea["id"], notes), daemon=True).start()
-            return self._send(202, {"ok": True})
+            return self._send(202, accepted(warning))
         if u.path.startswith("/api/project/"):   # the owner decides: approve | reject | changes
             parts = u.path.strip("/").split("/")
             try:
@@ -329,7 +353,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "bad request"})
             if action == "changes" and agents.PLANNING.locked():
                 return self._send(409, {"error": "Serge is busy with another plan. Try again when it's done."})
-            msg = agents.decide_plan(pid, action, str(self._json_body().get("note", "")).strip())
+            msg = agents.decide_plan(pid, action, clip(self._json_body().get("note", ""), "note")[0])
             p = cp.get_project(pid, with_text=False)
             if msg == "changes_requested":
                 threading.Thread(target=run_plan, args=(p["idea_id"],), daemon=True).start()

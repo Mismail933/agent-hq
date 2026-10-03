@@ -1087,7 +1087,7 @@ function renderInbox() {
       <p>${esc(p.pitch || '')}</p>${p.why_now ? `<p><b style="color:var(--ink)">Why now:</b> ${esc(p.why_now)}</p>` : ''}
       ${bits.length ? `<div class="meta">${bits.map(esc).join('<span aria-hidden="true">·</span>')}</div>` : ''}
       <div class="acts"><button class="btn sm" type="button" data-act="research" ${busy ? 'disabled' : ''}>${busy === 'research' ? 'Sending…' : 'Research it'}</button><button class="btn sm ghost" type="button" data-act="dismiss" ${busy ? 'disabled' : ''}>Dismiss</button></div>
-      <form class="why" data-act="why" hidden><input type="text" maxlength="300" placeholder="Why not? (teaches Doulya, optional)" aria-label="Reason for dismissing"><button class="btn sm ghost" type="submit">Confirm</button></form></li>`; }).join('')
+      <form class="why" data-act="why" hidden><input type="text" maxlength="1000" placeholder="Why not? (teaches Doulya, optional)" aria-label="Reason for dismissing"><button class="btn sm ghost" type="submit">Confirm</button></form></li>`; }).join('')
     : '<li class="empty">Inbox empty. Doulya scouts once a day and drops her top picks here; nothing is researched until you click <b>Research it</b>.</li>';
 }
 function renderScout() {
@@ -1123,7 +1123,7 @@ function planActs(p, big) {
   const sm = big ? '' : ' sm', busy = pending['p' + p.id];
   if (!['awaiting_approval', 'over_limit'].includes(p.status)) return '';
   return `<div class="acts">${p.status === 'awaiting_approval' ? `<button class="btn${sm}" type="button" data-plan="approve" data-id="${p.id}" ${busy ? 'disabled' : ''}>Approve budget</button>` : ''}<button class="btn${sm} ghost" type="button" data-plan="changes" data-id="${p.id}" ${busy ? 'disabled' : ''}>Ask for changes</button><button class="btn${sm} ghost" type="button" data-plan="reject" data-id="${p.id}" ${busy ? 'disabled' : ''}>Reject</button></div>
-    <form class="why" data-plan-form="${p.id}" hidden><input type="text" maxlength="500" placeholder="" aria-label="Note for Serge"><button class="btn sm ghost" type="submit">Send</button></form>`;
+    <form class="why" data-plan-form="${p.id}" hidden><input type="text" maxlength="4000" placeholder="" aria-label="Note for Serge"><button class="btn sm ghost" type="submit">Send</button></form>`;
 }
 function renderPlans() {
   const waiting = projects.filter(p => ['awaiting_approval', 'over_limit'].includes(p.status)).length;
@@ -1323,7 +1323,7 @@ async function openIdea(id) {
   const listed = ideas.find(x => x.id === i.id) || {};
   if (v && (v.verdict === 'approve' || v.verdict === 'approve_smaller_version')) {
     if (listed.plan_id && !['rejected', 'stopped', 'error'].includes(listed.plan_status)) h += `<div class="acts"><button class="btn" type="button" data-ov="openplan" data-id="${listed.plan_id}">Open Serge's plan · ${esc(PLAN_STATUS[listed.plan_status] || listed.plan_status)}</button></div>`;
-    else h += `<form class="why" data-ov-plan="${i.id}" style="display:flex"><input type="text" maxlength="1000" placeholder="Anything Serge should know? (optional)" aria-label="Notes for Serge"><button class="btn" type="submit">Make a plan with Serge</button></form>`;
+    else h += `<form class="why" data-ov-plan="${i.id}" style="display:flex"><input type="text" maxlength="12000" placeholder="Anything Serge should know? (optional)" aria-label="Notes for Serge"><button class="btn" type="submit">Make a plan with Serge</button></form>`;
   }
   h += i.brief ? `<div class="brief"><h4>Sage's research brief</h4>${md(i.brief)}</div>` : '<p class="empty">Sage is still researching this one.</p>';
   $('#ovBody').innerHTML = h; $('#overlay').hidden = false; $('#ovClose').focus();
