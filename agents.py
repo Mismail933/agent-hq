@@ -38,6 +38,8 @@ REGISTRY = [
     ("Vera",   "Judgment",  "Lead evaluator",     "vera",   ["submit_verdict"]),
     ("Serge",  "Product",   "Product Owner",      "serge",  ["web_search", "submit_plan"]),
     ("Calina", "Content",   "Content Producer",   "calina", ["web_search", "web_fetch", "submit_batch"]),
+    # Richard runs as a daily cloud routine (richard/RICHARD.md) and only proposes; lnd.py brings his ideas in.
+    ("Richard", "Learning & Dev", "L&D Lead",     "richard", []),
 ]
 
 # One idea goes through research and judgment at a time.
@@ -810,6 +812,8 @@ Your team right now:
 - Vera (Judgment): judges an idea against the evidence and the owner's settings.
 - Serge (Product): Product Owner. When the owner asks, turns an approved idea into a plan and a budget request that waits
   for the owner's approval in the office (Ideas, Plans tab). Only the owner approves budgets.
+- Richard (Learning & Dev): runs every morning in the cloud and proposes 1-2 improvements to the company in the
+  office's L&D tab. A yes goes to Atlas, who prioritises it with the owner before the Builder builds it.
 - Calina (Content): Content Producer for approved content projects (the YouTube channel). Writes batches of sourced
   scripts the owner approves one by one in the office (Ideas, Content tab).
 Not hired yet: Builders, QA, Marketing, Finance, Reporting, Learning & Dev, Efficiency. Say so when asked for
@@ -989,7 +993,8 @@ def company_status():
         "workers_run_on": {a: ("subscription (Claude Code), API fallback" if workers.engine(a) == "claude_code" else "API key") for a in cp.WORKERS},
         "kill_switch_on": cp.STOP_FILE.exists(),
         "plans": [{"project": p["id"], "idea_id": p["idea_id"], "title": p["title"], "status": p["status"], "one_off_usd": p["one_off_usd"], "monthly_usd": p["monthly_usd"]} for p in cp.list_projects(10)],
-        "not_hired_yet": ["Builders", "QA", "Marketing", "Finance", "Reporting", "Learning & Dev", "Efficiency"],
+        "lnd_ideas_waiting_for_owner": [{"id": i["id"], "title": i["data"].get("title")} for i in cp.list_lnd_ideas(20) if i["status"] == "new"],
+        "not_hired_yet": ["Builders", "QA", "Marketing", "Finance", "Reporting", "Efficiency"],
     }, indent=2)
 
 

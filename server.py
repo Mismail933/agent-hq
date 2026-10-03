@@ -42,6 +42,7 @@ load_env()
 import agents             # noqa: E402
 import atlas_engine       # noqa: E402
 import workers            # noqa: E402
+import lnd                # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -202,6 +203,39 @@ def run_render(eid):
             RENDERING["episode"] = None
 
 
+def lnd_yes_to_atlas(idea_id):
+    """Atlas first: an approved L&D idea goes to Atlas, who sets its priority with the owner before the Builder."""
+    i = next((x for x in cp.list_lnd_ideas(200) if x["id"] == str(idea_id)), None)
+    if not i:
+        return
+    d = i["data"]
+    try:
+        f = atlas_engine.HOME / "richard-approved.md"
+        if not f.exists():
+            f.write_text("# Richard's ideas the owner approved\n\nPrioritise each with the owner, then queue it in "
+                         "requests-for-builder.md and mark it [queued] here.\n", encoding="utf-8")
+        with f.open("a", encoding="utf-8") as out:
+            out.write(f"\n## [new] {i['id']}: {d.get('title', '')}\nArea: {d.get('area', '')}. Effort: {d.get('effort', '')}.\n"
+                      f"Problem: {d.get('problem', '')}\nProposal: {d.get('proposal', '')}\nGain: {d.get('gain', '')}\n"
+                      f"Risks: {d.get('risks', '')}\nLinks: " + ", ".join(l.get("url", "") for l in d.get("links") or []) + "\n")
+    except Exception as e:
+        print("L&D note for Atlas failed:", e, flush=True)
+    atlas_says(f"**You approved Richard's idea {i['id']}: {d.get('title', '')}** (effort {d.get('effort', '?')}).\n\n"
+               "I'll look at where it fits in our priorities and suggest when to build it. It reaches the Builder once you agree.")
+
+
+def lnd_loop():
+    """Pick up Richard's ideas: at start, then every 30 minutes."""
+    time.sleep(15)
+    while True:
+        try:
+            if lnd.sync():
+                atlas_says("**Richard has new ideas for the company.** Open Ideas → L&D to read them and say yes or no.")
+        except Exception as e:
+            print("L&D sync:", e, flush=True)
+        time.sleep(1800)
+
+
 def run_review(project_id, stats):
     text = agents.calina_review(project_id, stats)
     atlas_says(f"**Calina's learning note is ready.**\n\n{text[:1500]}" + ("…" if len(text) > 1500 else ""))
@@ -336,6 +370,7 @@ class Handler(BaseHTTPRequestHandler):
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
                 "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(),
                 "rendering": RENDERING["episode"],
+                "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS,
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
                 "engines": {a: workers.engine(a) for a in cp.WORKERS},
                 "limits": cp.limits_view(),
@@ -534,6 +569,22 @@ class Handler(BaseHTTPRequestHandler):
             e = cp.get_episode(eid)
             ok = e is not None and e["status"] in ("approved", "rejected") and msg.startswith(f"Episode {eid} ")
             return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
+        if u.path == "/api/lnd/sync":
+            try:
+                n = lnd.sync()
+            except Exception as e:
+                return self._send(502, {"error": f"Couldn't reach Richard's log on GitHub: {e}"})
+            return self._send(200, {"ok": True, "message": f"{n} new idea(s) from Richard." if n else "No new ideas from Richard."})
+        if u.path.startswith("/api/lnd/"):   # api lnd <idea id> yes|no
+            parts = u.path.strip("/").split("/")
+            if len(parts) != 4:
+                return self._send(400, {"error": "bad request"})
+            idea_id, decision = parts[2], parts[3]
+            msg = lnd.decide(idea_id, decision, clip(self._json_body().get("reason", ""), "reason")[0])
+            ok = msg.startswith(f"Idea {idea_id} ")
+            if ok and decision == "yes":
+                lnd_yes_to_atlas(idea_id)
+            return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
         if u.path == "/api/limits":   # the owner in the office, or Atlas on the owner's word
             body = self._json_body()
             key, by = str(body.get("key", "")), ("Atlas" if body.get("by") == "Atlas" else "Owner")
@@ -617,6 +668,8 @@ def main():
     print("  Keep this window open while you use the office (you can minimize it).")
     print("  Close this window to stop everything.\n", flush=True)
     threading.Thread(target=scheduler, daemon=True).start()
+    if os.environ.get("HQ_NO_LND") != "1":
+        threading.Thread(target=lnd_loop, daemon=True).start()
     if os.environ.get("HQ_NO_BROWSER") != "1":
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

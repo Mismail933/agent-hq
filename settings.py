@@ -15,6 +15,7 @@ MODELS = {
     "doulya": "claude-sonnet-5-5",
     "serge": "claude-sonnet-5-5",
     "calina": "claude-sonnet-5-5",
+    "richard": "cloud routine (Sonnet 5.5)",   # Richard runs in Anthropic's cloud, not through this program
 }
 
 # ---- Where the workers run ----------------------------------------------------

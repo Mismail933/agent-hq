@@ -373,7 +373,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 
     <section class="card a-ideas" aria-labelledby="hIdeas">
       <div class="ch"><span class="blip" style="background:#FBBF24;box-shadow:0 0 8px #FBBF24"></span><h2 id="hIdeas">Ideas</h2>
-        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button><button type="button" data-tab="plans" aria-pressed="false">Plans<span class="tabcount" id="plansCount"></span></button><button type="button" data-tab="content" aria-pressed="false">Content<span class="tabcount" id="contentCount"></span></button></div>
+        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button><button type="button" data-tab="plans" aria-pressed="false">Plans<span class="tabcount" id="plansCount"></span></button><button type="button" data-tab="content" aria-pressed="false">Content<span class="tabcount" id="contentCount"></span></button><button type="button" data-tab="lnd" aria-pressed="false">L&amp;D<span class="tabcount" id="lndCount"></span></button></div>
       </div>
       <div class="cb" id="p-inbox">
         <div class="scoutline"><span id="scoutInfo" style="flex:1">Doulya hasn't scouted yet</span><button class="mini" id="scoutBtn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Scout now</button></div>
@@ -381,6 +381,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
       </div>
       <div class="cb" id="p-judged" hidden><ul class="ideas" id="ideas"></ul></div>
       <div class="cb" id="p-plans" hidden><ul class="inbox" id="plans"></ul></div>
+      <div class="cb" id="p-lnd" hidden><div class="scoutline"><span id="lndInfo" style="flex:1">Richard hasn't sent ideas yet</span><button class="mini" id="lndBtn" type="button">Check now</button></div><ul class="inbox" id="lndList"></ul></div>
       <div class="cb" id="p-content" hidden><div class="ctop" id="contentTop"></div><ul class="inbox" id="episodes"></ul></div>
     </section>
 
@@ -462,7 +463,7 @@ const SPOTS = {
 const MTY = MT.cy + 30;
 
 /* ---------- Agents (only real, registered ones are drawn) ---------- */
-const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product', Content:'marketing'};
+const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product', Content:'marketing', 'Learning & Dev':'ld'};
 const agents = {};
 function addAgent(info) {
   const dept = DEPT_OF[info.dept] || 'orch';
@@ -596,6 +597,9 @@ function handleEvent(e) {
     case 'episode_rejected': if (agents.Calina) say(agents.Calina, 'Noted. I will do better.', 4); break;
     case 'review_started': if (me) { me.working = true; me.activity = 'Reading the channel stats'; say(me, 'Crunching the numbers…', 4); } break;
     case 'review_ready': if (me) { me.working = false; me.activity = 'Learning note written'; } break;
+    case 'lnd_ideas_arrived': if (me) { me.activity = `Brought ${d.count} idea${d.count === 1 ? '' : 's'} from the cloud`; assign(me, deliver(A, `${d.count} L&D idea${d.count === 1 ? '' : 's'}`, 'Thanks. The boss will see them.')); } break;
+    case 'lnd_approved': if (agents.Richard) say(agents.Richard, 'Yes! Atlas will slot it in.', 4); break;
+    case 'lnd_declined': if (agents.Richard) say(agents.Richard, 'Noted. I will look elsewhere.', 4); break;
     case 'render_started': if (me) { me.working = true; me.activity = 'Making Short #' + d.episode; say(me, 'Rendering a Short…', 4); } break;
     case 'video_ready': if (me) { me.working = false; me.activity = 'Short #' + d.episode + ' ready to upload'; say(me, 'Video ready!', 4); burst(ROOM.marketing.cx, ROOM.marketing.cy, 22); } break;
     case 'video_failed': if (me) { me.working = false; say(me, 'The video failed', 5); } break;
@@ -629,6 +633,9 @@ function feedLine(e) {
     case 'episode_approved': return ['You', `approved script #${d.episode}: ${short(d.title, 70)}`, 'good'];
     case 'episode_rejected': return ['You', `rejected script #${d.episode}${d.note ? ' (' + short(d.note, 80) + ')' : ''}`, ''];
     case 'review_ready': return [w, 'wrote the weekly learning note', 'good'];
+    case 'lnd_ideas_arrived': return [w, `brought ${d.count} new improvement idea${d.count === 1 ? '' : 's'} for the company`, 'good'];
+    case 'lnd_approved': return ['You', `said yes to Richard's idea: ${short(d.title, 70)} (now with Atlas)`, 'good'];
+    case 'lnd_declined': return ['You', `said no to Richard's idea: ${short(d.title, 60)}${d.reason ? ' (' + short(d.reason, 60) + ')' : ''}`, ''];
     case 'render_started': return [w, `started making Short #${d.episode}: ${short(d.title, 70)}`, ''];
     case 'video_ready': return [w, `finished Short #${d.episode} (${Math.round(d.seconds)} s): ready for you to upload`, 'good'];
     case 'video_failed': return [w, `couldn't make Short #${d.episode}: ${short(d.reason, 120)}`, 'bad'];
@@ -831,7 +838,7 @@ function furnish(d) {
   }
 }
 
-const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}};
+const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}, Richard:{shell:'#E2E8F0', visor:'#A3E635'}};
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function seatedNow(a) { return atSeat(a) && !a.path.length && a.mode !== 'stretch'; }
 function drawAgent(g, a, t) {
@@ -1102,11 +1109,12 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
+let lndIdeas = [], lndKey = '', lndStatus = {}, waitingLnd = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
   document.querySelectorAll('.seg button[data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === id));
-  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged'; $('#p-plans').hidden = id !== 'plans'; $('#p-content').hidden = id !== 'content';
+  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged'; $('#p-plans').hidden = id !== 'plans'; $('#p-content').hidden = id !== 'content'; $('#p-lnd').hidden = id !== 'lnd';
 }
 function renderInbox() {
   $('#inboxCount').textContent = inbox.length ? inbox.length : '';
@@ -1182,6 +1190,34 @@ function epActions(e) {
   }
   if (e.status === 'published') return '<p class="src">On the channel.</p>';
   return '';
+}
+const LND_STATUS = {new:'Waiting for you', approved:'Yes · with Atlas', declined:'No'};
+function renderLnd() {
+  const waiting = lndIdeas.filter(i => i.status === 'new').length;
+  $('#lndCount').textContent = waiting ? waiting : '';
+  const st = lndStatus || {};
+  $('#lndInfo').innerHTML = st.error ? `<b style="color:#FDA4AF">Couldn't reach Richard's log:</b> ${esc(short(st.error, 90))}`
+    : st.last_sync ? `Richard works in the cloud every morning. Last checked <b>${new Date(st.last_sync * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}</b>${st.pending_push ? ' · sending your answers…' : ''}`
+    : 'Richard works in the cloud every morning. Checking his log…';
+  const order = [...lndIdeas.filter(i => i.status === 'new'), ...lndIdeas.filter(i => i.status !== 'new')];
+  $('#lndList').innerHTML = order.length ? order.map(i => { const d = i.data || {};
+    return `<li class="ep" data-lid="${esc(i.id)}"><div class="ptop"><span>Richard · ${esc(i.day)} · ${esc(d.area || '')} · effort ${esc(d.effort || '?')}</span><span class="pill ${i.status === 'approved' ? 'approve' : i.status === 'declined' ? 'reject' : 'needs_more_data'}">${esc(LND_STATUS[i.status] || i.status)}</span></div>
+      <span class="t">${esc(d.title || i.id)}</span>
+      ${i.status === 'new' ? `<p><b style="color:var(--ink)">Problem:</b> ${esc(d.problem || '')}</p><p><b style="color:var(--ink)">Proposal:</b> ${esc(d.proposal || '')}</p>
+      <p><b style="color:var(--ink)">Gain:</b> ${esc(d.gain || '')}</p>${d.risks ? `<p><b style="color:var(--ink)">Risks:</b> ${esc(d.risks)}</p>` : ''}
+      ${(d.links || []).length ? `<div class="src">${d.links.map(l => /^https?:\/\//.test(l.url || '') ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || l.url)}</a>` : '').join(' · ')}</div>` : ''}
+      <div class="acts"><button class="btn sm" type="button" data-lact="yes">Yes, to Atlas</button><button class="btn sm ghost" type="button" data-lact="no">No</button></div>
+      <form class="why" hidden><input type="text" maxlength="1000" placeholder="Why not? (teaches Richard)" aria-label="Reason"><button class="btn sm ghost" type="submit">Confirm</button></form>`
+      : (i.reason ? `<p class="src">Your note: ${esc(i.reason)}</p>` : '')}</li>`; }).join('')
+    : '<li class="empty">No ideas yet. Richard runs every morning in the cloud and brings 1-2 ways to make the company better.</li>';
+}
+async function lndAct(id, decision, reason) {
+  try {
+    const r = await fetch(`/api/lnd/${encodeURIComponent(id)}/${decision}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reason:reason || ''})});
+    const j = await r.json().catch(() => ({}));
+    toast(r.ok ? (decision === 'yes' ? 'Sent to Atlas. He will set the priority with you.' : 'Noted. Richard will learn from it.') : (j.error || 'That did not work.'));
+  } catch { toast("Can't reach the engine."); }
+  poll();
 }
 function renderContent() {
   const live = projects.filter(p => p.status === 'approved');
@@ -1261,7 +1297,7 @@ function renderIdeas() {
   $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}${i.plan_status ? `<span>PLAN: ${esc((PLAN_STATUS[i.plan_status] || i.plan_status).toUpperCase())}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
     : '<li class="empty" style="cursor:default">No ideas yet. Pitch one to Atlas; it lands here with Vera\'s verdict and Sage\'s full research.</li>';
 }
-const OPEN_ROLES = ['Reporting','Builders & QA','Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','Learning & Dev','L&D QA','Efficiency'];
+const OPEN_ROLES = ['Reporting','Builders & QA','Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','L&D QA','Efficiency'];
 function statusOf(a) { if (killOn) return 'Halted'; if (a.path.length) return a.carry ? 'Delivering' : 'Moving'; if (a.working) return 'Working'; if (['drink','talk'].includes(a.mode) && a.room === 'break') return 'Recharging'; return 'Standing by'; }
 const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n || 0);
 function runsOn(name) {
@@ -1370,6 +1406,8 @@ async function pollOnce() {
   renderLimits();
   producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => p.status));
   if (ek !== episodesKey) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
+  lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus);
+  if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
   planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();
@@ -1454,6 +1492,12 @@ $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shif
 $('#suggest').addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.textContent); });
 $('#ideas').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) openIdea(li.dataset.id); });
 $('#ideas').addEventListener('keydown', e => { const li = e.target.closest('li[data-id]'); if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openIdea(li.dataset.id); } });
+$('#lndBtn').addEventListener('click', () => contentAct('/api/lnd/sync', {}, 'Checked.'));
+$('#lndList').addEventListener('click', e => {
+  const b = e.target.closest('[data-lact]'); if (!b) return; const li = b.closest('li[data-lid]'), id = li.dataset.lid;
+  if (b.dataset.lact === 'yes') lndAct(id, 'yes'); else { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); }
+});
+$('#lndList').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-lid]'); lndAct(li.dataset.lid, 'no', e.target.querySelector('input').value); });
 $('#contentTop').addEventListener('submit', e => {
   e.preventDefault(); const f = e.target, pid = +f.closest('[data-pid]').dataset.pid, v = f.querySelector('input').value;
   if (f.dataset.cform === 'batch') { producing = true; renderContent(); contentAct(`/api/content/${pid}/batch`, {notes:v}, 'Calina is writing the batch. It takes a few minutes.'); }

@@ -8,6 +8,7 @@ Atlas's controls for Agent HQ.
                  batch <project id> [count] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
+                 lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
 same guardrails (budgets, one idea at a time, kill switch).
@@ -186,6 +187,20 @@ def main(argv):
             show(e if e else f"No episode {args[0]}.")
         elif cmd in ("approve-episode", "reject-episode"):
             code, reply = office(f"/api/episode/{int(args[0])}/{cmd.split('-')[0]}", {"note": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "lnd":
+            ideas = cp.list_lnd_ideas(40)
+            show([{"id": i["id"], "day": i["day"], "status": i["status"], "title": i["data"].get("title"),
+                   "area": i["data"].get("area"), "effort": i["data"].get("effort"), "reason": i["reason"]} for i in ideas]
+                 if ideas else "No ideas from Richard yet.")
+        elif cmd == "lnd-idea":
+            i = next((x for x in cp.list_lnd_ideas(500) if x["id"] == args[0]), None)
+            show(i or f"No idea {args[0]}.")
+        elif cmd == "lnd-sync":
+            code, reply = office("/api/lnd/sync", {})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd in ("lnd-yes", "lnd-no"):
+            code, reply = office(f"/api/lnd/{args[0]}/{cmd[4:]}", {"reason": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "channel":
             code, reply = office(f"/api/project/{int(args[0])}/channel",

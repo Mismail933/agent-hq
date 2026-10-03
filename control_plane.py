@@ -52,6 +52,8 @@ def init():
             input_tokens INTEGER, output_tokens INTEGER, cache_tokens INTEGER, searches INTEGER, turns INTEGER,
             secs REAL, value_usd REAL, ok INTEGER);
         CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, value TEXT, ts REAL, changed_by TEXT);
+        CREATE TABLE IF NOT EXISTS lnd_ideas (
+            id TEXT PRIMARY KEY, day TEXT, ts REAL, status TEXT, data TEXT, note TEXT, reason TEXT, decided_ts REAL);
         CREATE TABLE IF NOT EXISTS episodes (
             id INTEGER PRIMARY KEY, project_id INTEGER, batch INTEGER, ts REAL, status TEXT, title TEXT,
             data TEXT, owner_note TEXT, video_path TEXT);
@@ -269,6 +271,40 @@ def usage_today(agent=None):
 
 def subscription_value_today(agent):
     return (usage_today(agent).get(agent) or {}).get("value_usd") or 0
+
+
+# ---- Richard's L&D ideas (synced from the lnd branch by lnd.py) ----------------------
+def add_lnd_idea(idea, day, note=""):
+    """True if the idea is new."""
+    with _db() as con:
+        cur = con.execute("INSERT OR IGNORE INTO lnd_ideas(id,day,ts,status,data,note) VALUES(?,?,?,?,?,?)",
+                          (str(idea["id"]), day, time.time(), "new", json.dumps(idea), note))
+        return cur.rowcount > 0
+
+
+def list_lnd_ideas(limit=40):
+    with _db() as con:
+        rows = con.execute("SELECT * FROM lnd_ideas ORDER BY day DESC, id LIMIT ?", (limit,)).fetchall()
+    return [{"id": r["id"], "day": r["day"], "status": r["status"], "data": json.loads(r["data"] or "{}"),
+             "note": r["note"], "reason": r["reason"], "decided_ts": r["decided_ts"]} for r in rows]
+
+
+def decide_lnd_idea(idea_id, decision, reason=""):
+    with _db() as con:
+        r = con.execute("SELECT status, data FROM lnd_ideas WHERE id=?", (str(idea_id),)).fetchone()
+    if not r:
+        return f"No L&D idea {idea_id}."
+    if r["status"] != "new":
+        return f"Idea {idea_id} was already {r['status']}."
+    status = {"yes": "approved", "no": "declined"}.get(decision)
+    if not status:
+        return f"Unknown decision '{decision}'."
+    with _db() as con:
+        con.execute("UPDATE lnd_ideas SET status=?, reason=?, decided_ts=? WHERE id=?",
+                    (status, (reason or "")[:1000], time.time(), str(idea_id)))
+    title = json.loads(r["data"]).get("title", "")
+    log("Owner", f"lnd_{status}", None, {"idea": str(idea_id), "title": title, "reason": reason or ""})
+    return f"Idea {idea_id} {status}: {title}"
 
 
 # ---- Episodes: Calina's scripts for a content project ----------------------------------

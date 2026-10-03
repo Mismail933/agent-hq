@@ -10,6 +10,7 @@ Your AI company. The team so far:
 | Vera | Judgment | Scores the idea against the evidence and your settings, picks Path A or B. |
 | Serge | Product | Product Owner. When you ask, turns an approved idea into a plan and a budget request for your approval. |
 | Calina | Content | Content Producer. Writes batches of sourced YouTube Shorts scripts for you to approve one by one, turns approved ones into finished Shorts, and writes a weekly learning note from your channel stats. |
+| Richard | Learning & Dev | Every morning, in the cloud, he researches how to make the company better and brings you 1-2 ideas in the L&D tab. Yes goes to Atlas to prioritise. |
 
 Doulya's picks wait in your Idea Inbox. Nothing is researched until you click **Research it** (or tell Atlas yes).
 Dismiss an idea with a reason and Doulya steers away from similar ones. You can also pitch your own ideas to Atlas.
