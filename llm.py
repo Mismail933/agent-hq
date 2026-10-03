@@ -3,6 +3,7 @@ The agent loop: send the task to the model, run the tools it asks for
 (after the control plane approves), send results back, repeat until done.
 """
 import os
+import re
 
 import control_plane as cp
 
@@ -73,8 +74,19 @@ def run(agent, model, system, messages, tools=None, tool_choice=None,
     raise cp.Halt(f"{agent} did not finish within {MAX_TURNS} steps.")
 
 
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")   # junk bytes that web pages sometimes carry
+
+
 def text_of(resp):
-    return "\n".join(b.text for b in resp.content if b.type == "text").strip()
+    # Citations split one paragraph into several text blocks, so join them with nothing in between.
+    return _CONTROL.sub("", "".join(b.text for b in resp.content if b.type == "text")).strip()
+
+
+def all_text(messages):
+    """Everything the agent wrote across the whole run (a long search run comes back in several responses)."""
+    parts = [b.text for m in messages if m["role"] == "assistant" and not isinstance(m["content"], str)
+             for b in m["content"] if getattr(b, "type", "") == "text"]
+    return _CONTROL.sub("", "".join(parts)).strip()
 
 
 def tool_input(resp, name):
