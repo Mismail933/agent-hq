@@ -14,6 +14,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 import sys
 import urllib.request
 import zipfile
@@ -38,7 +39,8 @@ def local_version():
 
 def update():
     try:
-        url = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/VERSION"
+        # a unique query string skips GitHub's download cache, which can serve the old VERSION for minutes after a push
+        url = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/VERSION?t={int(time.time())}"
         with urllib.request.urlopen(url, timeout=8) as r:
             remote = r.read().decode().strip()
     except Exception:
