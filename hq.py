@@ -3,6 +3,7 @@ Atlas's controls for Agent HQ.
 
     python hq.py status | inbox | idea <id> | research <id> ["notes"] | dismiss <id> "reason"
                  pitch "idea" ["notes"] | scout | retry <id> | spend | activity [n] | stop | resume
+                 plan <idea id> ["notes"] | plans | project <id> | approve <id> | reject <id> "why" | changes <id> "what"
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
 same guardrails (budgets, one idea at a time, kill switch).
@@ -142,6 +143,24 @@ def main(argv):
             order("/api/scout", {}, "Doulya is scouting. Her picks will land in the Idea Inbox in a few minutes.")
         elif cmd == "retry":
             order(f"/api/retry/{int(args[0])}", {}, f"Retrying idea #{args[0]}. The verdict will appear in the office chat.")
+        elif cmd == "plan":
+            order(f"/api/plan/{int(args[0])}", {"notes": " ".join(args[1:])},
+                  f"Serge is planning idea #{args[0]}. His plan and budget request will appear in the office chat and "
+                  "in Ideas → Plans in a few minutes.")
+        elif cmd == "plans":
+            ps = cp.list_projects(20)
+            show([{k: p[k] for k in ("id", "idea_id", "title", "status", "revision", "one_off_usd", "monthly_usd", "owner_note")}
+                  for p in ps] if ps else "No plans yet.")
+        elif cmd == "project":
+            p = cp.get_project(int(args[0]))
+            if not p:
+                show(f"No plan with id {args[0]}.")
+            else:
+                text = p.pop("text"); p.pop("plan")
+                show(p); print("\n---- Serge's plan ----\n" + text)
+        elif cmd in ("approve", "reject", "changes"):
+            code, reply = office(f"/api/project/{int(args[0])}/{cmd}", {"note": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "stop":
             office("/api/stop"); show("Kill switch ON. Every agent stops before its next step.")
         elif cmd == "resume":

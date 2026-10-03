@@ -44,6 +44,9 @@ def init():
         CREATE TABLE IF NOT EXISTS ideas (
             id INTEGER PRIMARY KEY, ts REAL, title TEXT, source TEXT,
             status TEXT, brief_path TEXT, verdict TEXT);
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY, idea_id INTEGER, ts REAL, status TEXT, revision INTEGER DEFAULT 0,
+            plan TEXT, plan_path TEXT, one_off_usd REAL, monthly_usd REAL, owner_note TEXT, decided_ts REAL);
         """)
         cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
         if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
@@ -86,9 +89,13 @@ def check_can_run(agent, idea_id=None):
         if used >= cap:
             raise Halt(f"{agent}'s daily budget reached: ${used:.2f} of ${cap:.2f}.")
     if idea_id is not None:
-        used = spend_for_idea(idea_id)
-        if used >= settings.PER_IDEA_BUDGET_USD:
-            raise Halt(f"Budget for this idea reached: ${used:.2f} of ${settings.PER_IDEA_BUDGET_USD:.2f}.")
+        own = getattr(settings, "AGENT_IDEA_BUDGET_USD", {})   # agents with their own cap per idea (Serge's plans)
+        if agent in own:
+            used, cap, what = spend_for_idea(idea_id, agent=agent), own[agent], f"{agent}'s budget for this idea"
+        else:
+            used, cap, what = spend_for_idea(idea_id, exclude=tuple(own)), settings.PER_IDEA_BUDGET_USD, "Budget for this idea"
+        if used >= cap:
+            raise Halt(f"{what} reached: ${used:.2f} of ${cap:.2f}.")
 
 
 def price(model, usage, searches):
@@ -122,10 +129,72 @@ def spend_today(agent=None):
     return r["s"]
 
 
-def spend_for_idea(idea_id):
+def spend_for_idea(idea_id, agent=None, exclude=()):
+    q, args = "SELECT COALESCE(SUM(usd),0) s FROM costs WHERE idea_id=?", [idea_id]
+    if agent:
+        q += " AND agent=?"; args.append(agent)
+    if exclude:
+        q += f" AND agent NOT IN ({','.join('?' * len(exclude))})"; args += list(exclude)
     with _db() as con:
-        r = con.execute("SELECT COALESCE(SUM(usd),0) s FROM costs WHERE idea_id=?", (idea_id,)).fetchone()
+        r = con.execute(q, args).fetchone()
     return r["s"]
+
+
+# ---- Projects: Serge's plans and the owner's decisions on them -------------------
+PROJECT_FIELDS = ("status", "revision", "plan", "plan_path", "one_off_usd", "monthly_usd", "owner_note", "decided_ts")
+
+
+def new_project(idea_id):
+    with _db() as con:
+        return con.execute("INSERT INTO projects(idea_id,ts,status,revision) VALUES(?,?,?,0)",
+                           (idea_id, time.time(), "planning")).lastrowid
+
+
+def update_project(pid, **fields):
+    assert set(fields) <= set(PROJECT_FIELDS), fields
+    if isinstance(fields.get("plan"), (dict, list)):
+        fields["plan"] = json.dumps(fields["plan"])
+    with _db() as con:
+        con.execute(f"UPDATE projects SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?", (*fields.values(), pid))
+
+
+def _project_row(r, with_text=False):
+    p = {k: r[k] for k in ("id", "idea_id", "ts", "status", "revision", "plan_path", "one_off_usd", "monthly_usd",
+                           "owner_note", "decided_ts")}
+    p["plan"] = json.loads(r["plan"]) if r["plan"] else None
+    with _db() as con:
+        t = con.execute("SELECT title FROM ideas WHERE id=?", (r["idea_id"],)).fetchone()
+    p["title"] = t["title"] if t else f"Idea #{r['idea_id']}"
+    if with_text:
+        path = Path(r["plan_path"]) if r["plan_path"] else None
+        if path and not path.is_absolute():
+            path = ROOT / path
+        p["text"] = path.read_text(encoding="utf-8") if path and path.exists() else ""
+    return p
+
+
+def get_project(pid, with_text=True):
+    with _db() as con:
+        r = con.execute("SELECT * FROM projects WHERE id=?", (pid,)).fetchone()
+    return _project_row(r, with_text) if r else None
+
+
+def project_for_idea(idea_id):
+    with _db() as con:
+        r = con.execute("SELECT * FROM projects WHERE idea_id=? ORDER BY id DESC LIMIT 1", (idea_id,)).fetchone()
+    return _project_row(r) if r else None
+
+
+def list_projects(limit=20):
+    with _db() as con:
+        rows = con.execute("SELECT * FROM projects ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    out = []
+    for r in rows:
+        p = _project_row(r)
+        plan = p.pop("plan") or {}
+        p["summary"] = plan.get("summary", "")
+        out.append(p)
+    return out
 
 
 # ---- Audit log ---------------------------------------------------------------
@@ -177,7 +246,9 @@ def list_ideas(limit=20):
     out = []
     for r in rows:
         v = json.loads(r["verdict"]) if r["verdict"] else None
+        pr = project_for_idea(r["id"])
         out.append({"id": r["id"], "title": r["title"], "status": r["status"],
+                    "plan_id": pr and pr["id"], "plan_status": pr and pr["status"],
                     "verdict": v and v.get("verdict"), "path": v and v.get("path"),
                     "one_line": v and v.get("one_line_summary"), "source": r["source"],
                     "cost_usd": round(spend_for_idea(r["id"]), 3)})

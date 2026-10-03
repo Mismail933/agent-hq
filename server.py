@@ -120,6 +120,23 @@ def run_retry(idea_id):
     announce_verdict(agents.retry_idea(idea_id))
 
 
+def run_plan(idea_id, notes=""):
+    out = agents.serge_plan(idea_id, notes)
+    try:
+        r = json.loads(out)
+        head = f"**Serge's plan for #{r['idea_id']}: {r['title']}**" + (f" (revision {r['revision']})" if r["revision"] else "")
+        money = f"${r['one_off_usd']:.2f} one-off and ${r['monthly_usd']:.2f} a month"
+        if r["status"] == "over_limit":
+            atlas_says(f"{head} asks for {money}, which is over your limits even after he tried to cut it. "
+                       "Open Ideas → Plans to read why, then ask for changes or reject it.")
+        else:
+            atlas_says(f"{head} is ready. Budget request: {money}.\n\n{r['summary'][:400]}\n\n"
+                       "Open Ideas → Plans to approve it, ask for changes, or reject it. Nothing is bought: approving "
+                       "only records that budget as this project's ceiling.")
+    except (ValueError, KeyError, TypeError):
+        atlas_says(out)
+
+
 def scheduler():
     """Doulya scouts once a day while the engine is running."""
     time.sleep(20)
@@ -199,6 +216,7 @@ class Handler(BaseHTTPRequestHandler):
                 "agents": cp.agents_overview(),
                 "ideas": cp.list_ideas(),
                 "inbox": cp.list_inbox(),
+                "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
                 "scouting": agents.SCOUTING.locked(),
                 "last_scout": cp.last_event_time("scout_done", "Doulya"),
                 "chat": chat, "busy": busy, "atlas_engine": atlas_engine.engine(),
@@ -209,6 +227,12 @@ class Handler(BaseHTTPRequestHandler):
                 "simulated": os.environ.get("HQ_SIMULATE") == "1",
                 "has_key": bool(os.environ.get("ANTHROPIC_API_KEY")) or os.environ.get("HQ_SIMULATE") == "1",
             })
+        if u.path.startswith("/api/project/"):
+            try:
+                p = cp.get_project(int(u.path.rsplit("/", 1)[1]))
+            except ValueError:
+                p = None
+            return self._send(200 if p else 404, p or {"error": "not found"})
         if u.path.startswith("/api/idea/"):
             try:
                 idea = cp.get_idea(int(u.path.rsplit("/", 1)[1]))
@@ -276,6 +300,38 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(409, {"error": "The team is busy with another idea. Try again when it finishes."})
             threading.Thread(target=run_retry, args=(idea["id"],), daemon=True).start()
             return self._send(202, {"ok": True})
+        if u.path.startswith("/api/plan/"):   # the owner asks Serge for a plan
+            try:
+                idea = cp.get_idea(int(u.path.rsplit("/", 1)[1]))
+            except ValueError:
+                idea = None
+            if not idea:
+                return self._send(404, {"error": "No such idea."})
+            if (idea["verdict"] or {}).get("verdict") not in agents.PLANNABLE:
+                return self._send(409, {"error": "Only ideas Vera approved can be planned."})
+            existing = cp.project_for_idea(idea["id"])
+            if existing and existing["status"] in ("planning", "awaiting_approval", "approved"):
+                return self._send(409, {"error": f"This idea already has a plan ({existing['status'].replace('_', ' ')})."})
+            if agents.PLANNING.locked():
+                return self._send(409, {"error": "Serge is already working on a plan. Try again when it's done."})
+            notes = str(self._json_body().get("notes", "")).strip()[:1000]
+            threading.Thread(target=run_plan, args=(idea["id"], notes), daemon=True).start()
+            return self._send(202, {"ok": True})
+        if u.path.startswith("/api/project/"):   # the owner decides: approve | reject | changes
+            parts = u.path.strip("/").split("/")
+            try:
+                pid, action = int(parts[2]), parts[3]
+            except (IndexError, ValueError):
+                return self._send(400, {"error": "bad request"})
+            if action == "changes" and agents.PLANNING.locked():
+                return self._send(409, {"error": "Serge is busy with another plan. Try again when it's done."})
+            msg = agents.decide_plan(pid, action, str(self._json_body().get("note", "")).strip())
+            p = cp.get_project(pid, with_text=False)
+            if msg == "changes_requested":
+                threading.Thread(target=run_plan, args=(p["idea_id"],), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Serge is revising the plan."})
+            ok = p is not None and p["status"] in ("approved", "rejected")
+            return self._send(200 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
         if u.path == "/api/stop":
             cp.STOP_FILE.write_text("stop")
             cp.log("Owner", "kill_switch", None, {"on": True})

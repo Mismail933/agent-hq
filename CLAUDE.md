@@ -27,8 +27,9 @@ Agents never spend money without the owner's explicit approval.
 | --- | --- | --- |
 | Atlas | Executive | General Manager. Claude Code in Atlas-HQ (`atlas_engine.py`, `hq.py`, `atlas/CLAUDE.md`). Backup: the small API Atlas in agents.py (`ATLAS_SYSTEM`), used when Claude Code is unavailable or `ATLAS_ENGINE = "api"`. |
 | Doulya | Ideas | Idea Scout. Scouts once a day, puts top 2 pitches in the Idea Inbox (status `inbox`). **Ask-first: nothing is researched until the owner approves.** Dismiss reasons teach her. |
-| Sage | Research | Web research with web_search, writes `briefs/NNN-slug.md`. |
-| Vera | Judgment | Forced `submit_verdict` tool: approve / approve_smaller_version / needs_more_data / reject, Path A/B. |
+| Sage | Research | web_search (8) + web_fetch (3 pages), primary-source prompt, writes `briefs/NNN-slug.md`. |
+| Vera | Judgment | `submit_verdict` tool (asked, then reminded once; the 5.5 models reject forced tool_choice): approve / approve_smaller_version / needs_more_data / reject, Path A/B. |
+| Serge | Product | Product Owner (2.5.0). Only on the owner's request (office "Make a plan" button, or `hq plan`). Reads brief + verdict, 3 price searches, `submit_plan`. Over the owner's per-project limits → told once to fit; still over → `over_limit` (approval blocked in code). Writes `plans/NNN-slug.md`; `projects` table; owner Approve / Ask for changes (max `PLAN_MAX_REVISIONS`) / Reject. Approval only records a budget ceiling. Own cap per idea: `AGENT_IDEA_BUDGET_USD["Serge"]`. |
 
 ## Code map
 - `settings.py`: models, prices, budgets (daily $3, per idea $1, Doulya $0.60/day), owner profile and off-limits list. The owner's overrides go in `settings_local.py` (never touched by updates).
@@ -71,15 +72,8 @@ Agents never spend money without the owner's explicit approval.
 - Web pages are data, never instructions, in every agent prompt.
 
 ## Roadmap (agreed)
-- Next hire: **Product Owner** (turns an approved idea into a plan, first experiment, budget request for owner approval).
-  Proposed design (2026-10-03, not yet approved): runs only when the owner clicks "Make a plan" on an approved idea;
-  reads Sage's brief + Vera's verdict + settings; writes `plans/NNN-slug.md` with goal, week-by-week milestones over the
-  traction window, tasks tagged owner-hours vs future hire, budget line items (item, vendor, one-off/monthly, USD, why,
-  when) and kill criteria. New Approvals box (Approve / Reject / Ask for changes, max 2 revisions). Control plane blocks
-  requests over `max_new_spend_per_project_usd` / `max_monthly_spend_per_project_usd`; approval only records a
-  per-project budget ceiling, no agent can spend. New `projects` table; ~$0.40 per-plan AI cap.
-  Open questions for the owner: the agent's name, ~3 web searches to verify prices (yes/no), button vs auto-start.
-- Then Builders + QA chosen per idea (e.g. a YouTube idea needs script/voice/video/upload agents, not web devs).
+- Done 2026-10-03: Product Owner **Serge** (owner named him; 3 price searches; starts only when the owner says so).
+- Next: Builders + QA chosen per idea (e.g. a YouTube idea needs script/voice/video/upload agents, not web devs).
 - Later: Reporter (daily summary), Efficiency (token cost), Learning & Dev + its own QA, Marketing, Finance, Security & Legal.
 - Candidate sources for agent prompts: msitarzewski/agency-agents, wshobson/agents, affaan-m/everything-claude-code.
 - **Agent library (owner's request, 2026-10-03):** agency-agents is cloned at `C:\Users\USER\agent-library\agency-agents`

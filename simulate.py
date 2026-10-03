@@ -98,6 +98,31 @@ class _Messages:
                        "kill_criteria": "No paying customer in 6 weeks", "first_step": "Simulated first step"}
             return NS(stop_reason="tool_use", usage=_usage(3000, 400),
                       content=[NS(type="tool_use", id=_id(), name="submit_verdict", input=verdict)])
+        if system.startswith("You are Serge"):
+            # The first draft is over the owner's $100 limit, so the "fit the limits" retry gets exercised.
+            fitted = isinstance(last, list) and any(isinstance(x, dict) and x.get("type") == "tool_result" for x in last)
+            plan = {"summary": "Simulated plan: sell a small version to a few paying customers first.",
+                    "goal": "3 paying customers in 6 weeks", "success_metric": "3 paying customers",
+                    "non_goals": ["No mobile app"],
+                    "first_experiment": {"hypothesis": "People will pay $20", "test": "Landing page + 50 outreach messages",
+                                         "success_gate": "3 pre-orders", "cost_usd": 12, "days": 7},
+                    "milestones": [{"week": 1, "goal": "Landing page live", "tasks": [
+                                       {"task": "Write the offer", "owner": "owner", "hours": 2},
+                                       {"task": "Build the page", "owner": "hire: web developer", "hours": 4}]},
+                                   {"week": 2, "goal": "50 prospects contacted", "tasks": [
+                                       {"task": "Outreach", "owner": "hire: marketing", "hours": 5}]}],
+                    "owner_hours_per_week": 3, "hires_needed": ["web developer", "marketing"],
+                    "budget": [{"item": "Domain", "vendor": "Namecheap", "kind": "one_off", "usd": 12, "why": "Landing page",
+                                "when_week": 1, "source_url": "https://example.com/domain-price"},
+                               {"item": "Email tool", "vendor": "Example", "kind": "monthly", "usd": 9, "why": "Outreach",
+                                "when_week": 2, "source_url": "https://example.com/email-price"},
+                               {"item": "Ads test", "vendor": "Example Ads", "kind": "one_off", "usd": 30 if fitted else 120,
+                                "why": "Traffic", "when_week": 2}],
+                    "trade_offs": ["Manual outreach instead of paid tools"],
+                    "risks": [{"risk": "No one replies", "mitigation": "Change the offer in week 3"}],
+                    "kill_criteria": "No paying customer in 6 weeks"}
+            return NS(stop_reason="tool_use", usage=_usage(7000, 1500, 0 if fitted else 1),
+                      content=[NS(type="tool_use", id=_id(), name="submit_plan", input=plan)])
         raise ValueError("Unknown agent in simulation")
 
 

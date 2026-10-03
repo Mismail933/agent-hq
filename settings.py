@@ -13,6 +13,7 @@ MODELS = {
     "sage": "claude-sonnet-5-5",
     "vera": "claude-sonnet-5-5",
     "doulya": "claude-sonnet-5-5",
+    "serge": "claude-sonnet-5-5",
 }
 
 # Price per million tokens (input, output) in USD. Matched by model-name prefix.
@@ -39,8 +40,16 @@ SCOUT_AUTOMATICALLY = True     # scout once a day while Agent HQ is running
 PAGE_READS_PER_RUN = 3          # full web pages per idea (Sage) or per scouting round (Doulya)
 PAGE_READ_MAX_TOKENS = 15000    # longest page read in one go (about 11,000 words)
 
+# ---- Serge, the Product Owner ---------------------------------------------------
+PLAN_MAX_SEARCHES = 3           # web searches per plan, to check real prices
+PLAN_MAX_REVISIONS = 2          # times the owner can "ask for changes" on one plan
+# Serge only plans when the owner says so. His budget request is checked against
+# OWNER["max_new_spend_per_project_usd"] and OWNER["max_monthly_spend_per_project_usd"] below.
+
 # Per-agent daily caps (inside the overall daily budget above)
-AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60}
+AGENT_DAILY_BUDGET_USD = {"Doulya": 0.60, "Serge": 1.00}
+# Agents with their own cap per idea, outside PER_IDEA_BUDGET_USD (all of Serge's plan revisions for one idea)
+AGENT_IDEA_BUDGET_USD = {"Serge": 0.60}
 
 # ---- Atlas, the General Manager ----------------------------------------------
 # "claude_code": the office chat is Claude Code running in your Atlas-HQ folder (C:\Users\<you>\Atlas-HQ),

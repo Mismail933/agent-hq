@@ -1,6 +1,7 @@
 .env
 hq.db
 briefs/
+plans/
 .installed
 STOP
 settings_local.py

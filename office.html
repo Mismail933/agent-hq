@@ -261,6 +261,10 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .brief{border-top:1px solid var(--line);padding-top:12px;line-height:1.65;max-width:70ch}
 .brief h1{font-size:18px}.brief h2{font-size:16px;margin:18px 0 6px}.brief h3{font-size:14px}
 .brief a{color:var(--cyan-ink)}
+.brief .tbl{overflow-x:auto;margin:8px 0}
+.brief table{border-collapse:collapse;font-size:12.5px;min-width:100%}
+.brief th,.brief td{border:1px solid rgba(56,189,248,.22);padding:5px 8px;text-align:left;vertical-align:top}
+.brief th{font-family:var(--display);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);background:rgba(56,189,248,.06)}
 @media (prefers-reduced-motion: reduce){.meter i{transition:none}.dots i{animation:none}button{transition:none}}
 </style>
 </head>
@@ -349,13 +353,14 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 
     <section class="card a-ideas" aria-labelledby="hIdeas">
       <div class="ch"><span class="blip" style="background:#FBBF24;box-shadow:0 0 8px #FBBF24"></span><h2 id="hIdeas">Ideas</h2>
-        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button></div>
+        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button><button type="button" data-tab="plans" aria-pressed="false">Plans<span class="tabcount" id="plansCount"></span></button></div>
       </div>
       <div class="cb" id="p-inbox">
         <div class="scoutline"><span id="scoutInfo" style="flex:1">Doulya hasn't scouted yet</span><button class="mini" id="scoutBtn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Scout now</button></div>
         <ul class="inbox" id="inbox"></ul>
       </div>
       <div class="cb" id="p-judged" hidden><ul class="ideas" id="ideas"></ul></div>
+      <div class="cb" id="p-plans" hidden><ul class="inbox" id="plans"></ul></div>
     </section>
 
     <section class="card a-side" aria-label="Activity and crew">
@@ -435,7 +440,7 @@ const SPOTS = {
 const MTY = MT.cy + 30;
 
 /* ---------- Agents (only real, registered ones are drawn) ---------- */
-const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas'};
+const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product'};
 const agents = {};
 function addAgent(info) {
   const dept = DEPT_OF[info.dept] || 'orch';
@@ -520,7 +525,7 @@ function pipeEvent(e) {
     case 'handoff': setJob('judgment'); note('<b>Sage</b> handed the brief to <b>Vera</b> for judgment'); break;
     case 'verdict': setJob('report'); note(`<b>Vera</b> verdict: ${esc(VERDICT[d.verdict] || d.verdict)}${d.path ? ' · Path ' + esc(d.path) : ''}`); break;
     case 'reply': if (JOB.step === 'report') { setJob('done'); note('<b>Atlas</b> sent you the report. Open it in Ideas &amp; verdicts.'); } break;
-    case 'halted': if (e.agent === 'Doulya') break; if (JOB.step && JOB.step !== 'done') { JOB.stopped = true; setJob('done'); note('<b>Halted:</b> ' + esc(short(d.reason, 140))); } break;
+    case 'halted': if (e.agent === 'Doulya' || e.agent === 'Serge') break; if (JOB.step && JOB.step !== 'done') { JOB.stopped = true; setJob('done'); note('<b>Halted:</b> ' + esc(short(d.reason, 140))); } break;
   }
 }
 function renderPipe() {
@@ -558,6 +563,11 @@ function handleEvent(e) {
     case 'pitched': if (me) say(me, 'Found: ' + short(d.title, 34), 4); break;
     case 'scout_done': if (me) { me.working = false; me.activity = `Pitched ${d.count} idea${d.count === 1 ? '' : 's'} to your inbox`; if (d.count) assign(me, deliver(A, `${d.count} new idea${d.count === 1 ? '' : 's'} for the boss`, "Thanks. I'll tell him.")); } break;
     case 'idea_dismissed': if (agents.Doulya) say(agents.Doulya, 'Noted. I will avoid ideas like that.', 4); break;
+    case 'plan_started': if (me) { me.working = true; me.activity = 'Planning: ' + short(d.title, 60); say(me, d.revision ? 'Revising the plan…' : 'Drafting a plan…', 4); } break;
+    case 'plan_ready': if (me) { me.working = false; me.activity = d.status === 'over_limit' ? 'Plan is over your limits' : 'Plan waiting for your approval'; assign(me, deliver(A, 'Plan + budget request', "Thanks. I'll put it in front of the boss.")); } break;
+    case 'plan_approved': if (agents.Serge) { say(agents.Serge, 'Approved! Budget ceiling recorded.', 5); burst(ROOM.product.cx, ROOM.product.cy, 26); } break;
+    case 'plan_rejected': if (agents.Serge) say(agents.Serge, 'Understood. Shelving it.', 4); break;
+    case 'plan_changes': if (agents.Serge) say(agents.Serge, 'Noted. Revising.', 4); break;
   }
 }
 function feedLine(e) {
@@ -578,6 +588,11 @@ function feedLine(e) {
     case 'pitched': return [w, `pitched "${short(d.title, 80)}" to your Idea Inbox`, 'good'];
     case 'scout_done': return [w, `finished scouting: ${d.count} new idea${d.count === 1 ? '' : 's'} in your inbox`, 'good'];
     case 'idea_dismissed': return ['You', `dismissed "${short(d.title, 60)}"${d.reason ? ' (' + d.reason + ')' : ''}`, ''];
+    case 'plan_started': return [w, `${d.revision ? 'is revising' : 'started'} a plan for "${short(d.title, 70)}"`, ''];
+    case 'plan_ready': return [w, `${d.status === 'over_limit' ? 'finished a plan that is OVER your limits' : 'finished a plan'}: $${(+d.one_off).toFixed(2)} one-off, $${(+d.monthly).toFixed(2)}/month`, d.status === 'over_limit' ? 'alert' : 'good'];
+    case 'plan_approved': return ['You', `approved plan ${d.project}: $${(+d.one_off).toFixed(2)} one-off, $${(+d.monthly).toFixed(2)}/month ceiling`, 'good'];
+    case 'plan_rejected': return ['You', `rejected plan ${d.project}${d.reason ? ' (' + d.reason + ')' : ''}`, ''];
+    case 'plan_changes': return ['You', `asked Serge to change plan ${d.project}${d.note ? ': ' + d.note : ''}`, ''];
     case 'kill_switch': return ['You', d.on ? 'turned the kill switch ON. All agents stop.' : 'turned the kill switch off.', d.on ? 'bad' : 'good'];
     default: return null;
   }
@@ -774,7 +789,7 @@ function furnish(d) {
   }
 }
 
-const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}};
+const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}};
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function seatedNow(a) { return atSeat(a) && !a.path.length && a.mode !== 'stretch'; }
 function drawAgent(g, a, t) {
@@ -1021,29 +1036,33 @@ function inline(s) {
     .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
 }
 function md(text) {
-  const out = []; let list = null, para = [];
+  const out = []; let list = null, para = [], rows = null;
   const flushP = () => { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para = []; } };
   const flushL = () => { if (list) { out.push(`<${list.t}>` + list.items.map(i => '<li>' + inline(i) + '</li>').join('') + `</${list.t}>`); list = null; } };
+  const flushT = () => { if (rows) { const [head, ...body] = rows; out.push('<div class="tbl"><table><thead><tr>' + head.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>' + body.map(r => '<tr>' + r.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>'); rows = null; } };
   for (const raw of String(text || '').split(/\r?\n/)) {
     const l = raw.trim(); let m;
+    if (/^\|.*\|$/.test(l)) { flushP(); flushL(); const cells = l.slice(1, -1).split('|').map(c => c.trim()); if (!cells.every(c => /^:?-{2,}:?$/.test(c))) (rows = rows || []).push(cells); continue; }
+    flushT();
     if (!l) { flushP(); flushL(); continue; }
     if ((m = l.match(/^(#{1,4})\s+(.*)/))) { flushP(); flushL(); const n = Math.min(4, m[1].length + 1); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
     if ((m = l.match(/^[-*•]\s+(.*)/))) { flushP(); if (!list || list.t !== 'ul') { flushL(); list = {t:'ul', items:[]}; } list.items.push(m[1]); continue; }
     if ((m = l.match(/^\d+[.)]\s+(.*)/))) { flushP(); if (!list || list.t !== 'ol') { flushL(); list = {t:'ol', items:[]}; } list.items.push(m[1]); continue; }
     flushL(); para.push(l);
   }
-  flushP(); flushL(); return out.join('');
+  flushT(); flushP(); flushL(); return out.join('');
 }
 
 /* ---------- UI ---------- */
 let lastId = -1, killOn = false, busy = false, selected = null, sidePane = 'feed';
 let feed = [], chat = [], ideas = [], agentInfo = [], ideasKey = '', feedDirty = true;
 let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = null, pending = {};
+let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
   document.querySelectorAll('.seg button[data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === id));
-  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged';
+  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged'; $('#p-plans').hidden = id !== 'plans';
 }
 function renderInbox() {
   $('#inboxCount').textContent = inbox.length ? inbox.length : '';
@@ -1082,6 +1101,51 @@ function pitchHtml(p) {
   return `<div class="verdict"><div>${esc(p.pitch || '')}</div><dl class="kv">${p.why_now ? `<dt>Why now</dt><dd>${esc(p.why_now)}</dd>` : ''}${p.who_pays ? `<dt>Who pays</dt><dd>${esc(p.who_pays)}</dd>` : ''}${p.how_it_makes_money ? `<dt>Money</dt><dd>${esc(p.how_it_makes_money)}</dd>` : ''}${p.startup_cost_usd != null ? `<dt>Start cost</dt><dd class="num">~$${esc(p.startup_cost_usd)}</dd>` : ''}${p.hours_per_week != null ? `<dt>Your time</dt><dd class="num">${esc(p.hours_per_week)} h/week</dd>` : ''}${p.confidence ? `<dt>Confidence</dt><dd>${esc(p.confidence)}</dd>` : ''}</dl></div>
     <div class="two"><div><h4>Evidence</h4><ul class="ev">${(p.evidence || []).map(e => `<li>${esc(e.fact)}${/^https?:\/\//.test(e.url || '') ? ` <a href="${esc(e.url)}" target="_blank" rel="noopener">source</a>` : ''}</li>`).join('') || '<li>None given</li>'}</ul></div><div><h4>Risks</h4><ul>${li(p.risks) || '<li>None listed</li>'}</ul></div></div>`;
 }
+const PLAN_STATUS = {planning:'Serge is planning…', awaiting_approval:'Waiting for your decision', over_limit:'Over your limits',
+  approved:'Approved', rejected:'Rejected', changes_requested:'Serge is revising…', stopped:'Stopped', error:'Failed'};
+const planPill = st => `<span class="pill ${st === 'approved' ? 'approve' : st === 'rejected' || st === 'over_limit' || st === 'error' || st === 'stopped' ? 'reject' : st === 'awaiting_approval' ? 'needs_more_data' : 'work'}">${esc(PLAN_STATUS[st] || st)}</span>`;
+const money = p => `$${(+p.one_off_usd || 0).toFixed(2)} one-off · $${(+p.monthly_usd || 0).toFixed(2)}/month`;
+function planActs(p, big) {
+  const sm = big ? '' : ' sm', busy = pending['p' + p.id];
+  if (!['awaiting_approval', 'over_limit'].includes(p.status)) return '';
+  return `<div class="acts">${p.status === 'awaiting_approval' ? `<button class="btn${sm}" type="button" data-plan="approve" data-id="${p.id}" ${busy ? 'disabled' : ''}>Approve budget</button>` : ''}<button class="btn${sm} ghost" type="button" data-plan="changes" data-id="${p.id}" ${busy ? 'disabled' : ''}>Ask for changes</button><button class="btn${sm} ghost" type="button" data-plan="reject" data-id="${p.id}" ${busy ? 'disabled' : ''}>Reject</button></div>
+    <form class="why" data-plan-form="${p.id}" hidden><input type="text" maxlength="500" placeholder="" aria-label="Note for Serge"><button class="btn sm ghost" type="submit">Send</button></form>`;
+}
+function renderPlans() {
+  const waiting = projects.filter(p => ['awaiting_approval', 'over_limit'].includes(p.status)).length;
+  $('#plansCount').textContent = waiting ? waiting : '';
+  $('#plans').innerHTML = projects.length ? projects.map(p => `<li data-pid="${p.id}"><div class="ptop"><span>Serge's plan · idea #${p.idea_id}${p.revision ? ' · revision ' + p.revision : ''}</span>${planPill(p.status)}</div>
+      <button class="t" type="button" data-plan="open" data-id="${p.id}">${esc(p.title)}</button>
+      ${p.summary ? `<p>${esc(short(p.summary, 220))}</p>` : ''}
+      ${p.one_off_usd != null ? `<div class="meta"><span>${money(p)}</span></div>` : ''}
+      ${p.status === 'over_limit' ? '<p style="color:#FDA4AF">Over your per-project limits, so it can\'t be approved as is. Ask Serge for a smaller version, or raise the limits.</p>' : ''}
+      ${planActs(p)}</li>`).join('')
+    : `<li class="empty">${planning ? 'Serge is writing the first plan…' : 'No plans yet. Open an approved idea under <b>Judged</b> and click <b>Make a plan</b>, or ask Atlas.'}</li>`;
+}
+async function openPlan(id) {
+  const r = await fetch('/api/project/' + id); if (!r.ok) return; const p = await r.json();
+  $('#ovTitle').textContent = p.title; const pill = $('#ovPill'); pill.style.color = '';
+  pill.className = 'pill'; pill.textContent = (PLAN_STATUS[p.status] || p.status) + ' · ' + money(p);
+  $('#ovBody').innerHTML = `<div class="brief">${md(p.text || 'Serge is still writing this plan.')}</div>` + planActs(p, true).replace(/data-plan-form/, 'data-plan-form-ov');
+  $('#overlay').hidden = false; $('#ovClose').focus();
+}
+async function planAct(id, action, note) {
+  pending['p' + id] = action; renderPlans();
+  try {
+    const r = await fetch(`/api/project/${id}/${action}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({note:note || ''})});
+    const j = await r.json().catch(() => ({}));
+    toast(r.ok ? (j.message || 'Done.') : (j.error || 'That did not work.'));
+  } catch { toast("Can't reach the engine."); }
+  delete pending['p' + id]; poll();
+}
+async function askPlan(ideaId, notes) {
+  try {
+    const r = await fetch('/api/plan/' + ideaId, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({notes:notes || ''})});
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { toast('Serge is writing the plan. It will land under Plans in a few minutes.'); showIdeaTab('plans'); } else toast(j.error || 'Could not start planning.');
+  } catch { toast("Can't reach the engine."); }
+  poll();
+}
 const clockOf = ts => new Date(ts * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
 function renderChat() {
   const box = $('#msgs'); const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
@@ -1102,10 +1166,10 @@ function stagePill(i) {
 }
 function renderIdeas() {
   $('#ideasCount').textContent = ideas.length ? ideas.length : '';
-  $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
+  $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}${i.plan_status ? `<span>PLAN: ${esc((PLAN_STATUS[i.plan_status] || i.plan_status).toUpperCase())}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
     : '<li class="empty" style="cursor:default">No ideas yet. Pitch one to Atlas; it lands here with Vera\'s verdict and Sage\'s full research.</li>';
 }
-const OPEN_ROLES = ['Ideas','Reporting','Product · Dev · QA','Marketing & Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','Learning & Dev','L&D QA','Efficiency'];
+const OPEN_ROLES = ['Reporting','Builders & QA','Marketing & Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','Learning & Dev','L&D QA','Efficiency'];
 function statusOf(a) { if (killOn) return 'Halted'; if (a.path.length) return a.carry ? 'Delivering' : 'Moving'; if (a.working) return 'Working'; if (['drink','talk'].includes(a.mode) && a.room === 'break') return 'Recharging'; return 'Standing by'; }
 function renderTeam() {
   if (sidePane !== 'team') return;
@@ -1167,6 +1231,8 @@ async function pollOnce() {
   inbox = s.inbox || []; const ik = JSON.stringify(inbox); if (ik !== inboxKey) { const grew = inbox.length > (inboxKey ? JSON.parse(inboxKey).length : 0); inboxKey = ik; renderInbox(); if (grew && ideaTab !== 'inbox') showIdeaTab('inbox'); }
   if (ideaTab === null) showIdeaTab(inbox.length || !ideas.length ? 'inbox' : 'judged');
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
+  planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
+  if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();
   if (s.events.length) renderPipe();
   renderTeam(); renderHud(s); renderSel();
@@ -1195,6 +1261,11 @@ async function openIdea(id) {
       <dl class="kv">${v.recommended_version ? `<dt>Build this</dt><dd>${esc(v.recommended_version)}</dd>` : ''}${v.new_money_needed ? `<dt>New money</dt><dd>${esc(v.new_money_needed)}</dd>` : ''}${v.estimated_monthly_revenue ? `<dt>Revenue</dt><dd>${esc(v.estimated_monthly_revenue)}</dd>` : ''}<dt>Kill rule</dt><dd>${esc(v.kill_criteria)}</dd>${v.first_step ? `<dt>First step</dt><dd>${esc(v.first_step)}</dd>` : ''}</dl>`;
   }
   if (i.pitch && i.source === 'doulya') h += `<h4 style="margin:4px 0 0;font-family:var(--display);font-size:10.5px;letter-spacing:.14em;color:#FCD34D;text-transform:uppercase">Doulya's original pitch</h4>` + pitchHtml(i.pitch);
+  const listed = ideas.find(x => x.id === i.id) || {};
+  if (v && (v.verdict === 'approve' || v.verdict === 'approve_smaller_version')) {
+    if (listed.plan_id && !['rejected', 'stopped', 'error'].includes(listed.plan_status)) h += `<div class="acts"><button class="btn" type="button" data-ov="openplan" data-id="${listed.plan_id}">Open Serge's plan · ${esc(PLAN_STATUS[listed.plan_status] || listed.plan_status)}</button></div>`;
+    else h += `<form class="why" data-ov-plan="${i.id}" style="display:flex"><input type="text" maxlength="1000" placeholder="Anything Serge should know? (optional)" aria-label="Notes for Serge"><button class="btn" type="submit">Make a plan with Serge</button></form>`;
+  }
   h += i.brief ? `<div class="brief"><h4>Sage's research brief</h4>${md(i.brief)}</div>` : '<p class="empty">Sage is still researching this one.</p>';
   $('#ovBody').innerHTML = h; $('#overlay').hidden = false; $('#ovClose').focus();
 }
@@ -1215,8 +1286,27 @@ $('#inbox').addEventListener('click', e => {
   else if (b.dataset.act === 'dismiss') { const f = li.querySelector('form.why'); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('input').focus(); }
 });
 $('#inbox').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-id]'); inboxAct(+li.dataset.id, 'dismiss', e.target.querySelector('input').value); });
+$('#plans').addEventListener('click', e => {
+  const b = e.target.closest('[data-plan]'); if (!b) return; const id = +b.dataset.id, act = b.dataset.plan;
+  if (act === 'open') return openPlan(id);
+  if (act === 'approve') return planAct(id, 'approve');
+  const f = b.closest('li').querySelector('form.why'); f.dataset.action = act; f.hidden = false;
+  const inp = f.querySelector('input'); inp.placeholder = act === 'reject' ? 'Why not? (optional)' : 'What should Serge change?'; inp.focus();
+});
+$('#plans').addEventListener('submit', e => { e.preventDefault(); const f = e.target; planAct(+f.dataset.planForm, f.dataset.action, f.querySelector('input').value); });
+$('#ovBody').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target;
+  if (f.dataset.ovPlan) { $('#overlay').hidden = true; askPlan(+f.dataset.ovPlan, f.querySelector('input').value); }
+  else if (f.dataset.planFormOv) { $('#overlay').hidden = true; planAct(+f.dataset.planFormOv, f.dataset.action, f.querySelector('input').value); }
+});
 $('#ovBody').addEventListener('click', e => {
+  const pb = e.target.closest('[data-plan]');
+  if (pb) { const id = +pb.dataset.id, act = pb.dataset.plan;
+    if (act === 'approve') { $('#overlay').hidden = true; return planAct(id, 'approve'); }
+    const f = $('#ovBody form[data-plan-form-ov]'); f.dataset.action = act; f.hidden = false;
+    const inp = f.querySelector('input'); inp.placeholder = act === 'reject' ? 'Why not? (optional)' : 'What should Serge change?'; inp.focus(); return; }
   const b = e.target.closest('[data-ov]'); if (!b) return; const id = +b.dataset.id;
+  if (b.dataset.ov === 'openplan') return openPlan(id);
   if (b.dataset.ov === 'research') { $('#overlay').hidden = true; inboxAct(id, 'research'); }
   else { $('#overlay').hidden = true; showIdeaTab('inbox'); const li = $(`#inbox li[data-id="${id}"]`); if (li) { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); } }
 });

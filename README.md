@@ -8,10 +8,17 @@ Your AI company. The team so far:
 | Doulya | Ideas | Idea Scout. Once a day she finds ideas that are making money now and puts her top 2 in your Idea Inbox. |
 | Sage | Research | Researches an idea on the live web and writes a brief with sources. |
 | Vera | Judgment | Scores the idea against the evidence and your settings, picks Path A or B. |
+| Serge | Product | Product Owner. When you ask, turns an approved idea into a plan and a budget request for your approval. |
 
 Doulya's picks wait in your Idea Inbox. Nothing is researched until you click **Research it** (or tell Atlas yes).
 Dismiss an idea with a reason and Doulya steers away from similar ones. You can also pitch your own ideas to Atlas.
 The full research is saved in the `briefs/` folder.
+
+When Vera approves an idea, open it under **Ideas → Judged** and click **Make a plan with Serge** (or tell Atlas).
+His plan lands under **Ideas → Plans**: goal, a cheap first experiment, week-by-week milestones, who does what, and a
+budget with real prices. You **Approve**, **Ask for changes** (up to 2 times) or **Reject**. A plan over your
+per-project limits can't be approved. Approving only records the budget as that project's ceiling: nothing is bought.
+Plans are saved in the `plans/` folder.
 
 ## Atlas runs on Claude Code
 
@@ -87,5 +94,5 @@ version and installs it. Your key (.env), your data (hq.db, briefs/) and your ow
 
 ## Next steps
 
-- Hire the Product Owner: turns an approved idea into a plan and a budget request for your approval.
-- Then Builders and QA chosen per idea, Finance, Marketing and Reporting.
+- Builders and QA, chosen per idea.
+- Then Finance, Marketing and Reporting.
