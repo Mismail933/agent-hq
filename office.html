@@ -1189,6 +1189,7 @@ function renderContent() {
   $('#contentCount').textContent = waiting.length ? waiting.length : '';
   if (!(document.activeElement && $('#contentTop').contains(document.activeElement)))
     $('#contentTop').innerHTML = live.length ? live.map(p => `<div class="proj" data-pid="${p.id}"><div><b>${esc(short(p.title, 90))}</b> <span class="pill approve">Plan ${p.id} approved</span></div>
+      ${(p.meta || {}).channel ? `<p class="src" style="margin:0">Channel: <b style="color:var(--ink)">${esc(p.meta.channel.name)}</b> ${esc(p.meta.channel.handle || '')}${/^https?:\/\//.test(p.meta.channel.url || '') ? ` · <a href="${esc(p.meta.channel.url)}" target="_blank" rel="noopener">open</a>` : ''}</p>` : '<p class="src" style="margin:0">No channel name on record yet. Tell Atlas the name and handle.</p>'}
       <form class="why" data-cform="batch"><input type="text" maxlength="12000" placeholder="Notes for Calina's next batch (optional)" aria-label="Notes for Calina"><button class="btn sm" type="submit" ${producing ? 'disabled' : ''}>${producing ? 'Calina is writing…' : 'New batch of scripts'}</button></form>
       <form class="why" data-cform="review"><input type="text" maxlength="12000" placeholder="Paste this week's channel stats for a learning note" aria-label="Channel stats"><button class="btn sm ghost" type="submit">Weekly review</button></form></div>`).join('')
       : '<p class="empty" style="margin:0">No approved content project yet. Approve one of Serge\'s plans first.</p>';

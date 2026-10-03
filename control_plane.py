@@ -59,6 +59,8 @@ def init():
         cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
         if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
             con.execute("ALTER TABLE ideas ADD COLUMN pitch TEXT")
+        if "meta" not in {r[1] for r in con.execute("PRAGMA table_info(projects)")}:   # 2.9.1: facts like the channel name
+            con.execute("ALTER TABLE projects ADD COLUMN meta TEXT")
     apply_limits()
 
 
@@ -335,6 +337,7 @@ def _project_row(r, with_text=False):
     p = {k: r[k] for k in ("id", "idea_id", "ts", "status", "revision", "plan_path", "one_off_usd", "monthly_usd",
                            "owner_note", "decided_ts")}
     p["plan"] = json.loads(r["plan"]) if r["plan"] else None
+    p["meta"] = json.loads(r["meta"]) if "meta" in r.keys() and r["meta"] else {}
     with _db() as con:
         t = con.execute("SELECT title FROM ideas WHERE id=?", (r["idea_id"],)).fetchone()
     p["title"] = t["title"] if t else f"Idea #{r['idea_id']}"
@@ -344,6 +347,22 @@ def _project_row(r, with_text=False):
             path = ROOT / path
         p["text"] = path.read_text(encoding="utf-8") if path and path.exists() else ""
     return p
+
+
+def set_project_meta(pid, **facts):
+    """Facts the team must remember about a project (e.g. channel = {"name", "handle", "url"})."""
+    p = get_project(pid, with_text=False)
+    if not p:
+        raise ValueError(f"No project {pid}.")
+    meta = {**p["meta"], **facts}
+    with _db() as con:
+        con.execute("UPDATE projects SET meta=? WHERE id=?", (json.dumps(meta), pid))
+    return meta
+
+
+def channel_line(p):
+    c = (p.get("meta") or {}).get("channel") or {}
+    return f'{c.get("name", "")} ({c.get("handle", "")})'.replace(" ()", "") if c.get("name") else ""
 
 
 def get_project(pid, with_text=True):

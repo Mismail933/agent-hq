@@ -73,6 +73,19 @@ def strip_html(s):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s or "")).strip()
 
 
+PLACEHOLDER = re.compile(r"\[[A-Z][A-Z _/-]{2,}\]")
+
+
+def fill_placeholders(text, project):
+    """Put the channel's real name and handle where a script still says [CHANNEL NAME] / [HANDLE]."""
+    c = (project or {}).get("meta", {}).get("channel") or {}
+    if c.get("name"):
+        text = re.sub(r"\[CHANNEL(?: NAME)?\]", c["name"], text, flags=re.I)
+    if c.get("handle"):
+        text = re.sub(r"\[(?:CHANNEL )?HANDLE\]", c["handle"], text, flags=re.I)
+    return text
+
+
 # ---- 1. checklist --------------------------------------------------------------
 def checklist(ep):
     d, problems = ep["data"], []
@@ -85,6 +98,11 @@ def checklist(ep):
         problems.append("No hook.")
     if not [s for s in d.get("sources") or [] if str(s.get("url", "")).startswith("http") and s.get("quote")]:
         problems.append("No source with a link and a supporting quote.")
+    project = cp.get_project(ep["project_id"], with_text=False)
+    for field in ("title", "description", "script", "hook"):
+        left = PLACEHOLDER.findall(fill_placeholders(str(d.get(field) or ""), project))
+        if left:
+            problems.append(f"The {field} still has a placeholder: {', '.join(sorted(set(left)))}.")
     if ep["status"] not in ("approved", "rendered", "published"):
         problems.append(f"The script is {ep['status'].replace('_', ' ')}, not approved.")
     key = (str(d.get("place", "")).strip().lower(), str(d.get("year", "")).strip().lower())
@@ -341,13 +359,14 @@ def render_episode(eid, voice):
     say("Render...")
     render(ffmpeg, folder, images, secs)
     credits = [f"- {i['title']}, {i['creator']} ({i['archive']}, {i['licence']}) {i['page']}".rstrip() for i in images]
-    description = (d.get("description") or "").strip()
+    project = cp.get_project(ep["project_id"], with_text=False)
+    description = fill_placeholders((d.get("description") or "").strip(), project)
     if DISCLOSURE not in description:
         description += f"\n\n{DISCLOSURE}"
     description += "\n\nImages (public domain):\n" + "\n".join(credits)
     if d.get("hashtags"):
         description += "\n\n" + " ".join(d["hashtags"])
-    (folder / "title.txt").write_text(d.get("title", "")[:100] + "\n", encoding="utf-8")
+    (folder / "title.txt").write_text(fill_placeholders(d.get("title", ""), project)[:100] + "\n", encoding="utf-8")
     (folder / "description.txt").write_text(description + "\n", encoding="utf-8")
     (folder / "sources.txt").write_text(
         "SCRIPT SOURCES\n" + "\n".join(f"- {s.get('publisher', '')} {s.get('url', '')}\n  \"{s.get('quote', '')}\"" for s in d.get("sources") or [])

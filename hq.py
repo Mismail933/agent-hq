@@ -7,7 +7,7 @@ Atlas's controls for Agent HQ.
                  limits | limit <key> <value>
                  batch <project id> [count] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
-                 render <episode id> | published <episode id>
+                 render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
 same guardrails (budgets, one idea at a time, kill switch).
@@ -186,6 +186,10 @@ def main(argv):
             show(e if e else f"No episode {args[0]}.")
         elif cmd in ("approve-episode", "reject-episode"):
             code, reply = office(f"/api/episode/{int(args[0])}/{cmd.split('-')[0]}", {"note": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "channel":
+            code, reply = office(f"/api/project/{int(args[0])}/channel",
+                                 {"name": args[1], "handle": args[2] if len(args) > 2 else "", "url": args[3] if len(args) > 3 else ""})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd in ("render", "published"):
             code, reply = office(f"/api/episode/{int(args[0])}/{cmd}", {})

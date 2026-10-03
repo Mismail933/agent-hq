@@ -469,6 +469,17 @@ class Handler(BaseHTTPRequestHandler):
                 pid, action = int(parts[2]), parts[3]
             except (IndexError, ValueError):
                 return self._send(400, {"error": "bad request"})
+            if action == "channel":   # the channel's name, handle and link, remembered on the project
+                body = self._json_body()
+                facts = {k: str(body.get(k, "")).strip()[:200] for k in ("name", "handle", "url") if str(body.get(k, "")).strip()}
+                if not facts.get("name"):
+                    return self._send(400, {"error": "Give at least the channel's name."})
+                try:
+                    meta = cp.set_project_meta(pid, channel=facts)
+                except ValueError as e:
+                    return self._send(404, {"error": str(e)})
+                cp.log("Owner", "channel_set", None, {"project": pid, **facts})
+                return self._send(200, {"ok": True, "message": f"Project {pid}'s channel: {cp.channel_line({'meta': meta})}"})
             if action == "changes" and agents.PLANNING.locked():
                 return self._send(409, {"error": "Serge is busy with another plan. Try again when it's done."})
             msg = agents.decide_plan(pid, action, clip(self._json_body().get("note", ""), "note")[0])
