@@ -28,6 +28,8 @@ class _Messages:
         self.paused = set()
 
     def create(self, model, system, messages, max_tokens, tools=None, tool_choice=None):
+        if tool_choice and tool_choice.get("type") in ("tool", "any"):   # like the real 5.5 models
+            raise ValueError('tool_choice: type "tool" and "any" are not supported for this model.')
         time.sleep(float(os.environ.get("HQ_SIM_DELAY", "0")))
         last = messages[-1]["content"]
         if system.startswith("You are Doulya"):

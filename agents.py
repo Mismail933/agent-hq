@@ -149,9 +149,14 @@ def vera_judge(idea, brief, idea_id):
     cp.log("Vera", "task_started", idea_id, {"idea": idea})
     system = VERA_SYSTEM.format(today=_today(), owner=json.dumps(settings.OWNER, indent=2))
     messages = [{"role": "user", "content": f"Idea: {idea}\n\nResearch brief from Sage:\n\n{brief}"}]
-    resp = llm.run("Vera", settings.MODELS["vera"], system, messages, tools=[VERDICT_TOOL],
-                   tool_choice={"type": "tool", "name": "submit_verdict"}, idea_id=idea_id, max_tokens=3000)
+    # Newer models refuse a forced tool_choice, so Vera is asked to submit and reminded once if she doesn't.
+    resp = llm.run("Vera", settings.MODELS["vera"], system, messages, tools=[VERDICT_TOOL], idea_id=idea_id, max_tokens=8000)
     verdict = llm.tool_input(resp, "submit_verdict")
+    if not verdict:
+        messages.append({"role": "user", "content": "Now call submit_verdict with your evaluation."})
+        resp = llm.run("Vera", settings.MODELS["vera"], system, messages, tools=[VERDICT_TOOL], idea_id=idea_id,
+                       max_tokens=8000)
+        verdict = llm.tool_input(resp, "submit_verdict")
     if not verdict:
         raise cp.Halt("Vera did not return a verdict.")
     cp.log("Vera", "verdict", idea_id, {"verdict": verdict["verdict"], "path": verdict["path"]})
@@ -229,10 +234,9 @@ def doulya_scout(trigger="schedule"):
         messages = [{"role": "user", "content": f"Scout now and bring me your top {settings.DOULYA_PICKS} ideas."}]
         resp = llm.run("Doulya", settings.MODELS["doulya"], system, messages, tools=tools, max_tokens=6000)
         got = llm.tool_input(resp, "submit_pitches")
-        if not got:  # she finished without submitting: ask once, forcing the tool
+        if not got:  # she finished without submitting: remind her once
             messages.append({"role": "user", "content": "Now call submit_pitches with your picks."})
-            resp = llm.run("Doulya", settings.MODELS["doulya"], system, messages, tools=tools,
-                           tool_choice={"type": "tool", "name": "submit_pitches"}, max_tokens=4000)
+            resp = llm.run("Doulya", settings.MODELS["doulya"], system, messages, tools=tools, max_tokens=6000)
             got = llm.tool_input(resp, "submit_pitches")
         cp.check_tool("Doulya", "submit_pitches")
         pitches = (got or {}).get("pitches", [])[: settings.DOULYA_PICKS]
