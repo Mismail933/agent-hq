@@ -33,9 +33,13 @@ Agents never spend money without the owner's explicit approval.
 ## How to ship a change
 1. Edit, then test in practice mode: `HQ_SIMULATE=1 HQ_SIM_DELAY=1 HQ_NO_BROWSER=1 HQ_PORT=8790 python3 server.py`, drive it with Playwright (Chromium is preinstalled), and check screenshots. `node --check` the extracted `<script>`.
 2. **Bump `VERSION`** (the updater only acts when VERSION differs), commit, push to `main`.
+   Bump it even for docs-only changes, or the change never reaches his PC (CLAUDE.md itself was missed after 2.2.0
+   for this reason). Patch bump (2.2.1) for docs/fixes, minor bump (2.3.0) for a new hire or feature.
 3. Tell the owner to close the black window and double-click START-HERE.
 - Never put new files only on his PC without pushing too: the updater would overwrite them with GitHub's copy.
-- His install: `C:\Users\USER\Downloads\agent-hq-core\agent-hq-core\` (Windows).
+- His install: `C:\Users\USER\Downloads\agent-hq-core\agent-hq-core\` (Windows). It is NOT a git checkout.
+  When Claude runs on his PC (desktop app): git is installed, `gh` is not. Clone `Mismail933/agent-hq` to a scratch
+  folder, change and push there, then copy the changed files into his install folder too. Use `python`, not `python3`.
 
 ## Hard rules
 - Never type, store or handle his API key. It lives only in his local `.env` (START-HERE asks for it).
@@ -44,6 +48,13 @@ Agents never spend money without the owner's explicit approval.
 
 ## Roadmap (agreed)
 - Next hire: **Product Owner** (turns an approved idea into a plan, first experiment, budget request for owner approval).
+  Proposed design (2026-10-03, not yet approved): runs only when the owner clicks "Make a plan" on an approved idea;
+  reads Sage's brief + Vera's verdict + settings; writes `plans/NNN-slug.md` with goal, week-by-week milestones over the
+  traction window, tasks tagged owner-hours vs future hire, budget line items (item, vendor, one-off/monthly, USD, why,
+  when) and kill criteria. New Approvals box (Approve / Reject / Ask for changes, max 2 revisions). Control plane blocks
+  requests over `max_new_spend_per_project_usd` / `max_monthly_spend_per_project_usd`; approval only records a
+  per-project budget ceiling, no agent can spend. New `projects` table; ~$0.40 per-plan AI cap.
+  Open questions for the owner: the agent's name, ~3 web searches to verify prices (yes/no), button vs auto-start.
 - Then Builders + QA chosen per idea (e.g. a YouTube idea needs script/voice/video/upload agents, not web devs).
 - Later: Reporter (daily summary), Efficiency (token cost), Learning & Dev + its own QA, Marketing, Finance, Security & Legal.
 - Candidate sources for agent prompts: msitarzewski/agency-agents, wshobson/agents, affaan-m/everything-claude-code.
