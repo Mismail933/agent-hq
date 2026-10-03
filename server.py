@@ -41,6 +41,7 @@ def load_env():
 load_env()
 import agents             # noqa: E402
 import atlas_engine       # noqa: E402
+import workers            # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -217,6 +218,8 @@ class Handler(BaseHTTPRequestHandler):
                 "ideas": cp.list_ideas(),
                 "inbox": cp.list_inbox(),
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
+                "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
+                "engines": {a: workers.engine(a) for a in ("Doulya", "Sage", "Vera", "Serge")},
                 "scouting": agents.SCOUTING.locked(),
                 "last_scout": cp.last_event_time("scout_done", "Doulya"),
                 "chat": chat, "busy": busy, "atlas_engine": atlas_engine.engine(),

@@ -16,6 +16,17 @@ MODELS = {
     "serge": "claude-sonnet-5-5",
 }
 
+# ---- Where the workers run ----------------------------------------------------
+# "claude_code": on your Claude subscription through Claude Code, like Atlas. If that can't run (not signed in,
+#                plan limit reached, the agent's daily allowance below used up), the run falls back to the API.
+# "api":         on your API key, with the dollar caps further down.
+WORKER_ENGINE = {"Doulya": "claude_code", "Sage": "claude_code", "Vera": "claude_code", "Serge": "claude_code"}
+WORKER_MODELS = {"Doulya": "sonnet", "Sage": "sonnet", "Vera": "sonnet", "Serge": "sonnet"}   # or "opus"
+# Daily allowance per agent on the subscription, measured as what the same work would cost on the API
+# (the only meter Claude Code reports). Protects your plan's limits for you, the Builder and Atlas.
+SUBSCRIPTION_DAILY_VALUE_USD = {"Doulya": 2.00, "Sage": 6.00, "Vera": 2.00, "Serge": 3.00}
+WORKER_TIMEOUT_SECONDS = 900
+
 # Price per million tokens (input, output) in USD. Matched by model-name prefix.
 # Check https://claude.com/pricing and update if prices change.
 PRICES_PER_MTOK = {

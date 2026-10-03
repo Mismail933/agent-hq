@@ -28,6 +28,7 @@ for stream in (sys.stdout, sys.stderr):
 import agents             # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
+import workers            # noqa: E402
 
 NOT_RUNNING = "The office isn't running, so nothing can be ordered right now. Ask the owner to double-click START-HERE."
 
@@ -60,7 +61,9 @@ def status():
     s = json.loads(agents.company_status())
     models = {a["name"]: a["model"] for a in cp.agents_overview()}
     for member in s["team"]:
-        member["model"] = "Claude Code (owner's Claude subscription)" if member["name"] == "Atlas" else models.get(member["name"])
+        member["model"] = ("Claude Code (owner's Claude subscription)" if member["name"] == "Atlas" else
+                           f"{models.get(member['name'])} on the API" if workers.engine(member["name"]) == "api" else
+                           f"Claude Code ({settings.WORKER_MODELS.get(member['name'], 'sonnet')}) on the subscription, API fallback")
     s["spend_today_by_agent"] = _by_agent(date.today().isoformat())
     show(s)
 
@@ -98,6 +101,8 @@ def spend():
         total = con.execute("SELECT COALESCE(SUM(usd),0) s FROM costs").fetchone()["s"]
     show({"api_spend_today_usd": round(today, 3), "daily_cap_usd": cap, "used_pct": round(100 * today / cap) if cap else None,
           "by_agent_today": _by_agent(date.today().isoformat()),
+          "subscription_today": cp.usage_today(), "subscription_daily_allowance_api_value": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
+          "workers_engine": {a: workers.engine(a) for a in ("Doulya", "Sage", "Vera", "Serge")},
           "agent_daily_caps_usd": getattr(settings, "AGENT_DAILY_BUDGET_USD", {}),
           "per_idea_cap_usd": settings.PER_IDEA_BUDGET_USD,
           "models": settings.MODELS, "prices_per_million_tokens_usd_in_out": settings.PRICES_PER_MTOK,

@@ -29,6 +29,15 @@ with `hq.py`, keeps a journal of your decisions in `Atlas-HQ/atlas-journal.md`, 
 `Atlas-HQ/requests-for-builder.md`. You can also open the `Atlas-HQ` folder in the Claude app to talk to him there.
 If Claude Code isn't available, a small backup Atlas on the API key answers instead and says so.
 
+## The team runs on your Claude subscription too
+
+Doulya, Sage, Vera and Serge also run through Claude Code on your Claude plan, each with only their own job
+description and tools. Each one has a daily allowance in `settings.py` (`SUBSCRIPTION_DAILY_VALUE_USD`), measured as
+what the same work would cost on the API, so the team can't use up the plan you need for your own chats. If a run
+can't use the subscription (plan limit reached, signed out, allowance used up), it automatically uses the API key
+instead, with the usual dollar caps, and the office shows it. The Crew tab shows each agent's plan use today.
+To put an agent back on the API, set it to `"api"` in `WORKER_ENGINE` (in `settings_local.py`).
+
 ## Setup on Windows (easiest)
 
 1. Get an API key at https://console.anthropic.com (add a few dollars of credit and set a spend limit).

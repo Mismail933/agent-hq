@@ -18,6 +18,12 @@ from pathlib import Path
 import control_plane as cp
 import llm
 import settings
+import workers
+
+# On the subscription the answer comes back as structured output instead of a submit tool call.
+STRUCT_FROM = {"Vera": "Always answer by calling submit_verdict.", "Serge": "When you are done, call submit_plan.",
+               "Doulya": "When you are done searching, call submit_pitches with exactly"}
+STRUCT_TO = "Give your final answer as the structured output."
 
 BRIEFS = Path(__file__).parent / "briefs"
 PLANS = Path(__file__).parent / "plans"
@@ -107,21 +113,31 @@ def sage_research(idea, owner_notes, idea_id):
     task = f"Research this idea: {idea}"
     if owner_notes:
         task += f"\nThe owner added: {owner_notes}"
-    messages = [{"role": "user", "content": task}]
-    # The limit is a ceiling, not a cost: only what Sage writes is billed, and the per-idea cap still applies.
-    # Sonnet 5.5 thinks before writing, and that thinking counts toward it, so 6000 cut briefs off.
-    resp = llm.run("Sage", settings.MODELS["sage"], system, messages, tools=tools, idea_id=idea_id, max_tokens=16000)
-
-    brief = llm.all_text(messages)
-    if resp.stop_reason == "max_tokens":
-        brief += "\n\n_(Sage ran out of room here, so this brief is cut off.)_"
-        cp.log("Sage", "brief_cut_off", idea_id, {})
-    sources = llm.sources_of(messages)
+    brief, sources = None, []
+    if workers.engine("Sage") == "claude_code":
+        try:
+            brief, _ = workers.run("Sage", idea_id, system + "\nEnd the brief with a '## Sources' list: every link you used.",
+                                   task, tools=("WebSearch", "WebFetch"), max_turns=30)
+        except workers.Unavailable as e:
+            workers.fallback("Sage", idea_id, e)
+    if brief is None:
+        messages = [{"role": "user", "content": task}]
+        # The limit is a ceiling, not a cost: only what Sage writes is billed, and the per-idea cap still applies.
+        # Sonnet 5.5 thinks before writing, and that thinking counts toward it, so 6000 cut briefs off.
+        resp = llm.run("Sage", settings.MODELS["sage"], system, messages, tools=tools, idea_id=idea_id, max_tokens=16000)
+        brief = llm.all_text(messages)
+        if resp.stop_reason == "max_tokens":
+            brief += "\n\n_(Sage ran out of room here, so this brief is cut off.)_"
+            cp.log("Sage", "brief_cut_off", idea_id, {})
+        sources = llm.sources_of(messages)
     BRIEFS.mkdir(exist_ok=True)
     slug = re.sub(r"[^a-z0-9]+", "-", idea.lower()).strip("-")[:50]
     path = BRIEFS / f"{idea_id:03d}-{slug}.md"
-    body = f"# Research brief #{idea_id}: {idea}\n\n_By Sage, {_today()}_\n\n{brief}\n\n## Sources\n"
-    body += "\n".join(f"- [{t}]({u})" for t, u in sources[:25]) or "- (none found)"
+    body = f"# Research brief #{idea_id}: {idea}\n\n_By Sage, {_today()}_\n\n{brief}\n"
+    if sources or "## Sources" not in brief:
+        body += "\n## Sources\n" + ("\n".join(f"- [{t}]({u})" for t, u in sources[:25]) or "- (none found)")
+    if not sources:   # a subscription brief lists its own sources
+        sources = re.findall(r"\]\((https?://[^)\s]+)\)", brief.split("## Sources")[-1]) if "## Sources" in brief else []
     path.write_text(body, encoding="utf-8")
     cp.log("Sage", "brief_written", idea_id, {"path": str(path.name), "sources": len(sources)})
     return brief, sources, path
@@ -179,10 +195,19 @@ VERDICT_TOOL = {
 def vera_judge(idea, brief, idea_id):
     cp.log("Vera", "task_started", idea_id, {"idea": idea})
     system = VERA_SYSTEM.format(today=_today(), owner=json.dumps(settings.OWNER, indent=2))
-    messages = [{"role": "user", "content": f"Idea: {idea}\n\nResearch brief from Sage:\n\n{brief}"}]
+    task = f"Idea: {idea}\n\nResearch brief from Sage:\n\n{brief}"
+    verdict = None
+    if workers.engine("Vera") == "claude_code":
+        try:
+            verdict, _ = workers.run("Vera", idea_id, system.replace(STRUCT_FROM["Vera"], STRUCT_TO), task,
+                                     schema=VERDICT_TOOL["input_schema"], max_turns=5)
+        except workers.Unavailable as e:
+            workers.fallback("Vera", idea_id, e)
+    messages = [{"role": "user", "content": task}]
     # Newer models refuse a forced tool_choice, so Vera is asked to submit and reminded once if she doesn't.
-    resp = llm.run("Vera", settings.MODELS["vera"], system, messages, tools=[VERDICT_TOOL], idea_id=idea_id, max_tokens=8000)
-    verdict = llm.tool_input(resp, "submit_verdict")
+    if not verdict:
+        resp = llm.run("Vera", settings.MODELS["vera"], system, messages, tools=[VERDICT_TOOL], idea_id=idea_id, max_tokens=8000)
+        verdict = llm.tool_input(resp, "submit_verdict")
     if not verdict:
         messages.append({"role": "user", "content": "Now call submit_verdict with your evaluation."})
         resp = llm.run("Vera", settings.MODELS["vera"], system, messages, tools=[VERDICT_TOOL], idea_id=idea_id,
@@ -375,6 +400,29 @@ def _write_plan(idea, previous, owner_notes):
                  f"The owner asked for these changes: {previous['owner_note'] or '(no note)'}\nRevise the plan accordingly.")
     if owner_notes:
         task += f"\n\nThe owner added: {owner_notes}"
+
+    def too_much(plan):
+        one_off, monthly = plan_totals(plan)
+        return (f"This budget is ${one_off:.2f} one-off and ${monthly:.2f} a month, over the owner's limits "
+                f"(${o['max_new_spend_per_project_usd']} and ${o['max_monthly_spend_per_project_usd']}). Cut scope or find "
+                "cheaper options so it fits. If it truly can't fit, submit the closest version and explain why in the summary.")
+
+    if workers.engine("Serge") == "claude_code":
+        cc_system, schema = system.replace(STRUCT_FROM["Serge"], STRUCT_TO), PLAN_TOOL["input_schema"]
+        try:
+            plan, _ = workers.run("Serge", idea["id"], cc_system, task, tools=("WebSearch",), schema=schema, max_turns=15)
+        except workers.Unavailable as e:
+            workers.fallback("Serge", idea["id"], e)
+            plan = None
+        if plan and over_limits(*plan_totals(plan)):   # one chance to fit the owner's limits before it reaches him
+            try:
+                plan, _ = workers.run("Serge", idea["id"], cc_system, f"{task}\n\nYour draft plan:\n{json.dumps(plan)}\n\n"
+                                      f"{too_much(plan)}", tools=("WebSearch",), schema=schema, max_turns=15)
+            except workers.Unavailable:
+                pass   # keep the draft; it will show as over the limits
+        if plan:
+            return plan
+
     messages = [{"role": "user", "content": task}]
     run = lambda: llm.run("Serge", settings.MODELS["serge"], system, messages, tools=tools, idea_id=idea["id"], max_tokens=16000)
     plan = llm.tool_input(run(), "submit_plan")
@@ -382,12 +430,8 @@ def _write_plan(idea, previous, owner_notes):
         messages.append({"role": "user", "content": "Now call submit_plan with the plan."})
         plan = llm.tool_input(run(), "submit_plan")
     if plan and over_limits(*plan_totals(plan)):   # one chance to fit the owner's limits before it reaches him
-        one_off, monthly = plan_totals(plan)
         messages.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": _last_tool_id(messages),
-            "content": f"This budget is ${one_off:.2f} one-off and ${monthly:.2f} a month, over the owner's limits "
-                       f"(${o['max_new_spend_per_project_usd']} and ${o['max_monthly_spend_per_project_usd']}). "
-                       "Cut scope or find cheaper options so it fits, then call submit_plan again. If it truly can't fit, "
-                       "submit the closest version and explain why in the summary."}]})
+                                                      "content": too_much(plan) + " Then call submit_plan again."}]})
         plan = llm.tool_input(run(), "submit_plan") or plan
     if not plan:
         raise cp.Halt("Serge did not return a plan.")
@@ -502,9 +546,19 @@ def doulya_scout(trigger="schedule"):
         cp.check_tool("Doulya", "web_fetch")
         tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": settings.DOULYA_MAX_SEARCHES},
                  web_fetch_tool(), PITCH_TOOL]
-        messages = [{"role": "user", "content": f"Scout now and bring me your top {settings.DOULYA_PICKS} ideas."}]
-        resp = llm.run("Doulya", settings.MODELS["doulya"], system, messages, tools=tools, max_tokens=6000)
-        got = llm.tool_input(resp, "submit_pitches")
+        task = f"Scout now and bring me your top {settings.DOULYA_PICKS} ideas."
+        got = None
+        if workers.engine("Doulya") == "claude_code":
+            try:
+                got, _ = workers.run("Doulya", None, system.replace(STRUCT_FROM["Doulya"], "When you are done searching, give, "
+                                     "as the structured output, exactly"), task, tools=("WebSearch", "WebFetch"),
+                                     schema=PITCH_TOOL["input_schema"], max_turns=25)
+            except workers.Unavailable as e:
+                workers.fallback("Doulya", None, e)
+        messages = [{"role": "user", "content": task}]
+        if not got:
+            resp = llm.run("Doulya", settings.MODELS["doulya"], system, messages, tools=tools, max_tokens=6000)
+            got = llm.tool_input(resp, "submit_pitches")
         if not got:  # she finished without submitting: remind her once
             messages.append({"role": "user", "content": "Now call submit_pitches with your picks."})
             resp = llm.run("Doulya", settings.MODELS["doulya"], system, messages, tools=tools, max_tokens=6000)
@@ -720,6 +774,8 @@ def company_status():
         "judged_ideas": [{"id": i["id"], "title": i["title"], "verdict": i["verdict"], "path": i["path"]} for i in ideas if i["verdict"]][:10],
         "doulya_last_scouted": datetime.fromtimestamp(last).strftime("%Y-%m-%d %H:%M") if last else "never",
         "spent_today_usd": round(cp.spend_today(), 3), "daily_cap_usd": settings.DAILY_AI_BUDGET_USD,
+        "subscription_usage_today": cp.usage_today(), "subscription_daily_allowance_api_value_usd": settings.SUBSCRIPTION_DAILY_VALUE_USD,
+        "workers_run_on": {a: ("subscription (Claude Code), API fallback" if workers.engine(a) == "claude_code" else "API key") for a in ("Doulya", "Sage", "Vera", "Serge")},
         "kill_switch_on": cp.STOP_FILE.exists(),
         "plans": [{"project": p["id"], "idea_id": p["idea_id"], "title": p["title"], "status": p["status"], "one_off_usd": p["one_off_usd"], "monthly_usd": p["monthly_usd"]} for p in cp.list_projects(10)],
         "not_hired_yet": ["Builders", "QA", "Marketing", "Finance", "Reporting", "Learning & Dev", "Efficiency"],

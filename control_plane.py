@@ -47,6 +47,10 @@ def init():
         CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY, idea_id INTEGER, ts REAL, status TEXT, revision INTEGER DEFAULT 0,
             plan TEXT, plan_path TEXT, one_off_usd REAL, monthly_usd REAL, owner_note TEXT, decided_ts REAL);
+        CREATE TABLE IF NOT EXISTS usage (
+            id INTEGER PRIMARY KEY, ts REAL, day TEXT, agent TEXT, engine TEXT, model TEXT, idea_id INTEGER,
+            input_tokens INTEGER, output_tokens INTEGER, cache_tokens INTEGER, searches INTEGER, turns INTEGER,
+            secs REAL, value_usd REAL, ok INTEGER);
         """)
         cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
         if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
@@ -138,6 +142,34 @@ def spend_for_idea(idea_id, agent=None, exclude=()):
     with _db() as con:
         r = con.execute(q, args).fetchone()
     return r["s"]
+
+
+# ---- Subscription usage (workers running through Claude Code) ------------------------
+# Not money: the subscription has no per-call price. value_usd is what the same work would cost on the API,
+# the only meter Claude Code reports, used for each agent's daily allowance and the office's usage panel.
+def record_usage(agent, engine, model, idea_id, usage, searches, turns, secs, value_usd, ok=True):
+    u = usage or {}
+    with _db() as con:
+        con.execute("INSERT INTO usage(ts,day,agent,engine,model,idea_id,input_tokens,output_tokens,cache_tokens,searches,"
+                    "turns,secs,value_usd,ok) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (time.time(), date.today().isoformat(), agent, engine, model, idea_id, u.get("input_tokens", 0) or 0,
+                     u.get("output_tokens", 0) or 0,
+                     (u.get("cache_read_input_tokens", 0) or 0) + (u.get("cache_creation_input_tokens", 0) or 0),
+                     searches or 0, turns or 0, secs, value_usd or 0, 1 if ok else 0))
+
+
+def usage_today(agent=None):
+    q, args = ("SELECT agent, COUNT(*) runs, SUM(input_tokens+output_tokens+cache_tokens) tokens, SUM(output_tokens) out_tokens, "
+               "SUM(searches) searches, ROUND(SUM(value_usd),4) value_usd FROM usage WHERE day=?"), [date.today().isoformat()]
+    if agent:
+        q += " AND agent=?"; args.append(agent)
+    with _db() as con:
+        rows = con.execute(q + " GROUP BY agent", args).fetchall()
+    return {r["agent"]: dict(r) for r in rows}
+
+
+def subscription_value_today(agent):
+    return (usage_today(agent).get(agent) or {}).get("value_usd") or 0
 
 
 # ---- Projects: Serge's plans and the owner's decisions on them -------------------

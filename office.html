@@ -593,6 +593,7 @@ function feedLine(e) {
     case 'plan_approved': return ['You', `approved plan ${d.project}: $${(+d.one_off).toFixed(2)} one-off, $${(+d.monthly).toFixed(2)}/month ceiling`, 'good'];
     case 'plan_rejected': return ['You', `rejected plan ${d.project}${d.reason ? ' (' + d.reason + ')' : ''}`, ''];
     case 'plan_changes': return ['You', `asked Serge to change plan ${d.project}${d.note ? ': ' + d.note : ''}`, ''];
+    case 'fallback_api': return [w, `couldn't use the Claude subscription (${short(d.reason, 90)}), so this run used the API key`, 'alert'];
     case 'kill_switch': return ['You', d.on ? 'turned the kill switch ON. All agents stop.' : 'turned the kill switch off.', d.on ? 'bad' : 'good'];
     default: return null;
   }
@@ -1058,6 +1059,7 @@ let lastId = -1, killOn = false, busy = false, selected = null, sidePane = 'feed
 let feed = [], chat = [], ideas = [], agentInfo = [], ideasKey = '', feedDirty = true;
 let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = null, pending = {};
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
+let usage = {}, allowance = {}, engines = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
@@ -1171,10 +1173,21 @@ function renderIdeas() {
 }
 const OPEN_ROLES = ['Reporting','Builders & QA','Marketing & Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','Learning & Dev','L&D QA','Efficiency'];
 function statusOf(a) { if (killOn) return 'Halted'; if (a.path.length) return a.carry ? 'Delivering' : 'Moving'; if (a.working) return 'Working'; if (['drink','talk'].includes(a.mode) && a.room === 'break') return 'Recharging'; return 'Standing by'; }
+const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n || 0);
+function runsOn(name) {
+  if (name === 'Atlas') return '<dt>Runs on</dt><dd>Claude subscription (Claude Code)</dd>';
+  if (!engines[name]) return '';
+  return `<dt>Runs on</dt><dd>${engines[name] === 'claude_code' ? 'Claude subscription · API backup' : 'API key'}</dd>`;
+}
+function subLine(name) {
+  const u = usage[name], cap = allowance[name]; if (!u && engines[name] !== 'claude_code') return '';
+  const v = (u && u.value_usd) || 0, pct = cap ? Math.min(100, v / cap * 100) : 0, hot = pct >= 80;
+  return `<dt>Plan use</dt><dd class="num"${hot ? ' style="color:#FDA4AF"' : ''}>${u ? u.runs : 0} runs · ${fmtTok(u && u.tokens)} tokens · $${v.toFixed(2)}${cap ? ` of $${cap.toFixed(2)} daily allowance` : ''}${hot ? ' · near the limit' : ''}</dd>`;
+}
 function renderTeam() {
   if (sidePane !== 'team') return;
   $('#team').innerHTML = agentInfo.map(i => { const a = agents[i.name]; if (!a) return ''; return `<div class="crew ${a === selected ? 'on' : ''}" data-name="${esc(i.name)}" tabindex="0" role="button" aria-label="Show ${esc(i.name)} on the floor"><div class="row"><div class="av">${esc(i.name[0])}<i style="background:${ROOM[a.dept].color}"></i></div><div><strong>${esc(i.name)}</strong><small>${esc(i.role)} · ${esc(i.dept)}</small></div><span class="pill ${a.working ? 'work' : ''}">${statusOf(a)}</span></div>
-    <dl class="kv"><dt>Doing</dt><dd>${esc(a.activity)}</dd><dt>AI cost</dt><dd class="num">$${i.cost_today.toFixed(4)} · ${i.calls_today} calls today</dd><dt>Tasks</dt><dd class="num">${i.tasks}</dd><dt>Model</dt><dd class="num">${esc(i.model)}</dd><dt>Tools</dt><dd>${i.tools.map(esc).join(', ')}</dd></dl></div>`; }).join('')
+    <dl class="kv"><dt>Doing</dt><dd>${esc(a.activity)}</dd>${runsOn(i.name)}<dt>API cost</dt><dd class="num">$${i.cost_today.toFixed(4)} · ${i.calls_today} calls today</dd>${subLine(i.name)}<dt>Tasks</dt><dd class="num">${i.tasks}</dd><dt>Model</dt><dd class="num">${esc(i.model)}</dd><dt>Tools</dt><dd>${i.tools.map(esc).join(', ')}</dd></dl></div>`; }).join('')
     + `<p class="h3">Rooms to fill next</p><div class="roles">${OPEN_ROLES.map(r => `<span>${esc(r)}</span>`).join('')}</div>`;
 }
 function renderSel() {
@@ -1231,6 +1244,7 @@ async function pollOnce() {
   inbox = s.inbox || []; const ik = JSON.stringify(inbox); if (ik !== inboxKey) { const grew = inbox.length > (inboxKey ? JSON.parse(inboxKey).length : 0); inboxKey = ik; renderInbox(); if (grew && ideaTab !== 'inbox') showIdeaTab('inbox'); }
   if (ideaTab === null) showIdeaTab(inbox.length || !ideas.length ? 'inbox' : 'judged');
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
+  usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {};
   planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();

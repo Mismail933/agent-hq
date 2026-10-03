@@ -50,6 +50,14 @@ Agents never spend money without the owner's explicit approval.
   journal or requests. At startup, if the CLI isn't signed in, the START-HERE window offers `claude auth login`.
   Office announcements (`atlas_says`) are queued in `NEWS` and prepended to Atlas's next prompt.
   Blocked tool calls are logged as `blocked_tools` on Atlas's `model_call` events.
+- `workers.py` (2.6.0): Doulya, Sage, Vera, Serge run on the owner's subscription via one-shot
+  `claude -p --no-session-persistence --system-prompt <agent prompt> --tools <only theirs> --allowedTools <same>
+  [--json-schema <their submit tool's schema>]` in `~/Agent-HQ-workers/<agent>/`. Structured answers come back in
+  `structured_output`. `settings.WORKER_ENGINE` per agent ("claude_code" | "api"), `WORKER_MODELS`,
+  `SUBSCRIPTION_DAILY_VALUE_USD` (daily allowance measured in Claude Code's `total_cost_usd`, i.e. API-equivalent
+  value). Every run → `usage` table (`cp.record_usage`, `cp.usage_today`). Any failure → `workers.Unavailable` →
+  the agent's old API path runs (with the dollar caps) and `fallback_api` is logged. Practice mode forces "api"
+  unless `HQ_WORKER_ENGINE=claude_code`. Measured real runs: Vera 16 s/$0.06, Serge 76 s/$0.23, Sage (short) 29 s/$0.15.
 - `hq.py`: Atlas's controls. Reads hq.db directly; actions POST to the running office (port in `.port`).
 
 ## How to ship a change
