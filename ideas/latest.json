@@ -1,5 +1,21 @@
 {
   "date": "2026-10-04",
-  "note": "No ideas today: my web access was blocked (YouTube docs and other sites), so I could not verify any evidence. I will not propose things I cannot check. First look at the code showed: the API path in llm.py has no prompt caching, but workers now run on Claude Code, so the gain is small. Will research properly tomorrow.",
-  "ideas": []
+  "note": "One idea today, about protecting the channel's monetization: the template check in shorts.py is much narrower than what YouTube says it looks for. (Replaces the earlier empty note for this date: web access works now.)",
+  "ideas": [
+    {
+      "id": "2026-10-04-1",
+      "title": "Catch 'mass-produced' look before YouTube does: wider sameness check on Shorts",
+      "area": "reliability",
+      "problem": "YouTube's monetization policy restricts AI-generated content made with generic or unoriginal templates that gives the impression of mass production, and its spam policy names automated high-volume repetitive content (penalties: monetization suspended, removal, strikes, channel termination). Our only guard against that is shorts.py checklist(): it blocks the same place+year, or an identical first five words of the hook. Two scripts with different places but the same skeleton ('You are a ... in <year>. Then X. The surprising part: ...'), the same closing line, or the same image/title-card look would pass. Calina's prompt also fixes one rigid shape (110-130 words, hook, turn, payoff), which pushes toward sameness across a batch of 6.",
+      "proposal": "1) In shorts.py checklist(): add a similarity score between this script and every non-rejected earlier script (word 3-gram Jaccard overlap, stdlib only). Block above ~0.25 and warn above ~0.15; also compare the last sentence and the first three words of every episode's hook. 2) Add a per-batch check in agents.py right after Calina's batch returns (where episodes without sources are dropped): drop or flag episodes too similar to each other or to earlier ones, and tell the owner why in the Content tab. 3) In CALINA_SYSTEM add a line asking for varied narrative shapes (question, countdown, a mistake, a first-person document, a map-based story) and no repeated closing line. 4) Log in images.json how often the fallback title card is used and flag an episode that is all title cards. Nothing here calls the network or changes the owner's workflow.",
+      "gain": "Lowers the risk of the single worst outcome for the project (losing monetization eligibility or the channel) at a cost of roughly one small function. Measure: run the check over the existing episodes in hq.db and see it flag the genuinely samey ones; count owner rejections for 'repetitive' before/after.",
+      "effort": "S",
+      "risks": "A threshold set too tight rejects good scripts, so start in warn-only mode and tune on the existing episodes. Policy evidence comes from fetching YouTube's own help pages through a summarizer: the quoted phrases are from those pages but should be re-read by the owner once. This does not make a policy decision for YouTube; it only reduces sameness.",
+      "links": [
+        {"title": "YouTube channel monetization policies (inauthentic / mass-produced content)", "url": "https://support.google.com/youtube/answer/1311392"},
+        {"title": "YouTube spam, deceptive practices and scams policy (repetitive / automated content)", "url": "https://support.google.com/youtube/answer/2801973"}
+      ],
+      "builds_on": ""
+    }
+  ]
 }
