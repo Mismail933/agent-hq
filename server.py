@@ -220,6 +220,7 @@ class Handler(BaseHTTPRequestHandler):
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
                 "engines": {a: workers.engine(a) for a in ("Doulya", "Sage", "Vera", "Serge")},
+                "limits": cp.limits_view(),
                 "scouting": agents.SCOUTING.locked(),
                 "last_scout": cp.last_event_time("scout_done", "Doulya"),
                 "chat": chat, "busy": busy, "atlas_engine": atlas_engine.engine(),
@@ -335,6 +336,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(202, {"ok": True, "message": "Serge is revising the plan."})
             ok = p is not None and p["status"] in ("approved", "rejected")
             return self._send(200 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
+        if u.path == "/api/limits":   # the owner in the office, or Atlas on the owner's word
+            body = self._json_body()
+            key, by = str(body.get("key", "")), ("Atlas" if body.get("by") == "Atlas" else "Owner")
+            try:
+                old, new = cp.set_limit(key, body.get("value"), by)
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            fmt = lambda v: "no cap" if v is None else f"${v:.2f}" if isinstance(v, (int, float)) else str(v)
+            return self._send(200, {"ok": True, "message": f"{cp.LIMITS[key][3]}: {fmt(old)} → {fmt(new)}"})
         if u.path == "/api/stop":
             cp.STOP_FILE.write_text("stop")
             cp.log("Owner", "kill_switch", None, {"on": True})

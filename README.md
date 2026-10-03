@@ -36,7 +36,9 @@ description and tools. Each one has a daily allowance in `settings.py` (`SUBSCRI
 what the same work would cost on the API, so the team can't use up the plan you need for your own chats. If a run
 can't use the subscription (plan limit reached, signed out, allowance used up), it automatically uses the API key
 instead, with the usual dollar caps, and the office shows it. The Crew tab shows each agent's plan use today.
-To put an agent back on the API, set it to `"api"` in `WORKER_ENGINE` (in `settings_local.py`).
+You change all of this in the office's **Limits** tab: where each agent runs (subscription or API key), its model,
+its daily plan allowance and API cap, and the company's daily API cap, per-idea cap and per-project budget. Changes
+apply at once, survive updates and show in Activity. Atlas can change them too, but only when you ask him.
 
 ## Setup on Windows (easiest)
 

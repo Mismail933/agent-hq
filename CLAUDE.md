@@ -58,6 +58,12 @@ Agents never spend money without the owner's explicit approval.
   value). Every run → `usage` table (`cp.record_usage`, `cp.usage_today`). Any failure → `workers.Unavailable` →
   the agent's old API path runs (with the dollar caps) and `fallback_api` is logged. Practice mode forces "api"
   unless `HQ_WORKER_ENGINE=claude_code`. Measured real runs: Vera 16 s/$0.06, Serge 76 s/$0.23, Sage (short) 29 s/$0.15.
+- Limits (2.7.0): `control_plane.LIMITS` (company API caps, per-project budget, and per worker: engine, model,
+  plan allowance, API cap). Stored in hq.db's `limits` table and applied over settings at `cp.init()` / on change
+  (`set_limit` mutates the settings objects, so it takes effect at once and survives updates). Changed from the
+  office's Limits tab (`POST /api/limits`, by Owner) or by Atlas with `hq limit <key> <value>` (by Atlas) only when
+  the owner asks; every change logs `limit_changed`. Ranges are validated. To add a new kind of limit, extend LIMITS
+  and `_target`.
 - `hq.py`: Atlas's controls. Reads hq.db directly; actions POST to the running office (port in `.port`).
 
 ## How to ship a change

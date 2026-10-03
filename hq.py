@@ -4,6 +4,7 @@ Atlas's controls for Agent HQ.
     python hq.py status | inbox | idea <id> | research <id> ["notes"] | dismiss <id> "reason"
                  pitch "idea" ["notes"] | scout | retry <id> | spend | activity [n] | stop | resume
                  plan <idea id> ["notes"] | plans | project <id> | approve <id> | reject <id> "why" | changes <id> "what"
+                 limits | limit <key> <value>
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
 same guardrails (budgets, one idea at a time, kill switch).
@@ -166,6 +167,12 @@ def main(argv):
         elif cmd in ("approve", "reject", "changes"):
             code, reply = office(f"/api/project/{int(args[0])}/{cmd}", {"note": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "limits":
+            show({k: {"now": v["value"], "what": v["label"], "allowed": v["options"] or f"${v['min']}-${v['max']}"}
+                  for k, v in cp.limits_view().items()})
+        elif cmd == "limit":
+            code, reply = office("/api/limits", {"key": args[0], "value": " ".join(args[1:]), "by": "Atlas"})
+            show(f"Changed. {reply.get('message')}" if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "stop":
             office("/api/stop"); show("Kill switch ON. Every agent stops before its next step.")
         elif cmd == "resume":

@@ -212,6 +212,16 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .crew strong{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .crew small{display:block;color:var(--ink-2);font-size:12.5px}
 .h3{font-family:var(--display);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);margin:6px 0 0}
+.limits{display:flex;flex-direction:column;gap:10px}
+.lim{border:1px solid var(--line);border-radius:4px;padding:10px 12px;background:rgba(13,23,41,.5);display:flex;flex-direction:column;gap:8px}
+.lim strong{font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(128px,42%);align-items:center;gap:8px;font-size:13px}
+.lrow label{color:var(--ink-2);min-width:0}
+.lrow small{display:block;color:#6F84A3;font-size:11.5px}
+.lrow select,.lrow input{width:100%;min-height:34px;border:1px solid var(--line-2);border-radius:4px;padding:4px 8px;font:inherit;font-size:13px;background:rgba(4,8,18,.8);color:var(--ink)}
+.lrow input{font-family:var(--mono)}
+.lrow select:focus,.lrow input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 2px rgba(34,211,238,.18)}
+.limits .note{margin:0;color:var(--ink-2);font-size:12.5px}
 .roles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .roles span{font-family:var(--mono);font-size:12px;border:1px dashed var(--line-2);border-radius:3px;padding:6px 8px;color:var(--ink-2)}
 
@@ -365,10 +375,11 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 
     <section class="card a-side" aria-label="Activity and crew">
       <div class="ch"><span class="blip"></span><h2>Ops</h2>
-        <div class="seg"><button type="button" data-pane="feed" aria-pressed="true">Activity</button><button type="button" data-pane="team" aria-pressed="false">Crew</button></div>
+        <div class="seg"><button type="button" data-pane="feed" aria-pressed="true">Activity</button><button type="button" data-pane="team" aria-pressed="false">Crew</button><button type="button" data-pane="limits" aria-pressed="false">Limits</button></div>
       </div>
       <div class="cb" id="p-feed"><ul class="feed" id="feed"></ul></div>
       <div class="cb" id="p-team" hidden><div class="team" id="team"></div></div>
+      <div class="cb" id="p-limits" hidden><div class="limits" id="limits"></div></div>
     </section>
   </main>
 </div>
@@ -594,6 +605,7 @@ function feedLine(e) {
     case 'plan_rejected': return ['You', `rejected plan ${d.project}${d.reason ? ' (' + d.reason + ')' : ''}`, ''];
     case 'plan_changes': return ['You', `asked Serge to change plan ${d.project}${d.note ? ': ' + d.note : ''}`, ''];
     case 'fallback_api': return [w, `couldn't use the Claude subscription (${short(d.reason, 90)}), so this run used the API key`, 'alert'];
+    case 'limit_changed': { const f = v => v == null ? 'no cap' : typeof v === 'number' ? '$' + v.toFixed(2) : (LIM_LABEL[v] || v); return [w === 'Owner' ? 'You' : w, `changed ${d.label}: ${f(d.old)} → ${f(d.new)}`, 'alert']; }
     case 'kill_switch': return ['You', d.on ? 'turned the kill switch ON. All agents stop.' : 'turned the kill switch off.', d.on ? 'bad' : 'good'];
     default: return null;
   }
@@ -1059,7 +1071,7 @@ let lastId = -1, killOn = false, busy = false, selected = null, sidePane = 'feed
 let feed = [], chat = [], ideas = [], agentInfo = [], ideasKey = '', feedDirty = true;
 let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = null, pending = {};
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
-let usage = {}, allowance = {}, engines = {};
+let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
@@ -1184,6 +1196,38 @@ function subLine(name) {
   const v = (u && u.value_usd) || 0, pct = cap ? Math.min(100, v / cap * 100) : 0, hot = pct >= 80;
   return `<dt>Plan use</dt><dd class="num"${hot ? ' style="color:#FDA4AF"' : ''}>${u ? u.runs : 0} runs · ${fmtTok(u && u.tokens)} tokens · $${v.toFixed(2)}${cap ? ` of $${cap.toFixed(2)} daily allowance` : ''}${hot ? ' · near the limit' : ''}</dd>`;
 }
+const LIM_LABEL = {claude_code:'Subscription', api:'API key', sonnet:'Sonnet', opus:'Opus (strongest)', haiku:'Haiku (cheapest)'};
+function limField(key, extra) {
+  const l = limits[key]; if (!l) return '';
+  if (l.kind === 'choice') return `<select data-key="${key}" aria-label="${esc(l.label)}">${l.options.map(o => `<option value="${o}" ${o === l.value ? 'selected' : ''}>${esc(LIM_LABEL[o] || o)}</option>`).join('')}</select>`;
+  return `<input type="number" inputmode="decimal" step="0.5" min="${l.min}" max="${l.max}" data-key="${key}" aria-label="${esc(l.label)}" value="${l.value == null ? '' : l.value}" ${l.kind === 'usd_or_none' ? 'placeholder="no cap"' : ''}>`;
+}
+function renderLimits(force) {
+  if (sidePane !== 'limits') return;
+  const k = JSON.stringify(limits); if (!force && k === limitsKey) return;
+  if (!force && document.activeElement && $('#limits').contains(document.activeElement)) return;   // don't clobber typing
+  limitsKey = k;
+  const row = (label, key, note) => `<div class="lrow"><label>${label}${note ? `<small>${note}</small>` : ''}</label>${limField(key)}</div>`;
+  const workers = ['Doulya', 'Sage', 'Vera', 'Serge'].filter(a => limits['engine.' + a]);
+  $('#limits').innerHTML = `<p class="note">Changes apply at once and show in Activity. Atlas can change these too, but only when you ask him.</p>`
+    + workers.map(a => { const u = usage[a] || {}; return `<div class="lim"><strong>${esc(a)}</strong>
+      ${row('Runs on', 'engine.' + a)}${row('Model on the subscription', 'model.' + a)}
+      ${row('Plan allowance, $ a day', 'allowance.' + a, `Used today: $${(+u.value_usd || 0).toFixed(2)} · ${u.runs || 0} runs (API value)`)}
+      ${row('API cap, $ a day', 'api_cap.' + a, 'Only used when a run falls back to the API. Empty = no extra cap')}</div>`; }).join('')
+    + `<div class="lim"><strong>Company</strong>
+      ${row('Daily API cap, $', 'daily_api', `Spent today: $${spendNow.toFixed(2)}`)}
+      ${row('API cap per idea, $', 'per_idea', 'Research and judgment of one idea')}
+      ${row('Budget per project, one-off, $', 'project_one_off', "Serge's plans must fit")}
+      ${row('Budget per project, monthly, $', 'project_monthly', "Serge's plans must fit")}</div>`;
+}
+async function setLimit(el) {
+  try {
+    const r = await fetch('/api/limits', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:el.dataset.key, value:el.value})});
+    const j = await r.json().catch(() => ({}));
+    toast(r.ok ? 'Saved. ' + j.message : (j.error || 'Not saved.'));
+  } catch { toast("Can't reach the engine."); }
+  el.blur(); await poll(); renderLimits(true);
+}
 function renderTeam() {
   if (sidePane !== 'team') return;
   $('#team').innerHTML = agentInfo.map(i => { const a = agents[i.name]; if (!a) return ''; return `<div class="crew ${a === selected ? 'on' : ''}" data-name="${esc(i.name)}" tabindex="0" role="button" aria-label="Show ${esc(i.name)} on the floor"><div class="row"><div class="av">${esc(i.name[0])}<i style="background:${ROOM[a.dept].color}"></i></div><div><strong>${esc(i.name)}</strong><small>${esc(i.role)} · ${esc(i.dept)}</small></div><span class="pill ${a.working ? 'work' : ''}">${statusOf(a)}</span></div>
@@ -1216,8 +1260,8 @@ function renderHud(s) {
 function showSide(id) {
   sidePane = id;
   document.querySelectorAll('.seg button[data-pane]').forEach(b => b.setAttribute('aria-pressed', b.dataset.pane === id));
-  $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team';
-  if (id === 'feed') renderFeed(); else renderTeam();
+  $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team'; $('#p-limits').hidden = id !== 'limits';
+  if (id === 'feed') renderFeed(); else if (id === 'team') renderTeam(); else renderLimits(true);
 }
 let polling = false;
 async function poll() {
@@ -1244,7 +1288,8 @@ async function pollOnce() {
   inbox = s.inbox || []; const ik = JSON.stringify(inbox); if (ik !== inboxKey) { const grew = inbox.length > (inboxKey ? JSON.parse(inboxKey).length : 0); inboxKey = ik; renderInbox(); if (grew && ideaTab !== 'inbox') showIdeaTab('inbox'); }
   if (ideaTab === null) showIdeaTab(inbox.length || !ideas.length ? 'inbox' : 'judged');
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
-  usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {};
+  usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
+  renderLimits();
   planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();
@@ -1329,6 +1374,8 @@ $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shif
 $('#suggest').addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.textContent); });
 $('#ideas').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) openIdea(li.dataset.id); });
 $('#ideas').addEventListener('keydown', e => { const li = e.target.closest('li[data-id]'); if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openIdea(li.dataset.id); } });
+$('#limits').addEventListener('change', e => { const el = e.target.closest('[data-key]'); if (el) setLimit(el); });
+$('#limits').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[data-key]')) e.target.blur(); });
 $('#team').addEventListener('keydown', e => { const c = e.target.closest('.crew'); if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); } });
 $('#team').addEventListener('click', e => { const c = e.target.closest('.crew'); if (c) { selected = agents[c.dataset.name]; renderSel(); renderTeam(); } });
 $('#ovClose').addEventListener('click', () => $('#overlay').hidden = true);

@@ -51,10 +51,104 @@ def init():
             id INTEGER PRIMARY KEY, ts REAL, day TEXT, agent TEXT, engine TEXT, model TEXT, idea_id INTEGER,
             input_tokens INTEGER, output_tokens INTEGER, cache_tokens INTEGER, searches INTEGER, turns INTEGER,
             secs REAL, value_usd REAL, ok INTEGER);
+        CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, value TEXT, ts REAL, changed_by TEXT);
         """)
         cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
         if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
             con.execute("ALTER TABLE ideas ADD COLUMN pitch TEXT")
+    apply_limits()
+
+
+# ---- Limits the owner changes in the office (or Atlas, when the owner asks) -------
+# Stored in hq.db and applied on top of settings.py / settings_local.py, so they take effect at once and
+# survive updates. Each one is validated against a sane range so a typo can't open the floodgates.
+WORKERS = ("Doulya", "Sage", "Vera", "Serge")
+LIMITS = {
+    "daily_api": ("usd", 0, 100, "Daily API cap, whole company"),
+    "per_idea": ("usd", 0, 20, "API cap per idea (research + judgment)"),
+    "project_one_off": ("usd", 0, 10000, "Budget per project, one-off"),
+    "project_monthly": ("usd", 0, 5000, "Budget per project, monthly"),
+}
+for _a in WORKERS:
+    LIMITS[f"engine.{_a}"] = ("choice", ("claude_code", "api"), None, f"{_a} runs on")
+    LIMITS[f"model.{_a}"] = ("choice", ("sonnet", "opus", "haiku"), None, f"{_a}'s model on the subscription")
+    LIMITS[f"allowance.{_a}"] = ("usd", 0, 100, f"{_a}'s daily plan allowance (API value)")
+    LIMITS[f"api_cap.{_a}"] = ("usd_or_none", 0, 50, f"{_a}'s daily API cap")
+
+
+def _target(key):
+    name, _, agent = key.partition(".")
+    return {"daily_api": (settings, "DAILY_AI_BUDGET_USD"), "per_idea": (settings, "PER_IDEA_BUDGET_USD"),
+            "project_one_off": (settings.OWNER, "max_new_spend_per_project_usd"),
+            "project_monthly": (settings.OWNER, "max_monthly_spend_per_project_usd"),
+            "engine": (settings.WORKER_ENGINE, agent), "model": (settings.WORKER_MODELS, agent),
+            "allowance": (settings.SUBSCRIPTION_DAILY_VALUE_USD, agent),
+            "api_cap": (settings.AGENT_DAILY_BUDGET_USD, agent)}[name]
+
+
+def get_limit(key):
+    obj, field = _target(key)
+    return obj.get(field) if isinstance(obj, dict) else getattr(obj, field)
+
+
+def _put(key, value):
+    obj, field = _target(key)
+    if isinstance(obj, dict):
+        if value is None:
+            obj.pop(field, None)
+        else:
+            obj[field] = value
+    else:
+        setattr(obj, field, value)
+
+
+def parse_limit(key, value):
+    if key not in LIMITS:
+        raise ValueError(f"Unknown limit '{key}'. Known: {', '.join(LIMITS)}")
+    kind, low, high, label = LIMITS[key]
+    if kind == "choice":
+        v = str(value).strip().lower().replace("subscription", "claude_code")
+        if v not in low:
+            raise ValueError(f"{label} must be one of: {', '.join(low)}.")
+        return v
+    if kind == "usd_or_none" and str(value).strip().lower() in ("", "none", "no cap", "off"):
+        return None
+    try:
+        v = round(float(str(value).strip().lstrip("$")), 2)
+    except ValueError:
+        raise ValueError(f"{label} must be a dollar amount.")
+    if not low <= v <= high:
+        raise ValueError(f"{label} must be between ${low} and ${high}.")
+    return v
+
+
+def set_limit(key, value, by="Owner"):
+    v = parse_limit(key, value)
+    old = get_limit(key)
+    if v == old:
+        return old, v
+    with _db() as con:
+        con.execute("INSERT OR REPLACE INTO limits(key,value,ts,changed_by) VALUES(?,?,?,?)",
+                    (key, json.dumps(v), time.time(), by))
+    _put(key, v)
+    log(by, "limit_changed", None, {"key": key, "label": LIMITS[key][3], "old": old, "new": v})
+    return old, v
+
+
+def apply_limits():
+    with _db() as con:
+        rows = con.execute("SELECT key, value FROM limits").fetchall()
+    for r in rows:
+        try:
+            _put(r["key"], parse_limit(r["key"], json.loads(r["value"]) if r["value"] != "null" else "none"))
+        except (ValueError, KeyError):
+            pass   # a limit that no longer exists or no longer fits its range
+
+
+def limits_view():
+    return {k: {"label": v[3], "kind": v[0], "value": get_limit(k),
+                "options": list(v[1]) if v[0] == "choice" else None,
+                "min": None if v[0] == "choice" else v[1], "max": v[2]} for k, v in LIMITS.items()}
 
 
 # ---- Registry & permissions -------------------------------------------------
