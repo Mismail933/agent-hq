@@ -82,6 +82,11 @@ Agents never spend money without the owner's explicit approval.
 - Then Builders + QA chosen per idea (e.g. a YouTube idea needs script/voice/video/upload agents, not web devs).
 - Later: Reporter (daily summary), Efficiency (token cost), Learning & Dev + its own QA, Marketing, Finance, Security & Legal.
 - Candidate sources for agent prompts: msitarzewski/agency-agents, wshobson/agents, affaan-m/everything-claude-code.
+- **Agent library (owner's request, 2026-10-03):** agency-agents is cloned at `C:\Users\USER\agent-library\agency-agents`
+  (MIT, ~300 role files by department: product, marketing, sales, finance, engineering, testing, strategy, support…).
+  Reference only: it is NOT installed into Claude Code. For every new hire, read the matching role files there,
+  borrow what fits, and write our own prompt into agents.py under our guardrails. Refresh with `git -C <path> pull`.
+  wshobson/agents: not installed; when a real build starts, consider installing only the one plugin that fits.
 
 ## Housekeeping
 - A leftover branch `claude-push-test` exists on GitHub (the proxy can't delete branches). The owner can delete it in the GitHub UI.
