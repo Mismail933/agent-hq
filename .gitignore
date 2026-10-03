@@ -1,0 +1,8 @@
+.env
+hq.db
+briefs/
+.installed
+STOP
+settings_local.py
+__pycache__/
+*.pyc

@@ -1,0 +1,80 @@
+"""
+Simulated model for testing without an API key: HQ_SIMULATE=1 python main.py
+It imitates Anthropic API responses so the whole pipeline (tools, budgets,
+logging, briefs) can be checked for free. Answers are canned, not real research.
+"""
+import json
+import os
+import time
+import uuid
+from types import SimpleNamespace as NS
+
+
+def _id():
+    return "toolu_" + uuid.uuid4().hex[:12]
+
+
+def _usage(i, o, s=0):
+    return NS(input_tokens=i, output_tokens=o, cache_creation_input_tokens=0, cache_read_input_tokens=0,
+              server_tool_use=NS(web_search_requests=s))
+
+
+def _text(t, citations=None):
+    return NS(type="text", text=t, citations=citations)
+
+
+class _Messages:
+    def __init__(self):
+        self.paused = set()
+
+    def create(self, model, system, messages, max_tokens, tools=None, tool_choice=None):
+        time.sleep(float(os.environ.get("HQ_SIM_DELAY", "0")))
+        last = messages[-1]["content"]
+        if system.startswith("You are Atlas"):
+            if isinstance(last, list):  # tool results came back
+                res = last[0]["content"]
+                return NS(stop_reason="end_turn", usage=_usage(1800, 220),
+                          content=[_text("[Simulated Atlas] Here is what the team found:\n" + res[:900])])
+            low = last.lower()
+            if any(w in low for w in ["working on", "ideas", "status"]):
+                call = NS(type="tool_use", id=_id(), name="list_ideas", input={})
+            elif any(w in low for w in ["spend", "cost", "budget"]):
+                call = NS(type="tool_use", id=_id(), name="spend_report", input={})
+            else:
+                call = NS(type="tool_use", id=_id(), name="route_idea", input={"idea": last.strip()[:200], "owner_notes": ""})
+            return NS(stop_reason="tool_use", usage=_usage(1500, 80),
+                      content=[_text("Sending this to the team."), call])
+
+        if system.startswith("You are Sage"):
+            key = id(messages)
+            if key not in self.paused:  # imitate a long search that pauses once
+                self.paused.add(key)
+                q = NS(type="server_tool_use", id="srvtoolu_" + uuid.uuid4().hex[:8], name="web_search",
+                       input={"query": "demand for " + messages[0]["content"][17:60]})
+                r = NS(type="web_search_tool_result", tool_use_id=q.id,
+                       content=[NS(type="web_search_result", url="https://example.com/market-report", title="Example market report")])
+                return NS(stop_reason="pause_turn", usage=_usage(4000, 120, 1), content=[q, r])
+            q = NS(type="server_tool_use", id="srvtoolu_" + uuid.uuid4().hex[:8], name="web_search",
+                   input={"query": "competitors pricing"})
+            cite = NS(type="web_search_result_location", url="https://example.com/competitors", title="Example competitor list", cited_text="...")
+            brief = ("## The idea (one line)\nSimulated brief.\n## Who would pay, and how much\nSimulated.\n"
+                     "## Demand evidence\nSimulated evidence.\n## Competitors and prices\nSimulated.\n"
+                     "## Platform rules, legal and policy risks\nSimulated.\n## Red flags\nSimulated.\n## Angles that could work\nSimulated.")
+            return NS(stop_reason="end_turn", usage=_usage(9000, 900, 1),
+                      content=[q, NS(type="web_search_tool_result", tool_use_id=q.id, content=[]), _text(brief, [cite])])
+
+        if system.startswith("You are Vera"):
+            verdict = {"verdict": "approve_smaller_version", "one_line_summary": "Simulated verdict.", "path": "A",
+                       "scores": {"demand": 6, "competition": 7, "cost": 3, "risk": 5},
+                       "key_evidence": ["Simulated fact 1", "Simulated fact 2", "Simulated fact 3"],
+                       "main_risks": ["Simulated risk"], "recommended_version": "A smaller simulated version",
+                       "new_money_needed": "", "estimated_monthly_revenue": "$0-100 (simulated)",
+                       "kill_criteria": "No paying customer in 6 weeks", "first_step": "Simulated first step"}
+            return NS(stop_reason="tool_use", usage=_usage(3000, 400),
+                      content=[NS(type="tool_use", id=_id(), name="submit_verdict", input=verdict)])
+        raise ValueError("Unknown agent in simulation")
+
+
+class FakeClient:
+    def __init__(self):
+        self.messages = _Messages()

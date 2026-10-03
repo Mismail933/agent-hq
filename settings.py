@@ -1,0 +1,60 @@
+"""
+Owner settings for Agent HQ.
+
+This is the one file you edit. The agents read it on every run.
+Money limits here are enforced in code (control_plane.py), not just told to the agents.
+"""
+
+# ---- Models -----------------------------------------------------------------
+# Atlas only routes and talks, so it uses the cheap fast model.
+# Sage and Vera do the thinking, so they use the stronger one.
+MODELS = {
+    "atlas": "claude-haiku-4-5-20251001",
+    "sage": "claude-sonnet-5-5",
+    "vera": "claude-sonnet-5-5",
+}
+
+# Price per million tokens (input, output) in USD. Matched by model-name prefix.
+# Check https://claude.com/pricing and update if prices change.
+PRICES_PER_MTOK = {
+    "claude-haiku-4-5": (1.00, 5.00),
+    "claude-sonnet-5-5": (2.00, 10.00),
+    "claude-opus-5-5": (4.00, 20.00),
+}
+WEB_SEARCH_PRICE_USD = 0.01  # $10 per 1,000 searches
+
+# ---- Hard money limits (enforced by the control plane) ----------------------
+DAILY_AI_BUDGET_USD = 3.00     # all agents together, per calendar day
+PER_IDEA_BUDGET_USD = 1.00     # research + judgment for one idea
+SAGE_MAX_SEARCHES = 8          # web searches Sage may run per idea
+
+# ---- What you want from the business ----------------------------------------
+# Vera judges every idea against these. Change them to match your goals.
+OWNER = {
+    "target_monthly_revenue_usd": 1000,
+    "max_new_spend_per_project_usd": 100,
+    "max_monthly_spend_per_project_usd": 30,
+    "risk_appetite": "medium",            # low / medium / high
+    "traction_window_weeks": 6,           # no paying customer by then -> kill
+    "location": "Lebanon",
+    "skills": "software engineer; can build web apps, scripts and automations",
+    "hours_per_week_owner_can_give": 3,
+    "off_limits": [
+        "NFTs and crypto tokens",
+        "gambling and betting",
+        "adult content",
+        "medical, legal or financial advice products",
+        "anything deceptive: fake reviews, spam, impersonation, misleading claims",
+        "anything that breaks a platform's terms of service",
+    ],
+}
+
+
+# ---- Your own overrides ------------------------------------------------------
+# Updates replace this file. To change a limit permanently, put it in
+# settings_local.py (same names, e.g. DAILY_AI_BUDGET_USD = 5.00). That file
+# is never touched by updates.
+try:
+    from settings_local import *  # noqa: F401,F403
+except ImportError:
+    pass
