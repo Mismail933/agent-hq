@@ -8,9 +8,11 @@ Everything runs on your computer at http://localhost:8765.
 """
 import json
 import os
+import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -301,12 +303,41 @@ def prepare_atlas():
         print("  Atlas setup failed:", repr(e), flush=True)
 
 
+class Server(ThreadingHTTPServer):
+    # The default lets a second office bind the same port on Windows; the old one then keeps answering with old code.
+    allow_reuse_address = False
+    daemon_threads = True
+
+
+def stop_old_office(port):
+    """Close an Agent HQ left running by an earlier START-HERE, so the freshly updated one takes over."""
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/state?since=999999999", timeout=3) as r:
+            if "spend_today" not in json.loads(r.read()):
+                return
+    except Exception:
+        return   # nothing there, or not ours
+    if os.name != "nt":
+        print(f"  Another Agent HQ is already running on port {port}. Close it first.", flush=True)
+        return
+    out = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
+    pids = {int(line.split()[-1]) for line in out.splitlines()
+            if f"127.0.0.1:{port} " in line and "LISTENING" in line and line.split()[-1].isdigit()}
+    for pid in pids - {os.getpid()}:
+        subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
+    if pids:
+        print(f"  Closed {len(pids)} older copy(ies) of Agent HQ that were still running.", flush=True)
+        print("  Their black windows now say they stopped; you can close them.\n", flush=True)
+        time.sleep(1)
+
+
 def main():
     prepare_atlas()
     port = int(os.environ.get("HQ_PORT", "8765"))
+    stop_old_office(port)
     for p in range(port, port + 10):
         try:
-            srv = ThreadingHTTPServer(("127.0.0.1", p), Handler)
+            srv = Server(("127.0.0.1", p), Handler)
             break
         except OSError:
             continue
