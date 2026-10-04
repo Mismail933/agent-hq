@@ -49,6 +49,7 @@ import settings           # noqa: E402
 
 cp.init()
 agents.register_all()
+agents.setup_animated_projects()
 _n = cp.mark_interrupted()
 if _n:
     cp.log("Atlas", "halted", None, {"reason": f"{_n} idea(s) were interrupted when the program last closed. Ask Atlas to retry."})
@@ -176,6 +177,38 @@ def shorts_python():
     return str(p) if Path(p).exists() else None
 
 
+def voice_samples(p):
+    """The voice samples the owner can listen to for an animated project, and which one is chosen."""
+    f = ROOT / "content" / f"project-{p['id']}" / "voice-samples" / "samples.json"
+    try:
+        got = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        got = {"line": "", "voices": []}
+    chosen = ((p.get("meta") or {}).get("voice") or {}).get("id")
+    return {"line": got.get("line", ""), "voices": got.get("voices", []), "chosen": chosen, "making": SAMPLING["pid"] == p["id"]}
+
+
+SAMPLING = {"pid": None}
+
+
+def run_samples(pid):
+    """Make the same lines in each free voice (about 2 minutes), for the owner to pick from."""
+    SAMPLING["pid"] = pid
+    try:
+        py = shorts_python()
+        if not py:
+            raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+        p = subprocess.run([py, str(ROOT / "animate.py"), "samples", str(pid)], cwd=ROOT, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=1800, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if not any(l.startswith("RESULT ") for l in (p.stdout or "").splitlines()):
+            raise RuntimeError(((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+        atlas_says("**The voice samples are ready.** Open Ideas → Content and listen to the same lines in each voice, then pick one.")
+    except Exception as ex:
+        atlas_says(f"The voice samples couldn't be made: {ex}")
+    finally:
+        SAMPLING["pid"] = None
+
+
 def run_render(eid):
     """Calina runs the Shorts pipeline (shorts.py) on one approved script."""
     with RENDERING["lock"]:
@@ -186,9 +219,11 @@ def run_render(eid):
             py = shorts_python()
             if not py:
                 raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+            animated = bool(e and production.is_animated(e))
             mode = "assemble" if e and production.is_v2(e) else "render"
-            p = subprocess.run([py, str(ROOT / "shorts.py"), mode, str(eid)], cwd=ROOT, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=1800,
+            script = "animate.py" if animated else "shorts.py"
+            p = subprocess.run([py, str(ROOT / script), "render" if animated else mode, str(eid)], cwd=ROOT, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace", timeout=3600 if animated else 1800,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             lines = (p.stdout or "").splitlines()
             result = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
@@ -199,7 +234,8 @@ def run_render(eid):
             cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
             pace = (f" The voice still reads at {r['wpm']} words a minute even after slowing it: lower the speed in OpenArt's "
                     "text-to-speech next time." if r.get("wpm", 0) > 158 else "")
-            what = f"{r['images']} clips" if mode == "assemble" else f"{r['images']} public-domain images"
+            what = (f"{r['images']} animated scenes, voice: {r.get('voice', '')}" if animated else
+                    f"{r['images']} clips" if mode == "assemble" else f"{r['images']} public-domain images")
             atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {what}).{pace}\n\n"
                        "Watch it in Ideas → Content. If it's good, upload it by hand with the title and description shown "
                        "there, turn on YouTube's altered/synthetic content setting, then click **Mark as published**.")
@@ -378,6 +414,7 @@ class Handler(BaseHTTPRequestHandler):
                 "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(),
                 "rendering": RENDERING["episode"],
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
+                "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "production": {p["id"]: agents.production_summary(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
                 "engines": {a: workers.engine(a) for a in cp.WORKERS},
@@ -401,6 +438,15 @@ class Handler(BaseHTTPRequestHandler):
             if not path or not path.exists():
                 return self._send(404, {"error": "no video"})
             return self._send_file(path, "video/mp4")
+        if u.path.startswith("/api/voice-sample/"):   # /api/voice-sample/<project>/<voice id>
+            try:
+                pid, vid = u.path.strip("/").split("/")[2:4]
+                path = ROOT / "content" / f"project-{int(pid)}" / "voice-samples" / f"{Path(vid).name}.mp3"
+            except (ValueError, IndexError):
+                path = None
+            if not path or not path.exists():
+                return self._send(404, {"error": "no sample"})
+            return self._send_file(path, "audio/mpeg")
         if u.path.startswith("/api/episode/"):
             try:
                 e = cp.get_episode(int(u.path.rsplit("/", 1)[1]))
@@ -523,6 +569,19 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(404, {"error": str(e)})
                 cp.log("Owner", "channel_set", None, {"project": pid, **facts})
                 return self._send(200, {"ok": True, "message": f"Project {pid}'s channel: {cp.channel_line({'meta': meta})}"})
+            if action == "voice":   # the owner picks the narrator's voice from the samples
+                vid = str(self._json_body().get("id", ""))
+                known = {v["id"]: v for v in voice_samples(cp.get_project(pid, with_text=False) or {"id": pid})["voices"]}
+                if vid not in known:
+                    return self._send(400, {"error": "Make the voice samples first, then pick one of them."})
+                cp.set_project_meta(pid, voice={"id": vid, "label": known[vid]["label"]})
+                cp.log("Owner", "voice_chosen", None, {"project": pid, "voice": vid})
+                return self._send(200, {"ok": True, "message": f"Voice chosen: {known[vid]['label']}. It's used from the next Short."})
+            if action == "voice-samples":
+                if SAMPLING["pid"] is not None:
+                    return self._send(409, {"error": "The voice samples are already being made."})
+                threading.Thread(target=run_samples, args=(pid,), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Making the voice samples: about 2-3 minutes (the first time it downloads two voices)."})
             if action == "changes" and agents.PLANNING.locked():
                 return self._send(409, {"error": "Serge is busy with another plan. Try again when it's done."})
             msg = agents.decide_plan(pid, action, clip(self._json_body().get("note", ""), "note")[0])
@@ -591,7 +650,8 @@ class Handler(BaseHTTPRequestHandler):
                 if RENDERING["lock"].locked():
                     return self._send(409, {"error": f"Calina is already making Short #{RENDERING['episode']}. Try again when it's done."})
                 threading.Thread(target=run_render, args=(eid,), daemon=True).start()
-                return self._send(202, {"ok": True, "message": "Calina is putting the Short together. It takes about 2-3 minutes."})
+                wait = "10-15 minutes" if production.is_animated(e) else "2-3 minutes"
+                return self._send(202, {"ok": True, "message": f"Calina is putting the Short together. It takes about {wait}."})
             if action == "published":
                 msg = agents.mark_published(eid)
                 ok = msg.startswith(f"Episode {eid} marked")

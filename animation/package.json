@@ -1,0 +1,13 @@
+{
+  "name": "agent-hq-animation",
+  "private": true,
+  "version": "1.0.0",
+  "description": "POV Then History: Remotion components and the cartoon style kit",
+  "dependencies": {
+    "@remotion/cli": "4.0.250",
+    "@remotion/google-fonts": "4.0.250",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.250"
+  }
+}

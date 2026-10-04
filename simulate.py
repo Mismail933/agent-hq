@@ -123,6 +123,25 @@ class _Messages:
                     "kill_criteria": "No paying customer in 6 weeks"}
             return NS(stop_reason="tool_use", usage=_usage(7000, 1500, 0 if fitted else 1),
                       content=[NS(type="tool_use", id=_id(), name="submit_plan", input=plan)])
+        if system.startswith("You are Calina") and "as SCENE FILES" in system:
+            def ep3(place, year):
+                kit = ["court", "library", "nile", "well", "study", "map", "court", "study", "nile"]
+                lines = [f"It is {year}, and you wake up in {place}.", "The street smells of bread and smoke.",
+                         "A stranger hands you a sealed letter.", "Nobody here can read it but you.",
+                         "Inside is a map to the city's lost well.", "By noon, the whole market is following you.",
+                         "The well is real, and the water is sweet.", "That map still hangs in the museum today.",
+                         "A letter, a well, a city saved."]
+                return {"title": f"POV: {place}, {year}, the lost well", "place": place, "year": year, "hook": lines[0],
+                        "storyline": "A stranger, a letter, a lost well (simulated).", "surprising_fact": "Simulated fact.",
+                        "scenes": [{"n": i + 1, "voice_line": l, "backdrop": kit[i], "camera": ["push_in", "pan_left", "pull_out"][i % 3],
+                                    "characters": [{"who": "narrator", "pose": "point", "at": "left"}] if i in (0, 5) else [],
+                                    "map": {"focus": [30, 30], "zoom": 40, "pins": []} if kit[i] == "map" else None,
+                                    "source_note": "Example Museum"} for i, l in enumerate(lines)],
+                        "sources": [{"url": "https://example.com/source", "quote": "Simulated quote", "publisher": "Example Museum"}],
+                        "description": "Simulated description.", "hashtags": ["#history", "#shorts"]}
+            batch = {"episodes": [ep3("Fez", "1350"), ep3("Kyoto", "1600"), ep3("Lima", "1700")], "batch_note": "Simulated scene-file batch."}
+            return NS(stop_reason="tool_use", usage=_usage(9000, 3000, 2),
+                      content=[NS(type="tool_use", id=_id(), name="submit_batch", input=batch)])
         if system.startswith("You are Calina") and "as shot lists" in system:
             def ep(place, year):
                 lines = [f"It is {year}, and you wake up in {place}.", "The street smells of bread and smoke.",

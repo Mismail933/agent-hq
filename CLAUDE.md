@@ -87,6 +87,23 @@ Agents never spend money without the owner's explicit approval.
   content/project-N/production-log.csv. Owner logs credits/minutes/retakes per episode (kill criteria). Kokoro + stills
   (`render`) stay only for v1 episodes. Approved/rendered episodes can be retired (reject with a reason).
   FFmpeg's drawtext segfaults (fontconfig) on his PC; libass subtitles work.
+- Animated Shorts (2.14.0, plan 3 = project 3, idea #10): a project with meta `format: "animated_v1"` makes Calina write
+  **scene files** (`CALINA_SYSTEM_V3`, `EPISODE_SCHEMA_V3`: 9-12 scenes, one voice line (<=14 words) + backdrop, camera,
+  characters, props, callout, map/diagram and a source note each; `kit_requests` for art she needs). Nobody makes clips by
+  hand. The cartoon engine is the Remotion project in `animation/` (style guide `animation/STYLE-GUIDE.md`; our own SVG
+  cast narrator/scholar/ruler x 4 poses x 3 mouth shapes in `Character.jsx`, backdrops court/library/nile/well/study,
+  `MapIntro.jsx` with real Natural Earth geography from lat/lon, `Diagram.jsx`, captions/title/end card, camera moves).
+  `animate.py render <episode>` (run in the shorts venv like shorts.py; `hq render <id>` / the office button): per-scene
+  voice (Kokoro or Piper, slowed to ~130 wpm; or the owner's own `voice.mp3` aligned with faster-whisper) -> word timings
+  -> mouth shapes from the audio loudness gated by the words -> `scene-props.json` -> Remotion render -> `short.mp4`
+  + title/description/sources (per-scene sources). Node 24 and Remotion are installed on first use into
+  `~/.agent-hq-anim` (private Node copy, because his system Node is 14; source of `animation/src` is copied there each render so
+  updates never touch node_modules). `animate.py samples` makes the same lines in 4 free voices (Kokoro George/Emma, Piper
+  Alan/Ryan) for the owner to pick in Ideas -> Content (`/api/project/N/voice`, `hq voice-samples|voice`); the choice
+  lives in project meta `voice`. `setup_animated_projects()` (agents.py, at server start) flags the project and plants the
+  pilot scene file `animation/episodes/eratosthenes.json` (rebuild of approved #12, already approved). Remotion licence:
+  free up to 3 people (re-check remotion.dev/docs/license/pricing if the team grows). Map data is Natural Earth (public
+  domain); `animation/tools/build_map.py` regenerates `src/mapdata.js`.
 - `DESIGN.md` (2.12.2): the office's design system (tokens, components, do's and don'ts). Build new UI from it and update it with any design change. Design work uses the `senior-ui-ux` skill (in ~/.claude/skills).
 - `hq.py`: Atlas's controls. Reads hq.db directly; actions POST to the running office (port in `.port`).
 

@@ -1,0 +1,136 @@
+{
+  "seed": true,
+  "rebuild_of": 12,
+  "title": "POV: You Measure the Whole Earth With a Stick (Alexandria, 240 BCE)",
+  "place": "Alexandria",
+  "year": "c. 240 BCE",
+  "hook": "With a stick and a shadow, you'll measure the whole Earth.",
+  "storyline": "Eratosthenes, chief librarian of Alexandria, hears that at midsummer noon in Syene the sun shines straight down a well. The turn: at the same noon, his rod in Alexandria still casts a shadow. One angle and one multiplication later, he has the size of the planet, off by less than one percent.",
+  "surprising_fact": "Eratosthenes worked out Earth's circumference as about 250,000 stadia, roughly 40,338 km, compared with 40,075 km today. He was off by less than one percent.",
+  "voice_direction": "Warm, clear, unhurried, about 130 words per minute. Say the numbers slowly. Pause after each sentence. Deliver the last line with quiet pride.",
+  "scenes": [
+    {
+      "n": 1,
+      "voice_line": "With a stick and a shadow, you'll measure the whole Earth.",
+      "backdrop": "court",
+      "tone": "noon",
+      "camera": "push_in",
+      "characters": [{"who": "scholar", "pose": "point", "at": "right", "speaks": false}],
+      "props": [{"type": "rod", "x": 300, "shadow": 0.6}],
+      "source_note": "Wikipedia, Eratosthenes: he measured the angle of a rod's shadow at noon on the summer solstice."
+    },
+    {
+      "n": 2,
+      "voice_line": "Alexandria, 240 BCE.",
+      "backdrop": "map",
+      "map": {"focus": [31.2, 29.9], "zoom": 62, "pins": [{"label": "ALEXANDRIA", "lat": 31.2, "lon": 29.9}]},
+      "source_note": "Wikipedia, Eratosthenes: he worked in Alexandria in the 3rd century BCE."
+    },
+    {
+      "n": 3,
+      "voice_line": "You're Eratosthenes, the chief librarian.",
+      "backdrop": "library",
+      "camera": "pan_right",
+      "characters": [{"who": "scholar", "pose": "explain", "at": "center", "speaks": false}],
+      "source_note": "Wikipedia, Eratosthenes: he became chief librarian at the Library of Alexandria."
+    },
+    {
+      "n": 4,
+      "voice_line": "Down south in Syene, a strange thing happens once a year.",
+      "backdrop": "nile",
+      "camera": "pan_left",
+      "characters": [{"who": "narrator", "pose": "point", "at": "left"}],
+      "source_note": "Wikipedia, Eratosthenes: in Syene at noon on the summer solstice, rods cast no shadows."
+    },
+    {
+      "n": 5,
+      "voice_line": "Midsummer noon: sunlight falls straight down a well. No shadows.",
+      "backdrop": "well",
+      "camera": "push_in",
+      "callout": "NO SHADOWS",
+      "callout_y": 330,
+      "source_note": "Wikipedia, Eratosthenes: the Sun's rays shone straight down into the city-center well."
+    },
+    {
+      "n": 6,
+      "voice_line": "But here in Alexandria, at that same noon, your rod casts one.",
+      "backdrop": "court",
+      "tone": "noon",
+      "camera": "pan_left",
+      "characters": [{"who": "scholar", "pose": "amazed", "at": "right", "speaks": false}],
+      "props": [{"type": "rod", "x": 330, "shadow": 0.85}],
+      "source_note": "Wikipedia, Eratosthenes: at noon on the summer solstice there were still shadows in Alexandria."
+    },
+    {
+      "n": 7,
+      "voice_line": "You measure its angle. One fiftieth of a full circle.",
+      "backdrop": "diagram",
+      "diagram": {"angle_label": "7.2°", "fraction": "1/50", "a_label": "Alexandria", "b_label": "Syene", "gap": 24},
+      "source_note": "Wikipedia, Eratosthenes: the shadow's angle was about 7.2 degrees, 1/50 of a full circle."
+    },
+    {
+      "n": 8,
+      "voice_line": "So Syene must be one fiftieth of the way around.",
+      "backdrop": "study",
+      "camera": "pull_out",
+      "characters": [{"who": "narrator", "pose": "explain", "at": "left"}],
+      "props": [{"type": "globe", "x": 780, "y": 900, "r": 170}],
+      "callout": "1/50 AROUND",
+      "callout_y": 330,
+      "source_note": "Wikipedia, Eratosthenes: the angle between two cities on the same meridian gives their fraction of the circle."
+    },
+    {
+      "n": 9,
+      "voice_line": "Five thousand stadia between the cities. Times fifty.",
+      "backdrop": "map",
+      "map": {
+        "focus": [27.6, 31.4],
+        "zoom": 58,
+        "from_zoom": 20,
+        "pins": [
+          {"label": "ALEXANDRIA", "lat": 31.2, "lon": 29.9},
+          {"label": "SYENE", "lat": 24.09, "lon": 32.9}
+        ],
+        "route": [0, 1],
+        "route_label": "5,000 stadia"
+      },
+      "callout": "5,000 × 50",
+      "callout_y": 300,
+      "source_note": "Wikipedia, Eratosthenes: about 5,000 stadia between Alexandria and Syene, multiplied by 50."
+    },
+    {
+      "n": 10,
+      "voice_line": "Two hundred fifty thousand stadia. About forty thousand kilometres.",
+      "backdrop": "study",
+      "camera": "push_in",
+      "characters": [{"who": "scholar", "pose": "stand", "at": "center", "speaks": false}],
+      "callout": "~40,000 KM",
+      "callout_y": 330,
+      "source_note": "Wikipedia, Eratosthenes: roughly 250,000 stadia, approximately 40,338 km."
+    },
+    {
+      "n": 11,
+      "voice_line": "A stick, a shadow. Off by less than one percent.",
+      "backdrop": "court",
+      "tone": "sunset",
+      "camera": "pull_out",
+      "characters": [
+        {"who": "narrator", "pose": "amazed", "at": "left"},
+        {"who": "scholar", "pose": "explain", "at": "right", "speaks": false}
+      ],
+      "props": [{"type": "rod", "x": 540, "shadow": 1.0}],
+      "callout": "OFF BY <1%",
+      "callout_y": 330,
+      "source_note": "Wikipedia, Eratosthenes: about 40,338 km against the modern 40,075.017 km, a difference of about 0.66%."
+    }
+  ],
+  "sources": [
+    {
+      "publisher": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Eratosthenes",
+      "quote": "At noon on the summer solstice, there were still shadows in Alexandria. However, in Syene, rods cast no shadows, and the Sun's rays shone straight down into the city-center well... the shadow's angle to be about 7.2 degrees, which is 1/50 of a full circle... about 5,000 stadia... multiplied this number by 50 and arrived at a total of roughly 250,000 stadia... approximately 40,338 km (25,065 mi), while the modern day measurement... is 40,075.017 km."
+    }
+  ],
+  "description": "Alexandria, about 240 BCE. The chief librarian hears that at midsummer noon the sun shines straight down a well in Syene. At the same moment, his rod in Alexandria still casts a shadow. With one angle and one multiplication he gets the size of the Earth.\n\nSources:\n- Wikipedia, Eratosthenes (measurement of Earth's circumference): https://en.wikipedia.org/wiki/Eratosthenes",
+  "hashtags": ["#history", "#shorts", "#eratosthenes", "#ancientegypt", "#POV"]
+}

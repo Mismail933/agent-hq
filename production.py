@@ -28,6 +28,11 @@ def is_v2(ep):
     return bool((ep.get("data") or {}).get("shots"))
 
 
+def is_animated(ep):
+    """An episode written as a scene file (plan 3): the cartoon engine makes it, nobody supplies clips."""
+    return bool((ep.get("data") or {}).get("scenes"))
+
+
 def _numbered(folder, prefix, exts):
     found = {}
     if folder.exists():

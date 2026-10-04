@@ -1,0 +1,2 @@
+{"durationInFrames": 240, "audio": null, "mouth": [], "intro": {"place": "Alexandria", "year": "240 BCE"}, "outro": {"channel": "POV Then History", "handle": "@POVThenHistory"}, "outro_from": 180, "caption_chunks": [],
+ "scenes": [{"from": 0, "frames": 240, "backdrop": "court", "camera": "push_in", "characters": [{"who": "narrator", "pose": "point", "at": "left"}, {"who": "scholar", "pose": "explain", "at": "right"}], "props": [{"type": "rod", "x": 540, "shadow": 0.6}]}]}

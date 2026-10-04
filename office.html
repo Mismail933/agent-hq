@@ -263,6 +263,10 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .pack .row2{display:flex;gap:6px;align-items:flex-start}
 .pack textarea{flex:1;min-width:0;border:1px solid var(--line-2);border-radius:4px;padding:6px 8px;font:inherit;font-size:12.5px;background:rgba(4,8,18,.8);color:var(--ink);resize:vertical}
 .pack .lbl{font-family:var(--mono);font-size:11px;color:var(--ink-2);text-transform:uppercase;width:58px;flex:none;padding-top:7px}
+.voices{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:4px;padding:10px;background:rgba(4,8,18,.45)}
+.voices .vs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.voices .vs span{flex:1 1 220px}
+.voices audio{height:34px;max-width:100%}
 .chk{display:flex;flex-wrap:wrap;gap:4px}
 .chk span{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;color:var(--ink-2)}
 .chk span.ok{border-color:#34D399;color:#6EE7B7}
@@ -1167,7 +1171,7 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
-let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {};
+let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
@@ -1284,8 +1288,8 @@ function epActions(e) {
 }
 function epActionsBase(e) {
   if (e.status === 'approved') {
-    if (rendering === e.id) return '<p class="src"><b>Calina is making the video…</b> about 3 minutes.</p>';
-    return `<div class="acts"><button class="btn sm" type="button" data-eact="render" ${rendering ? 'disabled' : ''}>${rendering ? 'Another video is being made' : 'Make the video'}</button><button class="btn sm ghost" type="button" data-eact="retire">Retire</button></div>`;
+    if (rendering === e.id) return `<p class="src"><b>Calina is making the video…</b> about ${((e.data || {}).scenes || []).length ? '10-15' : '3'} minutes.</p>`;
+    return `<div class="acts"><button class="btn sm" type="button" data-eact="render" ${rendering ? 'disabled' : ''}>${rendering ? 'Another video is being made' : ((e.data || {}).scenes || []).length ? 'Make the animated Short' : 'Make the video'}</button><button class="btn sm ghost" type="button" data-eact="retire">Retire</button></div>`;
   }
   if (e.status === 'rendered') {
     const u = e.upload || {};
@@ -1342,6 +1346,16 @@ async function lndAct(id, decision, reason) {
   } catch { toast("Can't reach the engine."); }
   poll();
 }
+function voiceHtml(p) {
+  if ((p.meta || {}).format !== 'animated_v1') return '';
+  const v = (voiceSamples || {})[p.id] || {voices: [], chosen: null};
+  const chosen = (p.meta.voice || {}).label;
+  const list = v.voices.map(x => `<div class="vs"><span>${esc(x.label)}${v.chosen === x.id ? ' <b style="color:var(--ok,#4ADE80)">✓ chosen</b>' : ''}</span><audio controls preload="none" src="/api/voice-sample/${p.id}/${esc(x.id)}"></audio><button class="btn sm ${v.chosen === x.id ? 'ghost' : ''}" type="button" data-vpick="${esc(x.id)}" data-pid="${p.id}">${v.chosen === x.id ? 'Chosen' : 'Pick this voice'}</button></div>`).join('');
+  return `<div class="voices"><b style="color:var(--ink)">Narrator voice</b>
+    <p class="src" style="margin:0">${chosen ? 'Chosen: ' + esc(chosen) + '.' : 'Not chosen yet: the first Short uses the default until you pick.'} All samples say the same lines at about 130 words a minute. Want ElevenLabs? Make a sample on its free tier and save it as <b>voice.mp3</b> in the episode's folder: the Short uses it.</p>
+    ${list || '<p class="src" style="margin:0">No samples yet.</p>'}
+    <div class="acts"><button class="btn sm ${list ? 'ghost' : ''}" type="button" data-vsamples="${p.id}" ${v.making ? 'disabled' : ''}>${v.making ? 'Making samples…' : list ? 'Make them again' : 'Make voice samples'}</button></div></div>`;
+}
 function renderContent() {
   const live = projects.filter(p => p.status === 'approved');
   const waiting = episodes.filter(e => e.status === 'awaiting_approval');
@@ -1350,6 +1364,7 @@ function renderContent() {
     $('#contentTop').innerHTML = live.length ? live.map(p => `<div class="proj" data-pid="${p.id}"><div><b>${esc(short(p.title, 90))}</b> <span class="pill approve">Plan ${p.id} approved</span></div>
       ${(p.meta || {}).channel ? `<p class="src" style="margin:0">Channel: <b style="color:var(--ink)">${esc(p.meta.channel.name)}</b> ${esc(p.meta.channel.handle || '')}${/^https?:\/\//.test(p.meta.channel.url || '') ? ` · <a href="${esc(p.meta.channel.url)}" target="_blank" rel="noopener">open</a>` : ''}</p>` : '<p class="src" style="margin:0">No channel name on record yet. Tell Atlas the name and handle.</p>'}
       ${(() => { const pr = (production || {})[p.id] || {}; return pr.shorts_logged ? `<p class="src" style="margin:0">Pilot log: ${pr.shorts_logged} Short(s) · on average ${pr.avg_credits} credits · ${pr.avg_minutes} min of your time · ${pr.avg_retakes} retakes</p>` : ''; })()}
+      ${voiceHtml(p)}
       <form class="why" data-cform="batch"><input type="text" maxlength="12000" placeholder="Notes for Calina's next batch (optional)" aria-label="Notes for Calina"><button class="btn sm" type="submit" ${producing ? 'disabled' : ''}>${producing ? 'Calina is writing…' : 'New batch of scripts'}</button></form>
       <form class="why" data-cform="review"><input type="text" maxlength="12000" placeholder="Paste this week's channel stats for a learning note" aria-label="Channel stats"><button class="btn sm ghost" type="submit">Weekly review</button></form></div>`).join('')
       : '<p class="empty" style="margin:0">No approved content project yet. Approve one of Serge\'s plans first.</p>';
@@ -1357,8 +1372,8 @@ function renderContent() {
   $('#episodes').innerHTML = order.length ? order.map(e => { const d = e.data || {}, busy = pending['e' + e.id];
     return `<li class="ep" data-eid="${e.id}"${epWait(e) ? ` data-wait="${epWait(e)}"` : ''}><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${['approved', 'published'].includes(e.status) ? 'approve' : e.status === 'rejected' ? 'reject' : e.status === 'rendered' ? 'work' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
       <span class="t">${esc(e.title)}</span>
-      <div class="meta"><span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span>${(d.shots || []).length ? `<span>${d.shots.length} SHOTS</span><span>${d.shots.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span>` : `<span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span>`}</div>
-      ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
+      <div class="meta"><span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span>${(d.scenes || []).length ? `<span>${d.scenes.length} SCENES</span><span>${d.scenes.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span><span>ANIMATED</span>` : (d.shots || []).length ? `<span>${d.shots.length} SHOTS</span><span>${d.shots.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span>` : `<span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span>`}</div>
+      ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.scenes || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${d.scenes.map(x => `${x.n}. ${esc(x.voice_line || '')}  [${esc(x.backdrop || '')}${(x.characters || []).length ? ', ' + x.characters.map(c => c.who).join(' + ') : ''}]`).join('\n')}</div>${(d.kit_requests || []).length ? `<p class="src"><b>Needs new art:</b> ${d.kit_requests.map(esc).join('; ')}</p>` : ''}` : (d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
       <p><b style="color:var(--ink)">Surprising fact:</b> ${esc(d.surprising_fact || '')}</p>
       <div class="src">${(d.sources || []).map(x => `${/^https?:\/\//.test(x.url || '') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.publisher || 'source')}</a>` : esc(x.publisher || 'source')}: “${esc(short(x.quote || '', 160))}”`).join('<br>')}</div>
       <div class="acts"><button class="btn sm" type="button" data-eact="approve" ${busy ? 'disabled' : ''}>Approve</button><button class="btn sm ghost" type="button" data-eact="reject" ${busy ? 'disabled' : ''}>Reject</button></div>
@@ -1528,7 +1543,7 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
-  production = s.production || {}; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production);
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples);
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
@@ -1575,6 +1590,7 @@ async function openIdea(id) {
 function epWait(e) {
   if (e.status === 'awaiting_approval') return 'script';
   if (e.status === 'rendered') return 'upload';
+  if (e.status === 'approved' && ((e.data || {}).scenes || []).length) return 'assemble';
   if (e.status === 'approved' && ((e.data || {}).shots || []).length) return (e.clips || {}).ready ? 'assemble' : 'clips';
   return '';
 }
@@ -1584,7 +1600,7 @@ const NEED_KINDS = [
   ['plan', 'plans', 'plan to approve', 'plans to approve', 'Serge'],
   ['overplan', 'plans', 'plan over your limits', 'plans over your limits', 'Serge', 'bad'],
   ['script', 'content', 'script to review', 'scripts to review', 'Calina'],
-  ['assemble', 'content', 'Short ready to assemble', 'Shorts ready to assemble', 'Calina'],
+  ['assemble', 'content', 'Short ready to make', 'Shorts ready to make', 'Calina'],
   ['upload', 'content', 'video to upload', 'videos to upload', 'Calina'],
   ['lnd', 'lnd', 'improvement idea', 'improvement ideas', 'Richard'],
   ['clips', 'content', 'Short waiting for your clips', 'Shorts waiting for your clips', 'OpenArt'],
@@ -1677,6 +1693,11 @@ $('#contentTop').addEventListener('submit', e => {
   if (f.dataset.cform === 'batch') { producing = true; renderContent(); contentAct(`/api/content/${pid}/batch`, {notes:v}, 'Calina is writing the batch. It takes a few minutes.'); }
   else contentAct(`/api/content/${pid}/review`, {stats:v}, 'Calina is writing the learning note.');
   f.querySelector('input').value = '';
+});
+$('#contentTop').addEventListener('click', e => {
+  const pick = e.target.closest('[data-vpick]'), make = e.target.closest('[data-vsamples]');
+  if (pick) contentAct(`/api/project/${pick.dataset.pid}/voice`, {id: pick.dataset.vpick}, 'Voice chosen.');
+  else if (make) { contentAct(`/api/project/${make.dataset.vsamples}/voice-samples`, {}, 'Making the voice samples.'); }
 });
 $('#episodes').addEventListener('click', e => {
   const c = e.target.closest('[data-copy]');
