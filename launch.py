@@ -24,7 +24,7 @@ REPO = "Mismail933/agent-hq"
 BRANCH = "main"
 
 # Never overwritten by an update: your key, your data, and the launcher itself
-KEEP = {".env", "hq.db", "briefs", "plans", "content", ".installed", "START-HERE.bat", "STOP", "settings_local.py"}
+KEEP = {".env", "hq.db", "briefs", "plans", "content", ".installed", "START-HERE.bat", "STOP", "settings_local.py", ".atlas-cloud-skip"}
 
 
 def say(msg=""):
