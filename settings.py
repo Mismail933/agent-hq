@@ -86,6 +86,11 @@ ATLAS_ENGINE = "claude_code"
 ATLAS_CLAUDE_MODEL = "opus"      # Claude Code model for Atlas; None = your Claude Code default
 ATLAS_TIMEOUT_SECONDS = 300      # longest Atlas may take for one reply
 ATLAS_MAX_TURNS = 20             # most steps (checks, notes) Atlas may take for one reply
+# Cloud Atlas (atlas_cloud.py): when your plan limit is reached or Claude Code is signed out, Atlas answers from a cloud
+# routine on Sonnet, with a private GitHub repo as the mailbox. Needs the repo below and the routine's URL + token (.env).
+ATLAS_CLOUD = True
+ATLAS_CLOUD_REPO = ""            # e.g. "https://github.com/Mismail933/atlas-hq-private.git" (PRIVATE repo, never the public one)
+ATLAS_CLOUD_TIMEOUT_SECONDS = 600  # longest to wait for a cloud reply
 
 # ---- What you want from the business ----------------------------------------
 # Vera judges every idea against these. Change them to match your goals.

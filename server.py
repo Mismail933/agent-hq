@@ -41,6 +41,7 @@ def load_env():
 load_env()
 import agents             # noqa: E402
 import atlas_engine       # noqa: E402
+import atlas_cloud        # noqa: E402
 import workers            # noqa: E402
 import lnd                # noqa: E402
 import production         # noqa: E402
@@ -313,25 +314,56 @@ def scheduler():
         time.sleep(600)
 
 
+LIMIT_NOTE = [""]
+LIMIT_UNTIL = [0.0]   # while Atlas's plan limit is reached, skip Claude Code on this computer until this time
+CLOUD_REASONS = ("isn't installed", "isn't signed in")
+
+
 def ask_atlas(text):
-    """Atlas in Claude Code when available; the small in-app Atlas on the API key otherwise."""
+    """Atlas in Claude Code when available; when the plan limit is reached (or he's signed out) Atlas in the cloud on
+    Sonnet; the small in-app Atlas on the API key only as the last resort."""
     with LOCK:
         news = NEWS[:]
         NEWS.clear()
-    if atlas_engine.engine() == "claude_code":
-        prompt = text
-        if news:
-            prompt = ("[Office updates the system posted in your name since your last reply; the owner has seen them]\n"
-                      + "\n\n".join(news) + "\n\n[The owner's message]\n" + text)
+    if atlas_engine.engine() != "claude_code":
+        return ATLAS.chat(text)
+    prompt = text
+    if news:
+        prompt = ("[Office updates the system posted in your name since your last reply; the owner has seen them]\n"
+                  + "\n\n".join(news) + "\n\n[The owner's message]\n" + text)
+    why = None
+    if time.time() < LIMIT_UNTIL[0]:
+        why = LIMIT_NOTE[0] or "Claude plan limit reached"
+    else:
         try:
             reply, info = atlas_engine.ask(prompt)
             cp.log("Atlas", "model_call", None, info)
             return reply
         except atlas_engine.Unavailable as e:
-            cp.log("Atlas", "halted", None, {"reason": f"Claude Code unavailable, backup Atlas answered: {e}"})
+            reset = atlas_cloud.limit_reset(str(e))
+            if reset:
+                LIMIT_UNTIL[0], LIMIT_NOTE[0] = reset, atlas_cloud.limit_note(str(e))
+            if reset or any(r in str(e) for r in CLOUD_REASONS):
+                why = LIMIT_NOTE[0] if reset else str(e)
+            else:
+                cp.log("Atlas", "halted", None, {"reason": f"Claude Code unavailable, backup Atlas answered: {e}"})
+                print("Atlas via Claude Code unavailable:", e, flush=True)
+                return f"_(Backup Atlas answering: Claude Code isn't available right now. {e})_\n\n" + (ATLAS.chat(text) or "")
+            cp.log("Atlas", "halted", None, {"reason": f"Claude Code unavailable, cloud Atlas answers: {e}"})
             print("Atlas via Claude Code unavailable:", e, flush=True)
-            return f"_(Backup Atlas answering: Claude Code isn't available right now. {e})_\n\n" + (ATLAS.chat(text) or "")
-    return ATLAS.chat(text)
+    if atlas_cloud.configured():
+        try:
+            reply, info = atlas_cloud.ask(prompt, why)
+            cp.log("Atlas", "model_call", None, info)
+            with LOCK:   # so the Atlas on this computer knows what happened while he was away
+                NEWS.append("While your plan limit was reached, the cloud Atlas answered the owner.\nOwner: " + text[:600]
+                            + "\nCloud Atlas: " + reply[:1500])
+            return "_(Cloud Atlas answering: " + (why or "Claude Code isn't available") + ")_\n\n" + reply
+        except atlas_cloud.CloudUnavailable as e:
+            cp.log("Atlas", "halted", None, {"reason": f"Cloud Atlas unavailable, backup Atlas answered: {e}"})
+            print("Cloud Atlas unavailable:", e, flush=True)
+            return f"_(Backup Atlas answering: {why}. Cloud Atlas isn't available either: {e})_\n\n" + (ATLAS.chat(text) or "")
+    return f"_(Backup Atlas answering: {why}. Cloud Atlas isn't set up yet.)_\n\n" + (ATLAS.chat(text) or "")
 
 
 def run_chat(text):
@@ -421,7 +453,7 @@ class Handler(BaseHTTPRequestHandler):
                 "limits": cp.limits_view(),
                 "scouting": agents.SCOUTING.locked(),
                 "last_scout": cp.last_event_time("scout_done", "Doulya"),
-                "chat": chat, "busy": busy, "atlas_engine": atlas_engine.engine(),
+                "chat": chat, "busy": busy, "atlas_engine": atlas_engine.engine(), "atlas_cloud": atlas_cloud.configured(),
                 "spend_today": round(cp.spend_today(), 4),
                 "daily_cap": settings.DAILY_AI_BUDGET_USD,
                 "idea_cap": settings.PER_IDEA_BUDGET_USD,
@@ -710,6 +742,11 @@ def prepare_atlas():
         print(f"  Atlas's folder: {atlas_engine.HOME}\n", flush=True)
     except Exception as e:
         print("  Atlas setup failed:", repr(e), flush=True)
+    finally:
+        try:
+            atlas_cloud.offer_setup()
+        except Exception as e:
+            print("  Cloud Atlas setup failed:", repr(e), flush=True)
 
 
 class Server(ThreadingHTTPServer):

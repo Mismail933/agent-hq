@@ -52,6 +52,18 @@ Agents never spend money without the owner's explicit approval.
   journal or requests. At startup, if the CLI isn't signed in, the START-HERE window offers `claude auth login`.
   Office announcements (`atlas_says`) are queued in `NEWS` and prepended to Atlas's next prompt.
   Blocked tool calls are logged as `blocked_tools` on Atlas's `model_call` events.
+- `atlas_cloud.py` (2.15.0): cloud Atlas, the stand-in when Claude Code on the PC can't answer. `server.ask_atlas` tries local
+  Opus first; on a plan-limit error ("session limit ... resets 2:20pm (Asia/Beirut)", parsed into `LIMIT_UNTIL`, so later messages skip
+  the local call until the reset), "isn't installed" or "isn't signed in", it uses the cloud instead; any other failure still goes to
+  the API backup (as does a cloud failure). The mailbox is a **private** GitHub repo (`settings.ATLAS_CLOUD_REPO`; the company repo is
+  public, so never use it): the office writes `snapshot/` (hq status, inbox, spend, plans, episodes, lnd, limits output), `briefs/`,
+  `plans/`, `journal/`, `ROLE.md` (= atlas/CLAUDE.md), `CLOUD.md` (= atlas/CLOUD.md), `conversation.md` and `inbox/<id>.json`, pushes,
+  then POSTs the routine's API trigger (`ATLAS_CLOUD_URL` + `ATLAS_CLOUD_TOKEN` in .env; START-HERE asks for them once, Enter
+  skips and writes `.atlas-cloud-skip`). The routine (Sonnet, set in the routine; clone of the private repo; prompt: "follow CLOUD.md")
+  pushes `outbox/<id>.json` = reply + `actions` + journal/request notes. The office runs the actions through `hq.py` (allowed verbs =
+  `atlas_cloud.ACTIONS`, same guardrails), appends the journal notes to Atlas-HQ, and queues a NEWS item so local Atlas knows.
+  Reply takes 1-3 minutes. Routines draw on the plan or credits ("usage credits" = overage), so check they're on. Test with
+  `HQ_ATLAS_CLOUD_FAKE=1 HQ_ATLAS_CLOUD_REPO=<local bare repo>` (a fake routine answers; see how ask_atlas was tested).
 - `workers.py` (2.6.0): Doulya, Sage, Vera, Serge run on the owner's subscription via one-shot
   `claude -p --no-session-persistence --system-prompt <agent prompt> --tools <only theirs> --allowedTools <same>
   [--json-schema <their submit tool's schema>]` in `~/Agent-HQ-workers/<agent>/`. Structured answers come back in
