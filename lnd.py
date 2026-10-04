@@ -19,6 +19,7 @@ BRANCH = "lnd"
 CLONE = Path.home() / ".agent-hq" / "lnd"
 LOCK = threading.Lock()
 STATUS = {"last_sync": None, "error": None, "pending_push": False}
+REPORT = {}   # Richard's latest day report (focus, research counts, what he checked, repo watch)
 
 
 def _git(*args, cwd=None, timeout=120):
@@ -51,6 +52,7 @@ def sync():
                 for idea in day.get("ideas") or []:
                     if idea.get("id") and cp.add_lnd_idea(idea, day.get("date", f.stem), day.get("note", "")):
                         new += 1
+            _load_report()
             if new:
                 cp.log("Richard", "lnd_ideas_arrived", None, {"count": new})
             if STATUS["pending_push"]:
@@ -60,6 +62,17 @@ def sync():
         except Exception as e:
             STATUS["error"] = str(e)[:300]
             raise
+
+
+def _load_report():
+    try:
+        day = json.loads((CLONE / "ideas" / "latest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    keep = ("date", "focus", "note", "research", "new_today", "checked", "repo_watch")
+    REPORT.clear()
+    REPORT.update({k: day[k] for k in keep if k in day})
+    REPORT["idea_count"] = len(day.get("ideas") or [])
 
 
 def _push_feedback():

@@ -171,6 +171,13 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .mini svg{width:14px;height:14px}
 .scoutline{font-family:var(--mono);font-size:12px;color:var(--ink-2);padding:8px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
 .scoutline b{color:#FCD34D;font-weight:400}
+.lrep{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--ink-2)}
+.lrep .st{font-family:var(--mono);font-size:12px;display:flex;flex-wrap:wrap;gap:6px 14px}
+.lrep .st b{color:var(--cyan-ink);font-weight:400}
+.lrep details summary{cursor:pointer;color:var(--ink);font-family:var(--mono);font-size:12px;min-height:28px;display:flex;align-items:center}
+.lrep ul{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.lrep a{color:var(--cyan-ink)}
+.lrep .tier{font-family:var(--mono);font-size:11px;border:1px solid var(--line-2);border-radius:3px;padding:0 5px;margin-right:6px;color:var(--ink)}
 .inbox{list-style:none;margin:0;padding:0}
 .inbox li.empty{display:block;border:0;background:none}
 .inbox li{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:7px;border-left:2px solid #FBBF24;background:rgba(251,191,36,.03)}
@@ -392,7 +399,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
       </div>
       <div class="cb" id="p-judged" hidden><ul class="ideas" id="ideas"></ul></div>
       <div class="cb" id="p-plans" hidden><ul class="inbox" id="plans"></ul></div>
-      <div class="cb" id="p-lnd" hidden><div class="scoutline"><span id="lndInfo" style="flex:1">Richard hasn't sent ideas yet</span><button class="mini" id="lndBtn" type="button">Check now</button></div><ul class="inbox" id="lndList"></ul></div>
+      <div class="cb" id="p-lnd" hidden><div class="scoutline"><span id="lndInfo" style="flex:1">Richard hasn't sent ideas yet</span><button class="mini" id="lndBtn" type="button">Check now</button></div><div class="lrep" id="lndReport" hidden></div><ul class="inbox" id="lndList"></ul></div>
       <div class="cb" id="p-content" hidden><div class="ctop" id="contentTop"></div><ul class="inbox" id="episodes"></ul></div>
     </section>
 
@@ -1120,7 +1127,7 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
-let lndIdeas = [], lndKey = '', lndStatus = {}, waitingLnd = 0, production = {};
+let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
@@ -1241,6 +1248,21 @@ function epActionsBase(e) {
   if (e.status === 'published') return '<p class="src">On the channel.</p>';
   return '';
 }
+function lndLink(url, text) { return /^https?:\/\//.test(url || '') ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text || url)}</a>` : esc(text || ''); }
+function renderLndReport(r) {
+  const box = $('#lndReport');
+  if (!r || !r.date) { box.hidden = true; return; }
+  const rs = r.research || {}, checked = r.checked || [], repos = r.repo_watch || [], fresh = r.new_today || [];
+  const stats = [`Report <b>${esc(r.date)}</b>`, r.focus ? `focus <b>${esc(r.focus)}</b>` : '',
+    rs.searches != null ? `<b>${esc(rs.searches)}</b> searches` : '', rs.pages_read != null ? `<b>${esc(rs.pages_read)}</b> pages read` : '',
+    rs.minutes != null ? `<b>${esc(rs.minutes)}</b> min` : '', `<b>${checked.length}</b> sources checked`].filter(Boolean).join('<span>·</span>');
+  let h = `<div class="st">${stats}</div>${r.note ? `<div>${esc(r.note)}</div>` : ''}`;
+  if (fresh.length) h += `<details open><summary>New since last run (${fresh.length})</summary><ul>${fresh.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
+  if (repos.length) h += `<details open><summary>Repo watch (${repos.length})</summary><ul>${repos.map(x => `<li><span class="tier">${esc(x.verdict || '?')}</span>${lndLink(x.url, x.name)} · ${esc(x.licence || '?')}${x.stars != null ? ' · ★' + esc(x.stars) : ''}${x.last_commit ? ' · ' + esc(x.last_commit) : ''}<br>${esc(x.fit || '')}${x.why ? ' · ' + esc(x.why) : ''}</li>`).join('')}</ul></details>`;
+  if (checked.length) h += `<details><summary>What I checked (${checked.length})</summary><ul>${checked.map(x => `<li><span class="tier">${esc(x.tier || '?')}</span>${lndLink(x.url, x.title)} · ${esc(x.result || '')}${x.why ? ' · ' + esc(x.why) : ''}</li>`).join('')}</ul></details>`;
+  if ((rs.gaps || []).length) h += `<details><summary>Looked for, didn't find (${rs.gaps.length})</summary><ul>${rs.gaps.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
+  box.innerHTML = h; box.hidden = false;
+}
 const LND_STATUS = {new:'Waiting for you', approved:'Yes · with Atlas', declined:'No'};
 function renderLnd() {
   const waiting = lndIdeas.filter(i => i.status === 'new').length;
@@ -1249,12 +1271,13 @@ function renderLnd() {
   $('#lndInfo').innerHTML = st.error ? `<b style="color:#FDA4AF">Couldn't reach Richard's log:</b> ${esc(short(st.error, 90))}`
     : st.last_sync ? `Richard works in the cloud every morning. Last checked <b>${new Date(st.last_sync * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}</b>${st.pending_push ? ' · sending your answers…' : ''}`
     : 'Richard works in the cloud every morning. Checking his log…';
+  renderLndReport(lndReport);
   const order = [...lndIdeas.filter(i => i.status === 'new'), ...lndIdeas.filter(i => i.status !== 'new')];
   $('#lndList').innerHTML = order.length ? order.map(i => { const d = i.data || {};
     return `<li class="ep" data-lid="${esc(i.id)}"><div class="ptop"><span>Richard · ${esc(i.day)} · ${esc(d.area || '')} · effort ${esc(d.effort || '?')}</span><span class="pill ${i.status === 'approved' ? 'approve' : i.status === 'declined' ? 'reject' : 'needs_more_data'}">${esc(LND_STATUS[i.status] || i.status)}</span></div>
       <span class="t">${esc(d.title || i.id)}</span>
       ${i.status === 'new' ? `<p><b style="color:var(--ink)">Problem:</b> ${esc(d.problem || '')}</p><p><b style="color:var(--ink)">Proposal:</b> ${esc(d.proposal || '')}</p>
-      <p><b style="color:var(--ink)">Gain:</b> ${esc(d.gain || '')}</p>${d.risks ? `<p><b style="color:var(--ink)">Risks:</b> ${esc(d.risks)}</p>` : ''}
+      <p><b style="color:var(--ink)">Gain:</b> ${esc(d.gain || '')}</p>${d.test ? `<p><b style="color:var(--ink)">How to test:</b> ${esc(d.test)}</p>` : ''}${d.confidence ? `<p><b style="color:var(--ink)">Confidence:</b> ${esc(d.confidence)}${d.confidence_why ? ' · ' + esc(d.confidence_why) : ''}</p>` : ''}${d.risks ? `<p><b style="color:var(--ink)">Risks:</b> ${esc(d.risks)}</p>` : ''}
       ${(d.links || []).length ? `<div class="src">${d.links.map(l => /^https?:\/\//.test(l.url || '') ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || l.url)}</a>` : '').join(' · ')}</div>` : ''}
       <div class="acts"><button class="btn sm" type="button" data-lact="yes">Yes, to Atlas</button><button class="btn sm ghost" type="button" data-lact="no">No</button></div>
       <form class="why" hidden><input type="text" maxlength="1000" placeholder="Why not? (teaches Richard)" aria-label="Reason"><button class="btn sm ghost" type="submit">Confirm</button></form>`
@@ -1457,7 +1480,7 @@ async function pollOnce() {
   renderLimits();
   production = s.production || {}; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production);
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
-  lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus);
+  lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
   planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }

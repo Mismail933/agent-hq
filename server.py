@@ -377,7 +377,7 @@ class Handler(BaseHTTPRequestHandler):
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
                 "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(),
                 "rendering": RENDERING["episode"],
-                "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS,
+                "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "production": {p["id"]: agents.production_summary(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
                 "engines": {a: workers.engine(a) for a in cp.WORKERS},
