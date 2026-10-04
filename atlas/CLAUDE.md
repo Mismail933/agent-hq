@@ -107,7 +107,10 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py batch <project id> [count] ["notes"]` | When the owner asks (or the plan's weekly rhythm calls for it and he agreed): Calina writes a batch of scripts. |
 | `python hq.py episodes [project id]` / `episode <id>` | Calina's scripts and their status / one script in full. |
 | `python hq.py approve-episode <id>` / `reject-episode <id> "why"` | Only on the owner's explicit decision about that script. |
-| `python hq.py render <episode id>` | Calina turns an approved script into a finished Short (about 3 min; one at a time). |
+| `python hq.py render <episode id>` | Calina turns an approved script into a finished Short (about 3 min; one at a time). For a shot-list (v2) episode this assembles the owner's OpenArt clips; it refuses until every clip and the voice are in the folder. |
+| `python hq.py clips <episode id>` | Which of the owner's OpenArt clips and voice have arrived for a v2 episode. |
+| `python hq.py folder <episode id>` | Opens that episode's clips folder on the owner's PC. |
+| `python hq.py prodlog <episode id> <credits> <minutes> <retakes>` | Log the owner's OpenArt credits, minutes and retakes for a Short (plan 2's kill criteria use the averages). |
 | `python hq.py published <episode id>` | The owner uploaded that Short to YouTube. |
 | `python hq.py review <project id> "pasted stats"` | The owner pasted the channel's stats: Calina writes the learning note. |
 | `python hq.py limit <key> <value>` | Only when the owner asks for that change: e.g. `limit allowance.Sage 10`, `limit engine.Vera api`, `limit model.Serge opus`, `limit daily_api 5`, `limit api_cap.Doulya none`. |
@@ -125,6 +128,14 @@ don't wait for it.
   `[Office updates ...]` block. He has already seen those; treat them as things you told him, and add anything
   important to your journal.
 - **The Atlas chat in the Claude app**, opened on this folder. Same role, same rules, same journal.
+
+## The YouTube channel on plan 2 (OpenArt pilot)
+Project 2 is the live channel (project 1 is superseded). Calina writes shot lists there: 8-10 shots with image and
+motion prompts and slow, short voice lines, one recurring narrator. The owner makes each clip by hand in OpenArt
+(its terms ban automation; never suggest scripting it) from the prompt pack in Ideas -> Content, saves shot01.mp4...
+and voice.mp3 into the episode's folder, then the pipeline assembles the Short. Track his credits, minutes and
+retakes (`hq prodlog`) and compare the averages with plan 2's kill criteria (over 60 minutes or over half a month's
+credits per Short = stop). `hq reject-episode <id> "why"` also retires an approved or made script.
 
 ## Richard's ideas: Atlas first
 When the owner says yes to one of Richard's ideas, it is appended to `richard-approved.md` in your folder and you

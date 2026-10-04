@@ -1,7 +1,8 @@
 """
 Shorts pipeline: turns an approved script into a finished YouTube Short, ready for the owner to upload by hand.
 
-    <video-tools python> shorts.py render <episode id> [--voice bm_george]
+    <video-tools python> shorts.py assemble <episode id>   v2: the owner's OpenArt clips + voice -> Short (default)
+    <video-tools python> shorts.py render <episode id>     v1 (legacy): Kokoro voice + archive stills
     <video-tools python> shorts.py check <episode id>
 
 It runs in its own environment (~/.agent-hq-shorts, see settings.SHORTS_PYTHON) because the voice model needs
@@ -29,12 +30,15 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 import control_plane as cp  # noqa: E402
+import production  # noqa: E402
 import settings  # noqa: E402
 
 UA = "AgentHQ-Shorts/1.0 (POV Then History channel; https://github.com/Mismail933/agent-hq)"
 W, H, FPS = 1080, 1920, 30
 MAX_SECONDS = 58.0
 DISCLOSURE = "AI-assisted: script and voice made with AI; facts sourced below."
+DISCLOSURE_V2 = "AI-assisted: script, voice and visuals made with AI; facts sourced below."
+TARGET_WPM, MAX_WPM = 145, 158   # the owner found the first voice too fast
 PD_PREFIXES = ("public domain", "cc0", "pd-", "pd ", "no restrictions")
 CONTENT = ROOT / "content"
 
@@ -294,7 +298,7 @@ def captions(words, path, total):
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
         "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, "
         "MarginV, Encoding",
-        "Style: Cap,Arial Black,86,&H00FFFFFF,&H000000FF,&H00101010,&H78000000,0,0,0,0,100,100,1,0,1,7,3,2,70,70,560,1",
+        "Style: Cap,Arial Black,98,&H00FFFFFF,&H000000FF,&H00101010,&H96000000,0,0,0,0,100,100,1,0,1,8,4,2,60,60,600,1",
         "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text", *lines]) + "\n",
         encoding="utf-8-sig")
 
@@ -378,9 +382,238 @@ def render_episode(eid, voice):
     return {"episode": ep["id"], "title": ep["title"], "video": rel, "seconds": round(secs, 1), "images": len(images)}
 
 
+# ---- v2: assemble the owner's OpenArt clips ------------------------------------------
+def narration_words(d):
+    return [w for s_ in d.get("shots") or [] for w in (s_.get("voice_line") or "").split()]
+
+
+def checklist_v2(ep):
+    d, problems = ep["data"], []
+    shots = d.get("shots") or []
+    if not 6 <= len(shots) <= 12:
+        problems.append(f"The shot list has {len(shots)} shots; it should have 8-10.")
+    words = len(narration_words(d))
+    if not 60 <= words <= 140:
+        problems.append(f"The narration is {words} words; it should be about 85-115 for 35-45 seconds.")
+    if not [x for x in d.get("sources") or [] if str(x.get("url", "")).startswith("http") and x.get("quote")]:
+        problems.append("No source with a link and a supporting quote.")
+    project = cp.get_project(ep["project_id"], with_text=False)
+    for field in ("title", "description"):
+        left = PLACEHOLDER.findall(fill_placeholders(str(d.get(field) or ""), project))
+        if left:
+            problems.append(f"The {field} still has a placeholder: {', '.join(sorted(set(left)))}.")
+    if ep["status"] not in ("approved", "rendered", "published"):
+        problems.append(f"The script is {ep['status'].replace('_', ' ')}, not approved.")
+    st = production.clip_status(ep)
+    if st["missing"]:
+        problems.append("Missing clips: " + ", ".join(f"shot{i:02d}" for i in st["missing"]) + f" (in {st['folder']}).")
+    if not st["voice"]:
+        problems.append(f"Missing the voice: save it as voice.mp3 (or voice01.mp3 ... per shot) in {st['folder']}.")
+    return problems
+
+
+def probe_seconds(ffmpeg, path):
+    ffprobe = str(Path(ffmpeg).with_name("ffprobe.exe" if ffmpeg.lower().endswith(".exe") else "ffprobe"))
+    p = subprocess.run([ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(path)],
+                       capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    try:
+        return float(p.stdout.strip())
+    except ValueError:
+        raise Blocked(f"Can't read {Path(path).name}: is it a real video or audio file?")
+
+
+def build_voice(ffmpeg, ep, folder, words_count):
+    """One clean voice.wav, slowed down if it's faster than the owner can follow. Returns (seconds, tempo applied)."""
+    mode, src = production.find_voice(ep)
+    raw = folder / "_voice_raw.wav"
+    if mode == "one":
+        run([ffmpeg, "-y", "-loglevel", "error", "-i", str(src), "-ac", "1", "-ar", "48000", str(raw)])
+    else:   # one file per shot: join them with a short breath between lines
+        listing = folder / "_voices.txt"
+        parts = []
+        for i in sorted(src):
+            part = folder / f"_v{i:02d}.wav"
+            run([ffmpeg, "-y", "-loglevel", "error", "-i", str(src[i]), "-ac", "1", "-ar", "48000",
+                 "-af", "apad=pad_dur=0.18", str(part)])
+            parts.append(f"file '{part.name}'")
+        listing.write_text("\n".join(parts) + "\n", encoding="utf-8")
+        run([ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing.name, "-c", "copy", raw.name], cwd=folder)
+    secs = probe_seconds(ffmpeg, raw)
+    wpm = words_count / (secs / 60)
+    tempo = 1.0
+    if wpm > MAX_WPM:
+        tempo = max(0.85, TARGET_WPM / wpm)
+        say(f"  the voice reads at {wpm:.0f} words a minute: slowing it to {wpm * tempo:.0f}")
+    run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), "-af", f"atempo={tempo:.3f},loudnorm=I=-16:TP=-1.5:LRA=11",
+         "-ar", "48000", str(folder / "voice.wav")])
+    for f in folder.glob("_v*.wav"):
+        f.unlink(missing_ok=True)
+    raw.unlink(missing_ok=True)
+    (folder / "_voices.txt").unlink(missing_ok=True)
+    return probe_seconds(ffmpeg, folder / "voice.wav"), tempo, wpm
+
+
+def norm(w):
+    return re.sub(r"[^a-z0-9]", "", w.lower())
+
+
+def word_timings(ffmpeg, wav, script_words, secs):
+    """A start/end for every script word. faster-whisper when installed; otherwise pauses + word length."""
+    heard = []
+    try:
+        from faster_whisper import WhisperModel
+        model = WhisperModel("base.en", device="cpu", compute_type="int8")
+        segments, _ = model.transcribe(str(wav), language="en", word_timestamps=True, vad_filter=False)
+        heard = [(w.word.strip(), w.start, w.end) for seg in segments for w in (seg.words or [])]
+        say(f"  timed {len(heard)} heard words with faster-whisper")
+    except ImportError:
+        say("  faster-whisper isn't installed: timing captions from the voice's pauses")
+    except Exception as e:
+        say(f"  faster-whisper failed ({type(e).__name__}): timing captions from the voice's pauses")
+    out = [None] * len(script_words)
+    if heard:
+        import difflib
+        a, b = [norm(w) for w in script_words], [norm(w) for w, _, _ in heard]
+        for blk in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks():
+            for k in range(blk.size):
+                _, st, en = heard[blk.b + k]
+                out[blk.a + k] = [st, en]
+    if not any(out):   # no recogniser: spread words over the speech, anchored on the pauses
+        out = spread_by_pauses(ffmpeg, wav, script_words, secs)
+    # fill words the recogniser missed, between their neighbours
+    known = [i for i, t in enumerate(out) if t]
+    for i in range(len(out)):
+        if out[i]:
+            continue
+        prev = max([k for k in known if k < i], default=None)
+        nxt = min([k for k in known if k > i], default=None)
+        t0 = out[prev][1] if prev is not None else 0.0
+        t1 = out[nxt][0] if nxt is not None else secs
+        gap = [k for k in range((prev if prev is not None else -1) + 1, nxt if nxt is not None else len(out))]
+        step = (t1 - t0) / max(1, len(gap))
+        for j, k in enumerate(gap):
+            out[k] = [t0 + j * step, t0 + (j + 1) * step]
+        known = [i for i, t in enumerate(out) if t]
+    return [{"w": w, "s": t[0], "e": t[1]} for w, t in zip(script_words, out)]
+
+
+def spread_by_pauses(ffmpeg, wav, script_words, secs):
+    p = subprocess.run([ffmpeg, "-i", str(wav), "-af", "silencedetect=noise=-35dB:d=0.22", "-f", "null", "-"],
+                       capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    starts = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", p.stderr)]
+    ends = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", p.stderr)]
+    speech, t = [], 0.0
+    for a, b in zip(starts, ends):
+        if a - t > 0.15:
+            speech.append([t, a])
+        t = b
+    if secs - t > 0.15:
+        speech.append([t, secs])
+    speech = speech or [[0.0, secs]]
+    total_speech = sum(b - a for a, b in speech)
+    weights = [len(w) + 2 for w in script_words]
+    per_unit = total_speech / sum(weights)
+    out, seg, pos = [], 0, speech[0][0]
+    for w in weights:
+        dur = w * per_unit
+        while seg < len(speech) - 1 and pos + dur > speech[seg][1] + 0.05:
+            seg += 1
+            pos = max(pos, speech[seg][0])
+        out.append([pos, pos + dur])
+        pos += dur
+    return out
+
+
+def cut_clip(ffmpeg, src, dst, seconds):
+    """Fit one OpenArt clip to its narration: trim it, or stretch it (up to 1.3x) and hold the last frame."""
+    length = probe_seconds(ffmpeg, src)
+    k = 1.0 if length >= seconds else min(1.3, seconds / length)
+    hold = max(0.0, seconds - length * k)
+    vf = (f"setpts={k:.4f}*PTS,scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},format=yuv420p"
+          + (f",tpad=stop_mode=clone:stop_duration={hold:.3f}" if hold > 0.01 else ""))
+    run([ffmpeg, "-y", "-loglevel", "error", "-i", str(src), "-an", "-vf", vf, "-t", f"{seconds:.3f}",
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(dst)])
+
+
+def assemble_episode(eid):
+    ep = cp.get_episode(int(eid))
+    if not ep:
+        raise Blocked(f"No episode {eid}.")
+    if not production.is_v2(ep):
+        raise Blocked("This script has no shot list: it's a v1 script (use render).")
+    problems = checklist_v2(ep)
+    if problems:
+        raise Blocked(" ".join(problems))
+    d = ep["data"]
+    folder = production.episode_folder(ep)
+    ffmpeg = find_ffmpeg()
+    t0 = time.time()
+    shots = sorted(d["shots"], key=lambda x: x.get("n", 0))
+    words = narration_words(d)
+    say(f"Episode #{ep['id']}: {ep['title']} ({len(shots)} shots, {len(words)} words)")
+    say("Voice...")
+    secs, tempo, wpm = build_voice(ffmpeg, ep, folder, len(words))
+    if secs > MAX_SECONDS:
+        raise Blocked(f"The narration is {secs:.0f} seconds at a clear pace; a Short must stay under 60. Shorten the script.")
+    timed = word_timings(ffmpeg, folder / "voice.wav", words, secs)
+    # each shot runs from its first word to the next shot's first word
+    starts, i = [], 0
+    for sh in shots:
+        starts.append(timed[i]["s"] if i < len(timed) else secs)
+        i += len((sh.get("voice_line") or "").split())
+    starts[0] = 0.0
+    total = min(secs + 0.5, 59.5)
+    bounds = starts + [total]
+    say("Clips...")
+    clips = production.find_clips(ep)
+    seg_dir = folder / "_segments"
+    seg_dir.mkdir(exist_ok=True)
+    listing = []
+    for k, sh in enumerate(shots):
+        dur = max(0.4, bounds[k + 1] - bounds[k])
+        seg = seg_dir / f"seg{k:02d}.mp4"
+        cut_clip(ffmpeg, clips[k + 1], seg, dur)
+        listing.append(f"file '{seg.name}'")
+    (seg_dir / "list.txt").write_text("\n".join(listing) + "\n", encoding="utf-8")
+    run([ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy", "../_video.mp4"], cwd=seg_dir)
+    captions(timed, folder / "captions.ass", secs)
+    say("Assemble...")
+    run([ffmpeg, "-y", "-loglevel", "error", "-i", "_video.mp4", "-i", "voice.wav", "-vf", "subtitles=captions.ass",
+         "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
+         "-t", f"{total:.2f}", "-movflags", "+faststart", "short.mp4"], cwd=folder)
+    shutil.rmtree(seg_dir, ignore_errors=True)
+    (folder / "_video.mp4").unlink(missing_ok=True)
+
+    project = cp.get_project(ep["project_id"], with_text=False)
+    description = fill_placeholders((d.get("description") or "").strip(), project).replace(DISCLOSURE, "").rstrip()
+    if DISCLOSURE_V2 not in description:
+        description += f"\n\n{DISCLOSURE_V2}"
+    if d.get("hashtags") and not all(h in description for h in d["hashtags"]):
+        description += "\n\n" + " ".join(d["hashtags"])
+    (folder / "title.txt").write_text(fill_placeholders(d.get("title", ""), project)[:100] + "\n", encoding="utf-8")
+    (folder / "description.txt").write_text(description + "\n", encoding="utf-8")
+    (folder / "sources.txt").write_text(
+        "SCRIPT SOURCES\n" + "\n".join(f"- {x.get('publisher', '')} {x.get('url', '')}\n  \"{x.get('quote', '')}\"" for x in d.get("sources") or [])
+        + "\n\nVISUALS\nAI-generated by the owner in OpenArt (images + Kling 3.0 image-to-video) from these prompts:\n"
+        + "\n".join(f"{sh.get('n')}. IMAGE: {sh.get('image_prompt', '')}\n   MOTION: {sh.get('motion_prompt', '')}" for sh in shots) + "\n",
+        encoding="utf-8")
+    prod = d.get("production") or {}
+    log = folder.parent.parent / "production-log.csv"
+    if not log.exists():
+        log.write_text("date,episode,title,seconds,shots,words_per_minute,voice_tempo,credits,minutes,retakes\n", encoding="utf-8")
+    with log.open("a", encoding="utf-8") as f:
+        f.write(f"{time.strftime('%Y-%m-%d')},{ep['id']},\"{ep['title'].replace(chr(34), '')}\",{secs:.1f},{len(shots)},"
+                f"{wpm * tempo:.0f},{tempo:.2f},{prod.get('credits', '')},{prod.get('minutes', '')},{prod.get('retakes', '')}\n")
+    rel = folder.relative_to(ROOT).as_posix() + "/short.mp4"
+    cp.update_episode(ep["id"], status="rendered", video_path=rel)
+    say(f"Done in {time.time() - t0:.0f}s: {rel}")
+    return {"episode": ep["id"], "title": ep["title"], "video": rel, "seconds": round(secs, 1), "images": len(shots),
+            "wpm": round(wpm * tempo), "tempo": round(tempo, 2)}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["render", "check"])
+    ap.add_argument("command", choices=["assemble", "render", "check"])
     ap.add_argument("episode", type=int)
     ap.add_argument("--voice", default=getattr(settings, "SHORTS_VOICE", "bm_george"))
     a = ap.parse_args()
@@ -388,8 +621,11 @@ def main():
     try:
         if a.command == "check":
             ep = cp.get_episode(a.episode)
-            problems = checklist(ep) if ep else [f"No episode {a.episode}."]
+            problems = (checklist_v2(ep) if production.is_v2(ep) else checklist(ep)) if ep else [f"No episode {a.episode}."]
             print(json.dumps({"ok": not problems, "problems": problems}))
+            return
+        if a.command == "assemble":
+            print("RESULT " + json.dumps(assemble_episode(a.episode)))
             return
         print("RESULT " + json.dumps(render_episode(a.episode, a.voice)))
     except Blocked as e:

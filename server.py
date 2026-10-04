@@ -43,6 +43,7 @@ import agents             # noqa: E402
 import atlas_engine       # noqa: E402
 import workers            # noqa: E402
 import lnd                # noqa: E402
+import production         # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -159,8 +160,10 @@ RENDERING = {"lock": threading.Lock(), "episode": None}
 
 
 def with_upload_text(episodes):
-    """Made videos carry their title and description, ready to copy into YouTube."""
+    """Made videos carry their title and description, ready to copy into YouTube; shot lists carry their clip status."""
     for e in episodes:
+        if production.is_v2(e) and e["status"] in ("approved", "rendered"):
+            e["clips"] = production.clip_status(e)
         if e["video_path"]:
             folder = (ROOT / e["video_path"]).parent
             e["upload"] = {k: (folder / f"{k}.txt").read_text(encoding="utf-8").strip() if (folder / f"{k}.txt").exists() else ""
@@ -183,7 +186,8 @@ def run_render(eid):
             py = shorts_python()
             if not py:
                 raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
-            p = subprocess.run([py, str(ROOT / "shorts.py"), "render", str(eid)], cwd=ROOT, capture_output=True, text=True,
+            mode = "assemble" if e and production.is_v2(e) else "render"
+            p = subprocess.run([py, str(ROOT / "shorts.py"), mode, str(eid)], cwd=ROOT, capture_output=True, text=True,
                                encoding="utf-8", errors="replace", timeout=1800,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             lines = (p.stdout or "").splitlines()
@@ -193,7 +197,10 @@ def run_render(eid):
                 raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
             r = json.loads(result)
             cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
-            atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {r['images']} public-domain images).\n\n"
+            pace = (f" The voice still reads at {r['wpm']} words a minute even after slowing it: lower the speed in OpenArt's "
+                    "text-to-speech next time." if r.get("wpm", 0) > 158 else "")
+            what = f"{r['images']} clips" if mode == "assemble" else f"{r['images']} public-domain images"
+            atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {what}).{pace}\n\n"
                        "Watch it in Ideas → Content. If it's good, upload it by hand with the title and description shown "
                        "there, turn on YouTube's altered/synthetic content setting, then click **Mark as published**.")
         except Exception as ex:
@@ -371,6 +378,7 @@ class Handler(BaseHTTPRequestHandler):
                 "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(),
                 "rendering": RENDERING["episode"],
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS,
+                "production": {p["id"]: agents.production_summary(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
                 "engines": {a: workers.engine(a) for a in cp.WORKERS},
                 "limits": cp.limits_view(),
@@ -553,14 +561,37 @@ class Handler(BaseHTTPRequestHandler):
                 eid, action = int(parts[2]), parts[3]
             except (IndexError, ValueError):
                 return self._send(400, {"error": "bad request"})
-            if action == "render":
+            if action == "folder":   # open the episode's clips folder in Explorer, for the owner to drop his OpenArt files
+                e = cp.get_episode(eid)
+                if not e:
+                    return self._send(404, {"error": "No such episode."})
+                folder = production.clips_folder(e)
+                folder.mkdir(parents=True, exist_ok=True)
+                try:
+                    os.startfile(str(folder))   # Windows only
+                except AttributeError:
+                    pass
+                return self._send(200, {"ok": True, "message": f"Opened {folder}"})
+            if action == "log":
+                body = self._json_body()
+                try:
+                    msg = agents.log_production(eid, body.get("credits"), body.get("minutes"), body.get("retakes"))
+                except ValueError:
+                    return self._send(400, {"error": "Credits, minutes and retakes must be numbers."})
+                return self._send(200, {"ok": True, "message": msg})
+            if action in ("render", "assemble"):
                 e = cp.get_episode(eid)
                 if not e or e["status"] not in ("approved", "rendered"):
                     return self._send(409, {"error": "Only an approved script can be made into a video."})
+                if production.is_v2(e):
+                    st = production.clip_status(e)
+                    if not st["ready"]:
+                        missing = [f"shot{i:02d}" for i in st["missing"]] + ([] if st["voice"] else ["voice.mp3"])
+                        return self._send(409, {"error": "Still missing: " + ", ".join(missing) + f". Save them in {st['folder']}."})
                 if RENDERING["lock"].locked():
                     return self._send(409, {"error": f"Calina is already making Short #{RENDERING['episode']}. Try again when it's done."})
                 threading.Thread(target=run_render, args=(eid,), daemon=True).start()
-                return self._send(202, {"ok": True, "message": "Calina is making the video. It takes about 3 minutes."})
+                return self._send(202, {"ok": True, "message": "Calina is putting the Short together. It takes about 2-3 minutes."})
             if action == "published":
                 msg = agents.mark_published(eid)
                 ok = msg.startswith(f"Episode {eid} marked")

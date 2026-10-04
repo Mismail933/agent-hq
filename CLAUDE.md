@@ -75,6 +75,18 @@ Agents never spend money without the owner's explicit approval.
   description.txt (Calina's + disclosure + image credits), sources.txt in content/project-N/videos/ep-NNN/. Python's
   Windows cert store is stale on his PC: shorts.py uses certifi. The office runs it (`run_render`, one at a time),
   serves `/api/video/<id>` with Range, shows title/description to copy, and "Mark as published".
+- Pipeline v2 (2.11.0, plan 2 = project 2, OpenArt): a project with meta `format: "openart_v2"` makes Calina write
+  shot lists (`CALINA_SYSTEM_V2`, `EPISODE_SCHEMA_V2`: 8-10 shots, image + Kling 3.0 motion prompt, <=12-word voice
+  line, one premium hook shot, recurring narrator) and saves `narrator`/`style` in project meta once. The owner makes
+  the clips BY HAND in OpenArt (its terms ban scripts) from the prompt pack in the Content tab and drops shot01.mp4...
+  + voice.mp3 into content/project-N/videos/ep-NNN/clips/ (`production.py`, stdlib, shared by server and shorts.py;
+  "Open folder" uses os.startfile). `shorts.py assemble`: normalises and slows the voice to <=158 wpm (atempo >=0.85),
+  word timings with faster-whisper base.en (installed in ~/.agent-hq-shorts) aligned to the script with difflib,
+  fallback = pauses (silencedetect) + word length; each clip trimmed/stretched (<=1.3x) + last-frame hold to its
+  line, cropped to 1080x1920, big captions, v2 disclosure, sources.txt with the prompts, a row in
+  content/project-N/production-log.csv. Owner logs credits/minutes/retakes per episode (kill criteria). Kokoro + stills
+  (`render`) stay only for v1 episodes. Approved/rendered episodes can be retired (reject with a reason).
+  FFmpeg's drawtext segfaults (fontconfig) on his PC; libass subtitles work.
 - `hq.py`: Atlas's controls. Reads hq.db directly; actions POST to the running office (port in `.port`).
 
 ## How to ship a change

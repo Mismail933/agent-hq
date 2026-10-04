@@ -123,6 +123,26 @@ class _Messages:
                     "kill_criteria": "No paying customer in 6 weeks"}
             return NS(stop_reason="tool_use", usage=_usage(7000, 1500, 0 if fitted else 1),
                       content=[NS(type="tool_use", id=_id(), name="submit_plan", input=plan)])
+        if system.startswith("You are Calina") and "as shot lists" in system:
+            def ep(place, year):
+                lines = [f"It is {year}, and you wake up in {place}.", "The street smells of bread and smoke.",
+                         "A stranger hands you a sealed letter.", "Nobody here can read it but you.",
+                         "Inside is a map to the city's lost well.", "By noon, the whole market is following you.",
+                         "The well is real, and the water is sweet.", "That map still hangs in the museum today."]
+                return {"title": f"POV: {place}, {year}, the lost well", "place": place, "year": year, "hook": lines[0],
+                        "storyline": "A stranger, a letter, a lost well (simulated).", "surprising_fact": "Simulated fact.",
+                        "shots": [{"n": i + 1, "premium": i == 0, "image_prompt": f"Simulated image prompt {i + 1}, 9:16",
+                                   "motion_prompt": f"Simulated motion prompt {i + 1}", "voice_line": l,
+                                   "uses_narrator": i in (0, 5), "source_note": "Example Museum"} for i, l in enumerate(lines)],
+                        "voice_direction": "calm, warm, unhurried",
+                        "sources": [{"url": "https://example.com/source", "quote": "Simulated quote", "publisher": "Example Museum"}],
+                        "description": "Simulated description.\nAI-assisted: script, voice and visuals made with AI; facts sourced below.",
+                        "hashtags": ["#history", "#shorts"]}
+            batch = {"episodes": [ep("Fez", "1350"), ep("Kyoto", "1600"), ep("Lima", "1700")],
+                     "narrator": "A silver-haired woman in a long indigo travelling coat, with a brass compass (simulated).",
+                     "style": "Photoreal, golden-hour light, 35mm film look, vertical 9:16 (simulated).", "batch_note": "Simulated v2 batch."}
+            return NS(stop_reason="tool_use", usage=_usage(9000, 3000, 2),
+                      content=[NS(type="tool_use", id=_id(), name="submit_batch", input=batch)])
         if system.startswith("You are Calina"):
             if "Your job now: read the owner's stats" in system:
                 return NS(stop_reason="end_turn", usage=_usage(3000, 400),
