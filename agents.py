@@ -642,7 +642,10 @@ def calina_batch(project_id, count=None, notes=""):
         count = max(1, min(int(count or settings.CALINA_BATCH_SIZE), 10))
         batch = cp.next_batch(p["id"])
         cp.log("Calina", "batch_started", p["idea_id"], {"project": p["id"], "batch": batch, "count": count})
-        earlier = cp.list_episodes(p["id"], limit=200)
+        # every earlier script for the same channel, including ones from a plan this one replaced, with the owner's notes
+        channel = cp.channel_line(p)
+        same = [q["id"] for q in cp.list_projects(50) if q["id"] == p["id"] or (channel and cp.channel_line(q) == channel)]
+        earlier = sorted((e for q in same for e in cp.list_episodes(q, limit=200)), key=lambda e: e["id"], reverse=True)
         history = "\n".join(f"- #{e['id']} [{e['status']}] {e['data'].get('place', '')}, {e['data'].get('year', '')}: {e['title']}"
                             + (f" (owner: {e['owner_note']})" if e["owner_note"] else "") for e in reversed(earlier)) or "- (none yet)"
         notes_dir = CONTENT / f"project-{p['id']}" / "notes"
