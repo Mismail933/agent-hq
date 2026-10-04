@@ -133,7 +133,8 @@ not in motion or decoration that slows him down.
 - Dark only (`color-scheme: dark`). There is no light mode.
 - One accent: cyan. Magenta and violet are rare secondary accents. Green / amber / red only mean status.
 - Three type voices: Orbitron for labels and titles, Exo 2 for reading, Share Tech Mono for numbers and data.
-- Dense dashboard: KPI row, then a 3-column grid (pipeline, 3D office, Atlas chat) that collapses to 2 and then 1 column.
+- Decisions first: a "Needs you" bar under the header lists everything waiting for the owner; one click opens the right tab on Your desk and highlights the item.
+- Dense dashboard: Needs you, KPI row, then a 3-column grid (Your desk, 3D office over Ops, Atlas chat) that collapses to 2 and then 1 column.
 
 ## Colors
 
@@ -159,7 +160,8 @@ A cold, deep-space palette: near-black blue backgrounds, translucent navy panels
 
 - Page max width 1920px, padding 12-16px, 12px gaps between panels.
 - **KPI row:** 5 columns, 3 under 1100px, 2 under 640px.
-- **Dashboard grid** (`.dash`): 3 columns (pipeline | office | chat 400px) over 2 rows; under 1440px 2 columns; under 900px a single column with fixed panel heights. Panels scroll inside (`.cb { overflow:auto }`); the page itself never scrolls sideways.
+- **Order of importance:** Needs you > KPIs > Your desk (decisions) > Atlas chat > office > Ops. Anything the owner must act on goes on Your desk and gets a Needs-you entry.
+- **Dashboard grid** (`.dash`): "ideas office chat" / "ideas side chat" (Your desk spans the left column, Atlas 400px on the right); under 1440px "ideas chat" / "office side"; under 900px one column: desk, chat, office, ops. The mission pipeline is the first tab of Ops and opens by itself when a mission starts. Panels scroll inside (`.cb { overflow:auto }`); the page itself never scrolls sideways.
 - Panel header (`.ch`): 44px tall, 10-14px padding, bottom hairline.
 - Spacing steps: 6, 8, 10, 12, 14, 22px. Tight inside groups (6-8px), 12-14px between groups.
 
@@ -179,6 +181,7 @@ Flat and luminous, not shadowed. Depth comes from:
 
 ## Components
 
+- **Needs you (`.needs`, `.need`):** one button per kind of waiting item: amber count (red for problems), what it is, who sent it, an arrow. Empty state in green: "All clear". The browser tab title shows the count, e.g. `(3) Agent HQ`. Jumping to an item flashes it once (`.flash`).
 - **Panel (`.card` + `.ch` header + `.cb` body):** the container for everything. Title in Orbitron uppercase cyan with an optional glowing dot (`.blip`) and a mono `small` counter.
 - **Primary button (`.btn`):** cyan border, 16% cyan fill, Orbitron uppercase, 46px tall (`.sm` 36px). Hover: fill to 26% + cyan glow. Disabled: 45% opacity, no glow.
 - **Ghost button (`.btn.ghost`):** for "dismiss/reject"; turns red on hover.
@@ -200,7 +203,8 @@ Flat and luminous, not shadowed. Depth comes from:
 **Do**
 - Build new UI from the existing classes and `:root` tokens. Add a token before adding a new hard-coded color.
 - Keep every clickable target at least 44px on main controls (32-36px only for secondary inline buttons).
-- Keep the visible focus ring (`:focus-visible` 2px `cyan-ink`).
+- Keep the visible focus ring (`:focus-visible` 2px `cyan-ink`). Scrollable panels with only text get `tabindex="0"` and a `role="region"` label.
+- Pressable things shrink slightly on press (`scale(.97)`, 160ms); scrollbars and text selection use the cyan palette.
 - Wrap any looping animation in `prefers-reduced-motion: no-preference`, and keep UI transitions short (~180ms, color/border/shadow only).
 - Use mono + tabular numerals for every number the owner compares.
 - Check new screens at 1920, 1280, 900 and 375px wide.

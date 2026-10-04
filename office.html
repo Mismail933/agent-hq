@@ -31,7 +31,12 @@ body{color:var(--ink);font-family:var(--body);font-size:14px;
     linear-gradient(rgba(34,211,238,.03) 1px, transparent 1px) 0 0/32px 32px,
     linear-gradient(90deg, rgba(34,211,238,.03) 1px, transparent 1px) 0 0/32px 32px,
     var(--bg)}
-button{font:inherit;color:inherit;cursor:pointer;transition:background-color .18s,border-color .18s,color .18s,box-shadow .18s}
+button{font:inherit;color:inherit;cursor:pointer;transition:background-color .18s,border-color .18s,color .18s,box-shadow .18s,transform .16s cubic-bezier(.23,1,.32,1)}
+button:not(:disabled):active{transform:scale(.97)}
+::selection{background:rgba(34,211,238,.35);color:#fff}
+*{scrollbar-width:thin;scrollbar-color:rgba(56,189,248,.38) transparent}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(56,189,248,.3);border-radius:4px}::-webkit-scrollbar-thumb:hover{background:rgba(56,189,248,.5)}
 svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 :focus-visible{outline:2px solid var(--cyan-ink);outline-offset:2px}
 .app{max-width:1920px;margin:0 auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px}
@@ -65,6 +70,30 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .kill.on:hover{background:rgba(52,211,153,.22);box-shadow:0 0 16px rgba(52,211,153,.3)}
 .banner{border:1px solid rgba(244,63,94,.5);background:rgba(244,63,94,.1);color:#FDA4AF;border-radius:4px;padding:10px 14px}
 
+/* ---- Needs you: everything waiting for the owner, one click away ---- */
+.needs{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 14px}
+.needs h2{margin:0;font-family:var(--display);font-weight:700;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--warn-ink, #FCD34D);display:flex;align-items:center;gap:10px;white-space:nowrap}
+.needs h2 .blip{width:7px;height:7px;border-radius:50%;background:#FBBF24;box-shadow:0 0 8px #FBBF24}
+.needs.clear h2{color:#6EE7B7}.needs.clear h2 .blip{background:var(--good);box-shadow:0 0 8px var(--good)}
+.needlist{display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:0}
+.need{min-height:44px;padding:0 14px 0 12px;border:1px solid var(--line-2);border-radius:4px;background:rgba(13,23,41,.7);display:inline-flex;align-items:center;gap:10px;text-align:left}
+.need b{font-family:var(--mono);font-weight:400;font-size:20px;line-height:1;color:#FCD34D;font-variant-numeric:tabular-nums}
+.need span{font-size:13.5px;color:var(--ink);line-height:1.25}
+.need small{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.need svg{width:16px;height:16px;color:var(--ink-2)}
+.need:hover{border-color:var(--cyan);background:rgba(34,211,238,.08);box-shadow:0 0 12px rgba(34,211,238,.18)}
+.need:hover svg{color:var(--cyan-ink)}
+.need.bad b{color:#FDA4AF}
+.allclear{font-size:13.5px;color:var(--ink-2)}
+@media (max-width:640px){
+  .needlist{flex-basis:100%}.need{flex:1 1 100%}
+  .ch{flex-wrap:wrap}.ch .seg{flex-basis:100%;overflow-x:auto;padding-bottom:2px}.ch .seg button{flex:none}
+  .kpis > .kpi:last-child:nth-child(odd){grid-column:1 / -1}
+}
+.flash{animation:flash 1.4s cubic-bezier(.23,1,.32,1)}
+@keyframes flash{0%{box-shadow:inset 0 0 0 2px var(--cyan-ink),0 0 18px rgba(34,211,238,.35)}100%{box-shadow:inset 0 0 0 2px transparent,0 0 0 transparent}}
+.seg .live{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 6px var(--cyan);margin-left:6px;vertical-align:middle}
+
 /* ---- KPI row ---- */
 .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 @media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -80,19 +109,19 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 
 /* ---- Dashboard grid ---- */
 .dash{display:grid;gap:12px;
-  grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) 400px;
-  grid-template-rows:minmax(0,1.1fr) minmax(0,1fr);
-  grid-template-areas:"pipe office chat" "ideas side chat";
-  height:max(760px, calc(100vh - 210px))}
-.a-pipe{grid-area:pipe}.a-office{grid-area:office}.a-chat{grid-area:chat}.a-ideas{grid-area:ideas}.a-side{grid-area:side}
+  grid-template-columns:minmax(0,1.15fr) minmax(0,1.1fr) 400px;
+  grid-template-rows:minmax(0,1.15fr) minmax(0,1fr);
+  grid-template-areas:"ideas office chat" "ideas side chat";
+  height:max(760px, calc(100vh - 270px))}
+.a-office{grid-area:office}.a-chat{grid-area:chat}.a-ideas{grid-area:ideas}.a-side{grid-area:side}
 @media (max-width:1440px){
-  .dash{grid-template-columns:minmax(0,1.35fr) minmax(340px,1fr);grid-template-rows:auto 460px 420px;height:auto;
-    grid-template-areas:"pipe chat" "office chat" "ideas side"}
+  .dash{grid-template-columns:minmax(0,1.35fr) minmax(340px,1fr);grid-template-rows:620px 460px;height:auto;
+    grid-template-areas:"ideas chat" "office side"}
 }
 @media (max-width:900px){
   .dash{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:auto;
-    grid-template-areas:"pipe" "office" "chat" "ideas" "side"}
-  .a-office{height:420px}.a-chat{height:560px}.a-ideas,.a-side{height:380px}
+    grid-template-areas:"ideas" "chat" "office" "side"}
+  .a-ideas{height:600px}.a-office{height:420px}.a-chat{height:540px}.a-side{height:440px}
 }
 
 /* ---- Mission pipeline ---- */
@@ -116,7 +145,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .pnote{font-family:var(--mono);font-size:13px;color:var(--ink-2);border-left:2px solid var(--cyan);padding:6px 10px;background:rgba(34,211,238,.05);overflow-wrap:anywhere}
 .pnote b{color:var(--cyan-ink);font-weight:400}
 .plog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:hidden}
-.plog li{display:grid;grid-template-columns:62px 1fr;gap:8px;font-family:var(--mono);font-size:12.5px;color:var(--ink-2);opacity:.85}
+.plog li{display:grid;grid-template-columns:64px 1fr;gap:8px;font-family:var(--mono);font-size:12.5px;color:var(--ink-2);opacity:.85}
 .plog li b{color:var(--ink);font-weight:400}
 .pmeta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:auto}
 .pmeta div{border-top:1px solid var(--line);padding-top:8px}
@@ -237,8 +266,8 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .chk{display:flex;flex-wrap:wrap;gap:4px}
 .chk span{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;color:var(--ink-2)}
 .chk span.ok{border-color:#34D399;color:#6EE7B7}
-.plog{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2)}
-.plog input{width:84px;min-height:32px;border:1px solid var(--line-2);border-radius:4px;padding:4px 6px;font:inherit;font-size:12.5px;background:rgba(4,8,18,.8);color:var(--ink)}
+.prodlog{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.prodlog input{width:84px;min-height:32px;border:1px solid var(--line-2);border-radius:4px;padding:4px 6px;font:inherit;font-size:12.5px;background:rgba(4,8,18,.8);color:var(--ink)}
 .ep video{width:100%;max-width:300px;aspect-ratio:9/16;background:#000;border:1px solid var(--line-2);border-radius:4px;align-self:center}
 .ep .copy{display:flex;flex-direction:column;gap:4px}
 .ep .copy label{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);text-transform:uppercase}
@@ -319,6 +348,11 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
   <div class="banner" id="offline" hidden>Can't reach the engine. Make sure the Agent HQ window (START-HERE) is still open, then refresh this page.</div>
   <div class="banner" id="nokey" hidden>No API key found. Close this, double-click START-HERE and paste your key when it asks.</div>
 
+  <section class="card needs" id="needs" aria-labelledby="hNeeds">
+    <h2 id="hNeeds"><span class="blip" aria-hidden="true"></span>Needs you</h2>
+    <div class="needlist" id="needList"><span class="allclear">Checking…</span></div>
+  </section>
+
   <section class="kpis" aria-label="Key numbers">
     <div class="card kpi"><span>AI spend today</span><b id="sSpend">$0.000</b><div class="meter" id="sMeterBox"><i id="sMeter"></i></div><small id="sCap">of $0.00 daily cap</small></div>
     <div class="card kpi"><span>Ideas judged</span><b id="sIdeas">0</b><small id="sIdeasSub">0 in progress · 0 in inbox</small></div>
@@ -328,24 +362,6 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
   </section>
 
   <main class="dash">
-    <section class="card a-pipe" aria-labelledby="hPipe">
-      <div class="ch"><span class="blip"></span><h2 id="hPipe">Mission pipeline</h2></div>
-      <div class="cb pipe" role="status" aria-live="polite">
-        <div class="mission"><span id="pipeLabel">Standby</span><strong id="pipeTitle">No active mission</strong></div>
-        <ol class="steps" id="pipeSteps">
-          <li data-s="research"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span><b>Research</b><small>Sage</small></li>
-          <li data-s="judgment"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z"/></svg></span><b>Judgment</b><small>Vera</small></li>
-          <li data-s="report"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H8l-4 4z"/></svg></span><b>Report</b><small>Atlas</small></li>
-        </ol>
-        <div class="pnote" id="pipeNote"></div>
-        <ol class="plog" id="pipeLog"></ol>
-        <div class="pmeta">
-          <div><span>Searches</span><b id="pmSearch">0</b></div>
-          <div><span>Sources</span><b id="pmSources">0</b></div>
-          <div><span>Elapsed</span><b id="pmTime">00:00</b></div>
-        </div>
-      </div>
-    </section>
 
     <section class="card a-office" id="officeCard" aria-labelledby="hOffice">
       <div class="ch"><span class="blip"></span><h2 id="hOffice">HQ floor · live</h2>
@@ -379,7 +395,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
     <section class="card a-chat" aria-labelledby="hChat">
       <div class="ch"><span class="blip" style="background:#A78BFA;box-shadow:0 0 8px #A78BFA"></span><h2 id="hChat">Comms · Atlas</h2><small>general manager</small></div>
       <div class="chat">
-        <div class="msgs" id="msgs" aria-live="polite"></div>
+        <div class="msgs" id="msgs" aria-live="polite" tabindex="0" role="region" aria-label="Conversation with Atlas"></div>
         <div class="suggest" id="suggest">
           <button type="button">Give me a briefing</button>
           <button type="button">What's in my Idea Inbox?</button>
@@ -393,7 +409,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
     </section>
 
     <section class="card a-ideas" aria-labelledby="hIdeas">
-      <div class="ch"><span class="blip" style="background:#FBBF24;box-shadow:0 0 8px #FBBF24"></span><h2 id="hIdeas">Ideas</h2>
+      <div class="ch"><span class="blip" style="background:#FBBF24;box-shadow:0 0 8px #FBBF24"></span><h2 id="hIdeas">Your desk</h2>
         <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button><button type="button" data-tab="plans" aria-pressed="false">Plans<span class="tabcount" id="plansCount"></span></button><button type="button" data-tab="content" aria-pressed="false">Content<span class="tabcount" id="contentCount"></span></button><button type="button" data-tab="lnd" aria-pressed="false">L&amp;D<span class="tabcount" id="lndCount"></span></button></div>
       </div>
       <div class="cb" id="p-inbox">
@@ -406,11 +422,26 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
       <div class="cb" id="p-content" hidden><div class="ctop" id="contentTop"></div><ul class="inbox" id="episodes"></ul></div>
     </section>
 
-    <section class="card a-side" aria-label="Activity and crew">
+    <section class="card a-side" aria-label="Mission, activity and crew">
       <div class="ch"><span class="blip"></span><h2>Ops</h2>
-        <div class="seg"><button type="button" data-pane="feed" aria-pressed="true">Activity</button><button type="button" data-pane="team" aria-pressed="false">Crew</button><button type="button" data-pane="limits" aria-pressed="false">Limits</button></div>
+        <div class="seg"><button type="button" data-pane="mission" aria-pressed="false">Mission<span class="live" id="missionLive" hidden></span></button><button type="button" data-pane="feed" aria-pressed="true">Activity</button><button type="button" data-pane="team" aria-pressed="false">Crew</button><button type="button" data-pane="limits" aria-pressed="false">Limits</button></div>
       </div>
-      <div class="cb" id="p-feed"><ul class="feed" id="feed"></ul></div>
+      <div class="cb pipe" id="p-mission" role="status" aria-live="polite" hidden>
+        <div class="mission"><span id="pipeLabel">Standby</span><strong id="pipeTitle">No active mission</strong></div>
+        <ol class="steps" id="pipeSteps">
+          <li data-s="research"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span><b>Research</b><small>Sage</small></li>
+          <li data-s="judgment"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z"/></svg></span><b>Judgment</b><small>Vera</small></li>
+          <li data-s="report"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H8l-4 4z"/></svg></span><b>Report</b><small>Atlas</small></li>
+        </ol>
+        <div class="pnote" id="pipeNote"></div>
+        <ol class="plog" id="pipeLog"></ol>
+        <div class="pmeta">
+          <div><span>Searches</span><b id="pmSearch">0</b></div>
+          <div><span>Sources</span><b id="pmSources">0</b></div>
+          <div><span>Elapsed</span><b id="pmTime">00:00</b></div>
+        </div>
+      </div>
+      <div class="cb" id="p-feed" tabindex="0" role="region" aria-label="Activity log"><ul class="feed" id="feed"></ul></div>
       <div class="cb" id="p-team" hidden><div class="team" id="team"></div></div>
       <div class="cb" id="p-limits" hidden><div class="limits" id="limits"></div></div>
     </section>
@@ -552,14 +583,17 @@ function deliver(to, label, reply) {
 }
 
 /* ---------- Mission pipeline ---------- */
-const JOB = {title:'', step:null, start:0, end:0, searches:0, sources:0, note:'', stopped:false};
+const JOB = {title:'', step:null, start:0, end:0, last:0, searches:0, sources:0, note:'', stopped:false};
+const STALE_MS = 20 * 60 * 1000;
+const jobStale = () => JOB.step && JOB.step !== 'done' && Date.now() - JOB.last > STALE_MS;
+const jobLive = () => JOB.step && JOB.step !== 'done' && !jobStale();
 let NOW = 0;
 function setJob(step, title) {
   if (title) { JOB.title = title; JOB.start = NOW; JOB.end = 0; JOB.searches = 0; JOB.sources = 0; JOB.stopped = false; JOB.log = []; }
   if (!JOB.title) return;
   JOB.step = step; if (step === 'done') JOB.end = NOW;
 }
-function note(html) { if (!JOB.title) return; JOB.note = html; JOB.log = [{t:NOW, html}, ...(JOB.log || [])].slice(0, 6); }
+function note(html) { if (!JOB.title) return; JOB.last = NOW; JOB.note = html; JOB.log = [{t:NOW, html}, ...(JOB.log || [])].slice(0, 6); }
 function pipeEvent(e) {
   const d = e.detail || {}; NOW = e.ts * 1000;
   switch (e.kind) {
@@ -568,19 +602,21 @@ function pipeEvent(e) {
     case 'brief_written': JOB.sources = d.sources || 0; note(`<b>${esc(e.agent)}</b> filed the research brief · ${esc(d.sources)} sources`); break;
     case 'handoff': setJob('judgment'); note('<b>Sage</b> handed the brief to <b>Vera</b> for judgment'); break;
     case 'verdict': setJob('report'); note(`<b>Vera</b> verdict: ${esc(VERDICT[d.verdict] || d.verdict)}${d.path ? ' · Path ' + esc(d.path) : ''}`); break;
-    case 'reply': if (JOB.step === 'report') { setJob('done'); note('<b>Atlas</b> sent you the report. Open it in Ideas &amp; verdicts.'); } break;
+    case 'reply': if (JOB.step === 'report') { setJob('done'); note('<b>Atlas</b> sent you the report. Open it under Your desk, Judged.'); } break;
     case 'halted': if (e.agent === 'Doulya' || e.agent === 'Serge') break; if (JOB.step && JOB.step !== 'done') { JOB.stopped = true; setJob('done'); note('<b>Halted:</b> ' + esc(short(d.reason, 140))); } break;
   }
 }
 function renderPipe() {
   const idle = !JOB.step;
-  $('#pipeLabel').textContent = idle ? 'Standby' : JOB.step === 'done' ? (JOB.stopped ? 'Mission stopped' : 'Mission complete') : 'Active mission';
+  const stale = jobStale();
+  $('#pipeLabel').textContent = idle ? 'Standby' : JOB.step === 'done' ? (JOB.stopped ? 'Mission stopped' : 'Mission complete') : stale ? 'Last mission · no news for a while' : 'Active mission';
+  $('#missionLive').hidden = !jobLive();
   $('#pipeTitle').textContent = idle ? 'No active mission' : JOB.title;
   const order = ['research','judgment','report'], idx = JOB.step === 'done' ? 3 : order.indexOf(JOB.step);
-  [...$('#pipeSteps').children].forEach((li, i) => { li.className = idle ? '' : i < idx ? 'done' : i === idx ? 'now' : ''; });
+  [...$('#pipeSteps').children].forEach((li, i) => { li.className = idle ? '' : i < idx ? 'done' : i === idx ? (stale ? '' : 'now') : ''; });
   $('#pipeNote').innerHTML = idle ? 'Pitch an idea to Atlas. Sage researches it, Vera judges it, Atlas reports back.' : (JOB.note || 'Working…');
   $('#pmSearch').textContent = JOB.searches; $('#pmSources').textContent = JOB.sources;
-  const ms = idle ? 0 : (JOB.end || Date.now()) - JOB.start, s = Math.max(0, Math.floor(ms / 1000));
+  const ms = idle ? 0 : (JOB.end || (stale ? JOB.last : Date.now())) - JOB.start, s = Math.max(0, Math.floor(ms / 1000));
   $('#pipeLog').innerHTML = idle ? '' : (JOB.log || []).slice(1).map(l => `<li><time>${clockOf(l.t / 1000)}</time><span>${l.html}</span></li>`).join('');
   $('#pmTime').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 }
@@ -590,6 +626,7 @@ setInterval(renderPipe, 1000);
 function handleEvent(e) {
   const A = agents.Atlas, S = agents.Sage, V = agents.Vera, me = agents[e.agent], d = e.detail || {};
   if (e.agent === 'Doulya') { if (e.kind === 'scout_started') miroSay('mrrp?'); else if (e.kind === 'scout_done') miroSay('*purr*', 3); }
+  if (e.kind === 'idea_routed') showSide('mission');
   switch (e.kind) {
     case 'chat_received': if (A) { A.working = true; A.activity = 'Reading your message'; say(A, 'Message received'); } break;
     case 'idea_routed': if (A) { A.activity = 'Routing your idea'; assign(A, deliver(d.to === 'Vera' ? V : S, 'New idea: ' + short(d.idea, 40), 'On it!')); } break;
@@ -1141,7 +1178,7 @@ function renderInbox() {
   $('#inboxCount').textContent = inbox.length ? inbox.length : '';
   $('#inbox').innerHTML = inbox.length ? inbox.map((i, n) => { const p = i.pitch || {}, busy = pending[i.id];
     const bits = [p.startup_cost_usd != null ? `START ~$${p.startup_cost_usd}` : '', p.hours_per_week != null ? `${p.hours_per_week} H/WEEK` : '', (p.evidence || []).length ? `${p.evidence.length} SOURCES` : ''].filter(Boolean);
-    return `<li data-id="${i.id}"><div class="ptop"><span>Doulya's pick ${n + 1}</span>${p.confidence ? `<span class="pill">${esc(p.confidence)} confidence</span>` : ''}</div>
+    return `<li data-id="${i.id}" data-wait="pitch"><div class="ptop"><span>Doulya's pick ${n + 1}</span>${p.confidence ? `<span class="pill">${esc(p.confidence)} confidence</span>` : ''}</div>
       <button class="t" type="button" data-act="open">${esc(i.title)}</button>
       <p>${esc(p.pitch || '')}</p>${p.why_now ? `<p><b style="color:var(--ink)">Why now:</b> ${esc(p.why_now)}</p>` : ''}
       ${bits.length ? `<div class="meta">${bits.map(esc).join('<span aria-hidden="true">·</span>')}</div>` : ''}
@@ -1187,7 +1224,7 @@ function planActs(p, big) {
 function renderPlans() {
   const waiting = projects.filter(p => ['awaiting_approval', 'over_limit'].includes(p.status)).length;
   $('#plansCount').textContent = waiting ? waiting : '';
-  $('#plans').innerHTML = projects.length ? projects.map(p => `<li data-pid="${p.id}"><div class="ptop"><span>Serge's plan · idea #${p.idea_id}${p.revision ? ' · revision ' + p.revision : ''}</span>${planPill(p.status)}</div>
+  $('#plans').innerHTML = projects.length ? projects.map(p => `<li data-pid="${p.id}"${['awaiting_approval', 'over_limit'].includes(p.status) ? ` data-wait="${p.status === 'over_limit' ? 'overplan' : 'plan'}"` : ''}><div class="ptop"><span>Serge's plan · idea #${p.idea_id}${p.revision ? ' · revision ' + p.revision : ''}</span>${planPill(p.status)}</div>
       <button class="t" type="button" data-plan="open" data-id="${p.id}">${esc(p.title)}</button>
       ${p.summary ? `<p>${esc(short(p.summary, 220))}</p>` : ''}
       ${p.one_off_usd != null ? `<div class="meta"><span>${money(p)}</span></div>` : ''}
@@ -1226,7 +1263,7 @@ function clipsHtml(e) {
 }
 function plogHtml(e) {
   const pr = (e.data || {}).production || {};
-  return `<form class="plog" data-plog="${e.id}">Log: <input type="number" min="0" step="1" name="credits" placeholder="credits" value="${pr.credits ?? ''}" aria-label="OpenArt credits used"><input type="number" min="0" step="1" name="minutes" placeholder="minutes" value="${pr.minutes ?? ''}" aria-label="Your minutes"><input type="number" min="0" step="1" name="retakes" placeholder="retakes" value="${pr.retakes ?? ''}" aria-label="Retakes"><button class="btn sm ghost" type="submit">Save</button></form>`;
+  return `<form class="prodlog" data-plog="${e.id}">Log: <input type="number" min="0" step="1" name="credits" placeholder="credits" value="${pr.credits ?? ''}" aria-label="OpenArt credits used"><input type="number" min="0" step="1" name="minutes" placeholder="minutes" value="${pr.minutes ?? ''}" aria-label="Your minutes"><input type="number" min="0" step="1" name="retakes" placeholder="retakes" value="${pr.retakes ?? ''}" aria-label="Retakes"><button class="btn sm ghost" type="submit">Save</button></form>`;
 }
 const retireForm = e => `<form class="why" data-retire="${e.id}" hidden><input type="text" maxlength="1000" placeholder="Why retire it? (teaches Calina)" aria-label="Reason"><button class="btn sm ghost" type="submit">Retire</button></form>`;
 function epActions(e) {
@@ -1287,7 +1324,7 @@ function renderLnd() {
   renderLndReport(lndReport);
   const order = [...lndIdeas.filter(i => i.status === 'new'), ...lndIdeas.filter(i => i.status !== 'new')];
   $('#lndList').innerHTML = order.length ? order.map(i => { const d = i.data || {};
-    return `<li class="ep" data-lid="${esc(i.id)}"><div class="ptop"><span>Richard · ${esc(i.day)} · ${esc(d.area || '')} · effort ${esc(d.effort || '?')}</span><span class="pill ${i.status === 'approved' ? 'approve' : i.status === 'declined' ? 'reject' : 'needs_more_data'}">${esc(LND_STATUS[i.status] || i.status)}</span></div>
+    return `<li class="ep" data-lid="${esc(i.id)}"${i.status === 'new' ? ' data-wait="lnd"' : ''}><div class="ptop"><span>Richard · ${esc(i.day)} · ${esc(d.area || '')} · effort ${esc(d.effort || '?')}</span><span class="pill ${i.status === 'approved' ? 'approve' : i.status === 'declined' ? 'reject' : 'needs_more_data'}">${esc(LND_STATUS[i.status] || i.status)}</span></div>
       <span class="t">${esc(d.title || i.id)}</span>
       ${i.status === 'new' ? `<p><b style="color:var(--ink)">Problem:</b> ${esc(d.problem || '')}</p><p><b style="color:var(--ink)">Proposal:</b> ${esc(d.proposal || '')}</p>
       <p><b style="color:var(--ink)">Gain:</b> ${esc(d.gain || '')}</p>${d.test ? `<p><b style="color:var(--ink)">How to test:</b> ${esc(d.test)}</p>` : ''}${d.confidence ? `<p><b style="color:var(--ink)">Confidence:</b> ${esc(d.confidence)}${d.confidence_why ? ' · ' + esc(d.confidence_why) : ''}</p>` : ''}${d.risks ? `<p><b style="color:var(--ink)">Risks:</b> ${esc(d.risks)}</p>` : ''}
@@ -1318,7 +1355,7 @@ function renderContent() {
       : '<p class="empty" style="margin:0">No approved content project yet. Approve one of Serge\'s plans first.</p>';
   const order = [...waiting, ...episodes.filter(e => e.status !== 'awaiting_approval')];
   $('#episodes').innerHTML = order.length ? order.map(e => { const d = e.data || {}, busy = pending['e' + e.id];
-    return `<li class="ep" data-eid="${e.id}"><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${['approved', 'published'].includes(e.status) ? 'approve' : e.status === 'rejected' ? 'reject' : e.status === 'rendered' ? 'work' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
+    return `<li class="ep" data-eid="${e.id}"${epWait(e) ? ` data-wait="${epWait(e)}"` : ''}><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${['approved', 'published'].includes(e.status) ? 'approve' : e.status === 'rejected' ? 'reject' : e.status === 'rendered' ? 'work' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
       <span class="t">${esc(e.title)}</span>
       <div class="meta"><span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span>${(d.shots || []).length ? `<span>${d.shots.length} SHOTS</span><span>${d.shots.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span>` : `<span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span>`}</div>
       ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
@@ -1381,7 +1418,7 @@ function stagePill(i) {
 }
 function renderIdeas() {
   $('#ideasCount').textContent = ideas.length ? ideas.length : '';
-  $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}${i.plan_status ? `<span>PLAN: ${esc((PLAN_STATUS[i.plan_status] || i.plan_status).toUpperCase())}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
+  $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"${['stopped','error','interrupted'].includes(i.status) && !i.verdict ? ' data-wait="stuck"' : ''}><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}${i.plan_status ? `<span>PLAN: ${esc((PLAN_STATUS[i.plan_status] || i.plan_status).toUpperCase())}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
     : '<li class="empty" style="cursor:default">No ideas yet. Pitch one to Atlas; it lands here with Vera\'s verdict and Sage\'s full research.</li>';
 }
 const OPEN_ROLES = ['Reporting','Builders & QA','Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','L&D QA','Efficiency'];
@@ -1461,8 +1498,8 @@ function renderHud(s) {
 function showSide(id) {
   sidePane = id;
   document.querySelectorAll('.seg button[data-pane]').forEach(b => b.setAttribute('aria-pressed', b.dataset.pane === id));
-  $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team'; $('#p-limits').hidden = id !== 'limits';
-  if (id === 'feed') renderFeed(); else if (id === 'team') renderTeam(); else renderLimits(true);
+  $('#p-mission').hidden = id !== 'mission'; $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team'; $('#p-limits').hidden = id !== 'limits';
+  if (id === 'feed') renderFeed(); else if (id === 'mission') renderPipe(); else if (id === 'team') renderTeam(); else renderLimits(true);
 }
 let polling = false;
 async function poll() {
@@ -1499,7 +1536,7 @@ async function pollOnce() {
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();
   if (s.events.length) renderPipe();
-  renderTeam(); renderHud(s); renderSel();
+  renderTeam(); renderHud(s); renderSel(); renderNeeds();
 }
 async function send(text) {
   text = text.trim(); if (!text || busy) return;
@@ -1533,6 +1570,56 @@ async function openIdea(id) {
   h += i.brief ? `<div class="brief"><h4>Sage's research brief</h4>${md(i.brief)}</div>` : '<p class="empty">Sage is still researching this one.</p>';
   $('#ovBody').innerHTML = h; $('#overlay').hidden = false; $('#ovClose').focus();
 }
+
+/* ---------- Needs you ---------- */
+function epWait(e) {
+  if (e.status === 'awaiting_approval') return 'script';
+  if (e.status === 'rendered') return 'upload';
+  if (e.status === 'approved' && ((e.data || {}).shots || []).length) return (e.clips || {}).ready ? 'assemble' : 'clips';
+  return '';
+}
+const NEED_KINDS = [
+  // kind, tab, label (1), label (n), who, style
+  ['pitch', 'inbox', 'idea to look at', 'ideas to look at', 'Doulya'],
+  ['plan', 'plans', 'plan to approve', 'plans to approve', 'Serge'],
+  ['overplan', 'plans', 'plan over your limits', 'plans over your limits', 'Serge', 'bad'],
+  ['script', 'content', 'script to review', 'scripts to review', 'Calina'],
+  ['assemble', 'content', 'Short ready to assemble', 'Shorts ready to assemble', 'Calina'],
+  ['upload', 'content', 'video to upload', 'videos to upload', 'Calina'],
+  ['lnd', 'lnd', 'improvement idea', 'improvement ideas', 'Richard'],
+  ['clips', 'content', 'Short waiting for your clips', 'Shorts waiting for your clips', 'OpenArt'],
+  ['stuck', 'judged', 'idea stopped', 'ideas stopped', 'ask Atlas to retry', 'bad'],
+];
+let needsKey = '';
+function renderNeeds() {
+  const count = {
+    pitch: inbox.length,
+    plan: projects.filter(p => p.status === 'awaiting_approval').length,
+    overplan: projects.filter(p => p.status === 'over_limit').length,
+    lnd: lndIdeas.filter(i => i.status === 'new').length,
+    stuck: ideas.filter(i => !i.verdict && ['stopped','error','interrupted'].includes(i.status)).length,
+  };
+  for (const e of episodes) { const w = epWait(e); if (w) count[w] = (count[w] || 0) + 1; }
+  const list = NEED_KINDS.filter(k => count[k[0]]);
+  const key = JSON.stringify(count); if (key === needsKey) return; needsKey = key;
+  const urgent = list.filter(k => k[0] !== 'clips').reduce((t, k) => t + count[k[0]], 0);
+  document.title = urgent ? `(${urgent}) Agent HQ` : 'Agent HQ';
+  $('#needs').classList.toggle('clear', !list.length);
+  $('#needList').innerHTML = list.length ? list.map(([kind, , one, many, who, style]) => { const n = count[kind];
+    return `<button class="need${style ? ' ' + style : ''}" type="button" data-need="${kind}"><b>${n}</b><span>${n === 1 ? one : many}<small>${esc(who)}</small></span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>`; }).join('')
+    : '<span class="allclear">All clear. Nothing is waiting for you; the crew carries on.</span>';
+}
+function jumpTo(kind) {
+  const k = NEED_KINDS.find(x => x[0] === kind); if (!k) return;
+  showIdeaTab(k[1]);
+  const card = $('.a-ideas'), r = card.getBoundingClientRect();
+  if (r.top < 0 || r.top > innerHeight * .5) card.scrollIntoView({block:'start', behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  const item = $(`#p-${k[1]} [data-wait="${kind}"]`); if (!item) return;
+  item.scrollIntoView({block:'nearest'});
+  item.classList.remove('flash'); void item.offsetWidth; item.classList.add('flash');
+  const target = item.querySelector('button.t') || item.querySelector('.acts .btn:not(.ghost)') || item.querySelector('.btn') || (item.tabIndex >= 0 ? item : null); if (target) target.focus({preventScroll:true});
+}
+$('#needList').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (b) jumpTo(b.dataset.need); });
 
 document.querySelectorAll('.seg button[data-pane]').forEach(b => b.addEventListener('click', () => showSide(b.dataset.pane)));
 document.querySelectorAll('.seg button[data-tab]').forEach(b => b.addEventListener('click', () => showIdeaTab(b.dataset.tab)));
@@ -1624,7 +1711,7 @@ $('#killBtn').innerHTML = ICON.stop; $('#killBtn').dataset.st = 'false';
 new ResizeObserver(resize).observe(cv); resize();
 if (document.fonts) document.fonts.ready.then(buildScene);
 renderChat(); renderFeed(); renderIdeas(); renderInbox(); renderPipe();
-poll(); setInterval(poll, 1000);
+poll().then(() => { if (jobLive()) showSide('mission'); }); setInterval(poll, 1000);
 requestAnimationFrame(tick);
 })();
 </script>
