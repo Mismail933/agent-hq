@@ -1,6 +1,6 @@
 {
   "date": "2026-10-04",
-  "note": "One idea today, about protecting the channel's monetization: the template check in shorts.py is much narrower than what YouTube says it looks for. (Replaces the earlier empty note for this date: web access works now.)",
+  "note": "Two ideas today. The first (template check) you already approved; the second is new: a one-line prompt-caching change for the API fallback path.",
   "ideas": [
     {
       "id": "2026-10-04-1",
@@ -12,8 +12,31 @@
       "effort": "S",
       "risks": "A threshold set too tight rejects good scripts, so start in warn-only mode and tune on the existing episodes. Policy evidence comes from fetching YouTube's own help pages through a summarizer: the quoted phrases are from those pages but should be re-read by the owner once. This does not make a policy decision for YouTube; it only reduces sameness.",
       "links": [
-        {"title": "YouTube channel monetization policies (inauthentic / mass-produced content)", "url": "https://support.google.com/youtube/answer/1311392"},
-        {"title": "YouTube spam, deceptive practices and scams policy (repetitive / automated content)", "url": "https://support.google.com/youtube/answer/2801973"}
+        {
+          "title": "YouTube channel monetization policies (inauthentic / mass-produced content)",
+          "url": "https://support.google.com/youtube/answer/1311392"
+        },
+        {
+          "title": "YouTube spam, deceptive practices and scams policy (repetitive / automated content)",
+          "url": "https://support.google.com/youtube/answer/2801973"
+        }
+      ],
+      "builds_on": ""
+    },
+    {
+      "id": "2026-10-04-2",
+      "title": "Turn on automatic prompt caching in the API agent loop (and price it correctly)",
+      "area": "tokens",
+      "problem": "llm.py run() calls client().messages.create() on every turn with no cache_control (grep finds none in llm.py or agents.py). Each turn of a multi-turn run (Sage's search runs, pause_turn continuations, Atlas backup chat) re-sends the whole growing conversation at full input price. This path is the fallback for all five workers and for Atlas when Claude Code is unavailable, and it is the whole path when ATLAS_ENGINE='api' or in practice mode. Also, control_plane.price() bills cache_creation and cache_read tokens at the full input rate, so once caching is on, the budget meter would overstate real spend and could halt agents early.",
+      "proposal": "1) In llm.py run(), add kwargs['cache_control'] = {'type':'ephemeral'} (top-level automatic caching; the breakpoint moves forward each turn). Verify the installed anthropic SDK version accepts the top-level param; if not, put cache_control on the last system block instead. 2) In control_plane.price(), bill input_tokens at 1x, cache_creation_input_tokens at 1.25x, cache_read_input_tokens at about 0.1x of the model's input rate (check the docs table per model; Sonnet 5.5 min cacheable prompt is 512 tokens, Haiku 4.5 is 4096, so Atlas on Haiku may rarely cache). 3) Add a 'cache_read' figure to the model_call event so we can see hit rates. Not needed for claude -p workers: Claude Code caches by itself.",
+      "gain": "On any API-path run with 4+ turns, most input tokens become cache reads at about a tenth of the price. Measure: run the same simulated-then-real Sage fallback twice and compare costs.usd before and after, and the share of cache_read tokens in usage. The budget meter also becomes accurate, so the daily $3 cap stops tripping early.",
+      "effort": "S",
+      "risks": "Cache writes cost 1.25x, so a one-turn run pays slightly more (small). Top-level cache_control needs an SDK that supports it (single-source: the docs page; test before shipping). Changing price() changes the numbers in the Limits and cost views, so mention it in the release note.",
+      "links": [
+        {
+          "title": "Anthropic prompt caching docs (automatic caching, minimum lengths, price multipliers)",
+          "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"
+        }
       ],
       "builds_on": ""
     }
