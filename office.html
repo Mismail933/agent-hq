@@ -228,6 +228,9 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .pack{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:4px;padding:10px;background:rgba(4,8,18,.45)}
 .pack .shot{border-top:1px dashed var(--line-2);padding-top:8px;display:flex;flex-direction:column;gap:4px}
 .pack .shot:first-of-type{border-top:0;padding-top:0}
+.pack details summary{cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--ink-2);min-height:32px;display:flex;align-items:center}
+.pack details[open] summary{margin-bottom:6px}
+.pack details .shot{margin-top:8px}
 .pack .row2{display:flex;gap:6px;align-items:flex-start}
 .pack textarea{flex:1;min-width:0;border:1px solid var(--line-2);border-radius:4px;padding:6px 8px;font:inherit;font-size:12.5px;background:rgba(4,8,18,.8);color:var(--ink);resize:vertical}
 .pack .lbl{font-family:var(--mono);font-size:11px;color:var(--ink-2);text-transform:uppercase;width:58px;flex:none;padding-top:7px}
@@ -1198,12 +1201,22 @@ function packHtml(e) {
   const d = e.data || {}, proj = projects.find(p => p.id === e.project_id) || {}, meta = proj.meta || {};
   const shots = (d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0));
   const narration = shots.map(x => x.voice_line).join(' ');
+  const lines = [`${d.title || 'Episode'}: prompt pack for OpenArt`, ''];
+  if (meta.style) lines.push(`LOOK (use for every image): ${meta.style}`, '');
+  if (meta.narrator) lines.push(`NARRATOR CHARACTER: ${meta.narrator}`, '');
+  lines.push(`VOICE (whole narration, record once as voice.mp3${d.voice_direction ? '; ' + d.voice_direction : ''}; calm and slow, about 145 words a minute):`, narration, '');
+  shots.forEach(x => lines.push(`SHOT ${x.n}${x.premium ? ' (hook, premium quality)' : ''}${x.uses_narrator ? ' (narrator)' : ''}, save as shot${String(x.n).padStart(2, '0')}.mp4`,
+    `Image: ${x.image_prompt || ''}`, `Motion: ${x.motion_prompt || ''}`, `Says: "${x.voice_line || ''}"`, ''));
+  const full = lines.join('\n').trim();
   return `<div class="pack"><b style="color:var(--ink)">Prompt pack: make these in OpenArt</b>
+    <div class="row2"><textarea id="fp${e.id}" rows="8" readonly aria-label="Full prompt">${esc(full)}</textarea></div>
+    <div class="acts"><button class="btn sm" type="button" data-copy="fp${e.id}">Copy full prompt</button></div>
+    <details><summary>Shot by shot (${shots.length})</summary>
     ${meta.narrator ? copyRow('Narrator', `nr${e.id}`, meta.narrator, 2) : ''}${meta.style ? copyRow('Look', `st${e.id}`, meta.style, 1) : ''}
-    ${copyRow('Voice', `vo${e.id}`, narration, 3)}${d.voice_direction ? `<p class="src" style="margin:0">Voice: ${esc(d.voice_direction)}. Keep it calm and slow (about 145 words a minute).</p>` : ''}
+    ${copyRow('Voice', `vo${e.id}`, narration, 3)}
     ${shots.map(x => `<div class="shot"><b style="color:var(--ink)">Shot ${x.n}${x.premium ? ' · hook, premium quality' : ''}${x.uses_narrator ? ' · narrator' : ''}</b>
       ${copyRow('Image', `im${e.id}_${x.n}`, x.image_prompt, 3)}${copyRow('Motion', `mo${e.id}_${x.n}`, x.motion_prompt, 2)}
-      <p class="src" style="margin:0">Says: “${esc(x.voice_line || '')}”</p></div>`).join('')}</div>`;
+      <p class="src" style="margin:0">Says: “${esc(x.voice_line || '')}”</p></div>`).join('')}</details></div>`;
 }
 function clipsHtml(e) {
   const c = e.clips; if (!c) return '';
