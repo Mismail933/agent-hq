@@ -87,6 +87,7 @@ Agents never spend money without the owner's explicit approval.
   content/project-N/production-log.csv. Owner logs credits/minutes/retakes per episode (kill criteria). Kokoro + stills
   (`render`) stay only for v1 episodes. Approved/rendered episodes can be retired (reject with a reason).
   FFmpeg's drawtext segfaults (fontconfig) on his PC; libass subtitles work.
+- `DESIGN.md` (2.12.2): the office's design system (tokens, components, do's and don'ts). Build new UI from it and update it with any design change. Design work uses the `senior-ui-ux` skill (in ~/.claude/skills).
 - `hq.py`: Atlas's controls. Reads hq.db directly; actions POST to the running office (port in `.port`).
 
 ## How to ship a change
