@@ -69,7 +69,7 @@ def _load_report():
         day = json.loads((CLONE / "ideas" / "latest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return
-    keep = ("date", "focus", "note", "research", "new_today", "checked", "repo_watch")
+    keep = ("date", "focus", "focus_set_at", "note", "research", "new_today", "checked", "repo_watch")
     REPORT.clear()
     REPORT.update({k: day[k] for k in keep if k in day})
     REPORT["idea_count"] = len(day.get("ideas") or [])
@@ -90,6 +90,33 @@ def _push_feedback():
         _git("pull", "--quiet", "--rebase")
         _git("push", "--quiet", "origin", BRANCH)
     STATUS["pending_push"] = False
+
+
+def set_focus(topic):
+    """A topic for Richard's next morning run (Atlas, when the owner asks). It goes to the lnd branch as focus.json, which
+    Richard reads first. The next report carries it in its `focus`, so the L&D tab shows it was picked up."""
+    topic = (topic or "").strip()
+    if not topic:
+        return "Give the topic, e.g. hq lnd-focus \"how can we make Calina a better writer?\""
+    topic = topic[:1500]
+    with LOCK:
+        try:
+            _ensure_clone()
+            _git("pull", "--quiet", "--rebase", "--autostash")
+            stamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            (CLONE / "focus.json").write_text(json.dumps({"topic": topic, "set_at": stamp, "set_by": "owner via Atlas"}, indent=2,
+                                                         ensure_ascii=False) + "\n", encoding="utf-8")
+            _git("add", "focus.json")
+            _git("commit", "--quiet", "-m", "Owner's focus topic for Richard")
+            try:
+                _git("push", "--quiet", "origin", BRANCH)
+            except RuntimeError:
+                _git("pull", "--quiet", "--rebase")
+                _git("push", "--quiet", "origin", BRANCH)
+        except Exception as e:
+            return f"Couldn't hand Richard the topic: {str(e)[:200]}"
+    cp.log("Atlas", "lnd_focus_set", None, {"topic": topic})
+    return f"Richard will research this on his next run (07:00 Beirut in summer): {topic}"
 
 
 def decide(idea_id, decision, reason=""):

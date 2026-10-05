@@ -27,8 +27,18 @@ export const cameraAt = (move, p, frame) => {
   }
 };
 
-export const Camera = ({move, frame, frames, focus = [W / 2, H / 2], children}) => {
-  const cam = cameraAt(move, frame / Math.max(1, frames), frame);
+// SAFE: nothing the story needs may touch the outer 60 px. The scene tells the camera how wide its content is (spread, in
+// px either side of the focus); the camera never zooms or pans far enough to push that content past the margin.
+export const SAFE = 60;
+export const Camera = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0, topY = null, topLimit = SAFE, children}) => {
+  let cam = cameraAt(move, frame / Math.max(1, frames), frame);
+  if (spread > 0) {
+    const room = W / 2 - SAFE;
+    let s = Math.max(1, Math.min(cam.s, room / spread));
+    if (topY !== null) s = Math.max(1, Math.min(s, (H / 2 - topLimit) / Math.max(1, H / 2 - topY))); // the top of the tallest thing too
+    const slack = Math.max(0, room - spread * s);
+    cam = {s, dx: Math.max(-slack, Math.min(slack, cam.dx)), dy: Math.max(0, cam.dy)};
+  }
   const [fx, fy] = focus;
   const t = `translate(${W / 2 + cam.dx} ${H / 2 + cam.dy}) scale(${cam.s}) translate(${-fx} ${-fy})`;
   return (

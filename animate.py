@@ -30,6 +30,7 @@ import control_plane as cp  # noqa: E402
 import production  # noqa: E402
 import settings  # noqa: E402
 import shorts  # noqa: E402
+import elevenlabs  # noqa: E402
 from shorts import Blocked, say  # noqa: E402
 
 FPS = 30
@@ -39,8 +40,8 @@ NODE_DIR = HOME / "node"
 APP = HOME / "app"
 PIPER_DIR = HOME / "piper"
 PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/"
-LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.32, 0.5, 1.7
-MAX_TOTAL = 58.5
+LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 1.7
+MAX_TOTAL = 118.0   # a Short may run to 3 minutes, but the story decides; Israa judges whether it earns its length
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
 BACKDROPS = {"court", "library", "nile", "well", "study", "map", "diagram"}
 CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"}
@@ -56,7 +57,18 @@ VOICES = {
     "piper-ryan": ("piper", "en_US-ryan-high", "Piper: Ryan (American man), slowed"),
 }
 DEFAULT_VOICE = "kokoro-george"
-TARGET_WPM = 130
+TARGET_WPM = 130   # measured over the whole narration INCLUDING the breaths between lines
+ELEVEN_PREFIX = "eleven:"
+ELEVEN_START_SPEED = 0.88   # ElevenLabs reads about 150 words a minute at 1.0; this lands near 130 without a second (billed) pass
+
+
+def voice_spec(vid):
+    """(engine, voice, label) for a voice id, including ElevenLabs voices ('eleven:<voice id>')."""
+    if vid in VOICES:
+        return VOICES[vid]
+    if str(vid).startswith(ELEVEN_PREFIX):
+        return ("eleven", vid[len(ELEVEN_PREFIX):], "ElevenLabs voice")
+    return VOICES[DEFAULT_VOICE]
 
 
 # ---- tools: Node + Remotion ----------------------------------------------------------
@@ -129,18 +141,20 @@ def narration(d):
 def checklist(ep):
     d, problems = ep["data"], []
     scenes = d.get("scenes") or []
-    if not 7 <= len(scenes) <= 16:
-        problems.append(f"The scene file has {len(scenes)} scenes; it should have 8-14.")
+    if not 7 <= len(scenes) <= 20:
+        problems.append(f"The scene file has {len(scenes)} scenes; it should have 9-16.")
     lines = narration(d)
     words = sum(len(l.split()) for l in lines)
-    if not 55 <= words <= 125:
-        problems.append(f"The narration is {words} words; it should be about 80-115 (at ~130 words a minute, 40-50 seconds).")
+    if not 90 <= words <= 260:
+        problems.append(f"The narration is {words} words; it should be about 120-220 (at ~130 words a minute, 55-100 seconds).")
     for s in scenes:
         n = s.get("n", "?")
         if not (s.get("voice_line") or "").strip():
             problems.append(f"Scene {n} has no voice line.")
-        elif len(s["voice_line"].split()) > 18:
-            problems.append(f"Scene {n}'s voice line is over 18 words.")
+        elif len(s["voice_line"].split()) > 34:
+            problems.append(f"Scene {n}'s voice line is over 34 words: split it into two scenes.")
+        elif not re.search(r"[.!?]['\")]?$", s["voice_line"].strip()):
+            problems.append(f"Scene {n}'s voice line isn't a finished sentence (it should end with . ! or ?).")
         if s.get("backdrop") not in BACKDROPS:
             problems.append(f"Scene {n}: backdrop '{s.get('backdrop')}' isn't one of {', '.join(sorted(BACKDROPS))}.")
         if s.get("camera") and s["camera"] not in CAMERAS:
@@ -210,17 +224,24 @@ class Speaker:
     SR = 24000
 
     def __init__(self, voice_id, speed):
-        self.engine, self.voice, _ = VOICES[voice_id]
+        self.engine, self.voice, _ = voice_spec(voice_id)
         self.speed = speed
-        if self.engine == "kokoro":
+        self.chars = 0   # billed characters (ElevenLabs only)
+        if self.engine == "eleven":
+            pass
+        elif self.engine == "kokoro":
             from kokoro import KPipeline
             self.pipe = KPipeline(lang_code=self.voice[0], repo_id="hexgrad/Kokoro-82M")
         else:
             from piper import PiperVoice
             self.model = PiperVoice.load(str(piper_model(self.voice)))
 
-    def line(self, text):
+    def line(self, text, previous="", following=""):
         import numpy as np
+        if self.engine == "eleven":
+            a, words, n = elevenlabs.speak(self.voice, text, self.speed, previous, following)
+            self.chars += n
+            return a, words
         if self.engine == "kokoro":
             chunks, words, offset = [], [], 0.0
             for r in self.pipe(text, voice=self.voice, speed=self.speed):
@@ -250,16 +271,22 @@ def whisper_words(wav, script_words, secs):
 
 
 def synth(voice_id, lines, wpm_target, folder, project_voice_speed=None):
-    """Voice every scene's line, with a breath between lines. Returns the audio path, per-scene starts, words, seconds."""
+    """Voice every scene's line, with a short breath between lines. Returns (audio path, per-scene starts, words, seconds,
+    words per minute over the whole narration, billed characters)."""
     import numpy as np
     import soundfile as sf
-    speed = project_voice_speed or 0.85
-    for attempt in range(2):
+    eleven = voice_spec(voice_id)[0] == "eleven"
+    speed = project_voice_speed or (ELEVEN_START_SPEED if eleven else 0.85)
+    chars = 0
+    for attempt in range(1 if eleven else 2):   # ElevenLabs is billed per character: one pass only
         sp = Speaker(voice_id, speed)
         audio, starts, words = [np.zeros(int(LEAD * Speaker.SR), dtype="float32")], [], []
-        t, spoken = LEAD, 0.0
+        t = LEAD
         for i, text in enumerate(lines):
-            a, w = sp.line(text)
+            if eleven:
+                a, w = sp.line(text, " ".join(lines[max(0, i - 2):i]), " ".join(lines[i + 1:i + 3]))
+            else:
+                a, w = sp.line(text)
             if w is None:
                 tmp = folder / "_line.wav"
                 sf.write(str(tmp), a, Speaker.SR)
@@ -269,19 +296,19 @@ def synth(voice_id, lines, wpm_target, folder, project_voice_speed=None):
             words += [[x[0], t + x[1], t + x[2]] for x in w]
             audio.append(a)
             dur = len(a) / Speaker.SR
-            spoken += dur
             pad = PAD_HOOK if i == 0 else PAD
             audio.append(np.zeros(int(pad * Speaker.SR), dtype="float32"))
             t += dur + pad
-        wpm = sum(len(l.split()) for l in lines) / (spoken / 60)
-        if attempt == 0 and abs(wpm - wpm_target) / wpm_target > 0.06:
+        chars += sp.chars
+        wpm = sum(len(l.split()) for l in lines) / ((t - LEAD) / 60)   # the pace a viewer feels: pauses included
+        if not eleven and attempt == 0 and abs(wpm - wpm_target) / wpm_target > 0.06:
             speed = max(0.55, min(1.3, speed * wpm_target / wpm))
             say(f"  reads at {wpm:.0f} words a minute: trying {speed:.2f}x to land near {wpm_target}")
             continue
         break
     wav = folder / "_voice_raw.wav"
     sf.write(str(wav), np.concatenate(audio), Speaker.SR)
-    return wav, starts, words, t, wpm
+    return wav, starts, words, t, wpm, chars
 
 
 def whisper_file_voice(ffmpeg, src, lines, folder):
@@ -298,6 +325,48 @@ def whisper_file_voice(ffmpeg, src, lines, folder):
         k += n
     words = [[t["w"], t["s"], t["e"]] for t in timed]
     return wav, starts, words, secs + 0.3, len(script) / (secs / 60)
+
+
+def normalise_voice(ffmpeg, src, dst, target=-15.0, peak=-1.5):
+    """Two-pass loudness normalisation (a single pass undershoots on short clips): integrated loudness near `target` LUFS,
+    true peak under `peak` dBTP. Measured with ebur128, not guessed."""
+    first = subprocess.run([ffmpeg, "-hide_banner", "-i", str(src), "-af", f"loudnorm=I={target}:TP={peak}:LRA=11:print_format=json",
+                            "-f", "null", "-"], capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=NOFLAGS)
+    m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", first.stderr or "", re.S)
+    af = f"loudnorm=I={target}:TP={peak}:LRA=11"
+    if m:
+        try:
+            j = json.loads(m.group(0))
+            af += (f":measured_I={j['input_i']}:measured_TP={j['input_tp']}:measured_LRA={j['input_lra']}"
+                   f":measured_thresh={j['input_thresh']}:offset={j['target_offset']}:linear=true")
+        except (ValueError, KeyError):
+            pass
+    shorts.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(src), "-af", af, "-ar", "48000", "-ac", "1", str(dst)])
+
+
+def short_place(place):
+    """The title card's place: the first named place only ("Alexandria and Syene (Aswan), Egypt" -> "ALEXANDRIA")."""
+    first = re.split(r",| and |\(| & | / ", place or "")[0].strip()
+    return (first[:26].rstrip() if first else (place or "")[:26]).upper()
+
+
+def _norm(w):
+    return re.sub(r"[^a-z0-9]", "", w.lower())
+
+
+def callout_frame(scene, words, start, end):
+    """Frames after the scene's start at which its callout should pop: the moment the named word is spoken.
+    `callout_word` names it; without one, the callout comes in at the middle of the line."""
+    inside = [w for w in words if start <= round(w[1] * FPS) < end]
+    target = _norm(scene.get("callout_word") or "")
+    hit = next((w for w in inside if target and _norm(w[0]) == target), None) if target else None
+    if hit is None and target:   # "kilometres" vs "kilometers", "stadia" vs "stadion": the closest start
+        hit = next((w for w in inside if len(target) >= 4 and (_norm(w[0]).startswith(target[:4]) or target.startswith(_norm(w[0])[:4]))), None)
+    if hit is not None:
+        return max(0, round(hit[1] * FPS) - start)
+    if inside:
+        return max(0, round(inside[len(inside) // 2][1] * FPS) - start)
+    return max(0, (end - start) // 2)
 
 
 def mouth_cues(wav, words, total_frames):
@@ -345,7 +414,8 @@ def voice_choice(project):
     meta = (project or {}).get("meta") or {}
     v = (meta.get("voice") or {})
     vid = v.get("id") or getattr(settings, "ANIM_VOICE", DEFAULT_VOICE)
-    return (vid if vid in VOICES else DEFAULT_VOICE), v.get("speed")
+    ok = vid in VOICES or (str(vid).startswith(ELEVEN_PREFIX) and elevenlabs.configured())
+    return (vid if ok else DEFAULT_VOICE), v.get("speed")
 
 
 def render_episode(eid):
@@ -371,10 +441,21 @@ def render_episode(eid):
         used = f"your own file ({own.name})"
     else:
         vid, speed = voice_choice(project)
-        raw, starts, words, voice_end, wpm = synth(vid, lines, TARGET_WPM, folder, speed)
-        used = VOICES[vid][2]
-    shorts.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000",
-                "-ac", "1", str(folder / "voice.wav")])
+        label = ((project.get("meta") or {}).get("voice") or {}).get("label") or voice_spec(vid)[2]
+        try:
+            raw, starts, words, voice_end, wpm, chars = synth(vid, lines, TARGET_WPM, folder, speed)
+        except (elevenlabs.ElevenError, ImportError, OSError) as ex:
+            if voice_spec(vid)[0] != "eleven" or not getattr(settings, "ELEVEN_FALLBACK", True):
+                raise Blocked(f"The voice failed: {ex}")
+            say(f"  ElevenLabs failed ({str(ex)[:160]}): using the free Kokoro voice instead. It will sound more robotic.")
+            raw, starts, words, voice_end, wpm, chars = synth(DEFAULT_VOICE, lines, TARGET_WPM, folder, None)
+            label = f"Kokoro (free fallback; ElevenLabs failed: {str(ex)[:120]})"
+            vid = DEFAULT_VOICE
+        used = label
+        if chars:
+            cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "episode": ep["id"], "what": "short"})
+            say(f"  ElevenLabs: {chars} characters used for this Short.")
+    normalise_voice(ffmpeg, raw, folder / "voice.wav")
     raw.unlink(missing_ok=True)
     voice_secs = shorts.probe_seconds(ffmpeg, folder / "voice.wav")
     end_t = max(voice_secs, voice_end)
@@ -386,16 +467,18 @@ def render_episode(eid):
     bounds = [0 if i == 0 else round(starts[i] * FPS) for i in range(len(starts))] + [round(end_t * FPS)]
     scenes = []
     for i, s in enumerate(d["scenes"]):
-        sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n")}
+        sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n", "shows", "callout_word")}
         sc["from"] = bounds[i]
         sc["frames"] = max(12, bounds[i + 1] - bounds[i])
+        if s.get("callout"):   # the callout appears on the word it belongs to, never before it is said
+            sc["callout_from"] = callout_frame(s, words, bounds[i], bounds[i + 1])
         scenes.append(sc)
     ch = (project.get("meta") or {}).get("channel") or {}
     props = {
         "durationInFrames": total,
         "audio": "voice.wav",
         "mouth": mouth_cues(folder / "voice.wav", words, total),
-        "intro": {"place": (d.get("place") or "").upper(), "year": (d.get("year") or "").upper()},
+        "intro": {"place": short_place(d.get("place") or ""), "year": (d.get("year") or "").upper()},
         "outro": {"channel": ch.get("name") or "POV Then History", "handle": ch.get("handle") or "@POVThenHistory"},
         "outro_from": round(end_t * FPS),
         "caption_chunks": caption_chunks(words),
@@ -438,14 +521,23 @@ def make_samples(project_id=3):
     folder = shorts.CONTENT / f"project-{project_id}" / "voice-samples"
     folder.mkdir(parents=True, exist_ok=True)
     done = []
-    for vid, (_, _, label) in VOICES.items():
+    candidates = {vid: (spec[0], spec[1], spec[2]) for vid, spec in VOICES.items()}
+    if elevenlabs.configured():
+        try:
+            for v in elevenlabs.storytellers(4):
+                candidates[ELEVEN_PREFIX + v["id"]] = ("eleven", v["id"], v["label"])
+        except elevenlabs.ElevenError as e:
+            say(f"  ElevenLabs voices unavailable: {e}")
+    for vid, (_, _, label) in candidates.items():
         say(f"Sample: {label}")
         try:
             tmp = folder / "_s"
             tmp.mkdir(exist_ok=True)
-            raw, _, _, _, wpm = synth(vid, [SAMPLE_LINE], TARGET_WPM, tmp)
+            raw, _, _, _, wpm, chars = synth(vid, [SAMPLE_LINE], TARGET_WPM, tmp)
+            if chars:
+                cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "what": "sample", "voice": label})
             out = folder / f"{vid}.mp3"
-            shorts.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "44100",
+            shorts.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), "-af", "loudnorm=I=-15:TP=-1.5:LRA=11", "-ar", "44100",
                         "-b:a", "128k", str(out)])
             done.append({"id": vid, "label": label, "wpm": round(wpm), "file": out.relative_to(ROOT).as_posix()})
             shutil.rmtree(tmp, ignore_errors=True)

@@ -75,12 +75,13 @@ export const Diagram = ({diagram, frame, frames}) => {
         <rect x="-300" y="-70" width="600" height="120" rx="26" fill={C.gold} stroke={C.ink} strokeWidth="9" />
         <text textAnchor="middle" y="24" fontFamily={HEAD} fontSize="72" fill={C.ink}>{diagram.fraction} of a circle</text>
       </g>
-      {[['a', diagram.a_label, -1], ['b', diagram.b_label, 1]].map(([k, name]) => {
+      {[['a', diagram.a_label, diagram.a_note || 'SHADOW'], ['b', diagram.b_label, diagram.b_note || 'NO SHADOW']].map(([k, name, note]) => {
         const pt = pts[k];
         const [nx, ny] = n(pt);
         return (
           <g key={k} transform={`translate(${pt[0] + nx * 40 + (k === 'a' ? 20 : 0)} ${pt[1] + ny * 40 + (k === 'a' ? -105 : 90)}) scale(${Math.max(0.01, rods)})`} opacity={clamp01(rods * 3)}>
             <text textAnchor="middle" fontFamily={HEAD} fontSize="54" fill={C.parchment} stroke={C.ink} strokeWidth="8" paintOrder="stroke">{name}</text>
+            <text textAnchor="middle" y="58" fontFamily={HEAD} fontSize="44" fill={C.gold} stroke={C.ink} strokeWidth="7" paintOrder="stroke">{note}</text>
           </g>
         );
       })}

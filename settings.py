@@ -69,6 +69,12 @@ PLAN_MAX_REVISIONS = 2          # times the owner can "ask for changes" on one p
 CALINA_BATCH_SIZE = 6           # scripts per batch, unless the owner asks for another number
 CALINA_MAX_SEARCHES = 12        # web searches per batch, to find and check sources
 
+# ---- ElevenLabs voice (animated Shorts) ------------------------------------------------
+# The API key goes in the .env file (START-HERE asks for it once); it is never kept anywhere else.
+ELEVEN_MODEL = "eleven_multilingual_v2"
+ELEVEN_MONTHLY_CHARS = 30000     # the Starter plan's monthly credits, counted per character
+ELEVEN_FALLBACK = True           # if ElevenLabs fails, the free Kokoro voice makes the Short (and says so loudly)
+
 # ---- The Shorts pipeline (shorts.py) -----------------------------------------------
 # It runs in its own Python environment because the Kokoro voice needs PyTorch. One-time setup, in PowerShell:
 #   py -3 -m venv $env:USERPROFILE\.agent-hq-shorts

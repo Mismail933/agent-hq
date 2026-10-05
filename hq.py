@@ -10,6 +10,7 @@ Atlas's controls for Agent HQ.
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
                  lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
                  clips <episode id> | assemble <episode id> | prodlog <episode id> <credits> <minutes> <retakes>
+                 frames <episode id> | credits | lnd-focus "topic for Richard"
                  refs <project id> ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
 
@@ -200,6 +201,34 @@ def main(argv):
         elif cmd == "approve-board":   # only when the owner has chosen: hq approve-board <project> <A|B|C> [his words]
             code, reply = office(f"/api/content/{int(args[0])}/board", {"option": args[1] if len(args) > 1 else "", "note": " ".join(args[2:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "frames":   # eyes and ears: contact sheets + transcript of a finished video, for Atlas to read
+            import quality
+            pack = quality.review_pack(int(args[0]))
+            import shutil
+            out = Path(__import__("atlas_engine").HOME) / "review" / f"ep-{int(args[0]):03d}"
+            shutil.rmtree(out, ignore_errors=True)
+            out.mkdir(parents=True, exist_ok=True)
+            sheets = []
+            for i, rel in enumerate(pack["sheets"], 1):
+                shutil.copy2(ROOT / rel, out / f"sheet-{i:02d}.png")
+                sheets.append(str(out / f"sheet-{i:02d}.png"))
+            shutil.copy2(ROOT / pack["transcript"], out / "transcript.json")
+            text = json.loads((out / "transcript.json").read_text(encoding="utf-8")).get("text", "")
+            show({"episode": int(args[0]), "seconds": pack["seconds"], "frames": pack["frames"],
+                  "contact_sheets_read_these_images": sheets,
+                  "what_is_said_transcribed_from_the_audio": text,
+                  "how_to_use": "Open every sheet image (each frame has its time and the words spoken then). Retell the story in three "
+                                "sentences. If you can't, the owner can't: say so before you call the video ready."})
+        elif cmd == "credits":   # ElevenLabs characters used this month
+            import elevenlabs
+            used, limit = cp.eleven_chars_month(), getattr(settings, "ELEVEN_MONTHLY_CHARS", 30000)
+            q = elevenlabs.quota() if elevenlabs.configured() else None
+            show({"elevenlabs_configured": elevenlabs.configured(), "characters_used_this_month_by_us": used, "monthly_quota": limit,
+                  "left_by_our_count": limit - used, "elevenlabs_says": q or "not available (no key, or it can't be read)",
+                  "note": "A Short of about 150 words costs roughly 900 characters; a voice sample about 250 each."})
+        elif cmd == "lnd-focus":   # a topic for Richard's next morning run: hq lnd-focus "how can Calina write better?"
+            import lnd
+            show(lnd.set_focus(" ".join(args)))
         elif cmd == "israa":   # Israa reviews a finished video again
             order(f"/api/episode/{int(args[0])}/israa", {}, "Israa is looking at the video. Her verdict lands on the episode in Ideas -> Content.")
         elif cmd == "episodes":

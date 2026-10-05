@@ -42,6 +42,26 @@ const handAt = (side, shoulder, elbow) => {
   return [side * SHOULDER_X + ux + fx, SHOULDER_Y + uy + fy, th2];
 };
 
+/**
+ * How far a character reaches from the point between its feet, in drawing units at scale 1 (hands, the held sign, the
+ * head, the robe). The scene uses it to keep everything inside the safe area, whatever the pose.
+ */
+export const reach = (who, pose) => {
+  const P = POSES[pose] || POSES.stand;
+  const pts = [[-150, 0], [150, 0], [-112, -300], [112, -300], [0, -580]];
+  const [lx, ly, lth] = handAt(-1, P.L[0], P.L[1]);
+  const [rx, ry] = handAt(1, P.R[0], P.R[1]);
+  pts.push([lx - 32, ly], [lx + 32, ly], [rx - 32, ry], [rx + 32, ry]);
+  const tilt = (-lth * 0.22 * Math.PI) / 180;
+  const place = (px, py) => [lx + px * Math.cos(tilt) - py * Math.sin(tilt), ly + 4 + px * Math.sin(tilt) + py * Math.cos(tilt)];
+  const held = who === 'narrator' ? [[-135, -440], [135, -440], [-135, -300], [135, -300], [0, 40]]
+    : who === 'scholar' ? [[-32, -70], [32, 80]] : [[-34, -360], [34, -360], [0, 60]];
+  held.forEach(([a, b]) => pts.push(place(a, b)));
+  const xs = pts.map((q) => q[0]);
+  const ys = pts.map((q) => q[1]);
+  return {left: -Math.min(...xs), right: Math.max(...xs), top: -Math.min(...ys)};
+};
+
 const Arm = ({side, shoulder, elbow, sleeve, skin}) => {
   const th1 = side < 0 ? shoulder : -shoulder;
   const th2 = side < 0 ? elbow : -elbow;

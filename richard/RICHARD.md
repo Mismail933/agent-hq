@@ -27,6 +27,11 @@ is not a run. Do not write your output until the research steps below are done.
    - `../lnd/feedback.json`: the owner's decisions `[{"id", "decision": "yes"|"no", "reason", "ts"}]`. Don't
      re-propose a "no" unless something important changed, and say what. Build on the "yes" ideas. Notice patterns
      in his reasons (what he values, what he finds weak).
+   - `../lnd/focus.json`, if it exists: `{"topic", "set_at"}`, a topic the owner asked for through Atlas. **If its `set_at` is
+     newer than the `focus_set_at` in your latest report, today's main question IS this topic**: make it your first
+     research focus and give it the deepest work of the run. Put `"focus": "<the topic>"` and `"focus_set_at": "<its set_at>"`
+     in today's report so the office shows it was picked up. Answer the topic with evidence about OUR company (what our
+     agents do now, what to change, exact prompt text and tests), not a general essay.
    - `../lnd/watch.json` (create it if missing): what you saw last time in each daily source and each repo you track.
      This is how you know what is **new**.
 

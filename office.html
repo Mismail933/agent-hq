@@ -1181,7 +1181,7 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
-let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {}, refboards = {}, boardUnlocked = {}, scoutingRefs = false, boardDraft = {};
+let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {}, refboards = {}, eleven = {}, boardUnlocked = {}, scoutingRefs = false, boardDraft = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
@@ -1356,15 +1356,22 @@ async function lndAct(id, decision, reason) {
   } catch { toast("Can't reach the engine."); }
   poll();
 }
+function exHtml(p, d0) {
+  const saved = ((p.meta || {}).owner_examples || []).join('\n');
+  const val = d0.links !== undefined ? d0.links : saved;
+  return `<div class="exin"><label class="src" for="ex${p.id}" style="margin:0"><b style="color:var(--ink)">What should ours look like?</b> Paste 1-3 links of videos you'd want ours to match (any topic). The Scout studies them first and finds look-alikes.</label>
+    <textarea id="ex${p.id}" data-blinks rows="2" placeholder="https://www.youtube.com/shorts/…" style="width:100%;border:1px solid var(--line-2);border-radius:4px;padding:6px 8px;font:inherit;font-size:12.5px;background:rgba(4,8,18,.8);color:var(--ink)">${esc(val)}</textarea>
+    <label class="src" style="margin:0"><input type="checkbox" data-bnone ${d0.none ? 'checked' : ''}> I have no examples: show me options</label></div>`;
+}
 function boardHtml(p) {
   const b = (refboards || {})[p.id], d0 = boardDraft[p.id] || (boardDraft[p.id] = {option:'', likes:{}, note:''});
   const lock = '<p class="src" style="margin:0"><b style="color:#FDA4AF">Calina is locked</b> until you have seen what really works and chosen a direction.</p>';
   const btn = (label, ghost) => `<button class="btn sm ${ghost ? 'ghost' : ''}" type="button" data-scout="${p.id}" ${scoutingRefs ? 'disabled' : ''}>${scoutingRefs ? 'The Scout is researching… (5-10 min)' : label}</button>`;
-  if (!b) return `<div class="board">${lock}<p class="src" style="margin:0">The Scout looks up real channels and Shorts in this niche, with their views and formats, and brings you options. You choose.</p><div class="acts">${btn('Find what works')}</div></div>`;
+  if (!b) return `<div class="board">${lock}<p class="src" style="margin:0">The Scout looks up real channels and Shorts in this niche, with their views and formats, and brings you options. You choose.</p>${exHtml(p, d0)}<div class="acts">${btn('Find what works')}</div></div>`;
   const d = b.data || {}, refs = d.references || [], opts = d.options || [];
   if (b.status === 'approved') {
     const o = opts.find(x => x.key === (b.choices || {}).option);
-    return `<div class="board"><p class="src" style="margin:0"><b style="color:var(--ink)">Direction you approved:</b> ${esc(o ? o.name + ': ' + o.description : 'your own (' + short(b.note || '', 200) + ')')} <span class="pill approve">Board ${b.id}</span></p><div class="acts">${btn('Find new examples', true)}</div></div>`;
+    return `<div class="board"><p class="src" style="margin:0"><b style="color:var(--ink)">Direction you approved:</b> ${esc(o ? o.name + ': ' + o.description : 'your own (' + short(b.note || '', 200) + ')')} <span class="pill approve">Board ${b.id}</span></p>${exHtml(p, d0)}<div class="acts">${btn('Find new examples', true)}</div></div>`;
   }
   const verified = refs.filter(r => r.verified).length;
   return `<div class="board" data-wait="board" data-bpid="${p.id}"><b style="color:var(--ink)">What works: the Scout's evidence</b>
@@ -1378,6 +1385,7 @@ function boardHtml(p) {
     <b style="color:var(--ink)">Pick a direction</b>
     ${opts.map(o => `<label class="opt"><input type="radio" name="bopt${p.id}" data-bopt value="${esc(o.key)}" ${d0.option === o.key ? 'checked' : ''}><span><b>${esc(o.key)}. ${esc(o.name)}</b>${o.scout_pick ? ' <span class="pill work">Scout would pick</span>' : ''}<small>${esc(o.description)}<br>Follows: ${esc(o.follows || '')} · Cost: ${esc(o.cost)} · Your time: ${esc(o.owner_time || '')} · Risk: ${esc(o.risk)}</small></span></label>`).join('')}
     ${(d.not_verified || []).length ? `<p class="src" style="margin:0"><b style="color:var(--ink)">Not verified:</b> ${(d.not_verified || []).map(esc).join(' · ')}</p>` : ''}
+    ${exHtml(p, d0)}
     ${(d.questions || []).length ? `<p class="src" style="margin:0"><b style="color:var(--ink)">He asks you:</b> ${(d.questions || []).map(esc).join(' · ')}</p>` : ''}
     <form class="why" data-bform="${p.id}"><input type="text" maxlength="3000" data-bnote placeholder="Your words: what you want, or what the Scout got wrong" aria-label="Your note on the board" value="${esc(d0.note || '')}"><button class="btn sm" type="submit">Approve this direction</button>${btn('Find different examples', true)}</form></div>`;
 }
@@ -1385,8 +1393,9 @@ function reviewHtml(e) {
   const d = e.data || {}, r = d.review, v = d.video_review; let out = '';
   const probs = x => (x.problems || []).length ? `<ul>${x.problems.map(q => `<li>${q.area ? '<b>' + esc(q.area) + ':</b> ' : ''}${esc(q.issue)} <i>Fix: ${esc(q.fix)}</i></li>`).join('')}</ul>` : '';
   const word = {pass: 'Israa: passed', rework: 'Israa: still has doubts', unreviewed: 'Israa: not reviewed', release: 'Israa: good enough to publish', redo: 'Israa: not good enough, redo'};
-  if (r && r.verdict) out += `<div class="review ${esc(r.verdict)}"><span><b>${word[r.verdict] || 'Israa'}</b>${r.score ? ' · ' + esc(r.score) + '/10' : ''}${r.reworked ? ' · Calina rewrote it after her notes' : ''}</span><span>${esc(r.summary || '')}</span>${r.verdict === 'pass' ? '' : probs(r)}</div>`;
-  if (v && v.verdict) out += `<div class="review ${esc(v.verdict)}"><span><b>${word[v.verdict] || 'Israa'}</b> (the video) ${v.score ? '· ' + esc(v.score) + '/10' : ''}</span><span>${esc(v.summary || '')}</span>${v.against_references ? `<span class="src">Against your references: ${esc(v.against_references)}</span>` : ''}${v.verdict === 'release' ? '' : probs(v)}${v.measured && v.measured.wpm ? `<span class="src">Measured: ${v.measured.seconds} s · ${v.measured.wpm} words a minute · ${v.measured.cuts} scene cuts</span>` : ''}</div>`;
+  const stranger = x => x && x.retelling ? `<span class="src"><b>Stranger test:</b> ${['saw', 'did', 'logic', 'answer'].every(k => (x.could_explain || {})[k]) ? 'a viewer who knew nothing could retell it.' : 'a viewer who knew nothing could NOT follow it.'} Their retelling: ${esc(x.retelling)}</span>` : '';
+  if (r && r.verdict) out += `<div class="review ${esc(r.verdict)}"><span><b>${word[r.verdict] || 'Israa'}</b>${r.score ? ' · ' + esc(r.score) + '/10' : ''}${r.reworked ? ' · Calina rewrote it after her notes' : ''}</span><span>${esc(r.summary || '')}</span>${stranger(r.stranger)}${r.verdict === 'pass' ? '' : probs(r)}</div>`;
+  if (v && v.verdict) out += `<div class="review ${esc(v.verdict)}"><span><b>${word[v.verdict] || 'Israa'}</b> (the video) ${v.score ? '· ' + esc(v.score) + '/10' : ''}</span><span>${esc(v.summary || '')}</span>${v.against_references ? `<span class="src">Against your references: ${esc(v.against_references)}</span>` : ''}${stranger(v.stranger)}${v.could_not_judge ? `<span class="src"><b>She could not judge:</b> ${esc(v.could_not_judge)}</span>` : ''}${v.verdict === 'release' ? '' : probs(v)}${v.measured && v.measured.wpm ? `<span class="src">Measured: ${v.measured.seconds} s · ${v.measured.wpm} words a minute · ${v.measured.cuts} scene cuts${v.measured.lufs != null ? ' · ' + v.measured.lufs + ' LUFS' : ''}</span>` : ''}</div>`;
   if (e.video_path) out += `<div class="acts"><button class="btn sm ghost" type="button" data-eact="israa">${v ? 'Ask Israa to look again' : 'Ask Israa to review this video'}</button></div>`;
   return out;
 }
@@ -1397,6 +1406,7 @@ function voiceHtml(p) {
   const list = v.voices.map(x => `<div class="vs"><span>${esc(x.label)}${v.chosen === x.id ? ' <b style="color:var(--ok,#4ADE80)">✓ chosen</b>' : ''}</span><audio controls preload="none" src="/api/voice-sample/${p.id}/${esc(x.id)}"></audio><button class="btn sm ${v.chosen === x.id ? 'ghost' : ''}" type="button" data-vpick="${esc(x.id)}" data-pid="${p.id}">${v.chosen === x.id ? 'Chosen' : 'Pick this voice'}</button></div>`).join('');
   return `<div class="voices"><b style="color:var(--ink)">Narrator voice</b>
     <p class="src" style="margin:0">${chosen ? 'Chosen: ' + esc(chosen) + '.' : 'Not chosen yet: the first Short uses the default until you pick.'} All samples say the same lines at about 130 words a minute. Want ElevenLabs? Make a sample on its free tier and save it as <b>voice.mp3</b> in the episode's folder: the Short uses it.</p>
+    <p class="src" style="margin:0">${eleven.configured ? `ElevenLabs: ${(eleven.chars_month || 0).toLocaleString()} of ${(eleven.limit || 0).toLocaleString()} characters used this month.` : 'ElevenLabs is not set up yet: restart START-HERE and paste the key when it asks (the free voices work meanwhile).'}</p>
     ${list || '<p class="src" style="margin:0">No samples yet.</p>'}
     <div class="acts"><button class="btn sm ${list ? 'ghost' : ''}" type="button" data-vsamples="${p.id}" ${v.making ? 'disabled' : ''}>${v.making ? 'Making samples…' : list ? 'Make them again' : 'Make voice samples'}</button></div></div>`;
 }
@@ -1589,7 +1599,7 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
-  production = s.production || {}; voiceSamples = s.voice_samples || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + scoutingRefs;
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + scoutingRefs;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
@@ -1746,14 +1756,19 @@ $('#contentTop').addEventListener('submit', e => {
   f.querySelector('input').value = '';
 });
 $('#contentTop').addEventListener('change', e => {
+  if (e.target.matches('[data-bnone]')) { const pid = e.target.closest('[data-pid]').dataset.pid; (boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''})).none = e.target.checked; return; }
   const box = e.target.closest('[data-bpid]'); if (!box) return; const pid = box.dataset.bpid, d = boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''});
   if (e.target.matches('[data-blike]')) d.likes[e.target.dataset.blike] = e.target.value;
   else if (e.target.matches('[data-bopt]')) d.option = e.target.value;
 });
-$('#contentTop').addEventListener('input', e => { const box = e.target.closest('[data-bpid]'); if (box && e.target.matches('[data-bnote]')) (boardDraft[box.dataset.bpid] || (boardDraft[box.dataset.bpid] = {option:'', likes:{}, note:''})).note = e.target.value; });
+$('#contentTop').addEventListener('input', e => { if (e.target.matches('[data-blinks]')) { const pid = e.target.closest('[data-pid]').dataset.pid; (boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''})).links = e.target.value; return; } const box = e.target.closest('[data-bpid]'); if (box && e.target.matches('[data-bnote]')) (boardDraft[box.dataset.bpid] || (boardDraft[box.dataset.bpid] = {option:'', likes:{}, note:''})).note = e.target.value; });
 $('#contentTop').addEventListener('click', e => {
   const sc = e.target.closest('[data-scout]');
-  if (sc) { const pid = sc.dataset.scout, note = (boardDraft[pid] || {}).note || ''; scoutingRefs = true; renderContent(); contentAct(`/api/content/${pid}/scout`, {notes: note}, 'The Scout is researching what works. It takes 5-10 minutes.'); return; }
+  if (sc) { const pid = sc.dataset.scout, dr = boardDraft[pid] || {}, ta = sc.closest('.board').querySelector('[data-blinks]');
+    const links = dr.links !== undefined ? dr.links : (ta ? ta.value : '');
+    fetch(`/api/content/${pid}/scout`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({notes: dr.note || '', links, none: !!dr.none})})
+      .then(async r => { const j = await r.json().catch(() => ({})); toast(r.ok ? 'The Scout is researching. It takes 5-10 minutes.' : (j.error || 'That did not work.')); if (r.ok) { scoutingRefs = true; renderContent(); } poll(); }, () => toast("Can't reach the engine."));
+    return; }
   const pick = e.target.closest('[data-vpick]'), make = e.target.closest('[data-vsamples]');
   if (pick) contentAct(`/api/project/${pick.dataset.pid}/voice`, {id: pick.dataset.vpick}, 'Voice chosen.');
   else if (make) { contentAct(`/api/project/${make.dataset.vsamples}/voice-samples`, {}, 'Making the voice samples.'); }

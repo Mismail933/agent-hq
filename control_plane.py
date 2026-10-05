@@ -542,6 +542,20 @@ def idea_memory(limit=60):
     return seen, dismissed
 
 
+def eleven_chars_month():
+    """Characters sent to ElevenLabs since the 1st of this month (every Short and every voice sample)."""
+    first = time.mktime(time.strptime(time.strftime("%Y-%m-01"), "%Y-%m-%d"))
+    with _db() as con:
+        rows = con.execute("SELECT detail FROM events WHERE kind='voice_chars' AND ts>=?", (first,)).fetchall()
+    total = 0
+    for r in rows:
+        try:
+            total += int(json.loads(r["detail"]).get("chars", 0))
+        except (ValueError, TypeError):
+            pass
+    return total
+
+
 def last_event_time(kind, agent=None):
     q, args = "SELECT ts FROM events WHERE kind=?", [kind]
     if agent:

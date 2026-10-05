@@ -87,6 +87,23 @@ Agents never spend money without the owner's explicit approval.
   `hq refs|board|approve-board|israa`. UI: board + review blocks in the Content tab (`boardHtml`, `reviewHtml`), a "reference
   board to choose from" item in Needs you. **Standing rule: no format, voice, visual style or tool is chosen without showing the
   owner the options first.** Real tests: Israa on episodes 2 and 13 gave specific, correct notes.
+- `review_tools.py` + `quality.review_pack` (2.17.0): eyes and ears for a finished video. Runs in the shorts venv (Pillow,
+  faster-whisper `base.en`): `review/transcript.json` (transcribed from the rendered audio) and `review/sheet-NN.png` contact
+  sheets (a frame a second + every scene change, 15 per sheet, time + words under each) next to the video. Israa reads them;
+  `hq frames <id>` copies them into Atlas-HQ/review/ so Atlas can. **Stranger test** (`quality.stranger_script` /
+  `stranger_video`): a fresh Israa run with ONLY the transcript (+ sheets for video) retells the story in 3 sentences and
+  says whether it could explain saw/did/logic/answer; any false = rework (script) or redo (video, overrules her verdict).
+  Loudness is measured as LUFS (ebur128), never mean_volume (that mistake made her call a -16 LUFS track "too quiet").
+- `elevenlabs.py` (2.17.0): ElevenLabs TTS with character timings (`/with-timestamps`, PCM 24 kHz, mp3 fallback), `storytellers()`
+  picks 4 calm British/American voices for the samples, `quota()`. Key: `ELEVENLABS_API_KEY` in the owner's .env only
+  (START-HERE asks once via `offer_setup`; `.elevenlabs-skip` if he declines). `animate.py`: voice ids `eleven:<voice id>`;
+  one billed pass per Short (no retry loop), characters logged as `voice_chars` events (`cp.eleven_chars_month`, `hq credits`);
+  if ElevenLabs fails the Short falls back to Kokoro and says so (`settings.ELEVEN_FALLBACK`). Never handle or log his key.
+- Animated renderer rules (2.17.0): a 60 px safe area; `Character.reach(who, pose)` computes how far a character, its hands
+  and the POV sign reach and the scene shrinks/shifts to fit; the camera never zooms or pans past the safe area or into the top
+  band reserved for the title card (first scene) and callouts; callouts sit at the top, pop on `callout_word` (frame from
+  the word timings, `animate.callout_frame`); captions are a flex row with a real gap; narration pace is measured over the
+  whole narration including breaths; voice normalised in two passes to -15 LUFS / -1.5 dBTP.
 - `shorts.py` (2.9.0): approved episode → Short. Runs in its own venv `~/.agent-hq-shorts` (kokoro 0.9.4, torch CPU,
   soundfile, pillow, certifi; `settings.SHORTS_PYTHON`) because Kokoro needs PyTorch. FFmpeg from winget
   (Gyan.FFmpeg, found under WinGet/Packages). Steps: checklist (linked+quoted source, 70-160 words, no repeated

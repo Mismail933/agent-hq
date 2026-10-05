@@ -1,9 +1,9 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {C, W, H, easeOut, clamp01} from './theme';
-import {Camera} from './Camera';
+import {Camera, SAFE} from './Camera';
 import {BACKDROPS} from './Backdrops';
-import {Character} from './Character';
+import {Character, reach} from './Character';
 import {MapIntro} from './MapIntro';
 import {Diagram} from './Diagram';
 import {Rod, Globe, Callout} from './Extras';
@@ -15,14 +15,33 @@ import {Captions, TitleCard, Outro} from './Overlays';
  *   intro: {place, year}, outro: {channel, handle}, caption_chunks, outro_from,
  *   scenes: [{from, frames, backdrop, tone, camera, characters, props, callout, map, diagram, transition}]
  */
-const SLOTS = {left: 300, center: 540, right: 790};
+const SLOTS = {left: 370, center: 540, right: 710};
 const TRANSITION = 9; // frames the next scene takes to arrive
 
 const Scene = ({scene, mouth, index}) => {
   const frame = useCurrentFrame();
   const g = frame + scene.from; // frame on the whole timeline
-  const chars = scene.characters || [];
-  const two = chars.length > 1;
+  const two = (scene.characters || []).length > 1;
+  const topLimit = index === 0 ? 410 : scene.callout && !['map', 'diagram'].includes(scene.backdrop) ? 340 : SAFE;
+  // keep every character (and the POV sign) inside the safe area
+  const chars = (scene.characters || []).map((c) => {
+    const r = reach(c.who, c.pose || 'stand');
+    const y = c.y ?? (two ? 1190 : 1210);
+    // the top of the picture belongs to the title card (first scene) and to callouts: heads and signs stay below them
+    const sc = Math.min(c.scale ?? (two ? 0.92 : 1.2), (W - 2 * SAFE) / (r.left + r.right), (y - topLimit) / r.top);
+    const x0 = c.x ?? SLOTS[c.at || 'center'];
+    return {...c, scale: sc, y, r, x: Math.min(W - SAFE - r.right * sc, Math.max(SAFE + r.left * sc, x0))};
+  });
+  // the props that matter (the rod and its shadow) count too
+  const rodShadow = (p) => 60 + 360 * (p.shadow ?? 0.5);
+  const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: Math.max(SAFE + rodShadow(p), Math.min(W - SAFE - 40, p.x ?? 300))} : p));
+  const xs = [...chars.flatMap((c) => [c.x - c.r.left * c.scale, c.x + c.r.right * c.scale]), ...props.filter((p) => p.type === 'rod').flatMap((p) => [p.x - rodShadow(p), p.x + 40]),
+    ...props.filter((p) => p.type === 'globe').flatMap((p) => [(p.x ?? 540) - (p.r ?? 150), (p.x ?? 540) + (p.r ?? 150)])];
+  const minX = xs.length ? Math.min(...xs) : W / 2;
+  const maxX = xs.length ? Math.max(...xs) : W / 2;
+  const focus = [(minX + maxX) / 2, H / 2];
+  const spread = xs.length ? (maxX - minX) / 2 : 0;
+  const topY = chars.length ? Math.min(...chars.map((c) => c.y - c.r.top * c.scale)) : null;
   const Back = BACKDROPS[scene.backdrop];
   const t = easeOut(clamp01(frame / TRANSITION));
   const kind = scene.transition || ['slide_left', 'iris', 'slide_up', 'iris'][index % 4];
@@ -40,9 +59,9 @@ const Scene = ({scene, mouth, index}) => {
       {isMap && <MapIntro map={scene.map || {focus: [30, 30], zoom: 20}} frame={frame} frames={scene.frames} />}
       {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame} frames={scene.frames} />}
       {!isMap && !isDiagram && (
-        <Camera move={scene.camera || 'push_in'} frame={frame} frames={scene.frames}>
+        <Camera move={scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit}>
           {Back && <Back frame={frame} tone={scene.tone} />}
-          {(scene.props || []).map((p, i) => {
+          {props.map((p, i) => {
             if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x ?? 300} y={p.y ?? 1250} shadow={p.shadow ?? 0.5} />;
             if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} />;
             return null;
@@ -53,8 +72,8 @@ const Scene = ({scene, mouth, index}) => {
               who={c.who}
               pose={c.pose}
               x={c.x ?? SLOTS[c.at || 'center']}
-              y={c.y ?? (two ? 1190 : 1210)}
-              scale={c.scale ?? (two ? 1.05 : 1.3)}
+              y={c.y}
+              scale={c.scale}
               mouth={(c.speaks ?? c.who === 'narrator') ? mouth[Math.min(g, mouth.length - 1)] || 0 : 0}
               frame={frame}
               enterAt={4 + i * 6}
@@ -70,7 +89,9 @@ const Scene = ({scene, mouth, index}) => {
           ))}
         </g>
       )}
-      {scene.callout && <Callout text={scene.callout} frame={frame} y={scene.callout_y ?? 520} />}
+      {scene.callout && frame >= (scene.callout_from ?? 0) && (
+        <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isMap || isDiagram ? scene.callout_y ?? 520 : 215} />
+      )}
     </>
   );
   return (

@@ -44,6 +44,7 @@ import atlas_engine       # noqa: E402
 import atlas_cloud        # noqa: E402
 import workers            # noqa: E402
 import lnd                # noqa: E402
+import elevenlabs         # noqa: E402
 import production         # noqa: E402
 import quality            # noqa: E402
 import control_plane as cp  # noqa: E402
@@ -156,7 +157,7 @@ def run_batch(project_id, count, notes):
         g = r.get("review") or {}
         rev = (f"\n\nIsraa reviewed them: {g.get('passed', 0)} passed"
                + (f", {g['reworked']} sent back to Calina and rewritten" if g.get("reworked") else "")
-               + (f", {g['still_weak']} still have problems (her notes are on each script)" if g.get("still_weak") else "")
+               + (f", {g['still_weak']} still not good enough (her notes are on each script)" if g.get("still_weak") else "")
                + (f". {g['note']}" if g.get("note") else ".")) if g else ""
         atlas_says(f"**Calina's batch {r['batch']} is ready: {len(r['episodes'])} scripts.**{dropped}\n{titles}{rev}\n\n"
                    + (f"{r['batch_note']}\n\n" if r.get("batch_note") else "")
@@ -473,6 +474,8 @@ class Handler(BaseHTTPRequestHandler):
                 "rendering": RENDERING["episode"],
                 "refboards": {p["id"]: cp.latest_refboard(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
                 "board_unlocked": {p["id"]: bool(quality.style_bar(p["id"])) for p in cp.list_projects(20) if p["status"] == "approved"},
+                "eleven": {"configured": elevenlabs.configured(), "chars_month": cp.eleven_chars_month(),
+                           "limit": getattr(settings, "ELEVEN_MONTHLY_CHARS", 30000)},
                 "scouting_refs": quality.SCOUTING.locked(), "reviewing": quality.REVIEWING.locked(),
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
@@ -674,6 +677,9 @@ class Handler(BaseHTTPRequestHandler):
                 if quality.SCOUTING.locked():
                     return self._send(409, {"error": "The Scout is already working. Try again when he's done."})
                 notes, warning = clip(body.get("notes", ""), "notes")
+                bad = quality.save_examples(pid, body.get("links", ""), bool(body.get("none")))
+                if bad:
+                    return self._send(409, {"error": bad})
                 threading.Thread(target=run_scout_refs, args=(pid, notes), daemon=True).start()
                 return self._send(202, {"ok": True, "message": "The Scout is researching what works on YouTube. It takes about 5-10 minutes.",
                                         **({"warning": warning} if warning else {})})
@@ -798,6 +804,10 @@ def prepare_atlas():
             atlas_cloud.offer_setup()
         except Exception as e:
             print("  Cloud Atlas setup failed:", repr(e), flush=True)
+        try:
+            elevenlabs.offer_setup()
+        except Exception as e:
+            print("  ElevenLabs setup failed:", repr(e), flush=True)
 
 
 class Server(ThreadingHTTPServer):
