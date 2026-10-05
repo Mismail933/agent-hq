@@ -57,6 +57,9 @@ def init():
         CREATE TABLE IF NOT EXISTS episodes (
             id INTEGER PRIMARY KEY, project_id INTEGER, batch INTEGER, ts REAL, status TEXT, title TEXT,
             data TEXT, owner_note TEXT, video_path TEXT);
+        CREATE TABLE IF NOT EXISTS refboards (
+            id INTEGER PRIMARY KEY, project_id INTEGER, ts REAL, status TEXT, data TEXT, choices TEXT, note TEXT,
+            decided_ts REAL);
         """)
         cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
         if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
@@ -69,7 +72,7 @@ def init():
 # ---- Limits the owner changes in the office (or Atlas, when the owner asks) -------
 # Stored in hq.db and applied on top of settings.py / settings_local.py, so they take effect at once and
 # survive updates. Each one is validated against a sane range so a typo can't open the floodgates.
-WORKERS = ("Doulya", "Sage", "Vera", "Serge", "Calina")
+WORKERS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa")
 LIMITS = {
     "daily_api": ("usd", 0, 100, "Daily API cap, whole company"),
     "per_idea": ("usd", 0, 20, "API cap per idea (research + judgment)"),
@@ -317,7 +320,7 @@ def add_episode(project_id, batch, data):
 
 
 def update_episode(eid, **fields):
-    assert set(fields) <= {"status", "owner_note", "video_path", "data"}, fields
+    assert set(fields) <= {"status", "owner_note", "video_path", "data", "title"}, fields
     if isinstance(fields.get("data"), dict):
         fields["data"] = json.dumps(fields["data"])
     with _db() as con:
@@ -343,6 +346,42 @@ def list_episodes(project_id=None, limit=60):
     with _db() as con:
         rows = con.execute(q + " ORDER BY id DESC LIMIT ?", (*args, limit)).fetchall()
     return [_episode_row(r) for r in rows]
+
+
+# ---- Reference boards: the Scout's evidence of what works, and the owner's choice ----------
+# status: ready (waiting for the owner) -> approved | superseded
+def add_refboard(project_id, data):
+    with _db() as con:
+        con.execute("UPDATE refboards SET status='superseded' WHERE project_id=? AND status='ready'", (project_id,))
+        return con.execute("INSERT INTO refboards(project_id,ts,status,data) VALUES(?,?,?,?)",
+                           (project_id, time.time(), "ready", json.dumps(data))).lastrowid
+
+
+def _board_row(r):
+    return {"id": r["id"], "project_id": r["project_id"], "ts": r["ts"], "status": r["status"], "data": json.loads(r["data"] or "{}"),
+            "choices": json.loads(r["choices"]) if r["choices"] else {}, "note": r["note"] or "", "decided_ts": r["decided_ts"]}
+
+
+def latest_refboard(project_id):
+    with _db() as con:
+        r = con.execute("SELECT * FROM refboards WHERE project_id=? AND status!='superseded' ORDER BY id DESC LIMIT 1",
+                        (project_id,)).fetchone()
+        if not r:
+            r = con.execute("SELECT * FROM refboards WHERE project_id=? ORDER BY id DESC LIMIT 1", (project_id,)).fetchone()
+    return _board_row(r) if r else None
+
+
+def approved_refboard(project_id):
+    with _db() as con:
+        r = con.execute("SELECT * FROM refboards WHERE project_id=? AND status='approved' ORDER BY id DESC LIMIT 1",
+                        (project_id,)).fetchone()
+    return _board_row(r) if r else None
+
+
+def decide_refboard(bid, status, choices, note):
+    with _db() as con:
+        con.execute("UPDATE refboards SET status=?, choices=?, note=?, decided_ts=? WHERE id=?",
+                    (status, json.dumps(choices), note, time.time(), bid))
 
 
 def next_batch(project_id):

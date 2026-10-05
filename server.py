@@ -45,6 +45,7 @@ import atlas_cloud        # noqa: E402
 import workers            # noqa: E402
 import lnd                # noqa: E402
 import production         # noqa: E402
+import quality            # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -149,11 +150,28 @@ def run_batch(project_id, count, notes):
     out = agents.calina_batch(project_id, count, notes)
     try:
         r = json.loads(out)
-        titles = "\n".join(f"- #{e['id']} {e['title']}" for e in r["episodes"])
+        mark = {"pass": "passed Israa", "rework": "Israa still has doubts", "unreviewed": "NOT reviewed"}
+        titles = "\n".join(f"- #{e['id']} {e['title']} ({mark.get(e.get('verdict'), 'not reviewed')})" for e in r["episodes"])
         dropped = f" She dropped {r['dropped_without_source']} script(s) she couldn't source." if r["dropped_without_source"] else ""
-        atlas_says(f"**Calina's batch {r['batch']} is ready: {len(r['episodes'])} scripts.**{dropped}\n{titles}\n\n"
+        g = r.get("review") or {}
+        rev = (f"\n\nIsraa reviewed them: {g.get('passed', 0)} passed"
+               + (f", {g['reworked']} sent back to Calina and rewritten" if g.get("reworked") else "")
+               + (f", {g['still_weak']} still have problems (her notes are on each script)" if g.get("still_weak") else "")
+               + (f". {g['note']}" if g.get("note") else ".")) if g else ""
+        atlas_says(f"**Calina's batch {r['batch']} is ready: {len(r['episodes'])} scripts.**{dropped}\n{titles}{rev}\n\n"
                    + (f"{r['batch_note']}\n\n" if r.get("batch_note") else "")
-                   + "Open Ideas → Content to read each script and its sources, then approve or reject it.")
+                   + "Open Ideas → Content to read each script, its sources and Israa's verdict, then approve or reject it.")
+    except (ValueError, KeyError, TypeError):
+        atlas_says(out)
+
+
+def run_scout_refs(project_id, notes=""):
+    out = quality.scout_references(project_id, notes)
+    try:
+        r = json.loads(out)
+        atlas_says(f"**The Scout's reference board is ready for project {r['project_id']}.** He found {r['references']} real examples "
+                   f"({r['verified']} he could verify) and {len(r['options'])} directions to choose from: " + "; ".join(r["options"]) +
+                   ".\n\nOpen Ideas → Content, look at the examples, pick a direction and approve the board. Calina won't write anything until you do.")
     except (ValueError, KeyError, TypeError):
         atlas_says(out)
 
@@ -233,11 +251,19 @@ def run_render(eid):
                 raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
             r = json.loads(result)
             cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
+            rv = quality.review_video(eid)   # Israa looks at it before the owner does
             pace = (f" The voice still reads at {r['wpm']} words a minute even after slowing it: lower the speed in OpenArt's "
                     "text-to-speech next time." if r.get("wpm", 0) > 158 else "")
             what = (f"{r['images']} animated scenes, voice: {r.get('voice', '')}" if animated else
                     f"{r['images']} clips" if mode == "assemble" else f"{r['images']} public-domain images")
-            atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {what}).{pace}\n\n"
+            verdict = ""
+            if rv:
+                word = {"release": "she says it is good enough to publish", "redo": "she says it is NOT good enough and should be redone",
+                        "unreviewed": "she couldn't review it"}.get(rv["verdict"], rv["verdict"])
+                top = "; ".join(f"[{x.get('area', '')}] {x['issue']}" for x in (rv.get("problems") or [])[:3])
+                verdict = (f"\n\n**Israa looked at it:** {word} ({rv.get('score', '?')}/10). {rv.get('summary', '')}"
+                           + (f"\nHer main problems: {top}" if top and rv["verdict"] != "release" else ""))
+            atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {what}).{pace}{verdict}\n\n"
                        "Watch it in Ideas → Content. If it's good, upload it by hand with the title and description shown "
                        "there, turn on YouTube's altered/synthetic content setting, then click **Mark as published**.")
         except Exception as ex:
@@ -445,6 +471,9 @@ class Handler(BaseHTTPRequestHandler):
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
                 "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(),
                 "rendering": RENDERING["episode"],
+                "refboards": {p["id"]: cp.latest_refboard(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
+                "board_unlocked": {p["id"]: bool(quality.style_bar(p["id"])) for p in cp.list_projects(20) if p["status"] == "approved"},
+                "scouting_refs": quality.SCOUTING.locked(), "reviewing": quality.REVIEWING.locked(),
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "production": {p["id"]: agents.production_summary(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
@@ -634,11 +663,25 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(409, {"error": "Calina only works on approved plans."})
             body = self._json_body()
             if action == "batch":
+                if not quality.style_bar(pid):
+                    return self._send(409, {"error": "Calina is locked until you've approved a reference board: have the Scout find what works first (Ideas -> Content -> Find what works)."})
                 if agents.PRODUCING.locked():
                     return self._send(409, {"error": "Calina is already writing a batch. Try again when it's done."})
                 notes, warning = clip(body.get("notes", ""), "notes")
                 threading.Thread(target=run_batch, args=(pid, body.get("count"), notes), daemon=True).start()
                 return self._send(202, accepted(warning))
+            if action == "scout":   # the Scout finds what really works and makes a reference board
+                if quality.SCOUTING.locked():
+                    return self._send(409, {"error": "The Scout is already working. Try again when he's done."})
+                notes, warning = clip(body.get("notes", ""), "notes")
+                threading.Thread(target=run_scout_refs, args=(pid, notes), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "The Scout is researching what works on YouTube. It takes about 5-10 minutes.",
+                                        **({"warning": warning} if warning else {})})
+            if action == "board":   # the owner picks a direction and approves the board
+                note, warning = clip(body.get("note", ""), "note")
+                msg = quality.decide_board(pid, body.get("option"), body.get("likes"), note, body.get("decision", "approve"))
+                ok = msg.startswith("Board ")
+                return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
             if action == "review":
                 stats, warning = clip(body.get("stats", ""), "notes")
                 if not stats:
@@ -670,6 +713,14 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     return self._send(400, {"error": "Credits, minutes and retakes must be numbers."})
                 return self._send(200, {"ok": True, "message": msg})
+            if action == "israa":   # ask Israa to review the video again
+                e = cp.get_episode(eid)
+                if not e or not e["video_path"]:
+                    return self._send(409, {"error": "There's no video to review yet."})
+                if quality.REVIEWING.locked():
+                    return self._send(409, {"error": "Israa is busy reviewing something else."})
+                threading.Thread(target=quality.review_video, args=(eid,), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Israa is looking at the video. It takes a couple of minutes."})
             if action in ("render", "assemble"):
                 e = cp.get_episode(eid)
                 if not e or e["status"] not in ("approved", "rendered"):

@@ -83,6 +83,12 @@ Your memory of this chat is limited. Long chats get summarized and details can b
   owner makes a decision, states a preference, or something important happens: date, one or two lines each.
   It is the only memory that survives between chats. Keep it short; summarize old entries instead of letting it grow.
 
+## The standing rule: evidence before production, review before the owner
+The owner was fed a slideshow nobody asked for. So: never start a batch for a project without an approved reference board
+(`hq refs`, show him the examples and options, he chooses, then `hq approve-board`). Never choose a format, voice, visual
+style or tool for him: show options and let him pick. When Israa returns something or doubts it, tell him her words
+plainly; don't soften them and don't pass it off as good. If you see a video or script, judge it yourself too.
+
 ## Your controls
 Run these from this folder. They talk to the running office, so everything shows up live there and goes through the
 company's guardrails (budgets, one idea at a time, kill switch).
@@ -112,6 +118,10 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py folder <episode id>` | Opens that episode's clips folder on the owner's PC. |
 | `python hq.py prodlog <episode id> <credits> <minutes> <retakes>` | Log the owner's OpenArt credits, minutes and retakes for a Short (plan 2's kill criteria use the averages). |
 | `python hq.py published <episode id>` | The owner uploaded that Short to YouTube. |
+| `python hq.py refs <project id> ["notes"]` | The Scout researches what really works on YouTube in that niche and writes a reference board (real examples, views, formats, 2-3 directions). 5-10 min. Do this BEFORE any batch. |
+| `python hq.py board <project id>` | The latest reference board: examples, verified or not, options, the owner's choice. |
+| `python hq.py approve-board <project id> <A/B/C> ["his words"]` | ONLY after the owner chose a direction. Unlocks Calina for that project. |
+| `python hq.py israa <episode id>` | Israa reviews a finished video again (frames, voice pace, cuts). |
 | `python hq.py review <project id> "pasted stats"` | The owner pasted the channel's stats: Calina writes the learning note. |
 | `python hq.py limit <key> <value>` | Only when the owner asks for that change: e.g. `limit allowance.Sage 10`, `limit engine.Vera api`, `limit model.Serge opus`, `limit daily_api 5`, `limit api_cap.Doulya none`. |
 | `python hq.py stop` / `resume` | Kill switch. Use `stop` at once if the owner says stop. `resume` only when he asks. |
@@ -167,6 +177,8 @@ They can't read YouTube, Reddit or Twitter yet.
 | Vera | Judgment | Scores the idea against the evidence and the owner's settings: approve / smaller version / needs data / reject, Path A (no new money) or B (needs money). |
 | Serge | Product | Product Owner. On the owner's request, turns an approved idea into a plan: goal, first cheap experiment, week-by-week milestones with owners (the owner's hours or roles to hire), a budget request with real prices, risks and kill criteria. A plan over the owner's per-project limits can't be approved (the code blocks it). Plans are in `plans/` and in the office under Ideas → Plans. |
 | Calina | Content | Content Producer (2.8.0) for approved content projects (the YouTube channel, project 1). On the owner's request (`hq batch`) writes a batch of sourced history scripts (hook, 110-130 words, surprising fact, sources with quotes, image queries, title, description with the AI-disclosure line). Scripts without a source are dropped. The owner approves or rejects each one in Ideas → Content; rejection reasons teach her next batch. Approved scripts become videos with `hq render` (the Shorts pipeline: Kokoro voice, public-domain Wikimedia images with licences logged, captions, 1080x1920, under 60 s); the owner watches each in Ideas → Content, uploads by hand with the title and description shown there, and marks it published. The channel art is in content/project-1/branding/. `hq review` with pasted channel stats → weekly learning note (and the week-6 go/no-go memo). Files in `content/project-N/`. |
+| Scout | Ideas | Reference scout (2.16.0). Before anything is produced for a project, researches what really works on YouTube in that niche: real channels and Shorts with views, formats, hooks, what winners share, 2-3 production directions with cost and risk, and what he could not verify (he can read pages, not watch video). The owner reacts and approves a board; Calina is blocked in code until he has. |
+| Israa | Judgment | Quality reviewer (2.16.0, named by the owner). Reviews every batch of scripts before the owner sees it (hook, story, originality, facts checked against sources, voice-over, fit with the approved board), sends weak ones back to Calina with exact notes (2 rounds), and looks at every finished video (8 frames, voice pace, cuts per second) and says release or redo. Her verdicts and doubts reach the owner in her words; a review is never skipped silently. |
 | Richard | Learning & Dev | L&D Lead (2.10.0). Runs every morning as a cloud agent (Anthropic's cloud, on the free cloud credit until Nov 5) and proposes 1-2 evidence-backed improvements to the company (agents, tokens, results, reliability, UI, tools). They land in the office's L&D tab. He only proposes; he never changes the company. |
 
 Not hired yet: Builders and QA per idea, Marketing, Finance, Reporting, Learning & Dev,

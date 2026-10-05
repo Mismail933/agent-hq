@@ -263,6 +263,16 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .pack .row2{display:flex;gap:6px;align-items:flex-start}
 .pack textarea{flex:1;min-width:0;border:1px solid var(--line-2);border-radius:4px;padding:6px 8px;font:inherit;font-size:12.5px;background:rgba(4,8,18,.8);color:var(--ink);resize:vertical}
 .pack .lbl{font-family:var(--mono);font-size:11px;color:var(--ink-2);text-transform:uppercase;width:58px;flex:none;padding-top:7px}
+.board{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:4px;padding:10px;background:rgba(4,8,18,.45)}
+.board .ref{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:3px;font-size:13px}
+.board .ref .rt{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between}
+.board .ref a{color:var(--cyan-ink)}
+.board .react{display:flex;gap:12px;font-size:12.5px;color:var(--ink-2)}
+.board label.opt{display:flex;gap:8px;align-items:flex-start;font-size:13px;border:1px solid var(--line-2);border-radius:4px;padding:8px;cursor:pointer}
+.board label.opt small{display:block;color:var(--ink-2);font-size:12px}
+.review{border-left:3px solid var(--line-2);padding:6px 10px;font-size:13px;display:flex;flex-direction:column;gap:3px;background:rgba(4,8,18,.35)}
+.review.pass{border-left-color:#34D399}.review.rework,.review.redo{border-left-color:#F43F5E}.review.unreviewed{border-left-color:#FBBF24}
+.review ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:12.5px}
 .voices{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:4px;padding:10px;background:rgba(4,8,18,.45)}
 .voices .vs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
 .voices .vs span{flex:1 1 220px}
@@ -1171,7 +1181,7 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
-let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {};
+let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {}, refboards = {}, boardUnlocked = {}, scoutingRefs = false, boardDraft = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) {
   ideaTab = id;
@@ -1346,6 +1356,40 @@ async function lndAct(id, decision, reason) {
   } catch { toast("Can't reach the engine."); }
   poll();
 }
+function boardHtml(p) {
+  const b = (refboards || {})[p.id], d0 = boardDraft[p.id] || (boardDraft[p.id] = {option:'', likes:{}, note:''});
+  const lock = '<p class="src" style="margin:0"><b style="color:#FDA4AF">Calina is locked</b> until you have seen what really works and chosen a direction.</p>';
+  const btn = (label, ghost) => `<button class="btn sm ${ghost ? 'ghost' : ''}" type="button" data-scout="${p.id}" ${scoutingRefs ? 'disabled' : ''}>${scoutingRefs ? 'The Scout is researching… (5-10 min)' : label}</button>`;
+  if (!b) return `<div class="board">${lock}<p class="src" style="margin:0">The Scout looks up real channels and Shorts in this niche, with their views and formats, and brings you options. You choose.</p><div class="acts">${btn('Find what works')}</div></div>`;
+  const d = b.data || {}, refs = d.references || [], opts = d.options || [];
+  if (b.status === 'approved') {
+    const o = opts.find(x => x.key === (b.choices || {}).option);
+    return `<div class="board"><p class="src" style="margin:0"><b style="color:var(--ink)">Direction you approved:</b> ${esc(o ? o.name + ': ' + o.description : 'your own (' + short(b.note || '', 200) + ')')} <span class="pill approve">Board ${b.id}</span></p><div class="acts">${btn('Find new examples', true)}</div></div>`;
+  }
+  const verified = refs.filter(r => r.verified).length;
+  return `<div class="board" data-wait="board" data-bpid="${p.id}"><b style="color:var(--ink)">What works: the Scout's evidence</b>
+    ${boardUnlocked[p.id] ? '' : lock}<p class="src" style="margin:0">${esc(d.niche || '')} · ${refs.length} real examples, ${verified} verified by opening the page. He can read pages but not watch video, so judge the looks yourself from the links.</p>
+    ${refs.map((r, i) => `<div class="ref"><div class="rt"><span><a href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.title)}</b></a> · ${esc(r.channel)}</span><span class="pill ${r.verified ? 'approve' : 'needs_more_data'}">${r.verified ? 'verified' : 'not verified'}</span></div>
+      <span class="src">${esc([r.views && r.views + ' views', r.age, r.length, r.format].filter(Boolean).join(' · '))}</span>
+      <span>Hook: ${esc(r.hook || '')} · Pacing: ${esc(r.pacing || '')}</span><span class="src">${esc(r.why_it_works)}${r.evidence_note ? ' (' + esc(r.evidence_note) + ')' : ''}</span>
+      <div class="react"><span>Your take:</span>${['like', 'dislike'].map(v => `<label><input type="radio" name="b${p.id}r${i}" data-blike="${i}" value="${v}" ${(d0.likes || {})[i] === v ? 'checked' : ''}> ${v === 'like' ? 'Like this' : 'Not for us'}</label>`).join('')}</div></div>`).join('')}
+    ${(d.patterns || []).length ? `<p class="src" style="margin:0"><b style="color:var(--ink)">What the winners share:</b> ${(d.patterns || []).map(esc).join(' · ')}</p>` : ''}
+    ${(d.weak_spots || []).length ? `<p class="src" style="margin:0"><b style="color:var(--ink)">What weak channels get wrong:</b> ${(d.weak_spots || []).map(esc).join(' · ')}</p>` : ''}
+    <b style="color:var(--ink)">Pick a direction</b>
+    ${opts.map(o => `<label class="opt"><input type="radio" name="bopt${p.id}" data-bopt value="${esc(o.key)}" ${d0.option === o.key ? 'checked' : ''}><span><b>${esc(o.key)}. ${esc(o.name)}</b>${o.scout_pick ? ' <span class="pill work">Scout would pick</span>' : ''}<small>${esc(o.description)}<br>Follows: ${esc(o.follows || '')} · Cost: ${esc(o.cost)} · Your time: ${esc(o.owner_time || '')} · Risk: ${esc(o.risk)}</small></span></label>`).join('')}
+    ${(d.not_verified || []).length ? `<p class="src" style="margin:0"><b style="color:var(--ink)">Not verified:</b> ${(d.not_verified || []).map(esc).join(' · ')}</p>` : ''}
+    ${(d.questions || []).length ? `<p class="src" style="margin:0"><b style="color:var(--ink)">He asks you:</b> ${(d.questions || []).map(esc).join(' · ')}</p>` : ''}
+    <form class="why" data-bform="${p.id}"><input type="text" maxlength="3000" data-bnote placeholder="Your words: what you want, or what the Scout got wrong" aria-label="Your note on the board" value="${esc(d0.note || '')}"><button class="btn sm" type="submit">Approve this direction</button>${btn('Find different examples', true)}</form></div>`;
+}
+function reviewHtml(e) {
+  const d = e.data || {}, r = d.review, v = d.video_review; let out = '';
+  const probs = x => (x.problems || []).length ? `<ul>${x.problems.map(q => `<li>${q.area ? '<b>' + esc(q.area) + ':</b> ' : ''}${esc(q.issue)} <i>Fix: ${esc(q.fix)}</i></li>`).join('')}</ul>` : '';
+  const word = {pass: 'Israa: passed', rework: 'Israa: still has doubts', unreviewed: 'Israa: not reviewed', release: 'Israa: good enough to publish', redo: 'Israa: not good enough, redo'};
+  if (r && r.verdict) out += `<div class="review ${esc(r.verdict)}"><span><b>${word[r.verdict] || 'Israa'}</b>${r.score ? ' · ' + esc(r.score) + '/10' : ''}${r.reworked ? ' · Calina rewrote it after her notes' : ''}</span><span>${esc(r.summary || '')}</span>${r.verdict === 'pass' ? '' : probs(r)}</div>`;
+  if (v && v.verdict) out += `<div class="review ${esc(v.verdict)}"><span><b>${word[v.verdict] || 'Israa'}</b> (the video) ${v.score ? '· ' + esc(v.score) + '/10' : ''}</span><span>${esc(v.summary || '')}</span>${v.against_references ? `<span class="src">Against your references: ${esc(v.against_references)}</span>` : ''}${v.verdict === 'release' ? '' : probs(v)}${v.measured && v.measured.wpm ? `<span class="src">Measured: ${v.measured.seconds} s · ${v.measured.wpm} words a minute · ${v.measured.cuts} scene cuts</span>` : ''}</div>`;
+  if (e.video_path) out += `<div class="acts"><button class="btn sm ghost" type="button" data-eact="israa">${v ? 'Ask Israa to look again' : 'Ask Israa to review this video'}</button></div>`;
+  return out;
+}
 function voiceHtml(p) {
   if ((p.meta || {}).format !== 'animated_v1') return '';
   const v = (voiceSamples || {})[p.id] || {voices: [], chosen: null};
@@ -1364,6 +1408,7 @@ function renderContent() {
     $('#contentTop').innerHTML = live.length ? live.map(p => `<div class="proj" data-pid="${p.id}"><div><b>${esc(short(p.title, 90))}</b> <span class="pill approve">Plan ${p.id} approved</span></div>
       ${(p.meta || {}).channel ? `<p class="src" style="margin:0">Channel: <b style="color:var(--ink)">${esc(p.meta.channel.name)}</b> ${esc(p.meta.channel.handle || '')}${/^https?:\/\//.test(p.meta.channel.url || '') ? ` · <a href="${esc(p.meta.channel.url)}" target="_blank" rel="noopener">open</a>` : ''}</p>` : '<p class="src" style="margin:0">No channel name on record yet. Tell Atlas the name and handle.</p>'}
       ${(() => { const pr = (production || {})[p.id] || {}; return pr.shorts_logged ? `<p class="src" style="margin:0">Pilot log: ${pr.shorts_logged} Short(s) · on average ${pr.avg_credits} credits · ${pr.avg_minutes} min of your time · ${pr.avg_retakes} retakes</p>` : ''; })()}
+      ${boardHtml(p)}
       ${voiceHtml(p)}
       <form class="why" data-cform="batch"><input type="text" maxlength="12000" placeholder="Notes for Calina's next batch (optional)" aria-label="Notes for Calina"><button class="btn sm" type="submit" ${producing ? 'disabled' : ''}>${producing ? 'Calina is writing…' : 'New batch of scripts'}</button></form>
       <form class="why" data-cform="review"><input type="text" maxlength="12000" placeholder="Paste this week's channel stats for a learning note" aria-label="Channel stats"><button class="btn sm ghost" type="submit">Weekly review</button></form></div>`).join('')
@@ -1373,6 +1418,7 @@ function renderContent() {
     return `<li class="ep" data-eid="${e.id}"${epWait(e) ? ` data-wait="${epWait(e)}"` : ''}><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${['approved', 'published'].includes(e.status) ? 'approve' : e.status === 'rejected' ? 'reject' : e.status === 'rendered' ? 'work' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
       <span class="t">${esc(e.title)}</span>
       <div class="meta"><span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span>${(d.scenes || []).length ? `<span>${d.scenes.length} SCENES</span><span>${d.scenes.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span><span>ANIMATED</span>` : (d.shots || []).length ? `<span>${d.shots.length} SHOTS</span><span>${d.shots.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span>` : `<span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span>`}</div>
+      ${reviewHtml(e)}
       ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.scenes || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${d.scenes.map(x => `${x.n}. ${esc(x.voice_line || '')}  [${esc(x.backdrop || '')}${(x.characters || []).length ? ', ' + x.characters.map(c => c.who).join(' + ') : ''}]`).join('\n')}</div>${(d.kit_requests || []).length ? `<p class="src"><b>Needs new art:</b> ${d.kit_requests.map(esc).join('; ')}</p>` : ''}` : (d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
       <p><b style="color:var(--ink)">Surprising fact:</b> ${esc(d.surprising_fact || '')}</p>
       <div class="src">${(d.sources || []).map(x => `${/^https?:\/\//.test(x.url || '') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.publisher || 'source')}</a>` : esc(x.publisher || 'source')}: “${esc(short(x.quote || '', 160))}”`).join('<br>')}</div>
@@ -1543,7 +1589,7 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
-  production = s.production || {}; voiceSamples = s.voice_samples || {}; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples);
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + scoutingRefs;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
@@ -1599,6 +1645,7 @@ const NEED_KINDS = [
   ['pitch', 'inbox', 'idea to look at', 'ideas to look at', 'Doulya'],
   ['plan', 'plans', 'plan to approve', 'plans to approve', 'Serge'],
   ['overplan', 'plans', 'plan over your limits', 'plans over your limits', 'Serge', 'bad'],
+  ['board', 'content', 'reference board to choose from', 'reference boards to choose from', 'the Scout'],
   ['script', 'content', 'script to review', 'scripts to review', 'Calina'],
   ['assemble', 'content', 'Short ready to make', 'Shorts ready to make', 'Calina'],
   ['upload', 'content', 'video to upload', 'videos to upload', 'Calina'],
@@ -1613,6 +1660,7 @@ function renderNeeds() {
     plan: projects.filter(p => p.status === 'awaiting_approval').length,
     overplan: projects.filter(p => p.status === 'over_limit').length,
     lnd: lndIdeas.filter(i => i.status === 'new').length,
+    board: Object.values(refboards || {}).filter(b => b && b.status === 'ready').length,
     stuck: ideas.filter(i => !i.verdict && ['stopped','error','interrupted'].includes(i.status)).length,
   };
   for (const e of episodes) { const w = epWait(e); if (w) count[w] = (count[w] || 0) + 1; }
@@ -1689,12 +1737,23 @@ $('#lndList').addEventListener('click', e => {
 });
 $('#lndList').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-lid]'); lndAct(li.dataset.lid, 'no', e.target.querySelector('input').value); });
 $('#contentTop').addEventListener('submit', e => {
-  e.preventDefault(); const f = e.target, pid = +f.closest('[data-pid]').dataset.pid, v = f.querySelector('input').value;
+  e.preventDefault(); const f = e.target;
+  if (f.dataset.bform) { const pid = f.dataset.bform, d = boardDraft[pid] || {}; if (!d.option && !(d.note || '').trim()) { toast('Pick one of the directions, or write your own in the note.'); return; }
+    contentAct(`/api/content/${pid}/board`, {option: d.option, likes: d.likes || {}, note: d.note || ''}, 'Board approved.').then(() => { delete boardDraft[pid]; }); return; }
+  const pid = +f.closest('[data-pid]').dataset.pid, v = f.querySelector('input').value;
   if (f.dataset.cform === 'batch') { producing = true; renderContent(); contentAct(`/api/content/${pid}/batch`, {notes:v}, 'Calina is writing the batch. It takes a few minutes.'); }
   else contentAct(`/api/content/${pid}/review`, {stats:v}, 'Calina is writing the learning note.');
   f.querySelector('input').value = '';
 });
+$('#contentTop').addEventListener('change', e => {
+  const box = e.target.closest('[data-bpid]'); if (!box) return; const pid = box.dataset.bpid, d = boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''});
+  if (e.target.matches('[data-blike]')) d.likes[e.target.dataset.blike] = e.target.value;
+  else if (e.target.matches('[data-bopt]')) d.option = e.target.value;
+});
+$('#contentTop').addEventListener('input', e => { const box = e.target.closest('[data-bpid]'); if (box && e.target.matches('[data-bnote]')) (boardDraft[box.dataset.bpid] || (boardDraft[box.dataset.bpid] = {option:'', likes:{}, note:''})).note = e.target.value; });
 $('#contentTop').addEventListener('click', e => {
+  const sc = e.target.closest('[data-scout]');
+  if (sc) { const pid = sc.dataset.scout, note = (boardDraft[pid] || {}).note || ''; scoutingRefs = true; renderContent(); contentAct(`/api/content/${pid}/scout`, {notes: note}, 'The Scout is researching what works. It takes 5-10 minutes.'); return; }
   const pick = e.target.closest('[data-vpick]'), make = e.target.closest('[data-vsamples]');
   if (pick) contentAct(`/api/project/${pick.dataset.pid}/voice`, {id: pick.dataset.vpick}, 'Voice chosen.');
   else if (make) { contentAct(`/api/project/${make.dataset.vsamples}/voice-samples`, {}, 'Making the voice samples.'); }
@@ -1706,6 +1765,7 @@ $('#episodes').addEventListener('click', e => {
   if (b.dataset.eact === 'approve') { pending['e' + id] = 1; renderContent(); contentAct(`/api/episode/${id}/approve`, {}, 'Approved.').then(() => delete pending['e' + id]); }
   else if (b.dataset.eact === 'render') { rendering = id; renderContent(); contentAct(`/api/episode/${id}/render`, {}, 'Calina is making the video.'); }
   else if (b.dataset.eact === 'published') contentAct(`/api/episode/${id}/published`, {}, 'Marked as published.');
+  else if (b.dataset.eact === 'israa') contentAct(`/api/episode/${id}/israa`, {}, 'Israa is looking at the video.');
   else if (b.dataset.eact === 'folder') contentAct(`/api/episode/${id}/folder`, {}, 'Opened the folder.');
   else if (b.dataset.eact === 'retire') { const f = li.querySelector('form[data-retire]'); f.hidden = false; f.querySelector('input').focus(); }
   else { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); }

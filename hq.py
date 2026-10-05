@@ -10,6 +10,7 @@ Atlas's controls for Agent HQ.
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
                  lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
                  clips <episode id> | assemble <episode id> | prodlog <episode id> <credits> <minutes> <retakes>
+                 refs <project id> ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
@@ -181,6 +182,26 @@ def main(argv):
             notes = " ".join(args[2:] if count else args[1:])
             order(f"/api/content/{int(args[0])}/batch", {"count": count, "notes": notes},
                   "Calina is writing the batch. The scripts will land in Ideas → Content and in the office chat.")
+        elif cmd == "refs":   # the Scout researches what works and writes a reference board
+            order(f"/api/content/{int(args[0])}/scout", {"notes": " ".join(args[1:])},
+                  "The Scout is researching what works on YouTube (5-10 minutes). The board lands in Ideas -> Content and in the office chat.")
+        elif cmd == "board":
+            b = cp.latest_refboard(int(args[0]))
+            if not b:
+                show("No reference board yet. Run: hq refs <project id>")
+            else:
+                d = b["data"]
+                show({"board": b["id"], "status": b["status"], "niche": d.get("niche"),
+                      "references": [{"n": i, "title": r["title"], "channel": r["channel"], "views": r.get("views"), "format": r["format"],
+                                      "verified": r.get("verified"), "url": r["url"]} for i, r in enumerate(d["references"])],
+                      "options": [{"key": o["key"], "name": o["name"], "cost": o["cost"], "risk": o["risk"], "scout_pick": o.get("scout_pick")}
+                                  for o in d["options"]],
+                      "not_verified": d.get("not_verified"), "owner_choice": b["choices"], "owner_note": b["note"]})
+        elif cmd == "approve-board":   # only when the owner has chosen: hq approve-board <project> <A|B|C> [his words]
+            code, reply = office(f"/api/content/{int(args[0])}/board", {"option": args[1] if len(args) > 1 else "", "note": " ".join(args[2:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "israa":   # Israa reviews a finished video again
+            order(f"/api/episode/{int(args[0])}/israa", {}, "Israa is looking at the video. Her verdict lands on the episode in Ideas -> Content.")
         elif cmd == "episodes":
             eps = cp.list_episodes(int(args[0]) if args else None, limit=100)
             show([{"id": e["id"], "project": e["project_id"], "batch": e["batch"], "status": e["status"], "title": e["title"],

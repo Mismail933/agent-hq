@@ -15,6 +15,8 @@ MODELS = {
     "doulya": "claude-sonnet-5-5",
     "serge": "claude-sonnet-5-5",
     "calina": "claude-sonnet-5-5",
+    "scout": "claude-sonnet-5-5",
+    "israa": "claude-opus-5-5",
     "richard": "cloud routine (Sonnet 5.5)",   # Richard runs in Anthropic's cloud, not through this program
 }
 
@@ -23,11 +25,14 @@ MODELS = {
 #                plan limit reached, the agent's daily allowance below used up), the run falls back to the API.
 # "api":         on your API key, with the dollar caps further down.
 WORKER_ENGINE = {"Doulya": "claude_code", "Sage": "claude_code", "Vera": "claude_code", "Serge": "claude_code",
-                 "Calina": "claude_code"}
-WORKER_MODELS = {"Doulya": "sonnet", "Sage": "sonnet", "Vera": "sonnet", "Serge": "sonnet", "Calina": "sonnet"}   # or "opus"
+                 "Calina": "claude_code",
+                 "Scout": "claude_code", "Israa": "claude_code"}   # Scout and Israa only run through Claude Code
+WORKER_MODELS = {"Doulya": "sonnet", "Sage": "sonnet", "Vera": "sonnet", "Serge": "sonnet", "Calina": "sonnet",
+                 "Scout": "sonnet", "Israa": "opus"}   # or "opus"
 # Daily allowance per agent on the subscription, measured as what the same work would cost on the API
 # (the only meter Claude Code reports). Protects your plan's limits for you, the Builder and Atlas.
-SUBSCRIPTION_DAILY_VALUE_USD = {"Doulya": 2.00, "Sage": 6.00, "Vera": 2.00, "Serge": 3.00, "Calina": 6.00}
+SUBSCRIPTION_DAILY_VALUE_USD = {"Doulya": 2.00, "Sage": 6.00, "Vera": 2.00, "Serge": 3.00, "Calina": 6.00,
+                                 "Scout": 5.00, "Israa": 6.00}
 WORKER_TIMEOUT_SECONDS = 900
 
 # Price per million tokens (input, output) in USD. Matched by model-name prefix.
