@@ -113,6 +113,13 @@ Agents never spend money without the owner's explicit approval.
   until then. Rhubarb 1.14.0 (MIT, checked: commercial use allowed) is downloaded once into ~/.agent-hq-anim/rhubarb with a pinned
   SHA256; `RHUBARB = False` falls back to the old loudness mouths. This PC has an MX150 (2 GB): no local image generation
   (request step 4 skipped by its own rule).
+- Render limits in one place (2.18.6): `quality.MIN/MAX_WORDS` (50-420), `MIN/MAX_SCENES` (7-20), `MAX_LINE_WORDS` (34); `animate.checklist`
+  and `quality.length_problems` both use them (no length target, only the platform's 3-minute ceiling). A voice line over the cap that
+  is made of whole sentences is **split at the sentence boundaries into consecutive scenes** (`quality.split_long_lines`: same
+  backdrop/camera/characters/source, words unchanged, the callout stays on the part holding its word, `spine.question_answered_in_scene`
+  renumbered) instead of refusing: at write time in `pre_review` and again at render (`animate.auto_split`, saved on the episode as
+  `data.auto_split`). Only a single sentence over the cap is refused. `pre_review` also runs the length checks before Israa, and the
+  batch message reports the COUNTED words and scenes, not Calina's estimate.
 - Topic lock (2.18.5): every scene-file script carries `topic_lock` ({topic, subject, place, year}, set when it is written; the schema
   asks Calina for `subject`). `hq batch <project> --topic "..."` (or `topic` in the batch request) fixes the topic of a batch:
   `quality.enforce_topic` gives an off-topic script two rewrites that must be about it, then rejects it in code (never reaches

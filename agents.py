@@ -937,7 +937,9 @@ def calina_batch(project_id, count=None, notes="", topic=""):
         gate = quality.review_batch(p, ids, rewrite) if ids else {}
         final = [cp.get_episode(i) for i in ids]
         return json.dumps({"project_id": p["id"], "batch": batch, "review": gate, "dropped_off_topic": len(dropped), "topic": topic,
-                           "episodes": [{"id": e["id"], "title": e["title"], "verdict": (e["data"].get("review") or {}).get("verdict", "")}
+                           "episodes": [{"id": e["id"], "title": e["title"], "verdict": (e["data"].get("review") or {}).get("verdict", ""),
+                                         "words": len(quality._narration(e["data"]).split()), "scenes": len(e["data"].get("scenes") or []),
+                                         "split": e["data"].get("auto_split", 0)}
                                         for e in final],
                            "dropped_without_source": len(got.get("episodes") or []) - len(episodes),
                            "batch_note": got.get("batch_note", ""), "folder": str(folder)}, indent=2)

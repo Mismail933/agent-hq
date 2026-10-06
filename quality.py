@@ -494,6 +494,84 @@ def review_scripts(p, eps, rnd=0):
     return {e["id"]: by[e["id"]] for e in eps if e["id"] in by}
 
 
+# The render's limits, in one place (animate.checklist uses them too). There is NO length target: only the platform's ceiling
+# (a Short may run 3 minutes) and limits that keep the engine working.
+MIN_WORDS, MAX_WORDS = 50, 420
+MIN_SCENES, MAX_SCENES = 7, 20
+MAX_LINE_WORDS = 34
+
+
+def _sentences(text):
+    return [x for x in re.split(r"(?<=[.!?])[\"')\]]*\s+", (text or "").strip()) if x]
+
+
+def split_long_lines(scenes, spine=None):
+    """Any scene whose voice line is over MAX_LINE_WORDS but is made of several whole sentences is split at the sentence boundaries
+    into consecutive scenes (same backdrop, camera, characters, props, source; the callout stays on the part that holds its word).
+    The words themselves never change. A single sentence over the limit is left alone (the checklist says so). Returns
+    (new_scenes, how_many_splits, new_spine)."""
+    out, splits, answer_map = [], 0, {}
+    for s in scenes or []:
+        line = (s.get("voice_line") or "").strip()
+        sents = _sentences(line)
+        if len(line.split()) <= MAX_LINE_WORDS or len(sents) < 2:
+            out.append(dict(s))
+            answer_map[s.get("n", len(out))] = len(out)
+            continue
+        groups, cur = [], []
+        for sent in sents:   # group whole sentences, each group at most MAX_LINE_WORDS (a lone long sentence stays alone)
+            if cur and sum(len(x.split()) for x in cur) + len(sent.split()) > MAX_LINE_WORDS:
+                groups.append(cur)
+                cur = []
+            cur.append(sent)
+        groups.append(cur)
+        word = _tokens(s.get("callout_word"))
+        home = next((gi for gi, g in enumerate(groups) if word and word & _tokens(" ".join(g))), 0)
+        for gi, g in enumerate(groups):
+            part = dict(s)
+            part["voice_line"] = " ".join(g)
+            if gi:
+                part["link"] = "so"
+                part.pop("bespoke", None)
+            if gi != home:
+                part.pop("callout", None)
+                part.pop("callout_word", None)
+            out.append(part)
+        splits += len(groups) - 1
+        answer_map[s.get("n", len(out))] = len(out)   # the scene that answered the question is now the last of its parts
+    for i, s in enumerate(out, 1):
+        s["n"] = i
+    new_spine = dict(spine) if spine else spine
+    if new_spine and new_spine.get("question_answered_in_scene") is not None:
+        try:
+            new_spine["question_answered_in_scene"] = answer_map.get(int(new_spine["question_answered_in_scene"]), new_spine["question_answered_in_scene"])
+        except (TypeError, ValueError):
+            pass
+    return out, splits, new_spine
+
+
+def length_problems(d):
+    """The render's limits checked on a script now, in plain sentences. [{issue, fix}] (empty = it will render). Pure Python."""
+    scenes = d.get("scenes") or []
+    if not scenes:
+        return []
+    out = []
+    words = sum(len((s.get("voice_line") or "").split()) for s in scenes)
+    if words > MAX_WORDS:
+        out.append({"issue": f"The narration is {words} words (counted): too long for the 3-minute ceiling of a Short.",
+                    "fix": "Tell the same story more tightly, or split it; do not drop the steps that make it make sense."})
+    if words < MIN_WORDS:
+        out.append({"issue": f"The narration is only {words} words (counted): too short to tell a story.", "fix": "Tell the whole story: the problem, the clue, what he did, the reasoning, the answer."})
+    if not MIN_SCENES <= len(scenes) <= MAX_SCENES:
+        out.append({"issue": f"The script has {len(scenes)} scenes; the engine needs {MIN_SCENES}-{MAX_SCENES}.", "fix": "Merge or add scenes so each step has its own."})
+    for s in scenes:
+        for sent in _sentences(s.get("voice_line")):
+            if len(sent.split()) > MAX_LINE_WORDS:
+                out.append({"issue": f"Scene {s.get('n', '?')} has one sentence of {len(sent.split())} words (the limit for one scene is {MAX_LINE_WORDS}).",
+                            "fix": "Split that sentence into two shorter ones."})
+    return out
+
+
 LINKS = ("because", "but", "so", "first", "therefore")
 SPINE_KEYS = ("once", "every_day", "one_day", "because1", "because2", "finally", "question_answered_in_scene")
 
@@ -637,9 +715,16 @@ def pre_review(eids, rewrite):
             d = e["data"]
             if not d.get("scenes"):
                 break
-            sp, ear = spine_problems(d), ear_lint(d)
-            probs = sp + ear["blocking"]
-            d["checks"] = {"spine": sp, "ear": ear["blocking"], "advisory": ear["advisory"], "rounds": rnd}
+            fixed, n_split, new_spine = split_long_lines(d["scenes"], d.get("spine"))
+            if n_split:   # a long line made of whole sentences is split, not sent back: the words are unchanged
+                d["scenes"], d["spine"] = fixed, new_spine
+                d["auto_split"] = (d.get("auto_split") or 0) + n_split
+                cp.update_episode(i, data=d)
+                cp.log("Calina", "lines_split", None, {"episode": i, "splits": n_split})
+            sp, ear, ln = spine_problems(d), ear_lint(d), length_problems(d)
+            probs = sp + ear["blocking"] + ln
+            d["checks"] = {"spine": sp, "ear": ear["blocking"], "length": ln, "advisory": ear["advisory"], "rounds": rnd,
+                           "words": len(_narration(d).split()), "scenes": len(d["scenes"])}
             cp.update_episode(i, data=d)
             if not probs or rnd == 2:
                 break

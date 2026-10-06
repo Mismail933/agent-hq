@@ -31,6 +31,7 @@ import production  # noqa: E402
 import settings  # noqa: E402
 import shorts  # noqa: E402
 import elevenlabs  # noqa: E402
+import quality  # noqa: E402
 from shorts import Blocked, say  # noqa: E402
 
 FPS = 30
@@ -143,18 +144,18 @@ def narration(d):
 def checklist(ep):
     d, problems = ep["data"], []
     scenes = d.get("scenes") or []
-    if not 7 <= len(scenes) <= 20:
+    if not quality.MIN_SCENES <= len(scenes) <= quality.MAX_SCENES:
         problems.append(f"The scene file has {len(scenes)} scenes; it should have 9-16.")
     lines = narration(d)
     words = sum(len(l.split()) for l in lines)
-    if not 50 <= words <= 420:   # only absurd lengths: no fixed target, the story sets it
+    if not quality.MIN_WORDS <= words <= quality.MAX_WORDS:   # only absurd lengths: no fixed target, the story sets it
         problems.append(f"The narration is {words} words: too short to tell a story, or too long for a Short (the limit is 3 minutes).")
     for s in scenes:
         n = s.get("n", "?")
         if not (s.get("voice_line") or "").strip():
             problems.append(f"Scene {n} has no voice line.")
-        elif len(s["voice_line"].split()) > 34:
-            problems.append(f"Scene {n}'s voice line is over 34 words: split it into two scenes.")
+        elif len(s["voice_line"].split()) > quality.MAX_LINE_WORDS:
+            problems.append(f"Scene {n}'s voice line is over {quality.MAX_LINE_WORDS} words and is a single sentence: split that sentence into two.")
         elif not re.search(r"[.!?]['\")]?$", s["voice_line"].strip()):
             problems.append(f"Scene {n}'s voice line isn't a finished sentence (it should end with . ! or ?).")
         if s.get("backdrop") not in BACKDROPS:
@@ -496,12 +497,28 @@ def voice_choice(project):
     return (vid if ok else DEFAULT_VOICE), v.get("speed")
 
 
+def auto_split(ep):
+    """Lines over the per-scene limit that are made of whole sentences are split into scenes (words unchanged) instead of refusing the
+    render. Saved on the episode so the owner sees what was rendered. Returns the (possibly updated) episode."""
+    d = ep["data"]
+    scenes, n, spine = quality.split_long_lines(d.get("scenes") or [], d.get("spine"))
+    if not n:
+        return ep
+    d["scenes"], d["spine"] = scenes, spine
+    d["auto_split"] = (d.get("auto_split") or 0) + n
+    cp.update_episode(ep["id"], data=d)
+    cp.log("Calina", "lines_split", None, {"episode": ep["id"], "splits": n, "at": "render"})
+    say(f"  Split {n} long voice line(s) at sentence boundaries into separate scenes (the words are unchanged).")
+    return cp.get_episode(ep["id"])
+
+
 def render_episode(eid, voice=None, suffix=""):
     """voice: an ElevenLabs/other voice id to use instead of the project's; suffix (e.g. '-1'): write a VARIANT beside the real Short
     (short-1.mp4, voice-1.wav) without changing the episode, so the owner can compare voices on a real story."""
     ep = cp.get_episode(int(eid))
     if not ep:
         raise Blocked(f"No episode {eid}.")
+    ep = auto_split(ep)
     problems = checklist(ep)
     if problems:
         raise Blocked("The checklist blocked this script: " + " ".join(problems))

@@ -152,7 +152,8 @@ def run_batch(project_id, count, notes, topic=""):
     try:
         r = json.loads(out)
         mark = {"pass": "passed Israa", "rework": "Israa still has doubts", "unreviewed": "NOT reviewed"}
-        titles = "\n".join(f"- #{e['id']} {e['title']} ({mark.get(e.get('verdict'), 'not reviewed')})" for e in r["episodes"])
+        titles = "\n".join(f"- #{e['id']} {e['title']} ({mark.get(e.get('verdict'), 'not reviewed')}; {e.get('words', '?')} words counted, {e.get('scenes', '?')} scenes"
+                            + (f", {e['split']} long line(s) split" if e.get("split") else "") + ")" for e in r["episodes"])
         dropped = f" She dropped {r['dropped_without_source']} script(s) she couldn't source." if r["dropped_without_source"] else ""
         if r.get("dropped_off_topic"):
             dropped += f" {r['dropped_off_topic']} script(s) were about a different story than the fixed topic, \"{r.get('topic', '')}\", and were rejected in code."
