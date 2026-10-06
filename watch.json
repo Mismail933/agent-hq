@@ -2,19 +2,27 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.289",
-   "checked": "2026-10-05"
+   "last_seen": "2.1.291",
+   "checked": "2026-10-06"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-09-30 Sonnet 4.5 deprecation",
-   "checked": "2026-10-05"
+   "last_seen": "2026-10-01 Models API line field",
+   "checked": "2026-10-06"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-02 $100M engineer training",
-   "checked": "2026-10-05"
+   "checked": "2026-10-06"
   }
  },
- "repos": {}
+ "repos": {
+  "dongbeixiaohuo/writing-agent": {
+   "stars": 434,
+   "last_commit": "2026-10-03",
+   "verdict": "skip",
+   "checked": "2026-10-06",
+   "note": "Long-text writing tool; not scene files."
+  }
+ }
 }
