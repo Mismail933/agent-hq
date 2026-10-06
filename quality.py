@@ -246,7 +246,50 @@ def decide_board(project_id, option, likes=None, note="", action="approve"):
     return f"Board {b['id']} approved: {chosen['name'] if chosen else 'your own direction'}. Calina can start."
 
 
+LENGTH_RULE = ("LENGTH: the owner's rule overrides every board, guide, note or earlier instruction: there is NO fixed length. The story sets it; "
+               "clear, full sentences beat a short cut. Ignore any length, duration or word-count target anywhere below.")
+
+# a sentence that sets a length target ("Consider a 30-40 s cut", "roughly 40 seconds", "under a minute", "15-30 s gets the highest retention")
+_LENGTH_SENT = re.compile(r"(\b\d{1,3}\s*(?:[-\u2013]\s*\d{1,3}\s*)?(?:s|sec|secs|seconds?)\b|\bunder (?:a|one) minute\b|\b\d{2,3}\s*(?:[-\u2013]\s*\d{2,3}\s*)?words?\b"
+                          r"|\b(?:tighten|trim|shorten)\w*\b.{0,40}\b\d{2}\b)", re.I)
+_LENGTH_CLAUSE = re.compile(r",?\s*\b(?:tightened|trimmed|cut|shortened)\s+to\s+(?:about|roughly|around)?\s*\d+\s*(?:[-\u2013]\s*\d+\s*)?(?:s|sec|seconds?)\b", re.I)
+
+
+def no_length(text):
+    """Remove length targets from board text before Calina or Israa see it (the owner's no-length-cap rule). Only the clause that
+    sets the target goes; the rest of the sentence stays."""
+    text = _LENGTH_CLAUSE.sub("", text or "")
+    out = []
+    for sent in re.split(r"(?<=[.!?])\s+", text):
+        clauses = re.split(r"(?<=[,;])\s+|\s+[–—-]\s+", sent)
+        kept = [c for c in clauses if not _LENGTH_SENT.search(c)]
+        if kept:
+            out.append(" ".join(kept).strip().rstrip(",;"))
+    return " ".join(x for x in out if x).strip()
+
+
+def no_length_block(text):
+    """no_length for a multi-line block, line by line, keeping the lines."""
+    return chr(10).join(x for x in (no_length(l) for l in (text or "").split(chr(10))) if x)
+
+
+def set_board_note(project_id, note):
+    """Atlas updates the owner's note on the project's APPROVED board (e.g. to withdraw an old length target)."""
+    b = cp.approved_refboard(int(project_id))
+    if not b:
+        return "There's no approved board for that project."
+    cp.decide_refboard(b["id"], "approved", b.get("choices") or {}, (note or "")[:3000])
+    cp.log("Atlas", "board_note_changed", None, {"project": int(project_id), "board": b["id"], "note": note or ""})
+    return f"Board {b['id']}'s note is now: {note or '(empty)'}"
+
+
 def style_bar(project_id):
+    """The owner-approved direction for Calina and Israa, with every length target removed (the owner's no-length-cap rule)."""
+    raw = _style_bar_raw(project_id)
+    return (LENGTH_RULE + chr(10) + no_length_block(raw)) if raw else ""
+
+
+def _style_bar_raw(project_id):
     """The owner-approved direction as text for Calina and Israa, or '' if there is none."""
     b = cp.approved_refboard(int(project_id))
     if not b:
@@ -281,6 +324,10 @@ def style_bar(project_id):
 # ISRAA: the reviewer
 # ============================================================================
 ISRAA_BASE = """You are Israa, the quality reviewer of a small AI-run company. Today is {today}.
+THE OWNER'S LENGTH RULE OVERRIDES EVERYTHING: there is no fixed length for a script or a video. The story sets the length, and clear full
+sentences beat a short cut. Never fail, or ask for a cut to, a script or video because of its length alone: not on the strength of a
+board, a guide, "the style bar says roughly 30-40 s", or an earlier note from Atlas. Fail one only if it is padded, or if it is chopped
+into fragments to be short.
 You are the last gate before the owner sees anything. His standard is simple: it must look like real work by a skilled
 professional, not generic AI output, and it must be something he could count on without redoing it himself. You are blunt,
 specific and fair. You do not rewrite anything: you judge, and you tell the producer exactly what to fix.
@@ -303,8 +350,8 @@ SCRIPTS_TASK = """Review these scripts from Calina. Each is a short YouTube vide
 4. Facts: each key fact backed by its quoted source. Open the sources (WebFetch) for the surprising fact and check it
    really says that. A fact the source doesn't support fails the script.
 5. Voice-over: full spoken sentences written for the ear. Read each aloud in your head: it must sound like a person
-   telling a story, not a telegram ("Far south in Syene, a well." fails). No tongue-twisters. Length follows the story
-   (about 50-100 s); padding or chopping lines to hit a number fails.
+   telling a story, not a telegram ("Far south in Syene, a well." fails). No tongue-twisters. There is no length target: the story
+   sets it. Padding fails, and so does chopping lines into fragments to be short.
 6. Fit: matches the owner-approved style bar above, and could stand next to the references he liked.
 7. Platform risk: anything YouTube could flag.
 8. The spine and the links: scene-file scripts carry a `spine` and, on every scene, a `link` (because / but / so / therefore /

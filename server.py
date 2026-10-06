@@ -934,6 +934,10 @@ class Handler(BaseHTTPRequestHandler):
                 msg = quality.decide_board(pid, body.get("option"), body.get("likes"), note, body.get("decision", "approve"))
                 ok = msg.startswith("Board ")
                 return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
+            if action == "board-note":   # Atlas, when the owner asks: change the note on the approved board
+                note, warning = clip(body.get("note", ""), "note")
+                msg = quality.set_board_note(pid, note)
+                return self._send(200 if msg.startswith("Board") else 409, {"ok": True, "message": msg} if msg.startswith("Board") else {"error": msg})
             if action == "review":
                 stats, warning = clip(body.get("stats", ""), "notes")
                 if not stats:
@@ -968,6 +972,19 @@ class Handler(BaseHTTPRequestHandler):
             if action == "keep-voice":
                 v, err = keep_voice(eid, str(self._json_body().get("id", "")))
                 return self._send(200 if v else 409, {"ok": True, "message": f"Kept: {v['label']}. It is now this Short and the project's voice."} if v else {"error": err})
+            if action in ("do-not-upload", "allow-upload"):   # keep a made video from being uploaded (a duplicate, a superseded version)
+                e = cp.get_episode(eid)
+                if not e:
+                    return self._send(404, {"error": "No such episode."})
+                body = self._json_body()   # read the request once
+                d = e["data"]
+                if action == "do-not-upload":
+                    d["do_not_upload"] = clip(body.get("reason", ""), "note")[0] or "Do not upload this one."
+                else:
+                    d.pop("do_not_upload", None)
+                cp.update_episode(eid, data=d)
+                cp.log("Owner" if body.get("by") == "owner" else "Atlas", action.replace("-", "_"), None, {"episode": eid, "reason": d.get("do_not_upload", "")})
+                return self._send(200, {"ok": True, "message": f"Episode {eid}: " + (f"do not upload ({d['do_not_upload']})" if action == "do-not-upload" else "upload allowed again.")})
             if action == "israa":   # ask Israa to review the video again
                 e = cp.get_episode(eid)
                 if not e or not e["video_path"]:

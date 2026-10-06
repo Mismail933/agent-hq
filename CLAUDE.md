@@ -113,6 +113,12 @@ Agents never spend money without the owner's explicit approval.
   until then. Rhubarb 1.14.0 (MIT, checked: commercial use allowed) is downloaded once into ~/.agent-hq-anim/rhubarb with a pinned
   SHA256; `RHUBARB = False` falls back to the old loudness mouths. This PC has an MX150 (2 GB): no local image generation
   (request step 4 skipped by its own rule).
+- No length cap (2.18.2): the owner's rule is that the story sets the length. `quality.style_bar` strips every length target from the
+  board before Calina or Israa read it (`no_length`: only the offending clause goes), starts with an explicit LENGTH rule, and
+  Israa's base prompt and Calina's V3 prompt both say it overrides boards, guides and Atlas's notes. `hq board-note <project> "..."`
+  replaces the owner's note on the approved board. The code caps are only absurd ones (animate.checklist 50-420 words, MAX_TOTAL
+  178 s = YouTube's 3 minutes). `episodes.data.do_not_upload` (`hq do-not-upload|allow-upload`, buttons in Content) keeps a duplicate
+  Short out of the owner's upload list and refuses `mark_published`.
 - Voices (2.18.1): any ElevenLabs voice id can be registered per project (`animate.py voice-add`, stored in project meta
   `eleven_voices`, sample in voice-samples/, kept in every later sample set); `render_episode(eid, voice, suffix)` writes variants
   (`short-N.mp4`, `voice-N.wav`, `scene-props-N.json`) without touching the episode; `render-voices` makes 2-3; `keep-voice` copies

@@ -90,7 +90,7 @@ style or tool for him: show options and let him pick. Calina plans the story fir
 scene, checked in code before Israa); the free ear check (fragment chains, overlong sentences, digits in voice lines) runs too.
 Worked examples (`calina_examples.md`) are only shown to her once the owner has read and approved them. When Israa returns something or doubts it, tell him her words
 plainly; don't soften them and don't pass it off as good. If you see a video or script, judge it yourself too.
-Don't dictate word counts or durations to Calina (that is what produced fragments): tell her the story you want and let
+**The owner's length rule: no fixed length.** Never put a length, duration or word count in a note, a board note or an order to Calina or Israa; the story sets it and clear full sentences beat a short cut. Don't dictate word counts or durations to Calina (that is what produced fragments): tell her the story you want and let
 the story set the length. Before you tell the owner a video is ready, run `hq frames <episode id>` and read the contact sheet
 and the transcript yourself: if you can't retell it, he can't.
 
@@ -132,6 +132,8 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py voice-add <project id> <ElevenLabs voice id> ["name"]` | Registers ANY ElevenLabs voice for the project (looks up its name and labels, makes its sample, remembers it). The voice must already be in the owner's ElevenLabs account (Voice Library -> Add to My Voices). |
 | `python hq.py render <episode id> <voice id> <voice id>` | Makes the same animated Short in two or three voices (e.g. `eleven:<id>`) as versions for the owner to compare in Ideas -> Content. Each costs ElevenLabs characters (about 900) and a ~10 min render. |
 | `python hq.py keep-voice <episode id> <voice id>` | ONLY when the owner has chosen: that version becomes the Short and the project's voice. |
+| `python hq.py board-note <project id> "note"` | Replaces the owner's note on the project's approved board (e.g. to withdraw an old length target). |
+| `python hq.py do-not-upload <episode id> "why"` / `allow-upload <episode id>` | Marks a made video as not to be uploaded (a duplicate, a superseded version): it drops out of the owner's "to upload" list and can't be marked published. |
 | `python hq.py credits` | ElevenLabs characters used this month against the 30,000 quota (every Short and every voice sample counts). |
 | `python hq.py lnd-focus "topic"` | When the owner asks: gives Richard a topic for his next morning run (he reads it first). |
 | `python hq.py israa <episode id>` | Israa reviews a finished video again (frames, voice pace, cuts). |

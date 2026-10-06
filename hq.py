@@ -10,7 +10,7 @@ Atlas's controls for Agent HQ.
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
                  lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
                  clips <episode id> | assemble <episode id> | prodlog <episode id> <credits> <minutes> <retakes>
-                 characters <project id> [make|sheets|review|status|approve] | animator-test <project> <episode> [scene] | voice-add <project> <voice id> ["name"] | keep-voice <episode> <voice id> | frames <episode id> | credits | lnd-focus "topic for Richard"
+                 characters <project id> [make|sheets|review|status|approve] | animator-test <project> <episode> [scene] | voice-add <project> <voice id> ["name"] | board-note <project> "note" | do-not-upload <episode> "why" | allow-upload <episode> | keep-voice <episode> <voice id> | frames <episode id> | credits | lnd-focus "topic for Richard"
                  refs <project id> ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
 
@@ -285,6 +285,12 @@ def main(argv):
         elif cmd in ("voice-samples", "voice"):
             path = "voice-samples" if cmd == "voice-samples" else "voice"
             code, reply = office(f"/api/project/{int(args[0])}/{path}", {"id": args[1]} if cmd == "voice" and len(args) > 1 else {})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "board-note":   # hq board-note <project> "new note"  (replaces the owner's note on the approved board)
+            code, reply = office(f"/api/content/{int(args[0])}/board-note", {"note": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd in ("do-not-upload", "allow-upload"):   # hq do-not-upload <episode> "why": a duplicate or superseded Short must not go live
+            code, reply = office(f"/api/episode/{int(args[0])}/{cmd}", {"reason": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "voice-add":   # hq voice-add <project> <elevenlabs voice id> ["name"]
             code, reply = office(f"/api/project/{int(args[0])}/voice-add", {"id": args[1], "name": " ".join(args[2:])})

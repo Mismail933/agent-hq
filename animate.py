@@ -41,7 +41,7 @@ APP = HOME / "app"
 PIPER_DIR = HOME / "piper"
 PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/"
 LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 1.7
-MAX_TOTAL = 118.0   # a Short may run to 3 minutes, but the story decides; Israa judges whether it earns its length
+MAX_TOTAL = 178.0   # YouTube's limit for a Short is 3 minutes; there is no other cap: the story decides, Israa judges whether it earns its length
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
 BACKDROPS = {"court", "library", "nile", "well", "study", "map", "diagram"}
 CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"}
@@ -147,8 +147,8 @@ def checklist(ep):
         problems.append(f"The scene file has {len(scenes)} scenes; it should have 9-16.")
     lines = narration(d)
     words = sum(len(l.split()) for l in lines)
-    if not 90 <= words <= 260:
-        problems.append(f"The narration is {words} words; it should be about 120-220 (at ~130 words a minute, 55-100 seconds).")
+    if not 50 <= words <= 420:   # only absurd lengths: no fixed target, the story sets it
+        problems.append(f"The narration is {words} words: too short to tell a story, or too long for a Short (the limit is 3 minutes).")
     for s in scenes:
         n = s.get("n", "?")
         if not (s.get("voice_line") or "").strip():
@@ -544,7 +544,7 @@ def render_episode(eid, voice=None, suffix=""):
     end_t = max(voice_secs, voice_end)
     total_secs = end_t + OUTRO_SECONDS
     if total_secs > MAX_TOTAL:
-        raise Blocked(f"The Short would be {total_secs:.0f} s; a Short must stay under about 58 s. Shorten the narration.")
+        raise Blocked(f"The Short would be {total_secs:.0f} s, over YouTube's 3-minute limit for a Short. Split the story or tighten it.")
     total = int(round(total_secs * FPS))
     say(f"  {voice_secs:.1f} s of speech at {wpm:.0f} words a minute ({used}); {total_secs:.1f} s with the end card")
     bounds = [0 if i == 0 else round(starts[i] * FPS) for i in range(len(starts))] + [round(end_t * FPS)]

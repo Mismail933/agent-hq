@@ -1300,7 +1300,13 @@ function voiceCompareHtml(e) {
   const opts = sel => vs.map((v, i) => `<option value="${esc(v.id)}" ${i === sel ? 'selected' : ''}>${esc(v.label)}</option>`).join('');
   return `<form class="why" data-vcompare="${e.id}"><span class="src" style="margin:0">Compare voices on this story:</span><select data-v1 aria-label="First voice">${opts(0)}</select><select data-v2 aria-label="Second voice">${opts(1)}</select><button class="btn sm ghost" type="submit" ${rendering ? 'disabled' : ''}>Make it in both</button></form>`;
 }
-function epActions(e) { return epActions0(e) + voiceCompareHtml(e); }
+function epActions(e) {
+  const dnu = (e.data || {}).do_not_upload;
+  if (dnu && e.status === 'rendered') return `<video controls preload="metadata" src="/api/video/${e.id}?v=${Math.round(e.ts)}"></video>
+    <div class="review rework"><span><b>Do not upload this one.</b> ${esc(dnu)}</span></div>
+    <div class="acts"><button class="btn sm ghost" type="button" data-eact="allowupload">Allow upload again</button></div>`;
+  return epActions0(e) + voiceCompareHtml(e);
+}
 function epActions0(e) {
   const v2 = !!((e.data || {}).shots || []).length;
   if (v2 && e.status === 'approved') {
@@ -1701,7 +1707,7 @@ async function openIdea(id) {
 /* ---------- Needs you ---------- */
 function epWait(e) {
   if (e.status === 'awaiting_approval') return 'script';
-  if (e.status === 'rendered') return 'upload';
+  if (e.status === 'rendered') return (e.data || {}).do_not_upload ? '' : 'upload';
   if (e.status === 'approved' && ((e.data || {}).scenes || []).length) return 'assemble';
   if (e.status === 'approved' && ((e.data || {}).shots || []).length) return (e.clips || {}).ready ? 'assemble' : 'clips';
   return '';
@@ -1842,6 +1848,7 @@ $('#episodes').addEventListener('click', e => {
   if (b.dataset.eact === 'approve') { pending['e' + id] = 1; renderContent(); contentAct(`/api/episode/${id}/approve`, {}, 'Approved.').then(() => delete pending['e' + id]); }
   else if (b.dataset.eact === 'render') { rendering = id; renderContent(); contentAct(`/api/episode/${id}/render`, {}, 'Calina is making the video.'); }
   else if (b.dataset.eact === 'published') contentAct(`/api/episode/${id}/published`, {}, 'Marked as published.');
+  else if (b.dataset.eact === 'allowupload') contentAct(`/api/episode/${id}/allow-upload`, {by: 'owner'}, 'Upload allowed again.');
   else if (b.dataset.eact === 'keepvoice') contentAct(`/api/episode/${id}/keep-voice`, {id: b.dataset.vid}, 'Kept.');
   else if (b.dataset.eact === 'israa') contentAct(`/api/episode/${id}/israa`, {}, 'Israa is looking at the video.');
   else if (b.dataset.eact === 'folder') contentAct(`/api/episode/${id}/folder`, {}, 'Opened the folder.');

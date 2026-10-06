@@ -644,8 +644,9 @@ WRITE A STORY, IN FULL SENTENCES, FOR THE EAR
   5. THE REASONING in plain words: why that step gives the answer (put the maths in words a teenager follows).
   6. THE ANSWER and how close it was.
   7. WHY IT MATTERS now, ending on a line that lands.
-- The length follows the story: usually 55-100 seconds (about 120-220 words at the slow voice's pace). A Short may be up to 3
-  minutes, but never pad, and never chop a line into fragments to hit a number. Nine to sixteen scenes.
+- The length follows the story: THERE IS NO FIXED LENGTH, and this overrides any length, duration or word count you read in a board,
+  a guide, a note or an instruction from Atlas ("tighten to 40 s" is void). A Short may run up to 3 minutes. Clear, full sentences
+  beat a short cut; never pad, and never chop a line into fragments to hit a number. Usually nine to sixteen scenes.
 - Do not write "POV: you..." second person if it makes the story harder to follow. Telling it about him ("Eratosthenes
   noticed...") is often clearer. The narrator character may talk to the viewer where it helps.
 - Say numbers in words ("five thousand stadia"). Explain every unfamiliar word the first time it appears (stadion, solstice).
@@ -991,6 +992,8 @@ def mark_published(eid):
         return f"No episode {eid}."
     if e["status"] != "rendered":
         return f"Episode {e['id']} is {e['status'].replace('_', ' ')}; only a made video can be marked published."
+    if (e["data"] or {}).get("do_not_upload"):
+        return f"Episode {e['id']} is marked do not upload ({e['data']['do_not_upload']}); allow it first if that has changed."
     cp.update_episode(e["id"], status="published")
     cp.log("Owner", "episode_published", None, {"episode": e["id"], "title": e["title"]})
     return f"Episode {e['id']} marked as published: {e['title']}"
