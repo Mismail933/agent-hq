@@ -283,7 +283,8 @@ def offer_setup():
     skip = ROOT / ".atlas-cloud-skip"
     if configured() or not _repo() or skip.exists():
         return
-    print("  Cloud Atlas takes over when your Claude plan limit is reached. It needs the routine's URL and token")
+    print("  Cloud Atlas takes over when your Claude plan limit is reached. It needs the private repo 'atlas-hq-private'")
+    print("  on your GitHub (Private!) and the routine's URL and token")
     print("  (claude.ai/code/routines -> Atlas -> API trigger). They stay in the .env file on this computer.")
     try:
         url = input("  Paste the routine URL (or press Enter to skip): ").strip()
