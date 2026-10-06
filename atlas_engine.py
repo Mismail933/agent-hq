@@ -174,6 +174,8 @@ def ask(prompt):
         out = _run(exe, prompt, model, resume)
     except Unavailable as e:
         msg = str(e).lower()
+        if re.search(r"limit|resets?\s+\d|usage|quota|overloaded", msg):
+            raise                                      # plan limit: the conversation is fine, the caller switches to the cloud
         if resume and ("session" in msg or "conversation" in msg):
             SESSION_FILE.unlink(missing_ok=True)       # the old conversation is gone: start a new one
             out = _run(exe, prompt, model, None)
