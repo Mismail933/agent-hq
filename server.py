@@ -211,6 +211,73 @@ def voice_samples(p):
 SAMPLING = {"pid": None}
 CHARMAKING = {"pid": None, "step": ""}
 ANIMTEST = {"pid": None}
+VOICEWORK = {"what": ""}
+
+
+def _animate(*args, timeout=3600):
+    """Run animate.py in the video tools' Python and return its RESULT json (or raise with the reason)."""
+    py = shorts_python()
+    if not py:
+        raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+    p = subprocess.run([py, str(ROOT / "animate.py"), *map(str, args)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       timeout=timeout, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    lines = (p.stdout or "").splitlines()
+    res = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
+    if not res:
+        blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+        raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+    return json.loads(res)
+
+
+def run_voice_add(pid, voice_id, name):
+    VOICEWORK["what"] = "an ElevenLabs voice is being added"
+    try:
+        e = _animate("voice-add", pid, voice_id, name or "", timeout=900)
+        atlas_says(f"**Voice added: {e['label']}.** Open Ideas → Content → Narrator voice to hear its sample; you can pick it, or have the next Short made in two voices to compare.")
+    except Exception as ex:
+        atlas_says(f"That voice couldn't be added: {ex}")
+    finally:
+        VOICEWORK["what"] = ""
+
+
+def run_render_voices(eid, voices):
+    """The same Short in several voices, as variants for the owner to compare. Nothing about the episode changes until he keeps one."""
+    with RENDERING["lock"]:
+        RENDERING["episode"] = eid
+        try:
+            r = _animate("render-voices", eid, ",".join(voices), timeout=7200)
+            e = cp.get_episode(eid)
+            d = e["data"]
+            d["voice_variants"] = r["variants"]
+            cp.update_episode(eid, data=d)
+            cp.log("Calina", "voice_variants_ready", None, {"episode": eid, "voices": [v["label"] for v in r["variants"]]})
+            atlas_says(f"**Short #{eid} is ready in {len(r['variants'])} voices.** Open Ideas → Content, watch each, and click **Keep this voice** on the one you want: "
+                       + "; ".join(v["label"] for v in r["variants"]) + ".")
+        except Exception as ex:
+            cp.log("Calina", "video_failed", None, {"episode": eid, "reason": str(ex)[:300]})
+            atlas_says(f"Short #{eid} couldn't be made in those voices: {ex}")
+        finally:
+            RENDERING["episode"] = None
+
+
+def keep_voice(eid, vid):
+    """The owner keeps one variant: it becomes the Short, and its voice becomes the project's voice."""
+    import shutil
+    e = cp.get_episode(eid)
+    v = next((x for x in (e["data"].get("voice_variants") or []) if x["id"] == vid), None) if e else None
+    if not v:
+        return None, "That voice isn't one of this Short's versions."
+    folder = (ROOT / v["video"]).parent
+    shutil.copy2(ROOT / v["video"], folder / "short.mp4")
+    shutil.copy2(folder / v["audio"], folder / "voice.wav")
+    shutil.copy2(folder / v["props"], folder / "scene-props.json")
+    cp.set_project_meta(e["project_id"], voice={"id": vid, "label": v["label"]})
+    d = e["data"]
+    d.pop("voice_variants", None)
+    cp.update_episode(eid, data=d, status="rendered", video_path=(folder / "short.mp4").relative_to(ROOT).as_posix())
+    cp.log("Owner", "voice_kept", None, {"episode": eid, "voice": v["label"]})
+    threading.Thread(target=quality.review_video, args=(eid,), daemon=True).start()
+    return v, ""
 
 
 def anim_busy():
@@ -223,6 +290,8 @@ def anim_busy():
         return "the Animator is writing a test scene"
     if SAMPLING["pid"] is not None:
         return "the voice samples are being made"
+    if VOICEWORK["what"]:
+        return VOICEWORK["what"]
     return ""
 
 
@@ -584,6 +653,17 @@ class Handler(BaseHTTPRequestHandler):
                 "simulated": os.environ.get("HQ_SIMULATE") == "1",
                 "has_key": bool(os.environ.get("ANTHROPIC_API_KEY")) or os.environ.get("HQ_SIMULATE") == "1",
             })
+        if u.path.startswith("/api/variant/"):   # /api/variant/<episode>/<n>: one voice version of a Short
+            try:
+                eid, n = u.path.strip("/").split("/")[2:4]
+                e = cp.get_episode(int(eid))
+                path = ROOT / (e["data"].get("voice_variants") or [])[int(n)]["video"]
+                ok = path.exists()
+            except (ValueError, IndexError, KeyError, TypeError):
+                ok = False
+            if not ok:
+                return self._send(404, {"error": "no such version"})
+            return self._send_file(path, "video/mp4")
         if u.path.startswith("/api/video/"):
             try:
                 e = cp.get_episode(int(u.path.rsplit("/", 1)[1]))
@@ -794,6 +874,17 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
                 threading.Thread(target=run_animator_test, args=(pid, eid, idx), daemon=True).start()
                 return self._send(202, {"ok": True, "message": "The Animator is writing the scene: about 10 minutes."})
+            if action == "voice-add":   # register any ElevenLabs voice id for the project
+                body = self._json_body()
+                vid = str(body.get("id", "")).strip()
+                if not vid:
+                    return self._send(400, {"error": "Give the ElevenLabs voice id."})
+                if not elevenlabs.configured():
+                    return self._send(409, {"error": "ElevenLabs isn't set up: restart START-HERE and paste the key when it asks."})
+                if anim_busy():
+                    return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+                threading.Thread(target=run_voice_add, args=(pid, vid, str(body.get("name", "")).strip()[:60]), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Looking the voice up and making its sample: about a minute."})
             if action == "voice-samples":
                 if SAMPLING["pid"] is not None:
                     return self._send(409, {"error": "The voice samples are already being made."})
@@ -874,6 +965,9 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     return self._send(400, {"error": "Credits, minutes and retakes must be numbers."})
                 return self._send(200, {"ok": True, "message": msg})
+            if action == "keep-voice":
+                v, err = keep_voice(eid, str(self._json_body().get("id", "")))
+                return self._send(200 if v else 409, {"ok": True, "message": f"Kept: {v['label']}. It is now this Short and the project's voice."} if v else {"error": err})
             if action == "israa":   # ask Israa to review the video again
                 e = cp.get_episode(eid)
                 if not e or not e["video_path"]:
@@ -886,6 +980,14 @@ class Handler(BaseHTTPRequestHandler):
                 e = cp.get_episode(eid)
                 if not e or e["status"] not in ("approved", "rendered"):
                     return self._send(409, {"error": "Only an approved script can be made into a video."})
+                voices = [str(v) for v in (self._json_body().get("voices") or []) if str(v)]
+                if voices:
+                    if not production.is_animated(e):
+                        return self._send(409, {"error": "Comparing voices only works for animated Shorts."})
+                    if len(voices) > 3:
+                        return self._send(400, {"error": "Compare two or three voices at a time (each one costs ElevenLabs characters and a render)."})
+                    known = {v["id"] for v in voice_samples(cp.get_project(e["project_id"], with_text=False) or {"id": e["project_id"]})["voices"]}
+                    voices = [v if v in known or ":" in v else "eleven:" + v for v in voices]
                 if production.is_animated(e):
                     pr = cp.get_project(e["project_id"], with_text=False) or {}
                     if not (pr.get("meta") or {}).get("characters_approved"):
@@ -899,6 +1001,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(409, {"error": f"Calina is already making Short #{RENDERING['episode']}. Try again when it's done."})
                 if anim_busy():
                     return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+                if voices:
+                    threading.Thread(target=run_render_voices, args=(eid, voices), daemon=True).start()
+                    return self._send(202, {"ok": True, "message": f"Calina is making the Short in {len(voices)} voices: about 10-15 minutes each."})
                 threading.Thread(target=run_render, args=(eid,), daemon=True).start()
                 wait = "10-15 minutes" if production.is_animated(e) else "2-3 minutes"
                 return self._send(202, {"ok": True, "message": f"Calina is putting the Short together. It takes about {wait}."})

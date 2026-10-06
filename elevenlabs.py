@@ -7,6 +7,7 @@ the repo, the logs or the chat. Every call is counted in characters so Atlas can
 import base64
 import json
 import os
+import re
 import ssl
 import subprocess
 import urllib.error
@@ -53,6 +54,8 @@ def _call(path, body=None, timeout=120, raw=False):
     except urllib.error.HTTPError as e:
         text = e.read().decode("utf-8", "replace")[:300]
         why = {401: "the key was refused (check it in .env)", 402: "the plan's credits are used up or a paid feature is needed",
+               404: "that voice isn't in this ElevenLabs account (open it in the Voice Library and click Add to My Voices first)",
+               422: "ElevenLabs didn't accept that voice id",
                429: "too many requests at once or the quota is used up"}.get(e.code, f"HTTP {e.code}")
         raise ElevenError(f"ElevenLabs: {why}. {text}")
     except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
@@ -163,6 +166,15 @@ def speak(voice_id, text, speed=1.0, previous="", following=""):
     if cur:
         words.append([cur, s0, e0])
     return audio, words, len(text)
+
+
+def voice_info(voice_id):
+    """Name and labels of one voice in the account: {id, name, labels, description, category}."""
+    if not re.fullmatch(r"[A-Za-z0-9]{12,40}", voice_id or ""):
+        raise ElevenError("That doesn't look like an ElevenLabs voice id (letters and digits, about 20 characters).")
+    v = _call(f"/voices/{voice_id}")
+    return {"id": v.get("voice_id", voice_id), "name": v.get("name", "voice"), "labels": v.get("labels") or {},
+            "description": v.get("description") or "", "category": v.get("category", "")}
 
 
 def quota():

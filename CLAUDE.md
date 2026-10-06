@@ -113,6 +113,11 @@ Agents never spend money without the owner's explicit approval.
   until then. Rhubarb 1.14.0 (MIT, checked: commercial use allowed) is downloaded once into ~/.agent-hq-anim/rhubarb with a pinned
   SHA256; `RHUBARB = False` falls back to the old loudness mouths. This PC has an MX150 (2 GB): no local image generation
   (request step 4 skipped by its own rule).
+- Voices (2.18.1): any ElevenLabs voice id can be registered per project (`animate.py voice-add`, stored in project meta
+  `eleven_voices`, sample in voice-samples/, kept in every later sample set); `render_episode(eid, voice, suffix)` writes variants
+  (`short-N.mp4`, `voice-N.wav`, `scene-props-N.json`) without touching the episode; `render-voices` makes 2-3; `keep-voice` copies
+  the chosen one over short.mp4 and sets the project's voice, then Israa reviews it. The owner's own voice file is `voice.mp3`
+  etc., never `voice.wav` (that name is our generated narration: re-renders used to mistake it for his file and reuse the old voice).
 - `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

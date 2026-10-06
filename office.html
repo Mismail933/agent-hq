@@ -1286,7 +1286,22 @@ function plogHtml(e) {
   return `<form class="prodlog" data-plog="${e.id}">Log: <input type="number" min="0" step="1" name="credits" placeholder="credits" value="${pr.credits ?? ''}" aria-label="OpenArt credits used"><input type="number" min="0" step="1" name="minutes" placeholder="minutes" value="${pr.minutes ?? ''}" aria-label="Your minutes"><input type="number" min="0" step="1" name="retakes" placeholder="retakes" value="${pr.retakes ?? ''}" aria-label="Retakes"><button class="btn sm ghost" type="submit">Save</button></form>`;
 }
 const retireForm = e => `<form class="why" data-retire="${e.id}" hidden><input type="text" maxlength="1000" placeholder="Why retire it? (teaches Calina)" aria-label="Reason"><button class="btn sm ghost" type="submit">Retire</button></form>`;
-function epActions(e) {
+function voiceCompareHtml(e) {
+  const d = e.data || {};
+  if (!(d.scenes || []).length || !['approved', 'rendered'].includes(e.status)) return '';
+  if ((d.voice_variants || []).length) {
+    return `<div class="voices"><b style="color:var(--ink)">Same Short, ${d.voice_variants.length} voices: listen and keep one</b>
+      <div style="display:grid;grid-template-columns:repeat(${d.voice_variants.length},1fr);gap:10px">${d.voice_variants.map((v, i) => `<div><span class="src">${esc(v.label)}</span>
+        <video controls preload="metadata" style="width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--line-2);border-radius:4px" src="/api/variant/${e.id}/${i}?v=${Math.round(e.ts)}"></video>
+        <button class="btn sm" type="button" data-eact="keepvoice" data-vid="${esc(v.id)}">Keep this voice</button></div>`).join('')}</div></div>`;
+  }
+  const vs = ((voiceSamples || {})[e.project_id] || {voices: []}).voices.filter(v => v.id.startsWith('eleven:'));
+  if (vs.length < 2) return '';
+  const opts = sel => vs.map((v, i) => `<option value="${esc(v.id)}" ${i === sel ? 'selected' : ''}>${esc(v.label)}</option>`).join('');
+  return `<form class="why" data-vcompare="${e.id}"><span class="src" style="margin:0">Compare voices on this story:</span><select data-v1 aria-label="First voice">${opts(0)}</select><select data-v2 aria-label="Second voice">${opts(1)}</select><button class="btn sm ghost" type="submit" ${rendering ? 'disabled' : ''}>Make it in both</button></form>`;
+}
+function epActions(e) { return epActions0(e) + voiceCompareHtml(e); }
+function epActions0(e) {
   const v2 = !!((e.data || {}).shots || []).length;
   if (v2 && e.status === 'approved') {
     const c = e.clips || {}, busyHere = rendering === e.id;
@@ -1446,6 +1461,7 @@ function voiceHtml(p) {
     <p class="src" style="margin:0">${chosen ? 'Chosen: ' + esc(chosen) + '.' : 'Not chosen yet: the first Short uses the default until you pick.'} All samples say the same lines at about 130 words a minute. Want ElevenLabs? Make a sample on its free tier and save it as <b>voice.mp3</b> in the episode's folder: the Short uses it.</p>
     <p class="src" style="margin:0">${eleven.configured ? `ElevenLabs: ${(eleven.chars_month || 0).toLocaleString()} of ${(eleven.limit || 0).toLocaleString()} characters used this month.` : 'ElevenLabs is not set up yet: restart START-HERE and paste the key when it asks (the free voices work meanwhile).'}</p>
     ${list || '<p class="src" style="margin:0">No samples yet.</p>'}
+    <form class="why" data-vaddform="${p.id}"><input type="text" maxlength="60" data-vid placeholder="Add any ElevenLabs voice: paste its voice id" aria-label="ElevenLabs voice id"><input type="text" maxlength="60" data-vname placeholder="Name (optional)" aria-label="Voice name" style="max-width:160px"><button class="btn sm ghost" type="submit" ${eleven.configured ? '' : 'disabled'}>Add voice</button></form>
     <div class="acts"><button class="btn sm ${list ? 'ghost' : ''}" type="button" data-vsamples="${p.id}" ${v.making ? 'disabled' : ''}>${v.making ? 'Making samples…' : list ? 'Make them again' : 'Make voice samples'}</button></div></div>`;
 }
 function renderContent() {
@@ -1788,6 +1804,8 @@ $('#lndList').addEventListener('click', e => {
 $('#lndList').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-lid]'); lndAct(li.dataset.lid, 'no', e.target.querySelector('input').value); });
 $('#contentTop').addEventListener('submit', e => {
   e.preventDefault(); const f = e.target;
+  if (f.dataset.vaddform) { const id = f.querySelector('[data-vid]').value.trim(); if (!id) { toast('Paste the voice id first.'); return; }
+    contentAct(`/api/project/${f.dataset.vaddform}/voice-add`, {id, name: f.querySelector('[data-vname]').value.trim()}, 'Adding the voice.'); f.querySelector('[data-vid]').value = ''; return; }
   if (f.dataset.bform) { const pid = f.dataset.bform, d = boardDraft[pid] || {}; if (!d.option && !(d.note || '').trim()) { toast('Pick one of the directions, or write your own in the note.'); return; }
     contentAct(`/api/content/${pid}/board`, {option: d.option, likes: d.likes || {}, note: d.note || ''}, 'Board approved.').then(() => { delete boardDraft[pid]; }); return; }
   const pid = +f.closest('[data-pid]').dataset.pid, v = f.querySelector('input').value;
@@ -1824,12 +1842,16 @@ $('#episodes').addEventListener('click', e => {
   if (b.dataset.eact === 'approve') { pending['e' + id] = 1; renderContent(); contentAct(`/api/episode/${id}/approve`, {}, 'Approved.').then(() => delete pending['e' + id]); }
   else if (b.dataset.eact === 'render') { rendering = id; renderContent(); contentAct(`/api/episode/${id}/render`, {}, 'Calina is making the video.'); }
   else if (b.dataset.eact === 'published') contentAct(`/api/episode/${id}/published`, {}, 'Marked as published.');
+  else if (b.dataset.eact === 'keepvoice') contentAct(`/api/episode/${id}/keep-voice`, {id: b.dataset.vid}, 'Kept.');
   else if (b.dataset.eact === 'israa') contentAct(`/api/episode/${id}/israa`, {}, 'Israa is looking at the video.');
   else if (b.dataset.eact === 'folder') contentAct(`/api/episode/${id}/folder`, {}, 'Opened the folder.');
   else if (b.dataset.eact === 'retire') { const f = li.querySelector('form[data-retire]'); f.hidden = false; f.querySelector('input').focus(); }
   else { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); }
 });
 $('#episodes').addEventListener('submit', e => {
+  if (e.target.dataset.vcompare) { e.preventDefault(); const f = e.target, id = f.dataset.vcompare, a = f.querySelector('[data-v1]').value, b = f.querySelector('[data-v2]').value;
+    if (a === b) { toast('Pick two different voices.'); return; }
+    rendering = +id; contentAct(`/api/episode/${id}/render`, {voices: [a, b]}, 'Calina is making it in both voices.'); return; }
   e.preventDefault(); const f = e.target, li = f.closest('li[data-eid]'), id = li.dataset.eid;
   if (f.dataset.plog) { const v = n => f.querySelector(`[name=${n}]`).value; contentAct(`/api/episode/${id}/log`, {credits:v('credits'), minutes:v('minutes'), retakes:v('retakes')}, 'Logged.'); return; }
   const note = f.querySelector('input').value;

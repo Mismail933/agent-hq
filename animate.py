@@ -496,7 +496,9 @@ def voice_choice(project):
     return (vid if ok else DEFAULT_VOICE), v.get("speed")
 
 
-def render_episode(eid):
+def render_episode(eid, voice=None, suffix=""):
+    """voice: an ElevenLabs/other voice id to use instead of the project's; suffix (e.g. '-1'): write a VARIANT beside the real Short
+    (short-1.mp4, voice-1.wav) without changing the episode, so the owner can compare voices on a real story."""
     ep = cp.get_episode(int(eid))
     if not ep:
         raise Blocked(f"No episode {eid}.")
@@ -512,14 +514,17 @@ def render_episode(eid):
     say(f"Episode #{ep['id']}: {ep['title']}")
     ensure_toolchain()
     lines = [shorts.fill_placeholders(l, project) for l in narration(d)]
-    own = next((f for f in sorted(folder.glob("voice.*")) if f.suffix.lower() in production.AUDIO_EXT), None)
+    # the owner's own voice file (e.g. voice.mp3 from ElevenLabs); never our own generated voice.wav / voice-N.wav
+    own = None if voice else next((f for f in sorted(folder.glob("voice.*")) if f.suffix.lower() in production.AUDIO_EXT and f.name.lower() != "voice.wav"), None)
     say("Voice..." if not own else f"Voice: using your file {own.name}...")
     if own:
         raw, starts, words, voice_end, wpm = whisper_file_voice(ffmpeg, own, lines, folder)
         used = f"your own file ({own.name})"
     else:
-        vid, speed = voice_choice(project)
-        label = ((project.get("meta") or {}).get("voice") or {}).get("label") or voice_spec(vid)[2]
+        vid, speed = (voice, None) if voice else voice_choice(project)
+        meta_v = (project.get("meta") or {})
+        reg = {ELEVEN_PREFIX + x["id"]: x["label"] for x in meta_v.get("eleven_voices") or []}
+        label = reg.get(vid) or ((meta_v.get("voice") or {}).get("label") if not voice else None) or voice_spec(vid)[2]
         try:
             raw, starts, words, voice_end, wpm, chars = synth(vid, lines, TARGET_WPM, folder, speed)
         except (elevenlabs.ElevenError, ImportError, OSError) as ex:
@@ -533,9 +538,9 @@ def render_episode(eid):
         if chars:
             cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "episode": ep["id"], "what": "short"})
             say(f"  ElevenLabs: {chars} characters used for this Short.")
-    normalise_voice(ffmpeg, raw, folder / "voice.wav")
+    normalise_voice(ffmpeg, raw, folder / f"voice{suffix}.wav")
     raw.unlink(missing_ok=True)
-    voice_secs = shorts.probe_seconds(ffmpeg, folder / "voice.wav")
+    voice_secs = shorts.probe_seconds(ffmpeg, folder / f"voice{suffix}.wav")
     end_t = max(voice_secs, voice_end)
     total_secs = end_t + OUTRO_SECONDS
     if total_secs > MAX_TOTAL:
@@ -554,19 +559,23 @@ def render_episode(eid):
     ch = (project.get("meta") or {}).get("channel") or {}
     props = {
         "durationInFrames": total,
-        "audio": "voice.wav",
-        "mouth": mouth_for(folder / "voice.wav", words, lines, folder, total),
+        "audio": f"voice{suffix}.wav",
+        "mouth": mouth_for(folder / f"voice{suffix}.wav", words, lines, folder, total),
         "intro": {"place": short_place(d.get("place") or ""), "year": (d.get("year") or "").upper()},
         "outro": {"channel": ch.get("name") or "POV Then History", "handle": ch.get("handle") or "@POVThenHistory"},
         "outro_from": round(end_t * FPS),
         "caption_chunks": caption_chunks(words),
         "scenes": scenes,
     }
-    (folder / "scene-props.json").write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
+    (folder / f"scene-props{suffix}.json").write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
     say("Animating (this is the slow part: a few minutes)...")
-    out = folder / "short.mp4"
-    remotion(["render", "src/index.jsx", "Short", str(out), f"--props={folder / 'scene-props.json'}",
+    out = folder / f"short{suffix}.mp4"
+    remotion(["render", "src/index.jsx", "Short", str(out), f"--props={folder / f'scene-props{suffix}.json'}",
               f"--public-dir={folder}", "--codec=h264", "--crf=20", "--log=warn", "--overwrite"], timeout=3600)
+    if suffix:   # a voice variant: nothing else about the episode changes
+        say(f"Variant done in {time.time() - t0:.0f}s: {out.name}")
+        return {"id": vid if not own else "own", "label": used, "video": out.relative_to(ROOT).as_posix(), "seconds": round(total_secs, 1),
+                "wpm": round(wpm), "audio": f"voice{suffix}.wav", "props": f"scene-props{suffix}.json"}
     credits = ["Map data: Natural Earth (public domain). Cartoon characters and backgrounds: our own artwork."]
     description = shorts.fill_placeholders((d.get("description") or "").strip(), project)
     if "AI-assisted" not in description:
@@ -584,6 +593,15 @@ def render_episode(eid):
     say(f"Done in {time.time() - t0:.0f}s: {rel}")
     return {"episode": ep["id"], "title": ep["title"], "video": rel, "seconds": round(total_secs, 1), "images": len(scenes),
             "wpm": round(wpm), "voice": used}
+
+
+def render_voices(eid, voices):
+    """The same Short in two (or more) voices, as variants next to the real one, for the owner to compare and keep one."""
+    out = []
+    for i, v in enumerate(voices, 1):
+        say(f"Voice {i} of {len(voices)}: {v}")
+        out.append(render_episode(eid, voice=v, suffix=f"-{i}"))
+    return {"episode": int(eid), "variants": out}
 
 
 # ---- voice samples --------------------------------------------------------------------------
@@ -606,6 +624,9 @@ def make_samples(project_id=3):
                 candidates[ELEVEN_PREFIX + v["id"]] = ("eleven", v["id"], v["label"])
         except elevenlabs.ElevenError as e:
             say(f"  ElevenLabs voices unavailable: {e}")
+        pr = cp.get_project(project_id, with_text=False) or {}
+        for v in (pr.get("meta") or {}).get("eleven_voices") or []:   # the owner's own picks stay in every sample set
+            candidates[ELEVEN_PREFIX + v["id"]] = ("eleven", v["id"], v["label"])
     for vid, (_, _, label) in candidates.items():
         say(f"Sample: {label}")
         try:
@@ -692,11 +713,54 @@ def make_character_library(project_id=3, clips=True):
     return lib
 
 
+def add_eleven_voice(project_id, voice_id, name=""):
+    """Register any ElevenLabs voice id for a project: look it up (name, labels), make its sample, remember it. Returns the entry."""
+    import soundfile as sf
+    voice_id = (voice_id or "").strip()
+    if voice_id.startswith(ELEVEN_PREFIX):
+        voice_id = voice_id[len(ELEVEN_PREFIX):]
+    try:
+        info = elevenlabs.voice_info(voice_id)
+    except elevenlabs.ElevenError as e:
+        raise Blocked(str(e))
+    labels = ", ".join(str(v) for k, v in (info["labels"] or {}).items() if k in ("accent", "gender", "age", "descriptive", "description", "use_case") and v)
+    label = f"ElevenLabs: {name.strip() or info['name']}" + (f" ({labels})" if labels else "")
+    vid = ELEVEN_PREFIX + info["id"]
+    say(f"Sample: {label}")
+    ffmpeg = shorts.find_ffmpeg()
+    folder = shorts.CONTENT / f"project-{project_id}" / "voice-samples"
+    folder.mkdir(parents=True, exist_ok=True)
+    tmp = folder / "_s"
+    tmp.mkdir(exist_ok=True)
+    try:
+        raw, _, _, _, wpm, chars = synth(vid, [SAMPLE_LINE], TARGET_WPM, tmp)
+    except elevenlabs.ElevenError as e:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise Blocked(str(e))
+    cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "what": "sample", "voice": label})
+    out = folder / f"{vid}.mp3"
+    shorts.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), "-af", "loudnorm=I=-15:TP=-1.5:LRA=11", "-ar", "44100", "-b:a", "128k", str(out)])
+    shutil.rmtree(tmp, ignore_errors=True)
+    entry = {"id": vid, "label": label, "wpm": round(wpm), "file": out.relative_to(ROOT).as_posix()}
+    sj = folder / "samples.json"
+    try:
+        data = json.loads(sj.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {"line": SAMPLE_LINE, "voices": []}
+    data["voices"] = [v for v in data.get("voices", []) if v["id"] != vid] + [entry]
+    sj.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    pr = cp.get_project(project_id, with_text=False) or {}
+    mine = [v for v in (pr.get("meta") or {}).get("eleven_voices") or [] if v["id"] != info["id"]] + [{"id": info["id"], "name": info["name"], "label": label}]
+    cp.set_project_meta(project_id, eleven_voices=mine)
+    return entry
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["render", "check", "samples", "setup", "characters", "sheets", "animator-test"])
+    ap.add_argument("command", choices=["render", "check", "samples", "setup", "characters", "sheets", "animator-test", "voice-add", "render-voices"])
     ap.add_argument("arg", nargs="?", type=int)
-    ap.add_argument("arg2", nargs="?", type=int)
+    ap.add_argument("arg2", nargs="?")
+    ap.add_argument("arg3", nargs="?")
     a = ap.parse_args()
     cp.init()
     try:
@@ -709,7 +773,11 @@ def main():
             print(json.dumps({"ok": not problems, "problems": problems}))
         elif a.command == "animator-test":
             import animator
-            print("RESULT " + json.dumps(animator.run_test(a.arg, a.arg2 if a.arg2 is not None else 6)))
+            print("RESULT " + json.dumps(animator.run_test(a.arg, int(a.arg2) if a.arg2 is not None else 6)))
+        elif a.command == "voice-add":   # animate.py voice-add <project> <voice id> [name]
+            print("RESULT " + json.dumps(add_eleven_voice(a.arg, a.arg2, a.arg3 or "")))
+        elif a.command == "render-voices":   # animate.py render-voices <episode> <voice id,voice id>
+            print("RESULT " + json.dumps(render_voices(a.arg, [v for v in (a.arg2 or "").split(",") if v])))
         elif a.command in ("characters", "sheets"):
             print("RESULT " + json.dumps(make_character_library(a.arg or 3, clips=a.command == "characters")))
         elif a.command == "samples":
