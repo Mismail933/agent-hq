@@ -182,8 +182,8 @@ def checklist(ep):
     key = (str(d.get("place", "")).strip().lower(), str(d.get("year", "")).strip().lower())
     hook5 = " ".join((d.get("hook") or "").lower().split()[:5])
     for o in cp.list_episodes(ep["project_id"], limit=500):
-        if o["id"] == ep["id"] or o["status"] == "rejected":
-            continue
+        if o["id"] == ep["id"] or o["status"] == "rejected" or (o["data"] or {}).get("do_not_upload"):
+            continue   # a retired or do-not-upload draft is not a repeat
         od = o["data"]
         if od.get("rebuild_of") == ep["id"] or d.get("rebuild_of") == o["id"]:
             continue   # a rebuild of an earlier script legitimately repeats it

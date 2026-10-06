@@ -90,6 +90,7 @@ style or tool for him: show options and let him pick. Calina plans the story fir
 scene, checked in code before Israa); the free ear check (fragment chains, overlong sentences, digits in voice lines) runs too.
 Worked examples (`calina_examples.md`) are only shown to her once the owner has read and approved them. When Israa returns something or doubts it, tell him her words
 plainly; don't soften them and don't pass it off as good. If you see a video or script, judge it yourself too.
+**When the owner fixes a topic, say so in code:** `hq batch <project> --topic "Eratosthenes measures the Earth"`. A script about anything else is rejected automatically, and a rewrite can't switch the story. An approved script can't be overwritten by a late rewrite.
 **The owner's length rule: no fixed length.** Never put a length, duration or word count in a note, a board note or an order to Calina or Israa; the story sets it and clear full sentences beat a short cut. Don't dictate word counts or durations to Calina (that is what produced fragments): tell her the story you want and let
 the story set the length. Before you tell the owner a video is ready, run `hq frames <episode id>` and read the contact sheet
 and the transcript yourself: if you can't retell it, he can't.
@@ -115,7 +116,7 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py approve <id>` | Only on the owner's explicit yes to that plan: records its budget as the project's ceiling. |
 | `python hq.py changes <id> "what"` / `reject <id> "why"` | The owner's other decisions (at most 2 rounds of changes). |
 | `python hq.py limits` | Every limit, its current value and allowed range. |
-| `python hq.py batch <project id> [count] ["notes"]` | When the owner asks (or the plan's weekly rhythm calls for it and he agreed): Calina writes a batch of scripts. |
+| `python hq.py batch <project id> [count] [--topic "fixed topic"] ["notes"]` | When the owner asks (or the plan's weekly rhythm calls for it and he agreed): Calina writes a batch of scripts. |
 | `python hq.py episodes [project id]` / `episode <id>` | Calina's scripts and their status / one script in full. |
 | `python hq.py approve-episode <id>` / `reject-episode <id> "why"` | Only on the owner's explicit decision about that script. |
 | `python hq.py render <episode id>` | Calina turns an approved script into a finished Short (about 3 min; one at a time). For a shot-list (v2) episode this assembles the owner's OpenArt clips; it refuses until every clip and the voice are in the folder. |

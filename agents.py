@@ -716,6 +716,7 @@ EPISODE_SCHEMA_V3 = {
     "type": "object",
     "properties": {
         "title": {"type": "string"}, "place": {"type": "string"}, "year": {"type": "string"},
+        "subject": {"type": "string", "description": "Who or what the story is mainly about, in a few words (the person, the thing)"},
         "hook": {"type": "string", "description": "Scene 1's voice line"},
         "storyline": {"type": "string", "description": "One line: who, the problem, the clue, what he did, the answer"},
         "spine": {"type": "object", "description": "Write this BEFORE any scene", "properties": {
@@ -733,7 +734,7 @@ EPISODE_SCHEMA_V3 = {
         "sources": EPISODE_SCHEMA["properties"]["sources"],
         "description": {"type": "string"}, "hashtags": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["title", "place", "year", "hook", "storyline", "spine", "surprising_fact", "scenes", "sources", "description"],
+    "required": ["title", "place", "year", "subject", "hook", "storyline", "spine", "surprising_fact", "scenes", "sources", "description"],
 }
 BATCH_TOOL_V3 = {
     "name": "submit_batch",
@@ -804,7 +805,7 @@ def _project_context(project_id):
     return p
 
 
-def calina_batch(project_id, count=None, notes=""):
+def calina_batch(project_id, count=None, notes="", topic=""):
     """Calina writes a batch of scripts for an approved project. They wait for the owner in the Content tab."""
     try:
         p = _project_context(project_id)
@@ -832,8 +833,13 @@ def calina_batch(project_id, count=None, notes=""):
         learning = latest[0].read_text(encoding="utf-8") if latest else "(no learning note yet)"
         task = (f"Write batch {batch}: {count} scripts.\n\nEarlier episodes (do not repeat):\n{history}\n\n"
                 f"Latest learning note:\n{learning}")
+        topic = (topic or "").strip()[:300]
         if notes:
             task += f"\n\nThe owner added: {notes}"
+        if topic:
+            task += (f"\n\nTHE OWNER FIXED THE TOPIC OF THIS BATCH: every script must be about: {topic}. Do not switch to another story, "
+                     "not even to avoid a repeat: earlier drafts of this topic are retired or superseded, and the owner wants this one story told well. "
+                     "Say in `subject` who or what the story is mainly about.")
         task += "\n\n" + bar
         returned = [f"- #{e['id']} {e['title']}: " + "; ".join(x["issue"] for x in
                                                                 ((e["data"].get("video_review") or e["data"].get("review") or {}).get("problems") or [])[:3])
@@ -880,6 +886,7 @@ def calina_batch(project_id, count=None, notes=""):
         folder.mkdir(parents=True, exist_ok=True)
         ids = []
         for ep in episodes:
+            ep["topic_lock"] = quality.make_lock(topic, ep)   # what this script is about is fixed from here on
             eid = cp.add_episode(p["id"], batch, ep)
             ids.append(eid)
             (folder / f"ep-{eid:03d}.json").write_text(json.dumps(ep, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -887,12 +894,20 @@ def calina_batch(project_id, count=None, notes=""):
 
         def rewrite(eid, review):   # Israa sent this one back: Calina rewrites it with her notes
             old = cp.get_episode(eid)
+            if old["status"] != "awaiting_approval":   # approved or decided meanwhile: that text is frozen
+                cp.log("Calina", "rewrite_skipped", p["idea_id"], {"episode": eid, "why": f"it is {old['status']}"})
+                return False
+            lock = old["data"].get("topic_lock") or quality.make_lock(topic, old["data"])
             notes_ = "\n".join(f"- {x['issue']} -> fix: {x['fix']}" for x in review.get("problems", []))
-            clean = {k: v for k, v in old["data"].items() if k != "review"}
+            clean = {k: v for k, v in old["data"].items() if k not in ("review", "checks", "topic_lock")}
+            if review.get("topic_fix"):
+                keep = f"The story MUST be about the owner's topic: {topic}. Change the subject, place and year to fit it."
+            else:
+                keep = ("You may NOT change the story: the same person or subject, the same place and year, the same spine. "
+                        "Fix the writing only; a different story is rejected in code and the old text stays.")
             t = (f"Israa, the quality reviewer, sent this script back (score {review.get('score')}/10): {review.get('summary', '')}\n"
                  f"Her notes:\n{notes_}\n\nThe script:\n{json.dumps(clean, ensure_ascii=False, indent=1)}\n\n"
-                 "Write ONE replacement script for the same moment, or a different and better moment if the story itself is the "
-                 f"problem. It must fix every note. Return exactly one episode.\n\n{bar}")
+                 f"Write ONE replacement script. {keep} It must fix every note. Return exactly one episode.\n\n{bar}")
             try:
                 g = _calina_write(p, build_system(1), t, tool)
             except Exception as ex:
@@ -901,16 +916,27 @@ def calina_batch(project_id, count=None, notes=""):
             new_ = next((x for x in (g.get("episodes") or []) if x.get("sources")), None)
             if not new_:
                 return False
-            cp.update_episode(eid, data=new_, title=new_.get("title", "")[:300])
+            drift = quality.topic_violation(lock if not review.get("topic_fix") else {"topic": topic}, new_)
+            if not drift and not review.get("topic_fix") and not quality.spine_same(old["data"].get("spine"), new_.get("spine")):
+                drift = "the spine changed (how the story begins or ends is no longer the same)"
+            if drift:   # the rewrite changed the story: refused, the old text stays
+                cp.log("Calina", "rewrite_refused", p["idea_id"], {"episode": eid, "why": drift[:200]})
+                return False
+            new_["topic_lock"] = lock if not review.get("topic_fix") else quality.make_lock(topic, new_)
+            if not cp.update_episode_if(eid, "awaiting_approval", data=new_, title=new_.get("title", "")[:300]):
+                cp.log("Calina", "rewrite_skipped", p["idea_id"], {"episode": eid, "why": "approved while the rewrite was being written"})
+                return False
             (folder / f"ep-{eid:03d}.json").write_text(json.dumps(new_, indent=2, ensure_ascii=False), encoding="utf-8")
             cp.log("Calina", "script_rewritten", p["idea_id"], {"episode": eid})
             return True
 
+        dropped = quality.enforce_topic(ids, topic, rewrite) if (ids and topic) else []   # a script about another story never goes further
+        ids = [i for i in ids if i not in dropped]
         if ids:
             quality.pre_review(ids, rewrite)   # the free structure + ear checks come first
         gate = quality.review_batch(p, ids, rewrite) if ids else {}
         final = [cp.get_episode(i) for i in ids]
-        return json.dumps({"project_id": p["id"], "batch": batch, "review": gate,
+        return json.dumps({"project_id": p["id"], "batch": batch, "review": gate, "dropped_off_topic": len(dropped), "topic": topic,
                            "episodes": [{"id": e["id"], "title": e["title"], "verdict": (e["data"].get("review") or {}).get("verdict", "")}
                                         for e in final],
                            "dropped_without_source": len(got.get("episodes") or []) - len(episodes),

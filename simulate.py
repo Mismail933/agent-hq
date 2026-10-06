@@ -131,7 +131,7 @@ class _Messages:
                          "Inside is a map to the city's lost well.", "By noon, the whole market is following you.",
                          "The well is real, and the water is sweet.", "That map still hangs in the museum today.",
                          "A letter, a well, a city saved."]
-                return {"title": f"POV: {place}, {year}, the lost well", "place": place, "year": year, "hook": lines[0],
+                return {"title": f"POV: {place}, {year}, the lost well", "place": place, "year": year, "subject": f"The lost well of {place}", "hook": lines[0],
                         "storyline": "A stranger, a letter, a lost well (simulated).", "surprising_fact": "Simulated fact.",
                         "spine": {"once": "A stranger.", "every_day": "Nothing happened.", "one_day": "A letter came.", "because1": "So he followed it.",
                                   "because2": "So he found the well.", "finally": "The city had water.", "question_answered_in_scene": len(lines)},

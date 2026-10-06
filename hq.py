@@ -5,7 +5,7 @@ Atlas's controls for Agent HQ.
                  pitch "idea" ["notes"] | scout | retry <id> | spend | activity [n] | stop | resume
                  plan <idea id> ["notes"] | plans | project <id> | approve <id> | reject <id> "why" | changes <id> "what"
                  limits | limit <key> <value>
-                 batch <project id> [count] ["notes"] | episodes [project id] | episode <id>
+                 batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
                  lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
@@ -179,9 +179,13 @@ def main(argv):
             code, reply = office(f"/api/project/{int(args[0])}/{cmd}", {"note": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "batch":
+            topic = ""
+            if "--topic" in args:   # hq batch <project> [count] --topic "Eratosthenes measures the Earth" ["notes"]
+                k = args.index("--topic")
+                topic, args = (args[k + 1] if k + 1 < len(args) else ""), args[:k] + args[k + 2:]
             count = args[1] if len(args) > 1 and args[1].isdigit() else None
             notes = " ".join(args[2:] if count else args[1:])
-            order(f"/api/content/{int(args[0])}/batch", {"count": count, "notes": notes},
+            order(f"/api/content/{int(args[0])}/batch", {"count": count, "notes": notes, "topic": topic},
                   "Calina is writing the batch. The scripts will land in Ideas → Content and in the office chat.")
         elif cmd == "refs":   # the Scout researches what works and writes a reference board
             order(f"/api/content/{int(args[0])}/scout", {"notes": " ".join(args[1:])},

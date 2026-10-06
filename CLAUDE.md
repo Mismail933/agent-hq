@@ -113,6 +113,13 @@ Agents never spend money without the owner's explicit approval.
   until then. Rhubarb 1.14.0 (MIT, checked: commercial use allowed) is downloaded once into ~/.agent-hq-anim/rhubarb with a pinned
   SHA256; `RHUBARB = False` falls back to the old loudness mouths. This PC has an MX150 (2 GB): no local image generation
   (request step 4 skipped by its own rule).
+- Topic lock (2.18.5): every scene-file script carries `topic_lock` ({topic, subject, place, year}, set when it is written; the schema
+  asks Calina for `subject`). `hq batch <project> --topic "..."` (or `topic` in the batch request) fixes the topic of a batch:
+  `quality.enforce_topic` gives an off-topic script two rewrites that must be about it, then rejects it in code (never reaches
+  Israa or the owner). A rewrite (`rewrite()` in `calina_batch`) may not change subject, place, year or the spine's start/end
+  (`quality.topic_violation`, `spine_same`: refused, the old text stays) and is written with `cp.update_episode_if(.., "awaiting_approval")`,
+  one SQL statement, so a script approved a moment earlier is frozen. Israa's originality check and `animate.checklist` ignore rejected
+  and do-not-upload drafts, and for a locked topic earlier drafts of the same topic are never "repeats".
 - No length cap (2.18.2): the owner's rule is that the story sets the length. `quality.style_bar` strips every length target from the
   board before Calina or Israa read it (`no_length`: only the offending clause goes), starts with an explicit LENGTH rule, and
   Israa's base prompt and Calina's V3 prompt both say it overrides boards, guides and Atlas's notes. `hq board-note <project> "..."`

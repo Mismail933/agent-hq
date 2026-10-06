@@ -327,6 +327,17 @@ def update_episode(eid, **fields):
         con.execute(f"UPDATE episodes SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?", (*fields.values(), eid))
 
 
+def update_episode_if(eid, status, **fields):
+    """Like update_episode, but only if the episode still has `status` right now (one SQL statement, so a script the owner approved
+    a moment ago can't be overwritten by a rewrite that was already on its way). Returns True if it wrote."""
+    assert set(fields) <= {"status", "owner_note", "video_path", "data", "title"}, fields
+    if isinstance(fields.get("data"), dict):
+        fields["data"] = json.dumps(fields["data"])
+    with _db() as con:
+        n = con.execute(f"UPDATE episodes SET {', '.join(f'{k}=?' for k in fields)} WHERE id=? AND status=?", (*fields.values(), eid, status)).rowcount
+    return n == 1
+
+
 def _episode_row(r):
     e = {k: r[k] for k in ("id", "project_id", "batch", "ts", "status", "title", "owner_note", "video_path")}
     e["data"] = json.loads(r["data"] or "{}")

@@ -346,7 +346,9 @@ SCRIPTS_TASK = """Review these scripts from Calina. Each is a short YouTube vide
    clue, what he DID step by step, the reasoning in plain words, the answer, why it matters. Fragments, headline-style
    lines and a list of facts fail. Every step the voice explains must be something the picture can SHOW (for scene files,
    check each scene's "shows" field really shows that step; a diagram without the thing being measured fails).
-3. Originality: different from the earlier episodes listed below in place, era, angle and shape.
+3. Originality: different from the earlier episodes listed below in place, era, angle and shape. EXCEPTION: when a script is about the topic
+   the owner fixed (the topic is in the script's `topic_lock`), earlier or retired drafts of that same topic are NOT repeats: the owner wants
+   that one story told well. Never ask Calina to change the subject to avoid a repeat.
 4. Facts: each key fact backed by its quoted source. Open the sources (WebFetch) for the surprising fact and check it
    really says that. A fact the source doesn't support fails the script.
 5. Voice-over: full spoken sentences written for the ear. Read each aloud in your head: it must sound like a person
@@ -477,7 +479,8 @@ def review_scripts(p, eps, rnd=0):
         channel = cp.channel_line(p)
         same = [q["id"] for q in cp.list_projects(50) if q["id"] == p["id"] or (channel and cp.channel_line(q) == channel)]
         ids = {e["id"] for e in eps}
-        earlier = [e for q in same for e in cp.list_episodes(q, limit=200) if e["id"] not in ids]
+        earlier = [e for q in same for e in cp.list_episodes(q, limit=200)
+                   if e["id"] not in ids and e["status"] != "rejected" and not (e["data"] or {}).get("do_not_upload")]   # retired drafts don't count
         history = "\n".join(f"- [{e['status']}] {e['data'].get('place', '')} {e['data'].get('year', '')}: {e['title']}"
                             for e in earlier[:60]) or "- (none yet)"
         scripts = "\n\n".join(f"### Episode {e['id']}: {e['title']}\n" + json.dumps(
@@ -493,6 +496,75 @@ def review_scripts(p, eps, rnd=0):
 
 LINKS = ("because", "but", "so", "first", "therefore")
 SPINE_KEYS = ("once", "every_day", "one_day", "because1", "because2", "finally", "question_answered_in_scene")
+
+
+_STOP = set("the a an of and or to in on at for with from about that this these those story script scripts make made write wrote written "
+            "short shorts video episode batch topic fixed owner angle another new old first second third".split())
+
+
+def _tokens(text):
+    return {w for w in re.findall(r"[a-z][a-z'\u2019-]{2,}", (text or "").lower()) if w not in _STOP}
+
+
+def make_lock(topic, d):
+    """What a script is about, fixed when it is written: the owner's topic for the batch (if there is one) and the script's own
+    subject, place and year. A rewrite may not change any of it."""
+    return {"topic": (topic or "").strip() or None, "subject": d.get("subject") or "", "place": d.get("place") or "", "year": str(d.get("year") or "")}
+
+
+def topic_violation(lock, d):
+    """'' if the script is still about what the lock says, else a plain sentence saying how it drifted. Pure Python."""
+    if not lock:
+        return ""
+    subject = _tokens(d.get("subject") or d.get("title"))
+    if lock.get("topic"):
+        want = _tokens(lock["topic"])
+        if want and not (subject & want):
+            return (f"The owner fixed the topic as \"{lock['topic']}\", but this script is about \"{d.get('subject') or d.get('title', '?')}\" "
+                    f"({d.get('place', '?')}, {d.get('year', '?')}).")
+        return ""
+    old_subject = _tokens(lock.get("subject"))
+    if old_subject and not (subject & old_subject):
+        return f"The story changed: it was about \"{lock.get('subject')}\" and is now about \"{d.get('subject') or d.get('title', '?')}\"."
+    op, np_ = _tokens(lock.get("place")), _tokens(d.get("place"))
+    if op and np_ and not (op & np_):
+        return f"The place changed from \"{lock.get('place')}\" to \"{d.get('place')}\"."
+    oy, ny = re.sub(r"\D", "", lock.get("year") or ""), re.sub(r"\D", "", str(d.get("year") or ""))
+    if oy and ny and oy != ny:
+        return f"The year changed from {lock.get('year')} to {d.get('year')}."
+    return ""
+
+
+def spine_same(old, new, floor=0.3):
+    """A rewrite keeps the story's spine: how it began and how it ends must still be recognisably the same (token overlap)."""
+    if not (old or {}).get("once"):
+        return True
+    for k in ("once", "finally"):
+        a, b = _tokens((old or {}).get(k)), _tokens((new or {}).get(k))
+        if a and (not b or len(a & b) / len(a | b) < floor):
+            return False
+    return True
+
+
+def enforce_topic(ids, topic, rewrite):
+    """When the owner (or Atlas for him) fixed the topic of a batch: any script about something else gets up to two rewrites that
+    must be about the topic; one that still isn't is rejected here and now, so it never reaches Israa or the owner. Returns the
+    ids that were dropped."""
+    dropped = []
+    for i in ids:
+        e = cp.get_episode(i)
+        bad = topic_violation({"topic": topic}, e["data"])
+        for _ in range(2):
+            if not bad:
+                break
+            rewrite(i, {"topic_fix": True, "score": None, "summary": "Wrong topic.",
+                        "problems": [{"issue": bad, "fix": f"Write the story about: {topic}. Same quality, right subject."}]})
+            bad = topic_violation({"topic": topic}, cp.get_episode(i)["data"])
+        if bad:
+            cp.update_episode(i, status="rejected", owner_note=f"Rejected automatically: {bad}")
+            cp.log("Calina", "off_topic_dropped", None, {"episode": i, "reason": bad})
+            dropped.append(i)
+    return dropped
 
 
 def spine_problems(d):

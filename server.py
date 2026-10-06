@@ -147,13 +147,15 @@ def run_retry(idea_id):
     announce_verdict(agents.retry_idea(idea_id))
 
 
-def run_batch(project_id, count, notes):
-    out = agents.calina_batch(project_id, count, notes)
+def run_batch(project_id, count, notes, topic=""):
+    out = agents.calina_batch(project_id, count, notes, topic)
     try:
         r = json.loads(out)
         mark = {"pass": "passed Israa", "rework": "Israa still has doubts", "unreviewed": "NOT reviewed"}
         titles = "\n".join(f"- #{e['id']} {e['title']} ({mark.get(e.get('verdict'), 'not reviewed')})" for e in r["episodes"])
         dropped = f" She dropped {r['dropped_without_source']} script(s) she couldn't source." if r["dropped_without_source"] else ""
+        if r.get("dropped_off_topic"):
+            dropped += f" {r['dropped_off_topic']} script(s) were about a different story than the fixed topic, \"{r.get('topic', '')}\", and were rejected in code."
         g = r.get("review") or {}
         rev = (f"\n\nIsraa reviewed them: {g.get('passed', 0)} passed"
                + (f", {g['reworked']} sent back to Calina and rewritten" if g.get("reworked") else "")
@@ -917,7 +919,8 @@ class Handler(BaseHTTPRequestHandler):
                 if agents.PRODUCING.locked():
                     return self._send(409, {"error": "Calina is already writing a batch. Try again when it's done."})
                 notes, warning = clip(body.get("notes", ""), "notes")
-                threading.Thread(target=run_batch, args=(pid, body.get("count"), notes), daemon=True).start()
+                topic = str(body.get("topic", "")).strip()[:300]
+                threading.Thread(target=run_batch, args=(pid, body.get("count"), notes, topic), daemon=True).start()
                 return self._send(202, accepted(warning))
             if action == "scout":   # the Scout finds what really works and makes a reference board
                 if quality.SCOUTING.locked():
