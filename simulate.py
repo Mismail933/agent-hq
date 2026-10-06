@@ -123,7 +123,7 @@ class _Messages:
                     "kill_criteria": "No paying customer in 6 weeks"}
             return NS(stop_reason="tool_use", usage=_usage(7000, 1500, 0 if fitted else 1),
                       content=[NS(type="tool_use", id=_id(), name="submit_plan", input=plan)])
-        if system.startswith("You are Calina") and "as SCENE FILES" in system:
+        if ("You are Calina," in system[:30000]) and "as SCENE FILES" in system:
             def ep3(place, year):
                 kit = ["court", "library", "nile", "well", "study", "map", "court", "study", "nile"]
                 lines = [f"It is {year}, and you wake up in {place}.", "The street smells of bread and smoke.",
@@ -133,7 +133,10 @@ class _Messages:
                          "A letter, a well, a city saved."]
                 return {"title": f"POV: {place}, {year}, the lost well", "place": place, "year": year, "hook": lines[0],
                         "storyline": "A stranger, a letter, a lost well (simulated).", "surprising_fact": "Simulated fact.",
+                        "spine": {"once": "A stranger.", "every_day": "Nothing happened.", "one_day": "A letter came.", "because1": "So he followed it.",
+                                  "because2": "So he found the well.", "finally": "The city had water.", "question_answered_in_scene": len(lines)},
                         "scenes": [{"n": i + 1, "voice_line": l, "backdrop": kit[i], "camera": ["push_in", "pan_left", "pull_out"][i % 3],
+                                    "link": "first" if i == 0 else ["because", "but", "so", "therefore"][i % 4], "step_claim": f"Step {i + 1}.", "shows": "Simulated.",
                                     "characters": [{"who": "narrator", "pose": "point", "at": "left"}] if i in (0, 5) else [],
                                     "map": {"focus": [30, 30], "zoom": 40, "pins": []} if kit[i] == "map" else None,
                                     "source_note": "Example Museum"} for i, l in enumerate(lines)],
@@ -142,7 +145,7 @@ class _Messages:
             batch = {"episodes": [ep3("Fez", "1350"), ep3("Kyoto", "1600"), ep3("Lima", "1700")], "batch_note": "Simulated scene-file batch."}
             return NS(stop_reason="tool_use", usage=_usage(9000, 3000, 2),
                       content=[NS(type="tool_use", id=_id(), name="submit_batch", input=batch)])
-        if system.startswith("You are Calina") and "as shot lists" in system:
+        if ("You are Calina," in system[:30000]) and "as shot lists" in system:
             def ep(place, year):
                 lines = [f"It is {year}, and you wake up in {place}.", "The street smells of bread and smoke.",
                          "A stranger hands you a sealed letter.", "Nobody here can read it but you.",
@@ -162,7 +165,7 @@ class _Messages:
                      "style": "Photoreal, golden-hour light, 35mm film look, vertical 9:16 (simulated).", "batch_note": "Simulated v2 batch."}
             return NS(stop_reason="tool_use", usage=_usage(9000, 3000, 2),
                       content=[NS(type="tool_use", id=_id(), name="submit_batch", input=batch)])
-        if system.startswith("You are Calina"):
+        if ("You are Calina," in system[:30000]):
             if "Your job now: read the owner's stats" in system:
                 return NS(stop_reason="end_turn", usage=_usage(3000, 400),
                           content=[_text("## What worked\nSimulated learning note.\n## Next batch\nMore Roman-era hooks.")])

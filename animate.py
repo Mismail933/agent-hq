@@ -125,7 +125,9 @@ def remotion(args, timeout=3000):
     p = subprocess.run([str(NODE_DIR / "node.exe"), str(cli), *args], cwd=APP, env=node_env(), capture_output=True,
                        text=True, encoding="utf-8", errors="replace", timeout=timeout, creationflags=NOFLAGS)
     if p.returncode != 0:
-        raise Blocked("Remotion failed: " + ((p.stderr or "") + (p.stdout or "")).strip()[-500:])
+        text = re.sub(r"\x1b\[[0-9;]*m", "", (p.stderr or "") + (p.stdout or "")).strip()
+        k = text.find("Error:")
+        raise Blocked("Remotion failed: " + (text[k:k + 900] if k >= 0 else text[-600:]))
     return p.stdout
 
 
@@ -350,6 +352,82 @@ def short_place(place):
     return (first[:26].rstrip() if first else (place or "")[:26]).upper()
 
 
+RHUBARB_VERSION = "1.14.0"   # Rhubarb Lip Sync, MIT licence (commercial use allowed), https://github.com/DanielSWolf/rhubarb-lip-sync
+RHUBARB_URL = f"https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v{RHUBARB_VERSION}/Rhubarb-Lip-Sync-{RHUBARB_VERSION}-Windows.zip"
+RHUBARB_SHA256 = "62fa416a8d5e382a3828ee4bef358ce520d0b4cabdeaea75a7ac266d098d1fe3"
+RHUBARB_DIR = HOME / "rhubarb"
+
+
+def ensure_rhubarb():
+    """Rhubarb Lip Sync, installed once into the animation tools folder. The download must match the pinned checksum."""
+    exe = RHUBARB_DIR / f"Rhubarb-Lip-Sync-{RHUBARB_VERSION}-Windows" / "rhubarb.exe"
+    if exe.exists():
+        return exe
+    RHUBARB_DIR.mkdir(parents=True, exist_ok=True)
+    say(f"Installing Rhubarb Lip Sync {RHUBARB_VERSION} (the mouth-shape tool, MIT licence), one time...")
+    z = RHUBARB_DIR / "rhubarb.zip"
+    download(RHUBARB_URL, z)
+    if hashlib.sha256(z.read_bytes()).hexdigest() != RHUBARB_SHA256:
+        z.unlink(missing_ok=True)
+        raise Blocked("The Rhubarb download didn't match its pinned checksum, so it was thrown away.")
+    with zipfile.ZipFile(z) as zf:
+        zf.extractall(RHUBARB_DIR)
+    z.unlink(missing_ok=True)
+    if not exe.exists():
+        raise Blocked("Rhubarb didn't unpack where expected.")
+    return exe
+
+
+def rhubarb_cues(wav, dialog, folder):
+    """[(start, end, shape)] for a voice track: Rhubarb listens to the audio, helped by the words that were said."""
+    exe = ensure_rhubarb()
+    d, out = folder / "_dialog.txt", folder / "_cues.json"
+    d.write_text(dialog, encoding="utf-8")
+    p = subprocess.run([str(exe), "-f", "json", "--extendedShapes", "GHX", "-d", str(d), "--quiet", "-o", str(out), str(wav)],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1200, creationflags=NOFLAGS)
+    if p.returncode != 0 or not out.exists():
+        raise Blocked("Rhubarb failed: " + ((p.stderr or p.stdout).strip().splitlines() or ["no output"])[-1][:300])
+    cues = [(c["start"], c["end"], c["value"]) for c in json.loads(out.read_text(encoding="utf-8"))["mouthCues"]]
+    d.unlink(missing_ok=True)
+    out.unlink(missing_ok=True)
+    return cues
+
+
+def rhubarb_frames(cues, total_frames):
+    """One mouth letter (A-H, X) for every frame of the video."""
+    letters, k = [], 0
+    for f in range(total_frames):
+        t = f / FPS
+        while k < len(cues) - 1 and t >= cues[k][1]:
+            k += 1
+        letters.append(cues[k][2] if cues and cues[k][0] <= t < cues[k][1] else "X")
+    # a very short rest between two spoken shapes ("I am here") is the recogniser losing a quick vowel: keep the mouth moving
+    for f in range(1, len(letters) - 1):
+        if letters[f] == "X":
+            a = f
+            while a > 0 and letters[a - 1] == "X":
+                a -= 1
+            b = f
+            while b < len(letters) - 1 and letters[b + 1] == "X":
+                b += 1
+            if a > 0 and b < len(letters) - 1 and b - a < 6 and letters[a - 1] != "X" and letters[b + 1] != "X":
+                for k in range(a, b + 1):
+                    letters[k] = letters[b + 1] if k - a >= (b - a + 1) // 2 else letters[a - 1]
+    return letters
+
+
+def mouth_for(wav, words, lines, folder, total_frames):
+    """The mouth of every frame: Rhubarb's nine shapes (from the audio and the script), or the old loudness cues if Rhubarb can't run."""
+    if getattr(settings, "RHUBARB", True):
+        try:
+            return rhubarb_frames(rhubarb_cues(wav, " ".join(lines), folder), total_frames)
+        except Blocked as e:
+            say(f"  Rhubarb unavailable ({str(e)[:160]}): using the simple loudness mouths instead.")
+        except (OSError, subprocess.SubprocessError) as e:
+            say(f"  Rhubarb couldn't run ({str(e)[:160]}): using the simple loudness mouths instead.")
+    return mouth_cues(wav, words, total_frames)
+
+
 def _norm(w):
     return re.sub(r"[^a-z0-9]", "", w.lower())
 
@@ -477,7 +555,7 @@ def render_episode(eid):
     props = {
         "durationInFrames": total,
         "audio": "voice.wav",
-        "mouth": mouth_cues(folder / "voice.wav", words, total),
+        "mouth": mouth_for(folder / "voice.wav", words, lines, folder, total),
         "intro": {"place": short_place(d.get("place") or ""), "year": (d.get("year") or "").upper()},
         "outro": {"channel": ch.get("name") or "POV Then History", "handle": ch.get("handle") or "@POVThenHistory"},
         "outro_from": round(end_t * FPS),
@@ -548,10 +626,77 @@ def make_samples(project_id=3):
     return done
 
 
+TEST_SCRIPT = ("Hello! I am here to tell you a story. Two thousand years ago, a man looked at a shadow and asked a big question. "
+               "How big is the world? He had no ship and no satellite. He had a stick, a well, and a very good idea. "
+               "First he measured the angle of the shadow. Then he did the sums, step by careful step. "
+               "And the answer he found was almost exactly right. Isn't that amazing? Now let me show you how he did it.")
+
+
+def characters_folder(project_id):
+    return shorts.CONTENT / f"project-{project_id}" / "characters"
+
+
+def make_character_library(project_id=3, clips=True):
+    """Reference sheet + 30-second test clip for every character, saved once under content/project-N/characters/.
+    The test clip uses the project's chosen voice, Rhubarb's mouth shapes and the whole rig (idle, blink, gestures, walk, expressions)."""
+    import numpy as np
+    import soundfile as sf
+    root = characters_folder(project_id)
+    root.mkdir(parents=True, exist_ok=True)
+    ensure_toolchain()
+    ffmpeg = shorts.find_ffmpeg()
+    project = cp.get_project(project_id, with_text=False)
+    lib = {"project": project_id, "made": time.strftime("%Y-%m-%d %H:%M"), "characters": []}
+    voice = None
+    if clips:
+        vid, speed = voice_choice(project)
+        say("Test voice (same words for every character)...")
+        lines = [l.strip() for l in re.split(r"(?<=[.!?])\s+", TEST_SCRIPT) if l.strip()]
+        raw, _, words, voice_end, wpm, chars = synth(vid, lines, TARGET_WPM, root, speed)
+        if chars:
+            cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "what": "character test"})
+        normalise_voice(ffmpeg, raw, root / "test-voice.wav")
+        raw.unlink(missing_ok=True)
+        secs = min(30.0, shorts.probe_seconds(ffmpeg, root / "test-voice.wav"))
+        total = int(round(30 * FPS))
+        mouth = mouth_for(root / "test-voice.wav", words, lines, root, total)
+        voice = {"label": (voice_spec(vid)[2]), "seconds": round(secs, 1)}
+    for who in sorted(CAST):
+        folder = root / who
+        folder.mkdir(exist_ok=True)
+        say(f"Reference sheet: {who}")
+        props = folder / "_props.json"
+        props.write_text(json.dumps({"who": who}), encoding="utf-8")
+        remotion(["still", "src/index.jsx", "CharacterSheet", str(folder / "reference-sheet.png"), f"--props={props}", "--log=error",
+                  "--overwrite"], timeout=900)
+        entry = {"id": who, "sheet": (folder / "reference-sheet.png").relative_to(ROOT).as_posix()}
+        if clips:
+            say(f"Test clip: {who} (30 s, three shots)")
+            props.write_text(json.dumps({"who": who, "mouth": mouth, "audio": "test-voice.wav", "durationInFrames": total}), encoding="utf-8")
+            remotion(["render", "src/index.jsx", "CharacterTest", str(folder / "test.mp4"), f"--props={props}", f"--public-dir={root}",
+                      "--codec=h264", "--crf=24", "--scale=0.5", "--log=warn", "--overwrite"], timeout=3600)
+            entry["clip"] = (folder / "test.mp4").relative_to(ROOT).as_posix()
+        props.unlink(missing_ok=True)
+        lib["characters"].append(entry)
+    if voice:
+        lib["voice"] = voice
+    # keep earlier reviews and the owner's approval across remakes
+    old = {}
+    try:
+        old = json.loads((root / "library.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    if old.get("reviews") and not clips:
+        lib["reviews"] = old["reviews"]
+    (root / "library.json").write_text(json.dumps(lib, indent=2), encoding="utf-8")
+    return lib
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["render", "check", "samples", "setup"])
+    ap.add_argument("command", choices=["render", "check", "samples", "setup", "characters", "sheets", "animator-test"])
     ap.add_argument("arg", nargs="?", type=int)
+    ap.add_argument("arg2", nargs="?", type=int)
     a = ap.parse_args()
     cp.init()
     try:
@@ -562,6 +707,11 @@ def main():
             ep = cp.get_episode(a.arg)
             problems = checklist(ep) if ep and is_animated(ep) else ["That episode has no scene file."]
             print(json.dumps({"ok": not problems, "problems": problems}))
+        elif a.command == "animator-test":
+            import animator
+            print("RESULT " + json.dumps(animator.run_test(a.arg, a.arg2 if a.arg2 is not None else 6)))
+        elif a.command in ("characters", "sheets"):
+            print("RESULT " + json.dumps(make_character_library(a.arg or 3, clips=a.command == "characters")))
         elif a.command == "samples":
             print("RESULT " + json.dumps({"voices": make_samples(a.arg or 3)}))
         else:

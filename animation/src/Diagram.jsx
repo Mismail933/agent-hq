@@ -7,9 +7,9 @@ import {C, HEAD, W, H, easeOut, clamp01, lerp} from './theme';
  * It builds itself over the scene: Earth pops, the beams slide in, the rods appear, the slice and its angle are drawn.
  * diagram: { angle_label: "7.2°", fraction: "1/50", a_label: "Alexandria", b_label: "Syene", gap: 22 (drawn angle, not to scale) }
  */
-const CX = 520;
+const CX = 440;
 const CY = 1020;
-const R = 330;
+const R = 300;
 
 export const Diagram = ({diagram, frame, frames}) => {
   const {fps} = useVideoConfig();

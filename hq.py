@@ -10,7 +10,7 @@ Atlas's controls for Agent HQ.
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
                  lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
                  clips <episode id> | assemble <episode id> | prodlog <episode id> <credits> <minutes> <retakes>
-                 frames <episode id> | credits | lnd-focus "topic for Richard"
+                 characters <project id> [make|sheets|review|status|approve] | animator-test <project> <episode> [scene] | frames <episode id> | credits | lnd-focus "topic for Richard"
                  refs <project id> ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
 
@@ -219,6 +219,22 @@ def main(argv):
                   "what_is_said_transcribed_from_the_audio": text,
                   "how_to_use": "Open every sheet image (each frame has its time and the words spoken then). Retell the story in three "
                                 "sentences. If you can't, the owner can't: say so before you call the video ready."})
+        elif cmd == "characters":   # make | sheets | review | status ; approve only on the owner's word
+            what = args[1] if len(args) > 1 else "status"
+            pid = int(args[0]) if args else 3
+            if what == "status":
+                import quality
+                lib = quality.load_library(pid)
+                pr = cp.get_project(pid, with_text=False) or {}
+                show({"project": pid, "approved_by_owner": bool((pr.get("meta") or {}).get("characters_approved")),
+                      "library": lib or "No character library yet: hq characters %d make" % pid,
+                      "files": "content/project-%d/characters/<id>/reference-sheet.png and test.mp4" % pid})
+            else:
+                code, reply = office(f"/api/project/{pid}/characters", {"action": what})
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "animator-test":   # the Animator writes ONE bespoke scene beside the kit's: hq animator-test <project> <episode> [scene]
+            code, reply = office(f"/api/project/{int(args[0])}/animator-test", {"episode": args[1], "scene": args[2] if len(args) > 2 else 6})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "credits":   # ElevenLabs characters used this month
             import elevenlabs
             used, limit = cp.eleven_chars_month(), getattr(settings, "ELEVEN_MONTHLY_CHARS", 30000)

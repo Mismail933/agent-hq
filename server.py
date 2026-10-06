@@ -209,6 +209,94 @@ def voice_samples(p):
 
 
 SAMPLING = {"pid": None}
+CHARMAKING = {"pid": None, "step": ""}
+ANIMTEST = {"pid": None}
+
+
+def anim_busy():
+    """Only one job at a time may use the animation tools (they share one working folder). Returns what is running, or ''."""
+    if RENDERING["lock"].locked():
+        return f"Calina is making Short #{RENDERING['episode']}"
+    if CHARMAKING["pid"] is not None:
+        return "the characters are being made"
+    if ANIMTEST["pid"] is not None:
+        return "the Animator is writing a test scene"
+    if SAMPLING["pid"] is not None:
+        return "the voice samples are being made"
+    return ""
+
+
+def animator_test_view(p):
+    try:
+        return json.loads((ROOT / "content" / f"project-{p['id']}" / "animator-test" / "test.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def run_animator_test(pid, eid, index):
+    """The Animator writes one bespoke scene; it is rendered next to the kit's version for the owner to compare."""
+    ANIMTEST["pid"] = pid
+    try:
+        py = shorts_python()
+        if not py:
+            raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+        p = subprocess.run([py, str(ROOT / "animate.py"), "animator-test", str(eid), str(index)], cwd=ROOT, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=3600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        lines = (p.stdout or "").splitlines()
+        if not any(l.startswith("RESULT ") for l in lines):
+            blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+            raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+        cp.log("Animator", "animator_test_ready", None, {"project": pid, "episode": eid, "scene": index})
+        atlas_says("**The Animator's test scene is ready.** Open Ideas → Content → Animator test and watch the kit's version and the Animator's version side by side.")
+    except Exception as ex:
+        cp.log("Animator", "animator_test_failed", None, {"reason": str(ex)[:300]})
+        atlas_says(f"The Animator's test scene couldn't be made: {ex}")
+    finally:
+        ANIMTEST["pid"] = None
+
+
+def characters_view(p):
+    """The character library for an animated project: reference sheets, test clips, Israa's review, the owner's approval."""
+    lib = quality.load_library(p["id"]) or {"characters": []}
+    names = {"narrator": "The Traveller", "scholar": "The Scholar", "ruler": "The Ruler"}
+    return {"characters": [{"id": c["id"], "name": names.get(c["id"], c["id"]), "has_sheet": bool(c.get("sheet")), "has_clip": bool(c.get("clip")),
+                            "review": (lib.get("reviews") or {}).get(c["id"])} for c in lib["characters"]],
+            "made": lib.get("made"), "voice": (lib.get("voice") or {}).get("label"),
+            "approved": bool((p.get("meta") or {}).get("characters_approved")),
+            "making": CHARMAKING["step"] if CHARMAKING["pid"] == p["id"] else ""}
+
+
+def run_characters(pid, clips=True):
+    """Make the reference sheets (and the 30 s test clips), then Israa reviews them. Minutes, not seconds: the owner is told."""
+    CHARMAKING.update(pid=pid, step="Making the characters' reference sheets and test clips (about 15 minutes)")
+    try:
+        py = shorts_python()
+        if not py:
+            raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+        p = subprocess.run([py, str(ROOT / "animate.py"), "characters" if clips else "sheets", str(pid)], cwd=ROOT, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=5400, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        lines = (p.stdout or "").splitlines()
+        if not any(l.startswith("RESULT ") for l in lines):
+            blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+            raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+        cp.log("Calina", "characters_made", None, {"project": pid, "clips": clips})
+        if clips:
+            CHARMAKING["step"] = "Israa is checking each character against its reference sheet"
+            try:
+                rv = quality.review_characters(pid)
+                bad = [k for k, v in rv.items() if v.get("verdict") != "pass"]
+                atlas_says("**The character tests are ready.** " + ("Israa passed all of them." if not bad else
+                           f"Israa wants fixes on: {', '.join(bad)} (her notes are on each character).") +
+                           "\n\nOpen Ideas → Content → Characters, watch each test clip and approve the characters. No new Short is made until you do.")
+            except Exception as ex:
+                atlas_says(f"**The character tests are made,** but Israa couldn't review them: {ex}\n\nOpen Ideas → Content → Characters to watch them.")
+        else:
+            atlas_says("The character reference sheets are ready in Ideas → Content → Characters.")
+    except Exception as ex:
+        cp.log("Calina", "characters_failed", None, {"reason": str(ex)[:300]})
+        atlas_says(f"The characters couldn't be made: {ex}")
+    finally:
+        CHARMAKING.update(pid=None, step="")
 
 
 def run_samples(pid):
@@ -476,6 +564,9 @@ class Handler(BaseHTTPRequestHandler):
                 "board_unlocked": {p["id"]: bool(quality.style_bar(p["id"])) for p in cp.list_projects(20) if p["status"] == "approved"},
                 "eleven": {"configured": elevenlabs.configured(), "chars_month": cp.eleven_chars_month(),
                            "limit": getattr(settings, "ELEVEN_MONTHLY_CHARS", 30000)},
+                "characters": {p["id"]: characters_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
+                "animator_test": {p["id"]: dict(animator_test_view(p) or {}, making=ANIMTEST["pid"] == p["id"]) for p in cp.list_projects(20)
+                                  if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "scouting_refs": quality.SCOUTING.locked(), "reviewing": quality.REVIEWING.locked(),
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
@@ -502,6 +593,26 @@ class Handler(BaseHTTPRequestHandler):
             if not path or not path.exists():
                 return self._send(404, {"error": "no video"})
             return self._send_file(path, "video/mp4")
+        if u.path.startswith("/api/anim-file/"):   # /api/anim-file/<project>/<kit.mp4|animator.mp4|scene.jsx>
+            try:
+                pid, name = u.path.strip("/").split("/")[2:4]
+                path = ROOT / "content" / f"project-{int(pid)}" / "animator-test" / Path(name).name
+                ok = Path(name).name in ("kit.mp4", "animator.mp4") and path.exists()
+            except (ValueError, IndexError):
+                ok = False
+            if not ok:
+                return self._send(404, {"error": "no such file"})
+            return self._send_file(path, "video/mp4")
+        if u.path.startswith("/api/char-file/"):   # /api/char-file/<project>/<character>/<reference-sheet.png|test.mp4>
+            try:
+                pid, who, name = u.path.strip("/").split("/")[2:5]
+                path = ROOT / "content" / f"project-{int(pid)}" / "characters" / Path(who).name / Path(name).name
+                ok = Path(name).name in ("reference-sheet.png", "test.mp4") and path.exists()
+            except (ValueError, IndexError):
+                ok = False
+            if not ok:
+                return self._send(404, {"error": "no such file"})
+            return self._send_file(path, "image/png" if path.suffix == ".png" else "video/mp4")
         if u.path.startswith("/api/voice-sample/"):   # /api/voice-sample/<project>/<voice id>
             try:
                 pid, vid = u.path.strip("/").split("/")[2:4]
@@ -641,9 +752,53 @@ class Handler(BaseHTTPRequestHandler):
                 cp.set_project_meta(pid, voice={"id": vid, "label": known[vid]["label"]})
                 cp.log("Owner", "voice_chosen", None, {"project": pid, "voice": vid})
                 return self._send(200, {"ok": True, "message": f"Voice chosen: {known[vid]['label']}. It's used from the next Short."})
+            if action == "characters":   # make | sheets | review | approve
+                body = self._json_body()
+                what = body.get("action", "make")
+                if what == "approve":
+                    lib = quality.load_library(pid)
+                    if not lib or not any(c.get("clip") for c in lib["characters"]):
+                        return self._send(409, {"error": "Make the character tests first, then watch them before approving."})
+                    cp.set_project_meta(pid, characters_approved=True)
+                    cp.log("Owner", "characters_approved", None, {"project": pid})
+                    return self._send(200, {"ok": True, "message": "Characters approved. New Shorts can be made."})
+                if what == "revoke":
+                    cp.set_project_meta(pid, characters_approved=False)
+                    return self._send(200, {"ok": True, "message": "Approval withdrawn."})
+                if CHARMAKING["pid"] is not None or quality.REVIEWING.locked():
+                    return self._send(409, {"error": "The characters are already being made or checked. Try again when it's done."})
+                if what != "review" and anim_busy():
+                    return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+                if what == "review":
+                    def go():
+                        CHARMAKING.update(pid=pid, step="Israa is checking each character against its reference sheet")
+                        try:
+                            quality.review_characters(pid)
+                            atlas_says("Israa has re-checked the characters: open Ideas → Content → Characters.")
+                        except Exception as ex:
+                            atlas_says(f"Israa couldn't check the characters: {ex}")
+                        finally:
+                            CHARMAKING.update(pid=None, step="")
+                    threading.Thread(target=go, daemon=True).start()
+                    return self._send(202, {"ok": True, "message": "Israa is checking the characters (a few minutes)."})
+                cp.set_project_meta(pid, characters_approved=False)   # new tests, new approval
+                threading.Thread(target=run_characters, args=(pid, what != "sheets"), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Making the characters: about 15 minutes. You'll be told when they're ready."})
+            if action == "animator-test":   # the Animator writes one bespoke scene to compare with the kit's
+                body = self._json_body()
+                try:
+                    eid, idx = int(body.get("episode")), int(body.get("scene", 6))
+                except (TypeError, ValueError):
+                    return self._send(400, {"error": "Give the episode and the scene number."})
+                if anim_busy():
+                    return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+                threading.Thread(target=run_animator_test, args=(pid, eid, idx), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "The Animator is writing the scene: about 10 minutes."})
             if action == "voice-samples":
                 if SAMPLING["pid"] is not None:
                     return self._send(409, {"error": "The voice samples are already being made."})
+                if anim_busy():
+                    return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
                 threading.Thread(target=run_samples, args=(pid,), daemon=True).start()
                 return self._send(202, {"ok": True, "message": "Making the voice samples: about 2-3 minutes (the first time it downloads two voices)."})
             if action == "changes" and agents.PLANNING.locked():
@@ -731,6 +886,10 @@ class Handler(BaseHTTPRequestHandler):
                 e = cp.get_episode(eid)
                 if not e or e["status"] not in ("approved", "rendered"):
                     return self._send(409, {"error": "Only an approved script can be made into a video."})
+                if production.is_animated(e):
+                    pr = cp.get_project(e["project_id"], with_text=False) or {}
+                    if not (pr.get("meta") or {}).get("characters_approved"):
+                        return self._send(409, {"error": "You haven't approved the characters yet. Open Ideas → Content → Characters, watch the test clips, then approve. No new Short is made before that."})
                 if production.is_v2(e):
                     st = production.clip_status(e)
                     if not st["ready"]:
@@ -738,6 +897,8 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(409, {"error": "Still missing: " + ", ".join(missing) + f". Save them in {st['folder']}."})
                 if RENDERING["lock"].locked():
                     return self._send(409, {"error": f"Calina is already making Short #{RENDERING['episode']}. Try again when it's done."})
+                if anim_busy():
+                    return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
                 threading.Thread(target=run_render, args=(eid,), daemon=True).start()
                 wait = "10-15 minutes" if production.is_animated(e) else "2-3 minutes"
                 return self._send(202, {"ok": True, "message": f"Calina is putting the Short together. It takes about {wait}."})

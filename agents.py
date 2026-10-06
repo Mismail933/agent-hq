@@ -39,6 +39,7 @@ REGISTRY = [
     ("Vera",   "Judgment",  "Lead evaluator",     "vera",   ["submit_verdict"]),
     ("Serge",  "Product",   "Product Owner",      "serge",  ["web_search", "submit_plan"]),
     ("Calina", "Content",   "Content Producer",   "calina", ["web_search", "web_fetch", "submit_batch"]),
+    ("Animator", "Content", "Animator (writes custom scenes)", "animator", ["write_scene"]),
     ("Scout",  "Ideas",     "Reference scout",    "scout",  ["web_search", "web_fetch"]),
     ("Israa",  "Judgment",  "Quality reviewer",   "israa",  ["web_fetch", "web_search", "read_files"]),
     # Richard runs as a daily cloud routine (richard/RICHARD.md) and only proposes; lnd.py brings his ideas in.
@@ -630,6 +631,11 @@ WRITE A STORY, IN FULL SENTENCES, FOR THE EAR
 - Every line is a complete spoken sentence, written to be heard, like a good storyteller talking to one friend. Read each
   aloud in your head. Telegram fragments ("Far south in Syene, a well.", "Noon. No shadow.") are forbidden. Contractions
   and plain words are good; so are short punchy sentences, as long as each is a whole thought.
+- BEFORE WRITING ANY SCENE, write the `spine` and decide the ENDING first: the last scene must answer the hook question, and
+  `question_answered_in_scene` names it (one of the last three scenes). Then write each scene so it follows from the one before
+  it with because, but, so or therefore (set `link`; scene 1 is 'first'), and say in `step_claim` what the viewer now knows that
+  they didn't before. If the only honest link between two scenes is "and then", that scene is a list item: cut it or merge it.
+  At most two scenes in a Short may use link=first. The checks run in code; a script that fails them comes back to you.
 - Follow this shape, in this order, and make each beat clear before the next:
   1. HOOK: a question or surprise the viewer wants answered (catchy, specific, true; never "Did you know").
   2. WHO and the PROBLEM: who this person is, what he wanted to know and why it was hard.
@@ -689,6 +695,8 @@ SCENE_SCHEMA = {"type": "object", "properties": {
     "n": {"type": "integer"},
     "voice_line": {"type": "string", "description": "A complete spoken sentence (or two or three short ones), at most 34 words"},
     "shows": {"type": "string", "description": "What the viewer sees that matches the voice at this moment"},
+    "link": {"type": "string", "enum": ["because", "but", "so", "first", "therefore"], "description": "How this scene follows the previous one (scene 1 is 'first')"},
+    "step_claim": {"type": "string", "description": "One plain sentence: what the viewer now knows that they did not before"},
     "backdrop": {"type": "string", "enum": ["court", "library", "nile", "well", "study", "map", "diagram"]},
     "tone": {"type": "string", "enum": ["noon", "sunset", "night"]},
     "camera": {"type": "string", "enum": ["push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"]},
@@ -702,13 +710,21 @@ SCENE_SCHEMA = {"type": "object", "properties": {
     "callout_word": {"type": "string", "description": "The exact word in voice_line the callout should appear on"},
     "map": {"type": "object"}, "diagram": {"type": "object"},
     "source_note": {"type": "string", "description": "Which source supports this scene's fact"}},
-    "required": ["n", "voice_line", "shows", "backdrop", "source_note"]}
+    "required": ["n", "voice_line", "shows", "link", "step_claim", "backdrop", "source_note"]}
 EPISODE_SCHEMA_V3 = {
     "type": "object",
     "properties": {
         "title": {"type": "string"}, "place": {"type": "string"}, "year": {"type": "string"},
         "hook": {"type": "string", "description": "Scene 1's voice line"},
         "storyline": {"type": "string", "description": "One line: who, the problem, the clue, what he did, the answer"},
+        "spine": {"type": "object", "description": "Write this BEFORE any scene", "properties": {
+            "once": {"type": "string", "description": "Once there was a... (who, and what was hard)"},
+            "every_day": {"type": "string", "description": "Every day... (how it normally went)"},
+            "one_day": {"type": "string", "description": "One day... (what changed)"},
+            "because1": {"type": "string"}, "because2": {"type": "string"},
+            "finally": {"type": "string", "description": "Until finally... (the answer)"},
+            "question_answered_in_scene": {"type": "integer", "description": "The scene number that answers the hook's question: one of the last three"}},
+            "required": ["once", "every_day", "one_day", "because1", "because2", "finally", "question_answered_in_scene"]},
         "surprising_fact": {"type": "string"},
         "scenes": {"type": "array", "items": SCENE_SCHEMA},
         "voice_direction": {"type": "string"},
@@ -716,7 +732,7 @@ EPISODE_SCHEMA_V3 = {
         "sources": EPISODE_SCHEMA["properties"]["sources"],
         "description": {"type": "string"}, "hashtags": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["title", "place", "year", "hook", "storyline", "surprising_fact", "scenes", "sources", "description"],
+    "required": ["title", "place", "year", "hook", "storyline", "spine", "surprising_fact", "scenes", "sources", "description"],
 }
 BATCH_TOOL_V3 = {
     "name": "submit_batch",
@@ -831,7 +847,7 @@ def calina_batch(project_id, count=None, notes=""):
 
         def build_system(n):
             if v3:
-                return CALINA_SYSTEM_V3.format(today=_today(), plan=p.get("text") or json.dumps(p["plan"]), count=n,
+                return quality.examples_block() + CALINA_SYSTEM_V3.format(today=_today(), plan=p.get("text") or json.dumps(p["plan"]), count=n,
                                                channel=_channel_sentence(p), searches=settings.CALINA_MAX_SEARCHES, finish="{finish}")
             if v2:
                 return CALINA_SYSTEM_V2.format(
@@ -889,6 +905,8 @@ def calina_batch(project_id, count=None, notes=""):
             cp.log("Calina", "script_rewritten", p["idea_id"], {"episode": eid})
             return True
 
+        if ids:
+            quality.pre_review(ids, rewrite)   # the free structure + ear checks come first
         gate = quality.review_batch(p, ids, rewrite) if ids else {}
         final = [cp.get_episode(i) for i in ids]
         return json.dumps({"project_id": p["id"], "batch": batch, "review": gate,

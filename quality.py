@@ -307,6 +307,9 @@ SCRIPTS_TASK = """Review these scripts from Calina. Each is a short YouTube vide
    (about 50-100 s); padding or chopping lines to hit a number fails.
 6. Fit: matches the owner-approved style bar above, and could stand next to the references he liked.
 7. Platform risk: anything YouTube could flag.
+8. The spine and the links: scene-file scripts carry a `spine` and, on every scene, a `link` (because / but / so / therefore /
+   first) and a `step_claim`. Check that each link really holds (does scene N truly follow from N-1 with that word?) and name
+   the EXACT broken link ("scene 6 says 'so' but nothing in scene 5 causes it"). The free pre-check results are in `checks`.
 A script passes only if it is genuinely good (score 7 or more out of 10) and has no blocking problem.
 
 Earlier episodes of this channel:
@@ -441,6 +444,102 @@ def review_scripts(p, eps, rnd=0):
     return {e["id"]: by[e["id"]] for e in eps if e["id"] in by}
 
 
+LINKS = ("because", "but", "so", "first", "therefore")
+SPINE_KEYS = ("once", "every_day", "one_day", "because1", "because2", "finally", "question_answered_in_scene")
+
+
+def spine_problems(d):
+    """Pure-Python structure check for a scene-file script (no model call). [{issue, fix}]; empty means the structure holds."""
+    scenes = d.get("scenes") or []
+    if not scenes:
+        return []
+    out = []
+    sp = d.get("spine") or {}
+    missing = [k for k in SPINE_KEYS if sp.get(k) in (None, "")]
+    if missing:
+        out.append({"issue": "The spine is incomplete (missing: " + ", ".join(missing) + ").",
+                    "fix": "Write the whole spine first: once, every_day, one_day, because1, because2, finally, and the scene that answers the hook."})
+    n = len(scenes)
+    try:
+        ans = int(sp.get("question_answered_in_scene"))
+    except (TypeError, ValueError):
+        ans = None
+    last3 = [s.get("n", i + 1) for i, s in enumerate(scenes)][-3:]
+    if ans is not None and ans not in last3:
+        out.append({"issue": f"The hook's question is answered in scene {ans}, but the last scenes are {last3}: the viewer waits too long or the story goes on after the answer.",
+                    "fix": "Decide the ending first: the hook's question must be answered in one of the last three scenes, and the story ends there."})
+    firsts = [s.get("n", i + 1) for i, s in enumerate(scenes) if s.get("link") == "first"]
+    if len(firsts) > 2:
+        out.append({"issue": f"{len(firsts)} scenes use link 'first' (scenes {firsts}): they are list items, not a story.",
+                    "fix": "Each scene after the opening must follow from the one before with because, but, so or therefore. Cut or merge a scene whose only honest link is 'and then'."})
+    if scenes[0].get("link") not in (None, "first"):
+        out.append({"issue": "Scene 1 must have link 'first'.", "fix": "Set scene 1's link to 'first'."})
+    for i, s in enumerate(scenes):
+        if s.get("link") not in LINKS:
+            out.append({"issue": f"Scene {s.get('n', i + 1)} has no valid link (because, but, so, first, therefore).", "fix": "Set the link to how this scene follows the previous one."})
+        if not (s.get("step_claim") or "").strip():
+            out.append({"issue": f"Scene {s.get('n', i + 1)} has no step_claim.", "fix": "Say in one plain sentence what the viewer now knows that they didn't before; if nothing, cut the scene."})
+    return out
+
+
+def ear_lint(d):
+    """The free ear check for the spoken lines: {"blocking": [...], "advisory": [...]}, each a list of {issue, fix}. Pure Python."""
+    lines = [(s.get("n", i + 1), (s.get("voice_line") or "").strip()) for i, s in enumerate(d.get("scenes") or [])]
+    block, advice = [], []
+    short = [n for n, l in lines if 0 < len(l.split()) < 5]
+    run = []
+    for n, l in lines:
+        if 0 < len(l.split()) < 5:
+            run.append(n)
+            if len(run) == 3:
+                block.append({"issue": f"Fragment chain: scenes {run[0]}-{run[-1]} are all under five words, like a telegram.",
+                              "fix": "Write full spoken sentences that explain, not headlines. Merge those lines into complete thoughts."})
+        else:
+            run = []
+    for n, l in lines:
+        for sent in re.split(r"(?<=[.!?])\s+", l):
+            if len(sent.split()) > 24:
+                block.append({"issue": f"Scene {n} has a sentence of {len(sent.split())} words: too long to say in one breath.", "fix": "Split it into two sentences."})
+        if re.search(r"\d", l):
+            block.append({"issue": f"Scene {n} has digits in the voice line ('{l[:50]}').", "fix": "Write numbers in words, the way they are spoken."})
+    lens = [len(s.split()) for n, l in lines for s in re.split(r"(?<=[.!?])\s+", l) if s.strip()]
+    flat = sum(1 for a, b in zip(lens, lens[1:]) if abs(a - b) <= 2 and a >= 5)
+    if len(lens) >= 6 and flat >= len(lens) * 0.6:
+        advice.append({"issue": "Most sentences are almost the same length, which sounds monotone.", "fix": "Vary the rhythm: a short punchy sentence after a long one."})
+    return {"blocking": block, "advisory": advice}
+
+
+def pre_review(eids, rewrite):
+    """Before Israa: the free structure check and ear check. A script that fails sends Calina one or two rewrite rounds with the
+    exact problems; whatever still fails goes on to Israa with the findings attached (never hidden)."""
+    for i in eids:
+        for rnd in range(3):
+            e = cp.get_episode(i)
+            d = e["data"]
+            if not d.get("scenes"):
+                break
+            sp, ear = spine_problems(d), ear_lint(d)
+            probs = sp + ear["blocking"]
+            d["checks"] = {"spine": sp, "ear": ear["blocking"], "advisory": ear["advisory"], "rounds": rnd}
+            cp.update_episode(i, data=d)
+            if not probs or rnd == 2:
+                break
+            if not rewrite(i, {"score": None, "summary": "Failed the free structure and ear checks before review.", "problems": probs}):
+                break
+
+
+def examples_block():
+    """Calina's worked examples, but only once the owner has read and approved them (calina_examples.md: `status: approved`)."""
+    try:
+        text = (Path(__file__).parent / "calina_examples.md").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    if not text.lstrip().lower().startswith("status: approved"):
+        return ""
+    body = re.sub(r"<!--.*?-->", "", text.split("\n", 1)[1], flags=re.S).strip()
+    return ("<examples>\n" + body + "\n</examples>\nThe examples show the quality and the shape. Never reuse their places, people, numbers or phrases.\n\n")
+
+
 def _narration(d):
     """The spoken words of a script in order, whatever its format."""
     if d.get("scenes"):
@@ -556,6 +655,124 @@ def review_batch(p, eids, rewrite):
 
 
 # ---- the finished video ---------------------------------------------------------
+CHARACTER_TASK = """Review a CHARACTER TEST clip for {name}. This is the character we will reuse in every Short, so it has to hold together.
+
+Files (image files in your working folder; read every one):
+- The reference sheet, the master every frame is checked against: {ref}
+- Contact sheets of the 30-second test clip (one frame a second plus one at every scene change, with the time and the
+  words spoken under each):
+{sheets}
+
+The clip has three shots. Shot 1 (0-10 s) is a close-up (head and shoulders) talking with changing expressions; the arms, the feet
+and the held prop are out of frame ON PURPOSE in the close-up (that is what a close-up is). Shot 2 (10-20 s) is a full-body walk: he ENTERS FROM OFF-SCREEN LEFT by
+design (so he is partly out of frame at the very start of the walk-in), waves, walks right, back left, and settles. Shot 3
+(20-30 s) is the largest FULL-LENGTH framing in which the hands and the prop stay inside the frame (a waist-up crop would cut the
+arms off in the outstretched poses), with gestures (present, point, think, amazed), each a different pose. Judge it for cropping
+of the hands and prop, not for being "waist-up".
+- Dense contact sheets show the talking moments at six frames a second (0-3 s, 12-13 s, 21-22 s, 26-27 s), so you CAN check
+  the mouth shapes on P/B/M (closed), F/V (teeth on lip) and OO (pucker):
+{dense}
+
+For EACH of the three shots, say whether {name} is consistent with the reference sheet: same face, skin, hair or hat or
+goggles, outfit colours and sash, held prop, proportions, line weight, and nothing detached, cropped by the screen edge or
+broken. Then judge:
+- Mouths: do the mouth shapes change with the words under the frames (open on vowels like AA, closed on P/B/M, teeth on
+  F/V)? A mouth that stays the same, or doesn't match the word, is a fault.
+- Expressions: are the eyes and brows readable (happy, surprised, worried, determined, thinking)?
+- Motion: does the walk read as walking? Are gestures smooth, not jumping?
+You cannot hear the voice, so you cannot judge its tone; say so. Be specific: name the shot and the time.
+"""
+
+CHARACTER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "shots": {"type": "array", "items": {"type": "object", "properties": {
+            "shot": {"type": "string", "enum": ["close-up", "walk", "gestures"]}, "consistent": {"type": "boolean"},
+            "issues": {"type": "array", "items": {"type": "string"}}}, "required": ["shot", "consistent", "issues"]}},
+        "mouths": {"type": "string", "description": "Do the mouth shapes follow the words? Cite times"},
+        "expressions": {"type": "string"}, "motion": {"type": "string"},
+        "verdict": {"type": "string", "enum": ["pass", "fix"]},
+        "summary": {"type": "string", "description": "Plain words for the owner"},
+        "could_not_judge": {"type": "string"},
+    },
+    "required": ["shots", "mouths", "expressions", "motion", "verdict", "summary", "could_not_judge"],
+}
+
+
+def characters_dir(project_id):
+    return Path(__file__).parent / "content" / f"project-{int(project_id)}" / "characters"
+
+
+def load_library(project_id):
+    try:
+        return json.loads((characters_dir(project_id) / "library.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _save_library(project_id, lib):
+    (characters_dir(project_id) / "library.json").write_text(json.dumps(lib, indent=2), encoding="utf-8")
+
+
+def review_characters(project_id):
+    """Israa checks each character's test clip against its reference sheet in all three shots. Results go into library.json.
+    Returns {character id: review}. Raises workers.Unavailable if she can't run."""
+    import shutil
+    lib = load_library(project_id)
+    if not lib or not any(c.get("clip") for c in lib["characters"]):
+        raise workers.Unavailable("there are no character test clips yet: make them first")
+    root = Path(__file__).parent
+    p = cp.get_project(project_id, with_text=False)
+    out = {}
+    with REVIEWING:
+        for c in lib["characters"]:
+            if not c.get("clip"):
+                continue
+            who = c["id"]
+            name = {"narrator": "The Traveller", "scholar": "The Scholar", "ruler": "The Ruler"}.get(who, who)
+            if _sim():
+                got = {"shots": [{"shot": s, "consistent": True, "issues": []} for s in ("close-up", "walk", "gestures")], "mouths": "Simulated.",
+                       "expressions": "Simulated.", "motion": "Simulated.", "verdict": "pass", "summary": f"Simulated: {name} holds together.",
+                       "could_not_judge": "Simulated: the voice."}
+            else:
+                py = shorts_python()
+                if not py:
+                    raise workers.Unavailable("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+                rel_out = (Path(c["clip"]).parent / "review").as_posix()
+                r = subprocess.run([py, str(root / "review_tools.py"), "--video", c["clip"], rel_out, "0-3,12-13,21-22,26-27"], cwd=root, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", timeout=1500, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                res = next((l[7:] for l in (r.stdout or "").splitlines() if l.startswith("RESULT ")), None)
+                if not res:
+                    raise workers.Unavailable("couldn't make the review pack: " + ((r.stderr or r.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+                pack = json.loads(res)
+                folder = workers.WORK / ISRAA.lower() / f"char-{who}"
+                shutil.rmtree(folder, ignore_errors=True)
+                folder.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(root / c["sheet"], folder / "reference-sheet.png")
+                names = []
+                for i, rel in enumerate(pack["sheets"], 1):
+                    shutil.copy2(root / rel, folder / f"sheet-{i:02d}.png")
+                    names.append(f"char-{who}/sheet-{i:02d}.png")
+                dn = []
+                for i, rel in enumerate(pack.get("dense") or [], 1):
+                    shutil.copy2(root / rel, folder / f"dense-{i:02d}.png")
+                    dn.append(f"  - char-{who}/dense-{i:02d}.png")
+                task = CHARACTER_TASK.format(name=name, ref=f"char-{who}/reference-sheet.png", sheets="\n".join(f"  - {n}" for n in names),
+                                             dense="\n".join(dn) or "  (none)")
+                system = ISRAA_BASE.format(today=_today(), style="(Judge only the character's consistency and rig, not the topic.)")
+                got, _ = workers.run(ISRAA, p["idea_id"] if p else None, system, task, tools=("Read",), schema=CHARACTER_SCHEMA, max_turns=30)
+            consistent = sum(1 for s in got.get("shots", []) if s.get("consistent"))
+            got["consistent_shots"] = f"{consistent} of 3"
+            if consistent < 3:
+                got["verdict"] = "fix"
+            out[who] = got
+            cp.log(ISRAA, "character_reviewed", p["idea_id"] if p else None, {"character": who, "verdict": got["verdict"], "shots": got["consistent_shots"]})
+    lib = load_library(project_id) or lib
+    lib["reviews"] = {**(lib.get("reviews") or {}), **out}
+    _save_library(project_id, lib)
+    return out
+
+
 def _words(d):
     """Every word the narrator says, whatever the script format (plain script, shot list or scene file)."""
     if d.get("script"):

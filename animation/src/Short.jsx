@@ -8,6 +8,7 @@ import {MapIntro} from './MapIntro';
 import {Diagram} from './Diagram';
 import {Rod, Globe, Callout} from './Extras';
 import {Captions, TitleCard, Outro} from './Overlays';
+import GENERATED from './generated/index.js';
 
 /*
  * One episode = one props file (see ../STYLE-GUIDE.md, "scene file"):
@@ -52,9 +53,12 @@ const Scene = ({scene, mouth, index}) => {
     else if (kind === 'slide_up') wrap = {transform: `translate(0 ${(1 - t) * H})`};
     else if (kind === 'iris') clip = (1 - t) * 0 + t * 1500;
   }
+  const Bespoke = scene.generated ? GENERATED[scene.generated] : null; // a scene the Animator wrote (animator.py)
   const isMap = scene.backdrop === 'map';
   const isDiagram = scene.backdrop === 'diagram';
-  const body = (
+  const body = Bespoke ? (
+    <Bespoke frame={frame} frames={scene.frames} words={scene.words || []} mouth={mouth.slice(scene.from, scene.from + scene.frames)} />
+  ) : (
     <>
       {isMap && <MapIntro map={scene.map || {focus: [30, 30], zoom: 20}} frame={frame} frames={scene.frames} />}
       {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame} frames={scene.frames} />}

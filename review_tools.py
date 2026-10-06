@@ -61,11 +61,11 @@ def transcribe(video, folder):
     return data
 
 
-def make_sheets(ffmpeg, video, folder, secs, words):
+def make_sheets(ffmpeg, video, folder, secs, words, times=None, prefix="sheet"):
     from PIL import Image, ImageDraw, ImageFont
-    for old in list(folder.glob("sheet-*.png")) + list(folder.glob("_f*.jpg")):
+    for old in list(folder.glob(f"{prefix}-*.png")) + list(folder.glob("_f*.jpg")):
         old.unlink()
-    times = frame_times(secs, scene_changes(ffmpeg, video))
+    times = times if times is not None else frame_times(secs, scene_changes(ffmpeg, video))
     try:
         font = ImageFont.truetype("arialbd.ttf", 15)
         small = ImageFont.truetype("arial.ttf", 13)
@@ -101,7 +101,7 @@ def make_sheets(ffmpeg, video, folder, secs, words):
                     line += " " + word
             if line:
                 d.text((x + 2, ty), line.strip(), font=small, fill=(200, 220, 255))
-        out = folder / f"sheet-{n // per + 1:02d}.png"
+        out = folder / f"{prefix}-{n // per + 1:02d}.png"
         sheet.save(out)
         sheets.append(out)
     for _, _, f, _ in tiles:
@@ -110,6 +110,21 @@ def make_sheets(ffmpeg, video, folder, secs, words):
 
 
 def main():
+    if sys.argv[1] == "--video":   # review_tools.py --video <path relative to the program folder> <output folder, same base>
+        video, folder = ROOT / sys.argv[2], ROOT / sys.argv[3]
+        folder.mkdir(parents=True, exist_ok=True)
+        ffmpeg = shorts.find_ffmpeg()
+        secs = shorts.probe_seconds(ffmpeg, video)
+        data = transcribe(video, folder)
+        sheets, n = make_sheets(ffmpeg, video, folder, secs, data["words"])
+        dense = []
+        if len(sys.argv) > 4:   # "0-3,12-13": windows shown at 6 frames a second, to check the mouths syllable by syllable
+            ts = [(a + k / 6, False) for w in sys.argv[4].split(",") for a, b in [map(float, w.split("-"))] for k in range(int((b - a) * 6))]
+            dense = [x.relative_to(ROOT).as_posix() for x in make_sheets(ffmpeg, video, folder, secs, data["words"], ts, "dense")[0]]
+        print("RESULT " + json.dumps({"seconds": round(secs, 1), "frames": n, "words": len(data["words"]), "dense": dense,
+                                      "transcript": (folder / "transcript.json").relative_to(ROOT).as_posix(),
+                                      "sheets": [s.relative_to(ROOT).as_posix() for s in sheets]}))
+        return 0
     ep = cp.get_episode(int(sys.argv[1]))
     if not ep or not ep["video_path"]:
         print("BLOCKED no video for that episode")

@@ -104,6 +104,22 @@ Agents never spend money without the owner's explicit approval.
   band reserved for the title card (first scene) and callouts; callouts sit at the top, pop on `callout_word` (frame from
   the word timings, `animate.callout_frame`); captions are a flex row with a real gap; narration pace is measured over the
   whole narration including breaths; voice normalised in two passes to -15 LUFS / -1.5 dBTP.
+- Characters (2.18.0): the rig in `Character.jsx` has Rhubarb's 9 mouth shapes (A-H, X; old scene files' 0/1/2 map to X/C/D),
+  6 expressions, 7 poses that blend (`poseTo`+`blend`), eye `look`, a walk loop, `noProp`, and `reach(who, pose, noProp)`.
+  `animate.py characters <project>` makes `content/project-N/characters/<id>/reference-sheet.png` + `test.mp4` (CharacterSheet
+  still, CharacterTest composition: close-up / walk / gestures, 30 s, Rhubarb mouths from the project's voice) and `library.json`;
+  `quality.review_characters` has Israa check each clip against its sheet (dense 6 fps sheets for the mouths) in 3 shots. The
+  owner approves in Content -> Characters (`characters_approved` in project meta); the render route refuses animated Shorts
+  until then. Rhubarb 1.14.0 (MIT, checked: commercial use allowed) is downloaded once into ~/.agent-hq-anim/rhubarb with a pinned
+  SHA256; `RHUBARB = False` falls back to the old loudness mouths. This PC has an MX150 (2 GB): no local image generation
+  (request step 4 skipped by its own rule).
+- `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
+  `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
+  Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2
+  repair rounds that feed the real error back, else fall back to the kit scene. One animation job at a time (`server.anim_busy`).
+- Story spine (2.18.0): `EPISODE_SCHEMA_V3.spine` + per-scene `link` and `step_claim`; `quality.spine_problems` and `ear_lint` run
+  before Israa (`quality.pre_review`, up to 2 rewrite rounds, findings stay on the episode as `data.checks`). `calina_examples.md`
+  (3 gold scripts + 2 bad-to-good rewrites) is injected above the prompt only while its first line says `status: approved`.
 - `shorts.py` (2.9.0): approved episode → Short. Runs in its own venv `~/.agent-hq-shorts` (kokoro 0.9.4, torch CPU,
   soundfile, pillow, certifi; `settings.SHORTS_PYTHON`) because Kokoro needs PyTorch. FFmpeg from winget
   (Gyan.FFmpeg, found under WinGet/Packages). Steps: checklist (linked+quoted source, 70-160 words, no repeated
