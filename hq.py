@@ -4,7 +4,8 @@ Atlas's controls for Agent HQ.
     python hq.py status | inbox | idea <id> | research <id> ["notes"] | dismiss <id> "reason"
                  pitch "idea" ["notes"] | scout | retry <id> | spend | activity [n] | stop | resume
                  plan <idea id> ["notes"] | plans | project <id> | approve <id> | reject <id> "why" | changes <id> "what"
-                 limits | limit <key> <value>
+                 limits | limit <key> <value>     (money: only on the owner's explicit word)
+                 rule list | rule set <key> <value> ["why"] | rule reset <key> | rule undo <key>     (live team rules, no restart)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
@@ -372,6 +373,24 @@ def main(argv):
         elif cmd == "limit":
             code, reply = office("/api/limits", {"key": args[0], "value": " ".join(args[1:]), "by": "Atlas"})
             show(f"Changed. {reply.get('message')}" if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "rule":   # live team rules (rules.py): read fresh by every job, logged, undoable
+            import rules
+            sub = args[0] if args else "list"
+            if sub == "list":
+                show({r["key"]: {"now": r["value"], "default": r["default"], "what": r["label"], "allowed": r["allowed"]} for r in rules.view()})
+            elif sub in ("set", "reset", "undo"):
+                if len(args) < (3 if sub == "set" else 2):
+                    raise IndexError
+                try:
+                    if sub == "set":
+                        old, new = rules.set(args[1], args[2], "Atlas", args[3] if len(args) > 3 else "")
+                    else:
+                        old, new = (rules.reset if sub == "reset" else rules.undo)(args[1], "Atlas")
+                    show(f"{args[1]}: {old} -> {new}. Live now, no restart." + (f" Undo: hq rule undo {args[1]}" if sub == "set" else ""))
+                except ValueError as e:
+                    show(f"Not done: {e}")
+            else:
+                show("Use: rule list | rule set <key> <value> [\"why\"] | rule reset <key> | rule undo <key>")
         elif cmd == "stop":
             office("/api/stop"); show("Kill switch ON. Every agent stops before its next step.")
         elif cmd == "resume":

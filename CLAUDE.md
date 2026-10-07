@@ -219,11 +219,18 @@ Agents never spend money without the owner's explicit approval.
   (and run after the restart), Ghassan and the daily scout don't start, and it says what it waits for; `office_idle` covers every
   job, Doulya's scouting and Ghassan's build. `ghassan.reopen_stale()` (start of `ghassan_loop`) puts `[in progress]` requests back
   to `[open]`. A new long job: add it to `JOBS` + `job_label`.
+- `rules.py` (2.24.0): live team rules. `RULES` (key: kind, default, range/choices, label), stored in hq.db `rules`, read fresh by
+  `rules.get` every time (no restart), changed with `hq rule list|set|reset|undo` (by Atlas, logged `rule_changed` with why;
+  undo puts back the value before the last change). Today: `phone.send` (decisions|everything|nothing = /quiet /all /mute),
+  `phone.group_minutes` (cards held and sent together, one alert, the rest silent), `phone.quiet_from/to` (PC hours; skipped
+  for an hour after the owner writes), `phone.digest_hour`. Money, keys, hires, uploads and the safety scan are never rules
+  (they stay `cp.LIMITS`). Standing rule (the owner, 2026-10-08): whatever Atlas can't change himself that is a team rule,
+  setting, unblock or instruction becomes a rule here, not a one-off fix. To add one: a line in RULES + `rules.get` where it acts.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
   cards, offset, muted), 5 wrong codes lock it until a restart, every other chat is ignored. Long polling, so nothing is opened
-  to the internet. Sends: every `atlas_says` (news; `/mute`), one card per new waiting item (`phone.waits()` mirrors Today:
+  to the internet. Calm by default (2.24.0, the owner was angry at every update reaching his phone): `atlas_says` news goes into a daily digest (`phone.digest_hour`), only in `/all` mode at once; Atlas's replies always at once; one card per new waiting item (`phone.waits()` mirrors Today:
   pitches, plans + the plan file, scripts with Israa's verdict, approved scenes -> Make the video, videos to upload as the mp4
   (<= 49 MB) + title/description to copy, Richard's ideas, Ghassan's change, the kill switch), and Atlas's reply to a phone
   message. Buttons call the office's own routes on 127.0.0.1 (`ACTIONS`; reasons asked in the next message, /skip; Ship and

@@ -1953,7 +1953,7 @@ async function renderPhone(force) {
       : `<p class="note">Open ${bot} in Telegram, press <b>Start</b>, then send this code:</p>
       <div class="lrow"><label>Pairing code<small>Only the phone that sends it is obeyed.</small></label><b style="font-family:var(--mono);font-size:22px;letter-spacing:.2em;color:var(--cyan-ink)">${esc(v.code)}</b></div>`;
   else body = `<p class="note">Connected to ${bot}. Pitches, plans, scripts, videos and Ghassan's changes come to your phone with buttons, and you can write to Atlas there.
-      News is <b>${v.muted ? 'paused (/unmute in Telegram)' : 'on'}</b>. In Telegram, send /help for the commands.</p>
+      Phone alerts: <b>${({decisions:'calm: only what needs you and finished videos, grouped, quiet at night, morning digest', everything:'every update', nothing:'muted: only Atlas\'s replies'})[v.send] || 'calm'}</b>. Change it in Telegram with /quiet, /all or /mute; /help lists the rest.</p>
       ${v.error ? `<p class="note" style="color:#FDA4AF">Last problem reaching Telegram: ${esc(v.error)}</p>` : ''}
       <div><button class="btn sm ghost" type="button" id="phoneUnpair">Unpair this phone</button></div>`;
   box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>`;

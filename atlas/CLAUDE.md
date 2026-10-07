@@ -156,6 +156,7 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py lnd-focus "topic"` | When the owner asks: gives Richard a topic for his next morning run (he reads it first). |
 | `python hq.py israa <episode id>` | Israa reviews a finished video again (frames, voice pace, cuts). |
 | `python hq.py review <project id> "pasted stats"` | The owner pasted the channel's stats: Calina writes the learning note. |
+| `python hq.py rule list` / `rule set <key> <value> "why"` / `rule reset <key>` / `rule undo <key>` | Live team rules: no Builder, no restart. Today the phone's alerts (`phone.send` decisions/everything/nothing, `phone.group_minutes`, `phone.quiet_from`/`quiet_to`, `phone.digest_hour`). More rules arrive as the Builder moves them out of the code. Change them when the owner asks or when it clearly serves what he asked; always say what you changed. |
 | `python hq.py limit <key> <value>` | Only when the owner asks for that change: e.g. `limit allowance.Sage 10`, `limit engine.Vera api`, `limit model.Serge opus`, `limit daily_api 5`, `limit api_cap.Doulya none`. |
 | `python hq.py stop` / `resume` | Kill switch. Use `stop` at once if the owner says stop. `resume` only when he asks. |
 

@@ -6,7 +6,10 @@ The owner's phone (2.22.0): a private Telegram bot.
   ideas, a reference board) arrives once, with buttons. A button calls the office's own API on 127.0.0.1 exactly like the
   office page does, so every guardrail stays where it is.
 - Chat: any text or photo the owner sends goes to Atlas; his reply comes back to the phone.
-- Commands: /today /status /stop /resume /mute /unmute /help.
+- Commands: /today /status /stop /resume /quiet /all /mute /unmute /help.
+- Calm by default (2.24.0, the owner asked): only things that need him and finished videos reach the phone, grouped (at most one
+  alert per `phone.group_minutes`), nothing in quiet hours unless he wrote first; other news waits for the morning digest.
+  All of it is live rules (rules.py: phone.*) Atlas can change with `hq rule set`.
 
 Only one Telegram chat is obeyed: the one that sent the pairing code shown in the office (Spend & limits -> Your phone) and in
 the START-HERE window. Everyone else is ignored. The bot token lives only in .env (TELEGRAM_BOT_TOKEN); it is never logged.
@@ -26,6 +29,7 @@ import uuid
 from pathlib import Path
 
 import control_plane as cp
+import rules
 
 ROOT = Path(__file__).parent
 STORE = Path(os.environ.get("HQ_PHONE_STORE") or (Path.home() / ".agent-hq" / "telegram.json"))   # paired chat, seen cards, mute
@@ -87,7 +91,8 @@ def view():
     d = _load()
     return {"configured": configured(), "running": STATE["running"], "paired": bool(d.get("chat")), "bot": STATE["bot"],
             "code": "" if d.get("chat") else (STATE["code"] if STATE["tries"] < MAX_TRIES else ""),
-            "locked": STATE["tries"] >= MAX_TRIES, "muted": bool(d.get("muted")), "error": STATE["error"]}
+            "locked": STATE["tries"] >= MAX_TRIES, "muted": rules.get("phone.send") == "nothing", "send": rules.get("phone.send"),
+            "error": STATE["error"]}
 
 
 def offer_setup():
@@ -352,29 +357,31 @@ def waits():
     return out
 
 
-def send_card(w, chat=None):
+def send_card(w, chat=None, quiet=False):
     if w.get("video"):
         try:
             if Path(w["video"]).stat().st_size <= MAX_VIDEO:
-                tg_file("sendVideo", "video", w["video"], chat_id=chat or owner_chat(), supports_streaming="true")
+                tg_file("sendVideo", "video", w["video"], chat_id=chat or owner_chat(), supports_streaming="true",
+                        disable_notification="true" if quiet else None)
         except (TelegramError, OSError) as e:
             send(f"(The video couldn't be sent to the phone: {e}. Watch it in the office.)", chat=chat)
     if w.get("file"):
         try:
-            tg_file("sendDocument", "document", w["file"], chat_id=chat or owner_chat())
+            tg_file("sendDocument", "document", w["file"], chat_id=chat or owner_chat(), disable_notification="true" if quiet else None)
         except (TelegramError, OSError):
             pass
-    _send_html(w["text"], w.get("buttons"), chat)
+    _send_html(w["text"], w.get("buttons"), chat, quiet)
 
 
-def _send_html(text, buttons, chat):
+def _send_html(text, buttons, chat, quiet=False):
     """Cards are already HTML."""
     chat = chat or owner_chat()
     parts = _chunks(text)
     for i, part in enumerate(parts):
         markup = {"inline_keyboard": [[{"text": l, "callback_data": d} for l, d in row] for row in buttons]} \
             if buttons and i == len(parts) - 1 else None
-        tg("sendMessage", chat_id=chat, text=part, parse_mode="HTML", disable_web_page_preview=True, reply_markup=markup)
+        tg("sendMessage", chat_id=chat, text=part, parse_mode="HTML", disable_web_page_preview=True, reply_markup=markup,
+           disable_notification=True if quiet else None)
 
 
 # ---- buttons ----------------------------------------------------------------------------------------------------------
@@ -448,7 +455,9 @@ HELP = ("I'm your Agent HQ on the phone.\n\n"
         "• /today: everything that waits for you, with buttons\n"
         "• /status: who is working and today's spend\n"
         "• /stop: stop every agent (the kill switch), /resume to start again\n"
-        "• /mute and /unmute: pause the news (cards and Atlas's replies still come)\n"
+        "• /quiet: only what needs you and finished videos, grouped, with quiet hours at night and a morning digest (the default)\n"
+        "• /all: every office update, as it happens\n"
+        "• /mute: nothing at all except Atlas's replies, /unmute to go back to /quiet\n"
         "• /help: this list")
 
 
@@ -462,6 +471,7 @@ def on_message(m):
         if text.startswith("/start"):
             tg("sendMessage", chat_id=chat, text="This is a private bot.")
         return
+    STATE["owner_wrote"] = time.time()
     if text in ("/cancel",):
         ASK.pop(chat, None)
         return send("Cancelled. Nothing changed.", chat=chat)
@@ -486,10 +496,16 @@ def on_message(m):
         return _send_html("<b>Stop every agent?</b> Nothing runs until you resume.", [[("🛑 Yes, stop them", "STOP!:"), ("Cancel", "NO")]], chat)
     if cmd == "/resume":
         return send(_run_action("RES", ""), chat=chat, plain=True)
-    if cmd in ("/mute", "/unmute"):
-        _save(muted=cmd == "/mute")
-        return send("News paused. Cards that need you and Atlas's replies still come. /unmute to turn it back on."
-                    if cmd == "/mute" else "News is back on.", chat=chat, plain=True)
+    if cmd in ("/quiet", "/all", "/mute", "/unmute"):
+        mode = {"/quiet": "decisions", "/unmute": "decisions", "/all": "everything", "/mute": "nothing"}[cmd]
+        rules.set("phone.send", mode, "Owner", "from the phone")
+        q = f"{rules.get('phone.quiet_from'):02d}:00-{rules.get('phone.quiet_to'):02d}:00"
+        return send({"decisions": f"Calm mode: only what needs you and finished videos, grouped (at most one alert every "
+                                  f"{rules.get('phone.group_minutes')} minutes), nothing between {q} unless you write first. "
+                                  "Other news comes in a morning digest. /all for everything.",
+                     "everything": f"Every office update comes as it happens (still nothing between {q} unless you write first). /quiet to calm it down.",
+                     "nothing": "Muted: only Atlas's replies to your messages. /today still shows what waits. /unmute to turn it back on."}[mode],
+                    chat=chat, plain=True)
     if cmd:
         return send("I don't know that one. /help lists what I can do.", chat=chat, plain=True)
     _to_atlas(chat, text, m)
@@ -525,7 +541,7 @@ def _pair(chat, text, m):
         return tg("sendMessage", chat_id=chat, text="Too many wrong codes. Restart the office (START-HERE) for a new one.")
     if len(code) == 6:
         if secrets.compare_digest(code, STATE["code"]):
-            _save(chat=chat, seen=[w["key"] for w in waits()], muted=False)
+            _save(chat=chat, seen=[w["key"] for w in waits()], held=[])
             cp.log("Owner", "phone_paired", None, {"name": (m.get("from") or {}).get("first_name", "")})
             send("✅ Paired. This phone now gets the office's news and the things that wait for you.\n\n" + HELP, chat=chat, plain=True)
             n = len(waits())
@@ -588,29 +604,76 @@ def _get_updates(offset):
     return _call(req, 70)
 
 
+def _quiet_now():
+    """Quiet hours (PC time, the owner's), unless he wrote in the last hour."""
+    if time.time() - STATE.get("owner_wrote", 0) < 3600:
+        return False
+    h, a, b = time.localtime().tm_hour, rules.get("phone.quiet_from"), rules.get("phone.quiet_to")
+    return (a <= h < b) if a < b else (h >= a or h < b) if a != b else False
+
+
+def _headline(text):
+    line = next((l for l in str(text).splitlines() if l.strip()), "")
+    line = line.replace("**", "").strip()
+    return line if len(line) <= 160 else line[:157] + "..."
+
+
+def _digest():
+    """Once a day at phone.digest_hour: the office news the calm mode held back, as one message."""
+    hour, d = rules.get("phone.digest_hour"), _load()
+    today = time.strftime("%Y-%m-%d")
+    if hour < 0 or time.localtime().tm_hour != hour or d.get("digest_day") == today:
+        return
+    items = d.get("digest") or []
+    _save(digest_day=today, digest=[])
+    if items:
+        _send_html("☀ <b>Office news since yesterday</b> (the calm mode kept these off your phone)\n"
+                   + "\n".join("• " + html.escape(t) for t in items[-25:]) + "\n\nSend /today for what waits for you.", None, None)
+
+
 def _push():
-    """Sends the queued news and, every POLL_WAITS seconds, a card for each new thing that waits for the owner."""
-    last = 0.0
+    """News: Atlas's replies go at once; other office news goes at once only in 'everything' mode, else into the morning digest.
+    Things that need the owner: found every POLL_WAITS seconds, held, and sent together at most once per phone.group_minutes,
+    never in quiet hours (unless he wrote first)."""
+    last_look, last_alert = 0.0, 0.0
     while True:
         try:
             if owner_chat():
                 with OUT_LOCK:
                     news = OUT[:]
                     OUT.clear()
-                muted = _load().get("muted")
+                mode = rules.get("phone.send")
+                quiet = _quiet_now()
+                held_news = []
                 for t in news:
-                    if not muted or t.startswith("🧭"):
+                    if t.startswith("🧭"):
+                        send(t)   # Atlas answering the owner: always
+                    elif mode == "everything" and not quiet:
                         send(t)
-                if time.time() - last >= POLL_WAITS:
-                    last = time.time()
+                    elif mode != "nothing":
+                        held_news.append(_headline(t))
+                if held_news:
+                    _save(digest=((_load().get("digest") or []) + held_news)[-60:])
+                if mode != "nothing":
+                    _digest()
+                if time.time() - last_look >= POLL_WAITS:
+                    last_look = time.time()
                     ws = waits()
-                    seen = set(_load().get("seen") or [])
-                    for w in ws:
-                        if w["key"] not in seen:
-                            seen.add(w["key"])
-                            _save(seen=sorted(seen))   # before sending: a failed send is never repeated in a loop
-                            send_card(w)
-                    _save(seen=sorted(seen & {w["key"] for w in ws}))   # forget what's done, so it comes back if it waits again
+                    keys = {w["key"] for w in ws}
+                    d = _load()
+                    seen = set(d.get("seen") or []) & keys      # forget what's done, so it comes back if it waits again
+                    held = [k for k in (d.get("held") or []) if k in keys]
+                    held += [w["key"] for w in ws if w["key"] not in seen and w["key"] not in held]
+                    _save(seen=sorted(seen), held=held)
+                    due = mode == "everything" or time.time() - last_alert >= 60 * rules.get("phone.group_minutes")
+                    if held and mode != "nothing" and not quiet and due:
+                        last_alert = time.time()
+                        go = [w for w in ws if w["key"] in held]
+                        _save(seen=sorted(seen | set(held)), held=[])   # before sending: a failed send is never repeated in a loop
+                        _send_html(f"🔔 <b>{len(go)} thing{'s' if len(go) != 1 else ''} need{'s' if len(go) == 1 else ''} you</b>"
+                                   + (f" (grouped: at most one alert every {rules.get('phone.group_minutes')} minutes)" if len(go) > 1 else ""), None, None)
+                        for w in go:
+                            send_card(w, quiet=True)
             else:
                 with OUT_LOCK:
                     OUT.clear()   # not paired yet: nothing to deliver
