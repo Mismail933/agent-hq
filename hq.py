@@ -15,6 +15,7 @@ Atlas's controls for Agent HQ.
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
                  voice-match <project> [record [secs] | <clip file> | show | add <voice id> <owner id> "name"] | cast-voice <project> <character> <voice>
                  cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version]
+                 ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
                  fetch <link> [link...]     (see a link the owner sent: images saved to review/refs/, YouTube title/channel/description/thumbnail)
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
@@ -300,6 +301,17 @@ def main(argv):
         elif cmd in ("do-not-upload", "allow-upload"):   # hq do-not-upload <episode> "why": a duplicate or superseded Short must not go live
             code, reply = office(f"/api/episode/{int(args[0])}/{cmd}", {"reason": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "ghassan":   # hq ghassan [status | now]: the in-house Builder (only the owner ships his changes, in the office)
+            if (args[0] if args else "status") == "now":
+                code, reply = office("/api/ghassan/now", {})
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+            else:
+                port = (ROOT / ".port").read_text().strip() if (ROOT / ".port").exists() else os.environ.get("HQ_PORT", "8765")
+                try:
+                    with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/state", timeout=15) as r:
+                        show(json.loads(r.read()).get("ghassan"))
+                except (urllib.error.URLError, ConnectionError, TimeoutError):
+                    sys.exit(NOT_RUNNING)
         elif cmd == "fetch":   # hq fetch <link> [link...]: see what a link the owner sent holds (images saved for Read)
             import linkpeek
             refs = Path(__import__("atlas_engine").HOME) / "review" / "refs"

@@ -804,7 +804,7 @@ const SPOTS = {
 const MTY = MT.cy + 30;
 
 /* ---------- Agents (only real, registered ones are drawn) ---------- */
-const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product', Content:'marketing', 'Learning & Dev':'ld'};
+const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product', Dev:'product', Content:'marketing', 'Learning & Dev':'ld'};
 const agents = {};
 function addAgent(info) {
   const dept = DEPT_OF[info.dept] || 'orch';
@@ -1207,7 +1207,7 @@ function furnish(d) {
   }
 }
 
-const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}, Richard:{shell:'#E2E8F0', visor:'#A3E635'}, Scout:{shell:'#CBD5E1', visor:'#93C5FD'}, Israa:{shell:'#F8FAFC', visor:'#FDE68A'}, Animator:{shell:'#E2E8F0', visor:'#F0ABFC'}};
+const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}, Richard:{shell:'#E2E8F0', visor:'#A3E635'}, Scout:{shell:'#CBD5E1', visor:'#93C5FD'}, Israa:{shell:'#F8FAFC', visor:'#FDE68A'}, Animator:{shell:'#E2E8F0', visor:'#F0ABFC'}, Ghassan:{shell:'#CBD5E1', visor:'#34D399'}};
 const STC = {work:'#34D399', wait:'#FBBF24', block:'#F43F5E', idle:'#64748B'};
 const STL = {work:'WORKING', wait:'WAITING FOR YOU', block:'BLOCKED', idle:'IDLE'};
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -1501,7 +1501,7 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
-let voiceMatch = {}, castVoices = {}, musicState = {};
+let voiceMatch = {}, castVoices = {}, musicState = {}, ghassan = {};
 let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {}, refboards = {}, characters = {}, animTest = {}, eleven = {}, boardUnlocked = {}, scoutingRefs = false, boardDraft = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) { ideaTab = id; }   // the old desk tabs are pages now; nothing jumps on its own
@@ -1831,6 +1831,14 @@ async function contentAct(url, body, okMsg) {
   } catch { toast("Can't reach the engine."); }
   poll();
 }
+async function openGhassanDiff() {
+  const r = await fetch('/api/ghassan/diff'); if (!r.ok) return; const g = await r.json();
+  $('#ovTitle').textContent = 'Ghassan\'s change: ' + (g.title || ''); const pill = $('#ovPill'); pill.style.color = ''; pill.className = 'pill'; pill.textContent = 'waiting for your Ship click';
+  $('#ovBody').innerHTML = `<div class="brief"><p>Files changed:</p><pre style="white-space:pre-wrap;font-family:var(--mono);font-size:12px">${esc(g.stat || '')}</pre>
+    <p>The change line by line (red = removed, green = added)${g.cut ? ', cut short because it is long' : ''}:</p>
+    <pre style="white-space:pre-wrap;font-family:var(--mono);font-size:12px;max-height:60vh;overflow:auto">${(g.diff || '').split('\n').map(l => `<span style="color:${l.startsWith('+') && !l.startsWith('+++') ? '#6EE7B7' : l.startsWith('-') && !l.startsWith('---') ? '#FDA4AF' : 'inherit'}">${esc(l)}</span>`).join('\n')}</pre></div>`;
+  $('#overlay').hidden = false; $('#ovClose').focus();
+}
 async function openPlan(id) {
   const r = await fetch('/api/project/' + id); if (!r.ok) return; const p = await r.json();
   $('#ovTitle').textContent = p.title; const pill = $('#ovPill'); pill.style.color = '';
@@ -1977,7 +1985,9 @@ async function pollOnce() {
     pipeEvent(e); if (!initial) handleEvent(e);
     const d = e.detail || {};
     if (e.kind === 'video_failed' && d.episode) lastFail[d.episode] = {ts:e.ts, reason:d.reason || ''};
-    else if (['render_started', 'video_ready', 'episode_rejected'].includes(e.kind) && d.episode) delete lastFail[d.episode];
+    else if (['render_started', 'video_ready', 'voice_variants_ready', 'episode_rejected'].includes(e.kind) && d.episode) delete lastFail[d.episode];
+    // a later video that worked means the renderer works now: older failures are stale (the episode still waits as "to turn into a video")
+    if (['video_ready', 'voice_variants_ready'].includes(e.kind)) for (const k of Object.keys(lastFail)) if (lastFail[k].ts < e.ts) delete lastFail[k];
     const f = feedLine(e); if (f) { feed.unshift({time:clockOf(e.ts), ts:e.ts, who:f[0], text:f[1], kind:f[2], pid:d.project ?? null, ep:d.episode ?? null}); feedDirty = true; }
   }
   feed = feed.slice(0, 200);
@@ -1991,7 +2001,7 @@ async function pollOnce() {
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
   producingFor = s.producing_project ?? null; reviewing = !!s.reviewing; atlasLimit = s.atlas_limit || null;
-  production = s.production || {}; voiceSamples = s.voice_samples || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(voiceMatch) + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; ghassan = s.ghassan || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(voiceMatch) + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
@@ -2151,6 +2161,9 @@ function hqWaits() {
   for (const p of projects.filter(p => p.status === 'awaiting_approval')) out.push({kind:'plan', who:'Serge', t:`Plan: ${p.title}`, d:money(p) + '. Approving it makes this a project.', acts:[['Read the plan', `plan:${p.id}`, 'pri']]});
   const l = lndIdeas.filter(i => i.status === 'new');
   if (l.length) out.push({kind:'lnd', who:'Richard', t:`${l.length} improvement idea${l.length === 1 ? '' : 's'} from Richard`, d:l.map(i => (i.data || {}).title || i.id).join(' · '), acts:[['Review', 'go:lnd', 'pri']]});
+  const g = (ghassan || {}).pending;   // Ghassan's checked change: nothing reaches GitHub or this PC until the owner ships it
+  if (g) out.unshift({kind:'ghassan', who:'Ghassan', t:`Ready to ship: ${g.title}`, d:`${g.summary || ''} It passed every check (${(g.files || []).length} file${(g.files || []).length === 1 ? '' : 's'} changed). Ship puts it on your PC and restarts the office.`,
+    acts:[['See the change', 'gdiff'], ['Ship', 'gship', 'pri'], ['Discard', 'gdiscard']]});
   return out;
 }
 function blockedList() {
@@ -2161,6 +2174,8 @@ function blockedList() {
   return out;
 }
 const hhmm = ts => new Date(ts * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+// when an error happened: the time today, the day too if older, so an old failure never looks current
+const whenOf = ts => new Date(ts * 1000).toDateString() === new Date().toDateString() ? hhmm(ts) : new Date(ts * 1000).toLocaleDateString([], {day:'numeric', month:'short'}) + ' ' + hhmm(ts);
 function computeStates() {
   const live = jobLive(), out = {};
   const stuck = ideas.find(i => !i.verdict && ['stopped', 'error', 'interrupted'].includes(i.status));
@@ -2171,7 +2186,7 @@ function computeStates() {
     let S = null;
     if (killOn) S = {s:'block', tag:'Stopped by the kill switch', why:'The kill switch is on, so every agent is stopped.'};
     else if (name === 'Sage' && stuck && !live) S = {s:'block', tag:'Stopped: ' + short(stuck.title, 28), title:`Research stopped: ${stuck.title}`, why:`The research on "${stuck.title}" stopped (${stuck.status}). Try it again, or ask Atlas what happened.`, acts:[['Try again', `retry:${stuck.id}`, 'ok'], ['Open the idea', `idea:${stuck.id}`]]};
-    else if (name === 'Calina' && failed && !rendering) S = {s:'block', tag:`Video #${failed.e.id} failed`, title:`Video #${failed.e.id} failed: ${failed.e.title}`, why:`Couldn't make video #${failed.e.id}: ${failed.f.reason || 'unknown error'}`, pid:failed.e.project_id, acts:[['Try again', `render:${failed.e.id}`, 'ok'], ['Open it', `ep:${failed.e.id}`]]};
+    else if (name === 'Calina' && failed && !rendering) S = {s:'block', tag:`Video #${failed.e.id} failed at ${whenOf(failed.f.ts)}`, title:`Video #${failed.e.id} failed at ${whenOf(failed.f.ts)}: ${failed.e.title}`, why:`At ${whenOf(failed.f.ts)} I couldn't make video #${failed.e.id}: ${failed.f.reason || 'unknown error'}`, pid:failed.e.project_id, acts:[['Try again', `render:${failed.e.id}`, 'ok'], ['Open it', `ep:${failed.e.id}`]]};
     else if (name === 'Atlas' && busy) S = work('Answering you', 'Reading your message and checking the company.');
     else if (name === 'Doulya' && scouting) S = work('Scouting for new ideas');
     else if (name === 'Calina' && rendering) { const e = episodes.find(x => x.id === rendering); S = work(`Making video #${rendering}`, `Making the video for #${rendering}${e ? ': ' + e.title : ''}. It takes 10-15 minutes.`, e && e.project_id); }
@@ -2179,6 +2194,7 @@ function computeStates() {
     else if (name === 'Serge' && planning) S = work('Writing a plan');
     else if (name === 'Scout' && scoutingRefs) S = work('Finding what works on YouTube', 'Looking up real channels and Shorts in this niche. 5-10 minutes.');
     else if (name === 'Israa' && reviewing) S = work('Reviewing', a.activity && a.activity !== 'At station' ? a.activity : 'Reviewing scripts or a video.');
+    else if (name === 'Ghassan' && ghassan.state === 'working') S = work('Building', 'Building: ' + (ghassan.request || 'a request from Atlas'));
     else if ((name === 'Sage' && live && JOB.step === 'research') || (name === 'Vera' && live && JOB.step === 'judgment')) S = work(short(JOB.title, 34), (name === 'Sage' ? 'Researching: ' : 'Judging: ') + JOB.title);
     else if (name === 'Animator' && Object.values(animTest || {}).some(t => t && t.making)) S = work('Writing a scene');
     else if (a.working) S = work(short(a.activity || 'Working', 40), a.activity);
@@ -2257,7 +2273,8 @@ function greeting() { const h = new Date().getHours(); return h < 5 ? 'Good even
 function renderToday() {
   const W = WAITS, groups = [];
   for (const x of W.P) if ((W.per[x.id] || []).length) groups.push({go:`proj:${x.id}`, name:x.name, mono:x.mono, hue:x.hue, items:W.per[x.id], enter:true});
-  const hi = W.hq.filter(w => ['pitch', 'plan'].includes(w.kind)), hl = W.hq.filter(w => w.kind === 'lnd');
+  const hi = W.hq.filter(w => ['pitch', 'plan'].includes(w.kind)), hl = W.hq.filter(w => w.kind === 'lnd'), hg = W.hq.filter(w => w.kind === 'ghassan');
+  if (hg.length) groups.unshift({go:'go:office', name:'The company itself', mono:'HQ', items:hg});   // Ghassan's change waits first: one click
   if (hi.length) groups.push({go:'go:ideas', name:'Ideas', mono:'ID', items:hi});
   if (hl.length) groups.push({go:'go:lnd', name:'Learning', mono:'LD', items:hl});
   const working = Object.entries(STATES).filter(([, s]) => s.s === 'work'), nb = W.blocked.length;
@@ -2452,6 +2469,9 @@ function doAction(a) {
     case 'pitch': return openPitch(+x);
     case 'idea': return openIdea(+x);
     case 'retry': return contentAct('/api/retry/' + x, {}, 'Trying again. Follow it in Ideas.');
+    case 'gdiff': return openGhassanDiff();
+    case 'gship': if (!confirm('Ship Ghassan\'s change? It goes on GitHub, and the office restarts by itself to load it (about a minute).')) return; return contentAct('/api/ghassan/ship', {by: 'owner'}, 'Shipped. The office restarts in a moment.');
+    case 'gdiscard': return contentAct('/api/ghassan/discard', {by: 'owner'}, 'Discarded.');
     case 'render': { if (rendering) { toast('Another video is being made. Try again when it finishes.'); return; } rendering = +x; renderNeeds(); return contentAct(`/api/episode/${x}/render`, {}, 'Calina is making the video. It takes 10-15 minutes.'); }
     case 'resume': return fetch('/api/resume', {method:'POST'}).then(() => poll(), () => toast("Can't reach the engine."));
     case 'agent': return showAgent(x);

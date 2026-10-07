@@ -48,6 +48,7 @@ import elevenlabs         # noqa: E402
 import production         # noqa: E402
 import quality            # noqa: E402
 import sfx                # noqa: E402
+import ghassan            # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -338,6 +339,50 @@ def run_cast_samples(pid):
         atlas_says(f"The cast's voice samples couldn't be made: {ex}")
     finally:
         CASTSAMPLING["pid"] = None
+
+
+# ---- Ghassan, the in-house Builder (2.21.0), and the office restarting itself after the owner ships ----------------------
+def office_idle():
+    return not (anim_busy() or RENDERING["lock"].locked() or agents.PRODUCING.locked() or agents.PIPELINE.locked()
+                or agents.PLANNING.locked() or STATE["busy"] or MATCHING["pid"] is not None or quality.REVIEWING.locked())
+
+
+def restart_office():
+    """After the owner clicked Ship: restart into the new version once nothing is running. The launcher (launch.py, 2.21.0+)
+    updates and starts the office again when it exits with code 75; an older launcher gets a fresh START-HERE window instead."""
+    time.sleep(3)
+    while not office_idle():
+        time.sleep(20)
+    print("Restarting the office to load the new version...", flush=True)
+    if os.environ.get("HQ_LAUNCHER_LOOP") != "1":
+        bat = ROOT / "START-HERE.bat"
+        if bat.exists():
+            subprocess.Popen(["cmd", "/c", "start", "Agent HQ", str(bat)], cwd=ROOT, env=dict(os.environ, HQ_NO_BROWSER="1"))
+    os._exit(75)
+
+
+def ghassan_loop():
+    """Every few minutes: Ghassan takes the next open request from Atlas, if there is one, and builds it up to a checked change
+    that waits for the owner's Ship click. Nothing ships by itself."""
+    time.sleep(90)   # let the office settle first
+    while True:
+        try:
+            if getattr(settings, "GHASSAN_ON", True) and os.environ.get("HQ_SIMULATE") != "1" and atlas_engine.find_claude():
+                ghassan.turn(atlas_says, anim_free=lambda: not anim_busy())
+        except Exception as e:   # the loop must never die
+            print("Ghassan:", repr(e), flush=True)
+        time.sleep(60 * getattr(settings, "GHASSAN_EVERY_MINUTES", 10))
+
+
+def mark_healthy():
+    """After a minute up, this version counts as good: the launcher can roll back to it if a later one doesn't start."""
+    time.sleep(60)
+    try:
+        c = (ROOT / ".installed-commit").read_text(encoding="utf-8").strip()
+        if c:
+            (ROOT / ".last-good-commit").write_text(c + "\n", encoding="utf-8")
+    except OSError:
+        pass
 
 
 def run_voice_add(pid, voice_id, name):
@@ -782,6 +827,7 @@ class Handler(BaseHTTPRequestHandler):
                 "scouting_refs": quality.SCOUTING.locked(), "reviewing": quality.REVIEWING.locked(),
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
+                "ghassan": dict(ghassan.STATUS, pending={k: v for k, v in (ghassan.pending() or {}).items() if k != "diff"} or None),
                 "voice_match": {p["id"]: voice_match_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "cast": {p["id"]: cast_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "music": {p["id"]: music_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
@@ -840,6 +886,9 @@ class Handler(BaseHTTPRequestHandler):
             if not ok:
                 return self._send(404, {"error": "no such file"})
             return self._send_file(path, "image/png" if path.suffix == ".png" else "video/mp4")
+        if u.path == "/api/ghassan/diff":   # the full change waiting for the owner's Ship click
+            p = ghassan.pending() or {}
+            return self._send(200, {"title": p.get("title"), "stat": p.get("stat", ""), "diff": p.get("diff", ""), "cut": p.get("diff_cut")})
         if u.path.startswith("/api/upload/"):   # /api/upload/<file>: an image the owner attached in the chat
             name = Path(u.path.rsplit("/", 1)[1]).name
             path = UPLOADS / name
@@ -934,6 +983,22 @@ class Handler(BaseHTTPRequestHandler):
                 cp.log("Owner", "chat_images", None, {"files": images})
             threading.Thread(target=run_chat, args=(prompt,), daemon=True).start()
             return self._send(202, accepted(warning))
+        if u.path == "/api/ghassan/now":   # check Atlas's requests now instead of at the next turn
+            if ghassan.LOCK.locked():
+                return self._send(409, {"error": f"Ghassan is already building: {ghassan.STATUS.get('request')}."})
+            threading.Thread(target=ghassan.turn, args=(atlas_says,), kwargs={"anim_free": lambda: not anim_busy()}, daemon=True).start()
+            return self._send(202, {"ok": True, "message": "Ghassan is checking Atlas's requests."})
+        if u.path in ("/api/ghassan/ship", "/api/ghassan/discard"):   # only the owner's click ships Ghassan's change
+            body = self._json_body()
+            if body.get("by") != "owner":
+                return self._send(403, {"error": "Only the owner ships or discards Ghassan's changes, from the office."})
+            if u.path.endswith("ship"):
+                ok, msg = ghassan.ship(anim_free=lambda: not anim_busy())
+                if ok:
+                    threading.Thread(target=restart_office, daemon=True).start()
+            else:
+                ok, msg = ghassan.discard(str(body.get("reason", ""))[:300])
+            return self._send(200 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
         if u.path == "/api/scout":
             if agents.SCOUTING.locked():
                 return self._send(409, {"error": "Doulya is already scouting."})
@@ -1379,6 +1444,9 @@ def main():
     print("  Keep this window open while you use the office (you can minimize it).")
     print("  Close this window to stop everything.\n", flush=True)
     threading.Thread(target=scheduler, daemon=True).start()
+    threading.Thread(target=ghassan_loop, daemon=True).start()
+    if os.environ.get("HQ_SIMULATE") != "1":
+        threading.Thread(target=mark_healthy, daemon=True).start()
     if os.environ.get("HQ_NO_LND") != "1":
         threading.Thread(target=lnd_loop, daemon=True).start()
     if os.environ.get("HQ_NO_BROWSER") != "1":

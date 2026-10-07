@@ -51,6 +51,8 @@ Agents never spend money without the owner's explicit approval.
   prefixed "(About <project>)". Every waiting item has its own buttons (`waitsOf`, `hqWaits`, `blockedList`; actions are `data-do`
   strings handled by `doAction`). Rooms come online when an agent is hired into that department (`DEPT_OF`, `furnish()`, `LOOKS`).
   `/api/state` also carries `producing_project` (agents.PRODUCING_FOR) and `atlas_limit` for this.
+  Calina's "Video #N failed" block (`lastFail`, from `video_failed` events) clears when that episode starts again, gets a video or
+  voice versions (`voice_variants_ready`), is rejected, or when any later video succeeds; the card shows when it failed (`whenOf`).
 - `launch.py`: auto-updater. Compares raw GitHub `VERSION` with the local one; on mismatch downloads the main zip and overwrites program files (keeps .env, hq.db, briefs, settings_local.py, STOP, START-HERE.bat), then runs server.py.
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI
@@ -183,6 +185,21 @@ Agents never spend money without the owner's explicit approval.
   length, views and the thumbnail (never video/audio). Office chat: attach button, Ctrl+V paste, drag-and-drop (up to 4 images, 8 MB,
   PNG/JPG/WEBP/GIF checked by their bytes) -> `Atlas-HQ/review/uploads/`; the paths go into Atlas's prompt so he opens them with Read;
   thumbnails in the history via `/api/upload/<file>`. The backup (API) and cloud Atlas get the paths but can't open them.
+- Ghassan, the in-house Builder (2.21.0, `ghassan.py`; the owner named him; the owner chose "Ghassan builds, I click Ship"):
+  every `GHASSAN_EVERY_MINUTES` the server's `ghassan_loop` lets him take the highest-priority `[open]` request in
+  `Atlas-HQ/requests-for-builder.md` (one at a time, none while a change waits). He works in `~/.agent-hq/ghassan` (a clone of
+  GitHub main, branch `ghassan/<slug>`) via `workers.run(cwd=..., allowed=..., disallowed=...)`: Opus on the subscription, $10/day,
+  no API fallback, tools Read/Edit/Write/Glob/Grep + `python -m py_compile` and `git diff/status` only. Images a request names
+  (review/uploads, review/refs) are copied to the clone's ignored `content/_refs/` so he can see them. Code checks (`ghassan.checks`):
+  PROTECTED files untouched (ghassan.py, launch.py, START-HERE.bat, control_plane.py, settings.py, workers.py, atlas_engine.py,
+  requirements.txt, .env, settings_local.py, .gitignore), py_compile, imports, the office starts in practice mode on a free port,
+  `node --check` of the page's script, a changed cartoon renders a still; one repair round. The commit stays LOCAL:
+  `~/.agent-hq/ghassan-pending.json` + request `[ready to ship]` + a Today card (See the change / Ship / Discard). Only the owner's
+  click (`POST /api/ghassan/ship` with by=owner) bumps VERSION, pushes main and calls `restart_office` (waits until idle, exits 75).
+  launch.py (2.21.0) loops: exit 75 = update and start again; GitHub's zip comment = commit -> `.installed-commit`, the server marks
+  it `.last-good-commit` after 60 s up; a new version that dies within 90 s is replaced by the last good one (`.hold-version` skips
+  it, `.rolled-back` makes Ghassan prepare the undo, again waiting for Ship). Changes to Ghassan's own rules or the protected files
+  are done here, by the Builder chat.
 - `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

@@ -36,8 +36,10 @@ def engine(agent):
     return getattr(settings, "WORKER_ENGINE", {}).get(agent, "api")
 
 
-def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20):
-    """One run. Returns (structured output or result text, info). Raises Unavailable or cp.Halt."""
+def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20, cwd=None, allowed=None, disallowed=(), timeout=None):
+    """One run. Returns (structured output or result text, info). Raises Unavailable or cp.Halt.
+    cwd: work in that folder instead of the agent's empty one (Ghassan works in his copy of the code); allowed/disallowed:
+    permission rules (e.g. "Bash(git diff*)") instead of the plain tool names."""
     if cp.STOP_FILE.exists():
         raise cp.Halt("Kill switch is on (STOP file exists). Delete it to resume.")
     cap = getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}).get(agent)
@@ -47,19 +49,21 @@ def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20):
     exe = atlas_engine.find_claude()
     if not exe:
         raise Unavailable("Claude Code isn't installed on this computer.")
-    folder = WORK / agent.lower()
+    folder = Path(cwd) if cwd else WORK / agent.lower()
     folder.mkdir(parents=True, exist_ok=True)
     model = getattr(settings, "WORKER_MODELS", {}).get(agent, "sonnet")
     cmd = [exe, "-p", "--output-format", "json", "--no-session-persistence", "--max-turns", str(max_turns),
            "--model", model, "--system-prompt", system + (CC_NOTE if tools else ""), "--tools", ",".join(tools)]
     if tools:
-        cmd += ["--allowedTools", *tools]
+        cmd += ["--allowedTools", *(allowed or tools)]
+    if disallowed:
+        cmd += ["--disallowedTools", *disallowed]
     if schema:
         cmd += ["--json-schema", json.dumps(schema)]
     t0 = time.time()
     try:
         p = subprocess.run(cmd, input=prompt, cwd=folder, env=atlas_engine._env(), capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=getattr(settings, "WORKER_TIMEOUT_SECONDS", 900),
+                           encoding="utf-8", errors="replace", timeout=timeout or getattr(settings, "WORKER_TIMEOUT_SECONDS", 900),
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except subprocess.TimeoutExpired:
         raise Unavailable("Claude Code took too long.")

@@ -19,6 +19,7 @@ MODELS = {
     "israa": "claude-opus-5-5",
     "animator": "claude-opus-5-5",
     "richard": "cloud routine (Sonnet 5.5)",   # Richard runs in Anthropic's cloud, not through this program
+    "ghassan": "claude-opus-5-5",   # a label: Ghassan runs through Claude Code on the subscription
 }
 
 # ---- Where the workers run ----------------------------------------------------
@@ -27,13 +28,18 @@ MODELS = {
 # "api":         on your API key, with the dollar caps further down.
 WORKER_ENGINE = {"Doulya": "claude_code", "Sage": "claude_code", "Vera": "claude_code", "Serge": "claude_code",
                  "Calina": "claude_code",
-                 "Scout": "claude_code", "Israa": "claude_code", "Animator": "claude_code"}   # Scout and Israa only run through Claude Code
+                 "Scout": "claude_code", "Israa": "claude_code", "Animator": "claude_code", "Ghassan": "claude_code"}   # Scout and Israa only run through Claude Code
 WORKER_MODELS = {"Doulya": "sonnet", "Sage": "sonnet", "Vera": "sonnet", "Serge": "sonnet", "Calina": "sonnet",
-                 "Scout": "sonnet", "Israa": "opus", "Animator": "opus"}   # or "opus"
+                 "Scout": "sonnet", "Israa": "opus", "Animator": "opus", "Ghassan": "opus"}   # or "opus"
 # Daily allowance per agent on the subscription, measured as what the same work would cost on the API
 # (the only meter Claude Code reports). Protects your plan's limits for you, the Builder and Atlas.
 SUBSCRIPTION_DAILY_VALUE_USD = {"Doulya": 2.00, "Sage": 6.00, "Vera": 2.00, "Serge": 3.00, "Calina": 6.00,
-                                 "Scout": 5.00, "Israa": 6.00, "Animator": 6.00}
+                                 "Scout": 5.00, "Israa": 6.00, "Animator": 6.00, "Ghassan": 10.00}
+# Ghassan, the in-house Builder (2.21.0): builds Atlas's requests on the subscription only (no API fallback); his checked change
+# waits for the owner's Ship click in the office before anything reaches GitHub.
+GHASSAN_ON = True
+GHASSAN_EVERY_MINUTES = 10
+GHASSAN_TIMEOUT_SECONDS = 2400
 WORKER_TIMEOUT_SECONDS = 900
 
 # Price per million tokens (input, output) in USD. Matched by model-name prefix.
