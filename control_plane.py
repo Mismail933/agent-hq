@@ -75,7 +75,7 @@ def init():
 # ---- Limits the owner changes in the office (or Atlas, when the owner asks) -------
 # Stored in hq.db and applied on top of settings.py / settings_local.py, so they take effect at once and
 # survive updates. Each one is validated against a sane range so a typo can't open the floodgates.
-WORKERS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Animator", "Ghassan")
+WORKERS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana", "Ghassan")
 LIMITS = {
     "daily_api": ("usd", 0, 100, "Daily API cap, whole company"),
     "per_idea": ("usd", 0, 20, "API cap per idea (research + judgment)"),
@@ -172,6 +172,16 @@ def register(name, dept, role, model, tools):
             "ON CONFLICT(name) DO UPDATE SET dept=excluded.dept, role=excluded.role, "
             "model=excluded.model, tools=excluded.tools",
             (name, dept, role, model, json.dumps(tools)))
+
+
+def rename_agent(old, new):
+    """An agent got a new name: drop the old row (its history stays in the log) and carry its limits over."""
+    with _db() as con:
+        con.execute("DELETE FROM agents WHERE name=?", (old,))
+        for r in con.execute("SELECT key, value, ts, changed_by FROM limits WHERE key LIKE ?", (f"%.{old}",)).fetchall():
+            con.execute("INSERT OR IGNORE INTO limits(key,value,ts,changed_by) VALUES(?,?,?,?)",
+                        (r["key"][:-len(old)] + new, r["value"], r["ts"], r["changed_by"]))
+            con.execute("DELETE FROM limits WHERE key=?", (r["key"],))
 
 
 def check_tool(agent, tool):

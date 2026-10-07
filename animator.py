@@ -1,5 +1,5 @@
 """
-The Animator: for a scene that needs more than the kit can draw, an Opus run writes a bespoke React/SVG component (Remotion)
+Rana, the Designer & Animator (was "the Animator" until 2.27.0): for a scene that needs more than the kit can draw, an Opus run writes a bespoke React/SVG component (Remotion)
 that acts out the step the voice is explaining: rays sweeping, a shadow growing, the dive into the well. It reuses the saved
 characters and the style kit so the look stays the same.
 
@@ -23,7 +23,7 @@ import shorts
 import workers
 from shorts import Blocked, say
 
-AGENT = "Animator"   # placeholder name until the owner names this role
+AGENT = "Rana"   # the Designer & Animator (the owner named her, 2026-10-08)
 ALLOWED_IMPORTS = {"react", "remotion", "./theme", "./Character", "./Backdrops", "./Extras"}
 BANNED = [r"\brequire\s*\(", r"\bimport\s*\(", r"\bfetch\b", r"XMLHttpRequest", r"\beval\b", r"\bFunction\s*\(", r"\bwindow\b", r"\bdocument\b",
           r"\bprocess\b", r"\bglobalThis\b", r"\blocalStorage\b", r"\bsessionStorage\b", r"\bindexedDB\b", r"WebSocket", r"\bsetTimeout\b",
@@ -53,7 +53,7 @@ YOUR FILE MUST: export default function Scene({frame, frames, words, mouth}) { r
   Return SVG elements for a 1080 x 1920 canvas (a <g>, not an <svg>). The caller adds captions and the title card.
 """
 
-SYSTEM = """You are the Animator of a small AI-run company that makes animated history Shorts for YouTube. You write ONE React
+SYSTEM = """You are Rana, the Designer & Animator of a small AI-run company that makes animated history Shorts for YouTube. You write ONE React
 component for Remotion that animates ONE scene from scratch, in SVG. The stock template for this scene already exists (a fixed
 backdrop with a character standing in it); your job is to do much better: make the OBJECTS act out the step the voice is
 explaining, so a viewer who knows nothing understands the step from the picture alone, with the sound off.
@@ -135,20 +135,20 @@ def write_scene(project_id, story, scene, frames, words, kit_note, folder, name,
         try:
             text, _ = workers.run(AGENT, idea_id, SYSTEM, task, max_turns=3)
         except workers.Unavailable as e:
-            raise Blocked(f"The Animator couldn't run: {e}")
+            raise Blocked(f"Rana couldn't run: {e}")
         last = extract_code(text)
         bad = validate(last)
         if bad:
             problem = "; ".join(bad)
-            say(f"  Animator's file rejected ({problem[:140]}); asking again ({attempt + 1}/{repairs})")
+            say(f"  Rana's file rejected ({problem[:140]}); asking again ({attempt + 1}/{repairs})")
             continue
         (folder / f"{name}.jsx").write_text(last, encoding="utf-8")
         err = test_render(folder, name, scene, frames)
         if not err:
             return name
         problem = f"it failed to render: {err[:600]}"
-        say(f"  Animator's file didn't render ({err[:140]}); asking again ({attempt + 1}/{repairs})")
-    raise Blocked(f"The Animator couldn't produce a scene that renders: {problem[:300]}")
+        say(f"  Rana's file didn't render ({err[:140]}); asking again ({attempt + 1}/{repairs})")
+    raise Blocked(f"Rana couldn't produce a scene that renders: {problem[:300]}")
 
 
 def test_render(folder, name, scene, frames):
@@ -228,7 +228,7 @@ def run_test(eid, index, bespoke=TEST_BRIEF):
     animate.remotion(["render", "src/index.jsx", "Short", str(out / "kit.mp4"), f"--props={out / 'kit-props.json'}", f"--public-dir={out}", "--codec=h264",
                       "--crf=22", "--log=warn", "--overwrite"], timeout=1800)
     # 2. the bespoke version
-    say("The Animator is writing the scene (Opus, a few minutes)...")
+    say("Rana is writing the scene (Opus, a few minutes)...")
     name = f"scene_{ep['id']}_{int(index)}"
     project = cp.get_project(ep["project_id"], with_text=False)
     write_scene(ep["project_id"], story, {**data_scene, "bespoke": bespoke or "A bespoke animation that makes the explanation visible."}, n, words, kit_note, out, name,
@@ -236,7 +236,7 @@ def run_test(eid, index, bespoke=TEST_BRIEF):
     install(out, [name])
     anim_props = {**base, "scenes": [{"from": 0, "frames": n, "backdrop": "court", "generated": name, "words": words}]}
     (out / "animator-props.json").write_text(json.dumps(anim_props), encoding="utf-8")
-    say("Rendering the Animator's version...")
+    say("Rendering Rana's version...")
     animate.remotion(["render", "src/index.jsx", "Short", str(out / "animator.mp4"), f"--props={out / 'animator-props.json'}", f"--public-dir={out}",
                       "--codec=h264", "--crf=22", "--log=warn", "--overwrite"], timeout=1800)
     for f in ("kit-props.json", "animator-props.json"):

@@ -480,6 +480,7 @@ ACTIONS = {
     "MU": ("Use this music", lambda a: (f"/api/project/{a.split('.')[0]}/music", {"id": a.split(".", 1)[1]}), None, {}, False),
     "CA": ("Approve the characters", "/api/project/{}/characters", None, {"action": "approve"}, False),
     "CB": ("Send the characters back", _send_back_characters, "note", {}, False),
+    "DZ": ("Use this design", lambda a: (f"/api/design/{a.split('.')[0]}/{a.split('.')[1]}/choose", {"option": int(a.split(".")[2])}), None, {}, False),
     "RES": ("Resume every agent", "/api/resume", None, {}, False),
     "STOP": ("Stop every agent", "/api/stop", None, {}, True),
 }
@@ -618,7 +619,7 @@ def _to_atlas(chat, text, m):
 
 
 KINDS = {"ghassan": ("ghassan:",), "videos": ("upload:", "voices:", "assemble:"), "characters": ("characters:",),
-         "scripts": ("script:",), "ideas": ("pitch:", "lnd:"), "plans": ("plan:", "board:"), "voices": ("voice:", "music:", "voices:")}
+         "scripts": ("script:",), "designs": ("design:",), "ideas": ("pitch:", "lnd:"), "plans": ("plan:", "board:"), "voices": ("voice:", "music:", "voices:")}
 
 
 def resend(kind="all", chat=None):

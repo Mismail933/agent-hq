@@ -1365,7 +1365,65 @@ def add_eleven_voice(project_id, voice_id, name=""):
     return entry
 
 
+# ---- Rana's design options (design.py, 2.27.0) -------------------------------------------------------------------------
+LIGHT, DARK = "#F5F5F2", "#0B1220"
+
+
+def design_render(folder):
+    """Every option-k/ in folder: icon.svg -> icon-{light,dark}-{1024,256,64}.png, wordmark.svg -> wordmark-{light,dark}.png, and
+    sheet.png (all of them on one page, the 64 px ones shown at real size and enlarged) for Israa and the owner."""
+    import base64
+    from PIL import Image, ImageDraw
+    folder = Path(folder).resolve()   # Remotion runs in its own folder
+    ensure_toolchain()
+    made = []
+    for opt in sorted(folder.glob("option-*")):
+        props = opt / "_props.json"
+        for part, (w, h) in (("icon", (1024, 1024)), ("wordmark", (1600, 480))):
+            svg = (opt / f"{part}.svg").read_bytes()
+            src = "data:image/svg+xml;base64," + base64.b64encode(svg).decode()
+            for tone, bg in (("light", LIGHT), ("dark", DARK)):
+                props.write_text(json.dumps({"src": src, "bg": bg, "w": w, "h": h}), encoding="utf-8")
+                out = opt / f"{part}-{tone}{'-1024' if part == 'icon' else ''}.png"
+                say(f"{opt.name}: {part} on {tone}")
+                remotion(["still", "src/index.jsx", "SvgStill", str(out), f"--props={props}", "--log=error", "--overwrite"], timeout=900)
+                if part == "icon":
+                    big = Image.open(out).convert("RGB")
+                    for size in (256, 64):
+                        big.resize((size, size), Image.LANCZOS).save(opt / f"icon-{tone}-{size}.png")
+        props.unlink(missing_ok=True)
+        # the contact sheet: icon at 256 and 64 (real size, and 64 blown up 4x to show what survives) on light and dark, wordmarks
+        sheet = Image.new("RGB", (1400, 830), "#FFFFFF")
+        d = ImageDraw.Draw(sheet)
+        d.text((24, 16), f"{opt.name}: icon at 256 px, at 64 px (real size), 64 px enlarged; wordmark. Light and dark.", fill="#111111")
+        for row, tone in enumerate(("light", "dark")):
+            y = 48 + row * 300
+            sheet.paste(Image.open(opt / f"icon-{tone}-256.png"), (24, y))
+            small = Image.open(opt / f"icon-{tone}-64.png")
+            sheet.paste(small, (310, y + 96))
+            sheet.paste(small.resize((256, 256), Image.NEAREST), (410, y))
+            word = Image.open(opt / f"wordmark-{tone}.png")
+            word.thumbnail((700, 256))
+            sheet.paste(word, (690, y))
+        for col, tone in enumerate(("light", "dark")):   # the wordmark small, as in a page header
+            word = Image.open(opt / f"wordmark-{tone}.png")
+            word.thumbnail((360, 108))
+            sheet.paste(word, (24 + col * 400, 680))
+        d.text((24, 800), "Wordmarks at header size (360 px wide).", fill="#111111")
+        sheet.save(opt / "sheet.png")
+        made.append(opt.name)
+    return {"options": made}
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "design-render":   # animate.py design-render <folder> (Rana's design options)
+        cp.init()
+        try:
+            print("RESULT " + json.dumps(design_render(sys.argv[2])))
+        except Blocked as e:
+            print("BLOCKED " + str(e))
+            sys.exit(2)
+        return
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["render", "check", "samples", "setup", "characters", "sheets", "animator-test", "voice-add", "render-voices", "cast-samples"])
     ap.add_argument("arg", nargs="?", type=int)

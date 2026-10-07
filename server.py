@@ -50,6 +50,7 @@ import quality            # noqa: E402
 import sfx                # noqa: E402
 import ghassan            # noqa: E402
 import phone              # noqa: E402
+import design             # noqa: E402
 import rules              # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
@@ -377,12 +378,12 @@ def job_label(kind, a):
     n = len(a[1]) if kind == "render_voices" and isinstance(a[1], list) else 0
     return {"render": "Video #{0}", "render_voices": "Video #{0} in %d voices" % n,
             "characters": "The characters for project {0}", "char_review": "Israa's check of project {0}'s characters",
-            "animator_test": "The Animator's test scene for episode {1}", "voice_match": "The voice match for project {0}",
+            "animator_test": "Rana's test scene for episode {1}", "voice_match": "The voice match for project {0}",
             "library_add": "Adding the voice {3}", "voice_add": "Adding the voice {2}",
             "cast_samples": "The cast's voice samples for project {0}", "samples": "The narrator samples for project {0}",
             "batch": "Calina's scripts for project {0}", "scout_refs": "The Scout's reference board for project {0}",
             "review": "Calina's learning note for project {0}", "plan": "Serge's plan for idea #{0}",
-            "israa_video": "Israa's review of video #{0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -406,10 +407,30 @@ def journaled(kind, fn):
     return run
 
 
-JOBS = {"render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
+JOBS = {"design": "run_design", "render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
         "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video"}
+
+
+LOGO_BRIEF = ("The logo of Agent HQ: the owner's AI company, a small team of AI agents (each with a name and a job) run by a manager, "
+              "Atlas, for the owner. It finds, judges and builds legal online businesses. Square icon + wordmark; works on light and dark; "
+              "readable at 64 px. The office's look is a calm sci-fi HUD (cyan, violet, deep navy), but the logo may go its own way.")
+
+
+def first_logo():
+    """The owner asked Rana for the company's logo (2026-10-08): she starts it by herself once, the first time the office runs with her."""
+    time.sleep(150)
+    marker = design.BRAND / ".logo-requested"
+    if os.environ.get("HQ_SIMULATE") == "1" or marker.exists() or (design.BRAND / "logo").exists() or not shorts_python():
+        return
+    while anim_busy() or RESTARTING["on"] or cp.STOP_FILE.exists():
+        time.sleep(60)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(time.strftime("%Y-%m-%d %H:%M"), encoding="utf-8")
+    atlas_says("**Rana is starting on the Agent HQ logo you asked for:** 3 options, each checked by Israa at 64 px and on light "
+               "and dark. They come to your phone with a Use this button (about 20 minutes).")
+    run_design("logo", LOGO_BRIEF)
 
 
 def resume_jobs():
@@ -476,7 +497,7 @@ def unblock(agent):
     who = agent.strip().capitalize() if agent.strip().lower() != "all" else "all"
     kinds = set(RUNNING_JOBS.values())
     done = []
-    if who in ("Calina", "Animator", "all"):
+    if who in ("Calina", "Rana", "Animator", "all"):
         cp.log("Atlas", "block_cleared", None, {"agent": "Calina"})   # the office forgets old "video failed" blocks
         done.append("Calina: old video failures no longer show as a block (the next render shows the truth)")
         for flag, kind, what in ((CHARMAKING, "characters", "characters being made"), (ANIMTEST, "animator_test", "a test scene"),
@@ -502,7 +523,7 @@ def unblock(agent):
         ghassan.STATUS.update(state="idle", request="")
         back = ghassan.reopen_stale()
         done.append("Ghassan: status reset" + (f"; reopened: {'; '.join(back)}" if back else ""))
-    if who not in ("Calina", "Animator", "Sage", "Vera", "Atlas", "Ghassan", "all"):
+    if who not in ("Calina", "Rana", "Animator", "Sage", "Vera", "Atlas", "Ghassan", "all"):
         done.append(f"{agent}: nothing can be stuck for this agent outside a running job (their locks free themselves when the job ends)")
     return done or ["Nothing was blocked."]
 
@@ -631,6 +652,25 @@ def phone_cards():
     return out
 
 
+def design_cards():
+    out = []
+    for d in design.open_designs():
+        if d.get("status") != "ready":
+            continue
+        media = []
+        for k, o in enumerate(d["options"], 1):
+            r = o.get("review") or {}
+            if o.get("sheet") and (ROOT / o["sheet"]).exists():
+                media.append({"kind": "photo", "path": str(ROOT / o["sheet"]),
+                              "caption": f"Option {k}: {o.get('name', '')}. {o.get('idea', '')}"
+                                         + (f"\nIsraa: {r.get('verdict')}. {r.get('summary', '')}" if r else ""),
+                              "buttons": [[(f"✅ Use option {k}", f"DZ:{d['slug']}.{d['version']}.{k}"[:64])]]})
+        out.append({"key": f"design:{d['slug']}:{d['version']}", "text": f"🎨 <b>Rana's {d['what']} options are ready</b> ({len(media)}). "
+                    "Each picture shows it at 256 and 64 px on light and dark. Tap <b>Use option</b> under the one you want.",
+                    "media": media, "buttons": []})
+    return out
+
+
 def working_now():
     """Who is working right now, as short lines (the phone's /status)."""
     out = []
@@ -648,6 +688,8 @@ def working_now():
         out.append(f"Calina is making video #{RENDERING['episode']}")
     if quality.REVIEWING.locked():
         out.append("Israa is reviewing")
+    if DESIGNING["what"]:
+        out.append(f"Rana is drawing {DESIGNING['what']}")
     if ghassan.LOCK.locked():
         out.append("Ghassan is building: " + str(ghassan.STATUS.get("request") or "a request"))
     busy = anim_busy()
@@ -736,14 +778,49 @@ def anim_busy():
     if CHARMAKING["pid"] is not None:
         return "the characters are being made"
     if ANIMTEST["pid"] is not None:
-        return "the Animator is writing a test scene"
+        return "Rana is writing a test scene"
     if SAMPLING["pid"] is not None:
         return "the voice samples are being made"
     if VOICEWORK["what"]:
         return VOICEWORK["what"]
     if CASTSAMPLING["pid"] is not None:
         return "the cast's voice samples are being made"
+    if DESIGNING["what"]:
+        return f"Rana is drawing {DESIGNING['what']}"
     return ""
+
+
+DESIGNING = {"what": ""}
+
+
+def run_design(what, brief=""):
+    """Rana draws options, the engine renders them, Israa checks them (weak ones go back to Rana once), the owner picks."""
+    DESIGNING["what"] = what
+    try:
+        cp.log("Rana", "design_started", None, {"what": what})
+        opts = design.ask_rana(what, brief)
+        folder = design.save_options(what, opts)
+        _animate("design-render", folder, timeout=3600)
+        rv = design.review(folder, what, brief)
+        weak = {k: r for k, r in rv.items() if r.get("verdict") == "weak"}
+        if weak:
+            notes = "\n".join(f"Option {k} ({opts[k - 1]['name'] if k <= len(opts) else ''}): {r.get('summary', '')} Fixes: {'; '.join(r.get('fixes') or [])}"
+                               for k, r in weak.items())
+            new = design.ask_rana(what, brief + f"\nRedraw only these {len(weak)} option(s), one each, fixing Israa's notes.", notes)
+            for (k, _), o in zip(weak.items(), new):
+                design.replace_option(folder, k, o)
+            _animate("design-render", folder, timeout=3600)
+            rv.update(design.review(folder, what, brief))
+        state = design.write_state(folder, what, brief, "ready", rv)
+        good = sum(1 for o in state["options"] if (o.get("review") or {}).get("verdict") == "good")
+        cp.log("Rana", "design_ready", None, {"what": what, "version": state["version"], "options": len(state["options"])})
+        atlas_says(f"**Rana's {what} options are ready: {len(state['options'])}** ({good} passed Israa's check at 64 px and on light and dark). "
+                   "Look at them on the Today page or on your phone, and pick one with **Use this**.")
+    except Exception as ex:
+        cp.log("Rana", "design_failed", None, {"what": what, "reason": str(ex)[:300]})
+        atlas_says(f"Rana couldn't finish the {what}: {ex}")
+    finally:
+        DESIGNING["what"] = ""
 
 
 def animator_test_view(p):
@@ -754,7 +831,7 @@ def animator_test_view(p):
 
 
 def run_animator_test(pid, eid, index):
-    """The Animator writes one bespoke scene; it is rendered next to the kit's version for the owner to compare."""
+    """Rana writes one bespoke scene; it is rendered next to the kit's version for the owner to compare."""
     ANIMTEST["pid"] = pid
     try:
         py = shorts_python()
@@ -766,11 +843,11 @@ def run_animator_test(pid, eid, index):
         if not any(l.startswith("RESULT ") for l in lines):
             blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
             raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
-        cp.log("Animator", "animator_test_ready", None, {"project": pid, "episode": eid, "scene": index})
-        atlas_says("**The Animator's test scene is ready.** Open the project's Voice & characters page (Animator test) and watch the kit's version and the Animator's version side by side.")
+        cp.log("Rana", "animator_test_ready", None, {"project": pid, "episode": eid, "scene": index})
+        atlas_says("**Rana's test scene is ready.** Open the project's Voice & characters page (Rana's test scene) and watch the kit's version and the Animator's version side by side.")
     except Exception as ex:
-        cp.log("Animator", "animator_test_failed", None, {"reason": str(ex)[:300]})
-        atlas_says(f"The Animator's test scene couldn't be made: {ex}")
+        cp.log("Rana", "animator_test_failed", None, {"reason": str(ex)[:300]})
+        atlas_says(f"Rana's test scene couldn't be made: {ex}")
     finally:
         ANIMTEST["pid"] = None
 
@@ -1142,6 +1219,7 @@ class Handler(BaseHTTPRequestHandler):
                 "scouting_refs": quality.SCOUTING.locked(), "reviewing": quality.REVIEWING.locked(),
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
+                "designs": [d for d in design.open_designs() if d.get("status") == "ready"],
                 "ghassan": dict(ghassan.STATUS, pending={k: v for k, v in (ghassan.pending() or {}).items() if k != "diff"} or None),
                 "voice_match": {p["id"]: voice_match_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "cast": {p["id"]: cast_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
@@ -1205,6 +1283,14 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/ghassan/diff":   # the full change waiting for the owner's Ship click
             p = ghassan.pending() or {}
             return self._send(200, {"title": p.get("title"), "stat": p.get("stat", ""), "diff": p.get("diff", ""), "cut": p.get("diff_cut")})
+        if u.path == "/api/design":   # Rana's design options waiting for the owner, and the chosen ones
+            return self._send(200, {"designs": design.open_designs()})
+        if u.path.startswith("/api/brand/"):   # /api/brand/<slug>/v<N>/option-<k>/<file>.png: Rana's renders
+            rel = u.path[len("/api/brand/"):]
+            path = (design.BRAND / rel).resolve()
+            if design.BRAND.resolve() not in path.parents or path.suffix.lower() != ".png" or not path.exists():
+                return self._send(404, {"error": "no such image"})
+            return self._send_file(path, "image/png")
         if u.path.startswith("/api/upload/"):   # /api/upload/<file>: an image the owner attached in the chat
             name = Path(u.path.rsplit("/", 1)[1]).name
             path = UPLOADS / name
@@ -1435,7 +1521,7 @@ class Handler(BaseHTTPRequestHandler):
                 cp.set_project_meta(pid, characters_approved=False)   # new tests, new approval
                 threading.Thread(target=run_characters, args=(pid, what != "sheets"), daemon=True).start()
                 return self._send(202, {"ok": True, "message": "Making the characters: about 40 minutes (eight characters). You'll be told when they're ready."})
-            if action == "animator-test":   # the Animator writes one bespoke scene to compare with the kit's
+            if action == "animator-test":   # Rana writes one bespoke scene to compare with the kit's
                 body = self._json_body()
                 try:
                     eid, idx = int(body.get("episode")), int(body.get("scene", 6))
@@ -1444,7 +1530,7 @@ class Handler(BaseHTTPRequestHandler):
                 if anim_busy():
                     return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
                 threading.Thread(target=run_animator_test, args=(pid, eid, idx), daemon=True).start()
-                return self._send(202, {"ok": True, "message": "The Animator is writing the scene: about 10 minutes."})
+                return self._send(202, {"ok": True, "message": "Rana is writing the scene: about 10 minutes."})
             if action == "voice-match":   # record | match | add (a Voice Library voice into the owner's account)
                 body = self._json_body()
                 what = body.get("action", "match")
@@ -1701,6 +1787,23 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "message": f"{key}: {short(old)} → {short(new)}. Live now, no restart."})
         if u.path.startswith("/api/unblock/"):
             return self._send(200, {"ok": True, "message": "\n".join(unblock(u.path.rsplit("/", 1)[1]))})
+        if u.path == "/api/design":   # Rana draws: {what, brief} (the owner, or Atlas: hq design)
+            body = self._json_body()
+            what = str(body.get("what", "")).strip()[:60]
+            if not what:
+                return self._send(400, {"error": "Say what to design, e.g. logo."})
+            if anim_busy():
+                return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+            threading.Thread(target=run_design, args=(what, clip(body.get("brief", ""), "notes")[0]), daemon=True).start()
+            return self._send(202, {"ok": True, "message": f"Rana is drawing the {what}: 3 options, rendered and checked by Israa (about 15-25 minutes)."})
+        if u.path.startswith("/api/design/"):   # /api/design/<slug>/<version>/choose {option}
+            parts = u.path.strip("/").split("/")
+            try:
+                msg = design.choose(parts[2], int(parts[3]), int(self._json_body().get("option", 0)),
+                                    "Owner" if len(parts) > 4 and parts[4] == "choose" else "Owner")
+            except (ValueError, IndexError, OSError) as e:
+                return self._send(400, {"error": f"Couldn't choose that: {e}"})
+            return self._send(200, {"ok": True, "message": msg})
         if u.path == "/api/phone/resend":   # Atlas: hq phone-resend [kind]
             try:
                 n = phone.resend(str(self._json_body().get("kind", "all")))
@@ -1814,8 +1917,10 @@ def main():
     threading.Thread(target=ghassan_loop, daemon=True).start()
     phone.STATUS_FN[0] = working_now
     phone.PROVIDERS.append(phone_cards)
+    phone.PROVIDERS.append(design_cards)
     phone.start(srv.server_port)
     threading.Thread(target=resume_jobs, daemon=True).start()
+    threading.Thread(target=first_logo, daemon=True).start()
     if os.environ.get("HQ_SIMULATE") != "1":
         threading.Thread(target=mark_healthy, daemon=True).start()
     if os.environ.get("HQ_NO_LND") != "1":

@@ -1216,7 +1216,7 @@ function furnish(d) {
   }
 }
 
-const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}, Richard:{shell:'#E2E8F0', visor:'#A3E635'}, Scout:{shell:'#CBD5E1', visor:'#93C5FD'}, Israa:{shell:'#F8FAFC', visor:'#FDE68A'}, Animator:{shell:'#E2E8F0', visor:'#F0ABFC'}, Ghassan:{shell:'#CBD5E1', visor:'#34D399'}};
+const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}, Richard:{shell:'#E2E8F0', visor:'#A3E635'}, Scout:{shell:'#CBD5E1', visor:'#93C5FD'}, Israa:{shell:'#F8FAFC', visor:'#FDE68A'}, Rana:{shell:'#E2E8F0', visor:'#F0ABFC'}, Ghassan:{shell:'#CBD5E1', visor:'#34D399'}};
 const STC = {work:'#34D399', wait:'#FBBF24', block:'#F43F5E', idle:'#64748B'};
 const STL = {work:'WORKING', wait:'WAITING FOR YOU', block:'BLOCKED', idle:'IDLE'};
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -1510,7 +1510,7 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
-let voiceMatch = {}, castVoices = {}, musicState = {}, ghassan = {};
+let voiceMatch = {}, castVoices = {}, musicState = {}, ghassan = {}, designs = [];
 let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {}, refboards = {}, characters = {}, animTest = {}, eleven = {}, boardUnlocked = {}, scoutingRefs = false, boardDraft = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) { ideaTab = id; }   // the old desk tabs are pages now; nothing jumps on its own
@@ -1771,12 +1771,12 @@ function animHtml(p) {
   if ((p.meta || {}).format !== 'animated_v1') return '';
   const t = (animTest || {})[p.id] || {};
   const v = n => `/api/anim-file/${p.id}/${n}`;
-  return `<div class="chars"><b style="color:var(--ink)">Animator test</b>
-    <p class="src" style="margin:0">One scene, drawn two ways: the fixed kit (left) and a bespoke animation the Animator wrote from scratch for that scene (right). Tell Atlas which you prefer.</p>
-    ${t.making ? '<p class="src"><b>The Animator is writing the scene…</b> about 10 minutes.</p>' : ''}
+  return `<div class="chars"><b style="color:var(--ink)">Rana's test scene</b>
+    <p class="src" style="margin:0">One scene, drawn two ways: the fixed kit (left) and a bespoke animation Rana wrote from scratch for that scene (right). Tell Atlas which you prefer.</p>
+    ${t.making ? '<p class="src"><b>Rana is writing the scene…</b> about 10 minutes.</p>' : ''}
     ${t.kit ? `<p class="src" style="margin:0">Scene ${t.scene} of episode #${t.episode}: “${esc(t.voice_line || '')}”</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><span class="src">Kit</span><video controls preload="metadata" style="width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--line-2);border-radius:4px" src="${v('kit.mp4')}"></video></div>
-      <div><span class="src">Animator</span><video controls preload="metadata" style="width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--line-2);border-radius:4px" src="${v('animator.mp4')}"></video></div></div>` : (t.making ? '' : '<p class="src" style="margin:0">No test yet.</p>')}
+      <div><span class="src">Rana</span><video controls preload="metadata" style="width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--line-2);border-radius:4px" src="${v('animator.mp4')}"></video></div></div>` : (t.making ? '' : '<p class="src" style="margin:0">No test yet.</p>')}
     <div class="acts"><button class="btn sm ghost" type="button" data-animtest="${p.id}" ${t.making ? 'disabled' : ''}>${t.kit ? 'Run the test again' : 'Run the first test (Earth diagram)'}</button></div></div>`;
 }
 function voiceHtml(p) {
@@ -1853,6 +1853,16 @@ async function contentAct(url, body, okMsg) {
     toast(r.ok ? (j.warning ? okMsg + ' ' + j.warning : (j.message || okMsg)) : (j.error || 'That did not work.'));
   } catch { toast("Can't reach the engine."); }
   poll();
+}
+function openDesign(slug) {   // Rana's options (design.py): each contact sheet, Israa's verdict, Use this
+  const d = designs.find(x => x.slug === slug); if (!d) return;
+  $('#ovTitle').textContent = `Rana's ${d.what} options`; const pill = $('#ovPill'); pill.style.color = ''; pill.className = 'pill'; pill.textContent = 'pick one';
+  $('#ovBody').innerHTML = `<div class="brief">${d.brief ? `<p>Brief: ${esc(d.brief)}</p>` : ''}${d.options.map((o, i) => { const r = o.review || {};
+    return `<section style="margin:0 0 18px"><p><b>Option ${i + 1}: ${esc(o.name || '')}</b> · ${esc(o.idea || '')}</p>
+      ${r.verdict ? `<p class="src">Israa: <b>${esc(r.verdict)}</b>${r.legible_64 === false ? ' · not readable at 64 px' : ''}${r.light_and_dark === false ? ' · fails on light or dark' : ''}. ${esc(r.summary || '')}</p>` : ''}
+      ${o.sheet ? `<img src="/api/brand/${o.sheet.split('content/brand/')[1]}" alt="Option ${i + 1} at several sizes on light and dark" style="width:100%;border:1px solid var(--line-2);border-radius:4px;background:#fff">` : ''}
+      <button class="btn sm" type="button" data-do="designpick:${esc(d.slug)}:${d.version}:${i + 1}">Use option ${i + 1}</button></section>`; }).join('')}</div>`;
+  $('#overlay').hidden = false; $('#ovClose').focus();
 }
 async function openGhassanDiff() {
   const r = await fetch('/api/ghassan/diff'); if (!r.ok) return; const g = await r.json();
@@ -2098,7 +2108,7 @@ async function pollOnce() {
   renderLimits();
   if (Date.now() - (window._phoneAt || 0) > 5000) { window._phoneAt = Date.now(); renderPhone(); renderRules(); }
   producingFor = s.producing_project ?? null; reviewing = !!s.reviewing; atlasLimit = s.atlas_limit || null;
-  production = s.production || {}; voiceSamples = s.voice_samples || {}; ghassan = s.ghassan || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + vmKey() + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; ghassan = s.ghassan || {}; designs = s.designs || []; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + vmKey() + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
@@ -2259,6 +2269,8 @@ function hqWaits() {
   const l = lndIdeas.filter(i => i.status === 'new');
   if (l.length) out.push({kind:'lnd', who:'Richard', t:`${l.length} improvement idea${l.length === 1 ? '' : 's'} from Richard`, d:l.map(i => (i.data || {}).title || i.id).join(' · '), acts:[['Review', 'go:lnd', 'pri']]});
   const g = (ghassan || {}).pending;   // Ghassan's checked change: nothing reaches GitHub or this PC until the owner ships it
+  for (const d of designs) out.push({kind:'design', who:'Rana', t:`Rana's ${d.what} options are ready`,
+    d:`${d.options.length} options, each at 256 and 64 px on light and dark. Israa checked them. Pick the one you want.`, acts:[['Look and pick', `design:${d.slug}`, 'pri']]});
   if (g) out.unshift({kind:'ghassan', who:'Ghassan', t:`Ready to ship: ${g.title}`, d:`${g.summary || ''} It passed every check (${(g.files || []).length} file${(g.files || []).length === 1 ? '' : 's'} changed). Ship puts it on your PC and restarts the office.`,
     acts:[['See the change', 'gdiff'], ['Ship', 'gship', 'pri'], ['Discard', 'gdiscard']]});
   return out;
@@ -2293,7 +2305,7 @@ function computeStates() {
     else if (name === 'Israa' && reviewing) S = work('Reviewing', a.activity && a.activity !== 'At station' ? a.activity : 'Reviewing scripts or a video.');
     else if (name === 'Ghassan' && ghassan.state === 'working') S = work('Building', 'Building: ' + (ghassan.request || 'a request from Atlas'));
     else if ((name === 'Sage' && live && JOB.step === 'research') || (name === 'Vera' && live && JOB.step === 'judgment')) S = work(short(JOB.title, 34), (name === 'Sage' ? 'Researching: ' : 'Judging: ') + JOB.title);
-    else if (name === 'Animator' && Object.values(animTest || {}).some(t => t && t.making)) S = work('Writing a scene');
+    else if (name === 'Rana' && Object.values(animTest || {}).some(t => t && t.making)) S = work('Writing a scene');
     else if (a.working) S = work(short(a.activity || 'Working', 40), a.activity);
     else if (name === 'Atlas' && atlasLimit) S = {s:'block', tag:'Plan limit until ' + hhmm(atlasLimit.until), title:'Atlas on this PC is at the Claude plan limit', why:`Until ${hhmm(atlasLimit.until)}. The cloud Atlas answers your messages meanwhile (1-3 minutes each).`};
     else if (name === 'Doulya' && inbox.length) S = wait(`${inbox.length} pitch${inbox.length === 1 ? '' : 'es'} for you`, `${inbox.length} idea${pc(inbox.length)} in your inbox. Nothing is researched until you say so.`, [['See the pitches', 'go:ideas', 'pri']]);
@@ -2351,7 +2363,7 @@ function renderSideNav() {
   const pages = [['overview', 'Overview', 0], ['eps', 'Episodes', badge(['script', 'assemble', 'clips', 'upload'])]];
   if (P.animated) pages.push(['voice', 'Voice & characters', badge(['voice', 'chars'])]);
   pages.push(['refs', 'Reference board', badge(['board'])], ['plan', 'Plan', 0]);
-  const team = ['Calina', 'Israa', 'Scout', 'Atlas', P.animated ? 'Animator' : ''].filter(x => x && agents[x]);
+  const team = ['Calina', 'Israa', 'Scout', 'Atlas', P.animated ? 'Rana' : ''].filter(x => x && agents[x]);
   el.innerHTML = `<button class="back" type="button" data-do="go:today">${icon('back')}Back to HQ</button>
     <div class="pcard"><span class="mono">${esc(P.mono)}</span><b>${esc(P.name)}</b><span>${esc(P.type)} · plan ${P.id}</span><span class="stp ${n ? 'wait' : 'work'}">${n ? n + ' waiting for you' : 'Nothing waits for you'}</span></div>
     <nav class="nav" aria-label="${esc(P.name)}">${pages.map(([k, l, b]) => `<button class="nl ${sub === k ? 'on' : ''}" type="button" data-do="sub:${P.id}:${k}" ${sub === k ? 'aria-current="page"' : ''}>${icon(k)}<span class="tx">${l}</span>${b ? `<span class="badge">${b}</span>` : ''}</button>`).join('')}</nav>
@@ -2474,7 +2486,7 @@ function projectHtml(P) {
   const writeBtn = unlocked ? `<button class="btn" type="button" data-do="batchopen">Write new scripts</button>` : `<button class="btn quiet" type="button" data-do="sub:${P.id}:refs" title="Calina is locked until you approve a reference board">Choose a direction first</button>`;
   if (sub === 'overview') {
     const c = epCounts(P.id), pr = (production || {})[P.id] || {};
-    const team = ['Calina', 'Israa', 'Scout', 'Atlas', P.animated ? 'Animator' : ''].filter(x => x && agents[x]);
+    const team = ['Calina', 'Israa', 'Scout', 'Atlas', P.animated ? 'Rana' : ''].filter(x => x && agents[x]);
     const mine = feed.filter(f => f.pid === P.id || (f.ep && (episodes.find(e => e.id === f.ep) || {}).project_id === P.id)).slice(0, 6);
     return `<section class="card hero"><div class="htop"><div class="hid"><span class="mono">${esc(P.mono)}</span><div><h1>${esc(P.name)}</h1>
         <div class="legend"><span class="stp plain">${esc(P.type)}</span>${ch.name ? `<span class="stp plain">${/^https?:\/\//.test(ch.url || '') ? `<a href="${esc(ch.url)}" target="_blank" rel="noopener">${esc(ch.name)} ${esc(ch.handle || '')}</a>` : esc(ch.name)}</span>` : ''}<span class="stp plain">${esc(S.label)} stage</span></div></div></div>
@@ -2567,6 +2579,8 @@ function doAction(a) {
     case 'idea': return openIdea(+x);
     case 'retry': return contentAct('/api/retry/' + x, {}, 'Trying again. Follow it in Ideas.');
     case 'gdiff': return openGhassanDiff();
+    case 'design': return openDesign(x);
+    case 'designpick': { const q = a.split(':'); $('#overlay').hidden = true; return contentAct(`/api/design/${q[1]}/${q[2]}/choose`, {option: +q[3]}, 'Chosen.'); }
     case 'gship': if (!confirm('Ship Ghassan\'s change? It goes on GitHub, and the office restarts by itself to load it (about a minute).')) return; return contentAct('/api/ghassan/ship', {by: 'owner'}, 'Shipped. The office restarts in a moment.');
     case 'gdiscard': return contentAct('/api/ghassan/discard', {by: 'owner'}, 'Discarded.');
     case 'render': { if (rendering) { toast('Another video is being made. Try again when it finishes.'); return; } rendering = +x; renderNeeds(); return contentAct(`/api/episode/${x}/render`, {}, 'Calina is making the video. It takes 10-15 minutes.'); }
@@ -2696,7 +2710,7 @@ $('#contentTop').addEventListener('input', e => { if (e.target.matches('[data-bl
 $('#contentTop').addEventListener('click', e => {
   if (e.target.closest('#episodes')) return;
   const at = e.target.closest('[data-animtest]');
-  if (at) { contentAct(`/api/project/${at.dataset.animtest}/animator-test`, {episode: 14, scene: 6}, 'The Animator is writing the scene.'); return; }
+  if (at) { contentAct(`/api/project/${at.dataset.animtest}/animator-test`, {episode: 14, scene: 6}, 'Rana is writing the scene.'); return; }
   const ch = e.target.closest('[data-chact]');
   if (ch) { contentAct(`/api/project/${ch.dataset.pid}/characters`, {action: ch.dataset.chact}, 'Done.'); return; }
   const sc = e.target.closest('[data-scout]');

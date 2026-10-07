@@ -233,7 +233,7 @@ Agents never spend money without the owner's explicit approval.
   (pre_review: off = advice only), `check.stranger_script/video` (off = `_skipped_stranger`, counts as passed and says so),
   `script.auto_split`, `review.video` / `review.voice_versions` (server), `phone.*` (phone.py). Agent instructions: `prompt.<Agent>`
   replaces the code's prompt constant (`PROMPT_TARGET`; must keep exactly its {placeholders}, checked against `code_text()`, which
-  reads the constant from the file with ast; the Animator's isn't formatted) and `prompt.<Agent>.extra` is appended to every run by
+  reads the constant from the file with ast; Rana's isn't formatted) and `prompt.<Agent>.extra` is appended to every run by
   `workers.run` and `llm.run` (`rules.extra`). Atlas: `hq rule list|changed|set|reset|undo|history`, `hq prompt <agent>
   show|extra|append|set --file|reset|undo|history` (through the office's `POST /api/rules`; straight to hq.db if it's closed),
   `hq unblock <agent|all>` (`server.unblock`: clears old video-failure blocks (`block_cleared` event), stale flags whose job isn't
@@ -278,9 +278,20 @@ Agents never spend money without the owner's explicit approval.
     `props.pacing` (longest still stretch). Israa's video review gets that number and criterion 7 (pace, from the sheets); her
     script review criterion 11 (movement and comedy timing). Slide transitions now really slide (CSS px); split parts arrive with a cut.
   - Backdrops redrawn in the cast's style (thin brown lines, muted sepia `K`), new `street` and `desert`; maps: arrowheads, `map.arrows`
-    drawn on one by one, city names pop. Still to do: the Animator drawing missing backdrops waits for the "Animator as the company's
+    drawn on one by one, city names pop. Still to do: Rana drawing missing backdrops waits for the "Animator as the company's
     character artist" request.
-- `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
+- Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits
+  at start). `design.py`: `hq design <what> ["brief"]` (`POST /api/design`, journaled job `design`, uses the animation tools so
+  `anim_busy` says "Rana is drawing ..."): Rana (Opus, Read on the reference images the brief names, copied to her work folder
+  by `_refs`) answers `DESIGN_SCHEMA`: 2-4 options, each a 512x512 icon SVG + a wordmark SVG (fonts from `SAFE_FONTS` only).
+  `clean_svg` refuses script/foreignObject/image/use, event handlers, outside links, @import, entities; 60 KB cap. Saved in
+  content/brand/<what>/v<N>/option-<k>/. `animate.py design-render <folder>` (shorts venv; Remotion still `SvgStill` from a data
+  URL, Pillow): icon 1024/256/64 on light #F5F5F2 and dark #0B1220, wordmark light/dark, `sheet.png` per option. `design.review`:
+  Israa (Read on the sheets) -> legible_64, light_and_dark, verdict good|weak + fixes; weak options are redrawn once with her notes.
+  `design.json` (status ready -> chosen). The owner picks on Today (`openDesign`, images via `/api/brand/...`) or on the phone
+  (`design_cards`, `DZ:<slug>.<v>.<k>`); `design.choose` copies it to content/brand/<what>/chosen/. `first_logo()`: the Agent HQ
+  logo the owner asked for starts by itself once (marker content/brand/.logo-requested).
+- `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2
   repair rounds that feed the real error back, else fall back to the kit scene. One animation job at a time (`server.anim_busy`).

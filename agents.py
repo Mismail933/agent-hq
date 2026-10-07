@@ -40,7 +40,7 @@ REGISTRY = [
     ("Vera",   "Judgment",  "Lead evaluator",     "vera",   ["submit_verdict"]),
     ("Serge",  "Product",   "Product Owner",      "serge",  ["web_search", "submit_plan"]),
     ("Calina", "Content",   "Content Producer",   "calina", ["web_search", "web_fetch", "submit_batch"]),
-    ("Animator", "Content", "Animator (writes custom scenes)", "animator", ["write_scene"]),
+    ("Rana", "Content", "Designer & Animator (characters, backgrounds, logos, scenes)", "animator", ["write_scene", "design"]),
     ("Scout",  "Ideas",     "Reference scout",    "scout",  ["web_search", "web_fetch"]),
     ("Israa",  "Judgment",  "Quality reviewer",   "israa",  ["web_fetch", "web_search", "read_files"]),
     ("Ghassan", "Dev",      "In-house Builder",   "ghassan", ["edit_program"]),
@@ -53,9 +53,14 @@ PIPELINE = threading.Lock()
 SCOUTING = threading.Lock()
 
 
+RETIRED = {"Animator": "Rana"}   # old name -> new name (the owner named her Rana, 2026-10-08)
+
+
 def register_all():
     for name, dept, role, key, tools in REGISTRY:
         cp.register(name, dept, role, settings.MODELS[key], tools)
+    for old, new in RETIRED.items():
+        cp.rename_agent(old, new)
 
 
 def _today():

@@ -268,7 +268,7 @@ def main(argv):
             else:
                 code, reply = office(f"/api/project/{pid}/characters", {"action": what})
                 show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
-        elif cmd == "animator-test":   # the Animator writes ONE bespoke scene beside the kit's: hq animator-test <project> <episode> [scene]
+        elif cmd == "animator-test":   # Rana (Designer & Animator) writes ONE bespoke scene beside the kit's: hq animator-test <project> <episode> [scene]
             code, reply = office(f"/api/project/{int(args[0])}/animator-test", {"episode": args[1], "scene": args[2] if len(args) > 2 else 6})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "credits":   # ElevenLabs characters used this month
@@ -442,6 +442,9 @@ def main(argv):
                 show({"instructions": rules.history(f"prompt.{agent}", 10), "standing": rules.history(f"prompt.{agent}.extra", 10)})
             else:
                 raise IndexError
+        elif cmd == "design":   # Rana draws: hq design <what> ["brief"] (3 options, rendered, checked by Israa, sent to the owner)
+            code, reply = office("/api/design", {"what": args[0], "brief": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "phone-resend":   # push waiting cards to the owner's phone again: all, or one kind
             code, reply = office("/api/phone/resend", {"kind": args[0] if args else "all"})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")

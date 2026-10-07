@@ -174,7 +174,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
       blur = tw < 1;
     }
   }
-  const Bespoke = scene.generated ? GENERATED[scene.generated] : null; // a scene the Animator wrote (animator.py)
+  const Bespoke = scene.generated ? GENERATED[scene.generated] : null; // a scene Rana wrote (animator.py)
   const isMap = scene.backdrop === 'map';
   const isDiagram = scene.backdrop === 'diagram';
   const body = Bespoke ? (

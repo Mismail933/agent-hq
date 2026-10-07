@@ -21,12 +21,12 @@ import time
 
 import control_plane as cp
 
-AGENTS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Animator")
+AGENTS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana")
 # The agents' own instructions: the code's text, replaceable as a whole (`hq prompt <agent> set --file ...`)
 PROMPT_TARGET = {"Doulya": ("agents", "DOULYA_SYSTEM"), "Sage": ("agents", "SAGE_SYSTEM"), "Vera": ("agents", "VERA_SYSTEM"),
                  "Serge": ("agents", "SERGE_SYSTEM"), "Calina": ("agents", "CALINA_SYSTEM_V3"), "Scout": ("quality", "SCOUT_SYSTEM"),
-                 "Israa": ("quality", "ISRAA_BASE"), "Animator": ("animator", "SYSTEM")}
-NOT_FORMATTED = {"Animator"}   # used as is (its braces are code examples, not placeholders)
+                 "Israa": ("quality", "ISRAA_BASE"), "Rana": ("animator", "SYSTEM")}
+NOT_FORMATTED = {"Rana"}   # used as is (its braces are code examples, not placeholders)
 
 
 def _r(group, kind, default, low, high, label, target=None, scale=1):
