@@ -177,6 +177,12 @@ Agents never spend money without the owner's explicit approval.
     `hq frames <id> [version]`.
   - Calina's V3 prompt has a MAKE IT FUN section (hook, narrator personality, characters talk in half the scenes, delivery tags, sfx,
     crowd, honest dialogue); Israa's script review has criteria 9 (fun and life) and 10 (honest dialogue).
+- Atlas sees links and images (2.20.1): `atlas_engine.ALLOW` includes WebFetch and WebSearch (deny keeps git/rm/del/curl/yt-dlp and
+  program-file edits). `hq fetch <link>` (`linkpeek.py`, stdlib; certifi or the video tools' cacert.pem, the system store is stale on
+  his PC) saves image links into `Atlas-HQ/review/refs/`, and for YouTube gives oEmbed title/channel + the watch page's description,
+  length, views and the thumbnail (never video/audio). Office chat: attach button, Ctrl+V paste, drag-and-drop (up to 4 images, 8 MB,
+  PNG/JPG/WEBP/GIF checked by their bytes) -> `Atlas-HQ/review/uploads/`; the paths go into Atlas's prompt so he opens them with Read;
+  thumbnails in the history via `/api/upload/<file>`. The backup (API) and cloud Atlas get the paths but can't open them.
 - `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

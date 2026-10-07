@@ -670,6 +670,29 @@ def ask_atlas(text):
     return f"_(Backup Atlas answering: {why}. Cloud Atlas isn't set up yet.)_\n\n" + (ATLAS.chat(text) or "")
 
 
+UPLOADS = atlas_engine.HOME / "review" / "uploads"   # images the owner attaches in the chat, where Atlas's Read can open them
+MAX_UPLOAD = 8 * 1024 * 1024
+MAX_UPLOADS = 4
+
+
+def save_uploads(items):
+    """The chat's attached images: [{name, data (base64 or data: URL)}] -> saved file names. Images only, checked by their bytes."""
+    import base64
+    import linkpeek
+    names = []
+    for it in (items or [])[:MAX_UPLOADS]:
+        raw = str(it.get("data", ""))
+        raw = raw.split(",", 1)[1] if raw.startswith("data:") else raw
+        try:
+            data = base64.b64decode(raw, validate=False)
+        except ValueError:
+            raise ValueError("One of the images couldn't be read.")
+        if len(data) > MAX_UPLOAD:
+            raise ValueError(f"Each image can be at most {MAX_UPLOAD // (1024 * 1024)} MB.")
+        names.append(linkpeek.save_image(data, UPLOADS, Path(str(it.get("name") or "image")).stem).name)
+    return names
+
+
 def run_chat(text):
     cp.log("Atlas", "chat_received", None, {"text": text[:200]})
     try:
@@ -817,6 +840,13 @@ class Handler(BaseHTTPRequestHandler):
             if not ok:
                 return self._send(404, {"error": "no such file"})
             return self._send_file(path, "image/png" if path.suffix == ".png" else "video/mp4")
+        if u.path.startswith("/api/upload/"):   # /api/upload/<file>: an image the owner attached in the chat
+            name = Path(u.path.rsplit("/", 1)[1]).name
+            path = UPLOADS / name
+            types = {".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
+            if path.suffix.lower() not in types or not path.exists():
+                return self._send(404, {"error": "no such image"})
+            return self._send_file(path, types[path.suffix.lower()])
         if u.path.startswith("/api/voice-ref/"):   # /api/voice-ref/<project>: the recorded reference clip
             try:
                 path = ROOT / "content" / f"project-{int(u.path.strip('/').split('/')[2])}" / "voice-ref" / "reference.wav"
@@ -880,15 +910,29 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urlparse(self.path)
         if u.path == "/api/chat":
-            text, warning = clip(self._json_body().get("text", ""), "chat")
-            if not text:
+            body = self._json_body()
+            text, warning = clip(body.get("text", ""), "chat")
+            if not text and not body.get("images"):
                 return self._send(400, {"error": "empty"})
+            with LOCK:
+                busy_now = STATE["busy"]
+            if busy_now:
+                return self._send(409, {"error": "Atlas is still working on your last message."})
+            try:
+                images = save_uploads(body.get("images"))
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
             with LOCK:
                 if STATE["busy"]:
                     return self._send(409, {"error": "Atlas is still working on your last message."})
                 STATE["busy"] = True
-                CHAT.append({"from": "you", "ts": time.time(), "text": text})
-            threading.Thread(target=run_chat, args=(text,), daemon=True).start()
+                CHAT.append({"from": "you", "ts": time.time(), "text": text, **({"images": images} if images else {})})
+            prompt = text
+            if images:   # Atlas opens them with Read, which shows images
+                prompt = ((text or "(no text, only images)") + f"\n\n[The owner attached {len(images)} image(s) in the chat. Open each with Read to SEE it before you answer: "
+                          + ", ".join(str(UPLOADS / n) for n in images) + "]")
+                cp.log("Owner", "chat_images", None, {"files": images})
+            threading.Thread(target=run_chat, args=(prompt,), daemon=True).start()
             return self._send(202, accepted(warning))
         if u.path == "/api/scout":
             if agents.SCOUTING.locked():

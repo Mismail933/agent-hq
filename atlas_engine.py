@@ -52,12 +52,12 @@ def _rule_path(p):
     return "/" + s
 
 
-ALLOW = ["Bash(python hq.py)", "Bash(python hq.py *)", "Read",
+ALLOW = ["Bash(python hq.py)", "Bash(python hq.py *)", "Read", "WebFetch", "WebSearch",   # 2.20.1: Atlas may look at links (as data)
          "Edit(./atlas-journal.md)", "Edit(./requests-for-builder.md)"]
 
 
 def deny():
-    return ["WebFetch", "WebSearch", "Bash(git *)", "Bash(rm *)", "Bash(del *)",
+    return ["Bash(git *)", "Bash(rm *)", "Bash(del *)", "Bash(curl *)", "Bash(yt-dlp *)",
             f"Edit({_rule_path(ROOT)}/**)", "Edit(./CLAUDE.md)", "Edit(./hq.py)", "Edit(./.claude/**)"]
 
 

@@ -330,7 +330,16 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .suggest{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 8px}
 .suggest button{border:1px solid var(--line-2);background:transparent;border-radius:3px;min-height:36px;padding:6px 10px;font-size:12.5px;text-align:left;color:var(--ink)}
 .suggest button:hover{border-color:var(--cyan);background:rgba(34,211,238,.08)}
-.compose{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.compose{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:flex-end}
+.compose .attach{flex:none;width:46px;height:46px;padding:0;display:grid;place-items:center}
+.compose.drag{outline:2px dashed var(--cyan);outline-offset:-4px}
+.pending{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+.pending:empty{display:none}
+.pending figure{position:relative;margin:0}
+.pending img,.msg .pics img{width:64px;height:64px;object-fit:cover;border:1px solid var(--line-2);border-radius:4px;display:block;background:#000}
+.pending button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line-2);background:var(--panel-3);color:var(--ink);cursor:pointer;font-size:13px;line-height:1;padding:0}
+.msg .pics{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.msg .pics img{width:96px;height:96px}
 .compose textarea{flex:1;min-width:0;border:1px solid var(--line-2);border-radius:4px;padding:11px 12px;font:inherit;font-size:14px;background:rgba(4,8,18,.8);color:var(--ink);resize:none;height:46px}
 .compose textarea::placeholder{color:#6F84A3}
 .btn{border:1px solid var(--cyan);background:rgba(34,211,238,.16);border-radius:4px;min-height:46px;padding:0 14px;font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan-ink);display:inline-flex;align-items:center;gap:6px}
@@ -719,7 +728,10 @@ main.arrive{animation:arrive .5s cubic-bezier(.22,1,.36,1)}
     <div class="msgs" id="msgs" aria-live="polite" tabindex="0" role="region" aria-label="Conversation with Atlas"></div>
     <div class="suggest" id="suggest"></div>
     <form class="compose" id="compose">
-      <textarea id="chatIn" placeholder="Ask Atlas anything" aria-label="Message to Atlas"></textarea>
+      <div class="pending" id="pending" aria-label="Images to send"></div>
+      <input type="file" id="chatFile" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      <button class="btn ghost attach" id="attachBtn" type="button" aria-label="Attach an image (or paste one, or drop it here)" title="Attach an image (or paste with Ctrl+V, or drop it here)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.5 12.6 20.9a5.5 5.5 0 0 1-7.8-7.8l8.9-8.9a3.7 3.7 0 0 1 5.2 5.2l-8.9 8.9a1.8 1.8 0 0 1-2.6-2.6l8.2-8.2"/></svg></button>
+      <textarea id="chatIn" placeholder="Ask Atlas anything (you can paste or drop images)" aria-label="Message to Atlas"></textarea>
       <button class="btn" id="sendBtn" type="submit">Send<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
     </form>
   </div>
@@ -1846,7 +1858,8 @@ async function askPlan(ideaId, notes) {
 const clockOf = ts => new Date(ts * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
 function renderChat() {
   const box = $('#msgs'); const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-  box.innerHTML = chat.map(m => m.from === 'you' ? `<div class="msg you">${esc(m.text)}</div>` : `<div class="msg atlas"><span class="from">ATLAS</span>${md(m.text)}</div>`).join('')
+  const pics = m => (m.images || []).length ? `<div class="pics">${m.images.map(n => { const src = n.startsWith('data:') ? n : '/api/upload/' + encodeURIComponent(n); return `<a href="${src}" target="_blank" rel="noopener"><img alt="Image you sent" src="${src}"></a>`; }).join('')}</div>` : '';
+  box.innerHTML = chat.map(m => m.from === 'you' ? `<div class="msg you">${esc(m.text)}${pics(m)}</div>` : `<div class="msg atlas"><span class="from">ATLAS</span>${md(m.text)}</div>`).join('')
     + (busy ? '<div class="working"><span class="dots"><i></i><i></i><i></i></span>Atlas is thinking. Checking the company can take up to a minute.</div>' : '');
   if (atBottom || busy) box.scrollTop = box.scrollHeight;
   $('#sendBtn').disabled = busy;
@@ -1988,11 +2001,27 @@ async function pollOnce() {
   if (s.events.length) { renderPipe(); renderIdeas(); }
   renderTeam(); renderHud(s); renderNeeds(); renderDetail();
 }
+let pendingImgs = [];   // [{name, data}] waiting to be sent with the next message
+const IMG_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+function renderPending() {
+  $('#pending').innerHTML = pendingImgs.map((p, i) => `<figure><img alt="${esc(p.name)}" src="${p.data}"><button type="button" data-unpend="${i}" aria-label="Remove ${esc(p.name)}">×</button></figure>`).join('');
+}
+function addImages(files) {
+  for (const f of [...files]) {
+    if (!IMG_TYPES.includes(f.type)) { toast('Only images (PNG, JPG, WEBP, GIF).'); continue; }
+    if (f.size > 8 * 1024 * 1024) { toast(`${f.name} is over 8 MB.`); continue; }
+    if (pendingImgs.length >= 4) { toast('Up to 4 images per message.'); break; }
+    const rd = new FileReader();
+    rd.onload = () => { pendingImgs.push({name: f.name || 'pasted.png', data: rd.result}); renderPending(); };
+    rd.readAsDataURL(f);
+  }
+}
 async function send(text) {
-  text = text.trim(); if (!text || busy) return;
-  if (chatCtx) text = `(About ${chatCtx}) ${text}`;   // Atlas knows which project or agent the owner means
-  chat.push({from:'you', text}); busy = true; renderChat();
-  try { const r = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})}); if (!r.ok) { const j = await r.json().catch(() => ({})); chat.push({from:'atlas', text:j.error || 'Could not send.'}); busy = false; renderChat(); } }
+  text = text.trim(); const images = pendingImgs.slice(); if ((!text && !images.length) || busy) return;
+  if (chatCtx && text) text = `(About ${chatCtx}) ${text}`;   // Atlas knows which project or agent the owner means
+  pendingImgs = []; renderPending();
+  chat.push({from:'you', text, images: images.map(p => p.data)}); busy = true; renderChat();
+  try { const r = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, images})}); if (!r.ok) { const j = await r.json().catch(() => ({})); chat.push({from:'atlas', text:j.error || 'Could not send.'}); busy = false; renderChat(); } }
   catch { $('#offline').hidden = false; }
   poll();
 }
@@ -2508,6 +2537,12 @@ $('#ovBody').addEventListener('click', e => {
   else { $('#overlay').hidden = true; go('ideas'); const li = $(`#inbox li[data-id="${id}"]`); if (li) { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); } }
 });
 $('#compose').addEventListener('submit', e => { e.preventDefault(); const t = $('#chatIn').value; $('#chatIn').value = ''; send(t); });
+$('#attachBtn').addEventListener('click', () => $('#chatFile').click());
+$('#chatFile').addEventListener('change', e => { addImages(e.target.files); e.target.value = ''; });
+$('#pending').addEventListener('click', e => { const b = e.target.closest('[data-unpend]'); if (b) { pendingImgs.splice(+b.dataset.unpend, 1); renderPending(); } });
+$('#chatIn').addEventListener('paste', e => { const files = [...(e.clipboardData || {}).items || []].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean); if (files.length) { e.preventDefault(); addImages(files); } });
+['dragenter', 'dragover'].forEach(t => $('#compose').addEventListener(t, e => { if ([...(e.dataTransfer || {}).types || []].includes('Files')) { e.preventDefault(); $('#compose').classList.add('drag'); } }));
+['dragleave', 'drop'].forEach(t => $('#compose').addEventListener(t, e => { $('#compose').classList.remove('drag'); if (t === 'drop' && e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); addImages(e.dataTransfer.files); } }));
 $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#compose').requestSubmit(); } });
 $('#suggest').addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.textContent); });
 $('#ideas').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) openIdea(li.dataset.id); });
