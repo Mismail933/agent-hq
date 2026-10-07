@@ -8,6 +8,7 @@ Atlas's controls for Agent HQ.
                  rule list | rule changed | rule set <key> <value> ["why"] | rule reset <key> | rule undo <key> | rule history <key>
                  prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
+                 phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
@@ -441,6 +442,12 @@ def main(argv):
                 show({"instructions": rules.history(f"prompt.{agent}", 10), "standing": rules.history(f"prompt.{agent}.extra", 10)})
             else:
                 raise IndexError
+        elif cmd == "phone-resend":   # push waiting cards to the owner's phone again: all, or one kind
+            code, reply = office("/api/phone/resend", {"kind": args[0] if args else "all"})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "send-phone":   # a file from content/, briefs/, plans/ or Atlas-HQ/review/ to the owner's phone
+            code, reply = office("/api/phone/send", {"path": args[0], "caption": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "unblock":   # clear what shows an agent as blocked when the cause is gone (never stops real work)
             code, reply = office(f"/api/unblock/{args[0] if args else 'all'}")
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")

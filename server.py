@@ -574,6 +574,63 @@ def ghassan_loop():
         time.sleep(60 * getattr(settings, "GHASSAN_EVERY_MINUTES", 10))
 
 
+def phone_cards():
+    """More waiting cards for the phone (phone.PROVIDERS): voice versions to choose from, characters to approve, the music and
+    the narrator's voice while they're still open. Each card carries its media (videos, sheets, audio) with buttons."""
+    import html as H
+    out = []
+    for e in cp.list_episodes(limit=80):
+        vs = (e["data"] or {}).get("voice_variants") or []
+        if vs:
+            rv = (e["data"] or {}).get("video_review") or {}
+            out.append({"key": f"voices:{e['id']}:{len(vs)}", "text":
+                        f"🎙 <b>Video #{e['id']} in {len(vs)} voices: {H.escape(e['title'])}</b>"
+                        + (f"\n<b>Israa:</b> {H.escape(str(rv.get('verdict', '')))} ({rv.get('score', '?')}/10). {H.escape(str(rv.get('summary', ''))[:400])}" if rv else "")
+                        + "\nWatch each version above and tap <b>Keep</b> under the one you want.",
+                        "media": [{"kind": "video", "path": str(ROOT / v["video"]), "caption": v.get("label", ""),
+                                   "buttons": [[(f"✅ Keep {v.get('label', '')[:40]}", f"KV:{e['id']}.{i}")]]}
+                                  for i, v in enumerate(vs) if (ROOT / v["video"]).exists()],
+                        "buttons": []})
+    for pr in cp.list_projects(20):
+        if pr["status"] != "approved" or (pr.get("meta") or {}).get("format") != "animated_v1":
+            continue
+        pid, meta = pr["id"], pr.get("meta") or {}
+        name = (meta.get("channel") or {}).get("name") or f"project {pid}"
+        lib = quality.load_library(pid) or {}
+        chars = [c for c in lib.get("characters") or [] if c.get("clip")]
+        if chars and not quality.characters_ready(pr) and (lib.get("kit") or "1") == quality.KIT_VERSION:
+            revs = lib.get("reviews") or {}
+            media, lines = [], []
+            for c in chars:
+                nm = quality.CAST_NAMES.get(c["id"], c["id"])
+                r = revs.get(c["id"]) or {}
+                verdict = r.get("verdict") or ("pass" if r.get("shots") and all(x.get("consistent") for x in r["shots"]) else "not checked" if not r else "problems")
+                lines.append(f"• {H.escape(nm)}: Israa says {H.escape(str(verdict))}" + (f" ({H.escape(str(r.get('summary', ''))[:160])})" if r.get("summary") else ""))
+                if c.get("sheet") and (ROOT / c["sheet"]).exists():
+                    media.append({"kind": "photo", "path": str(ROOT / c["sheet"]), "caption": f"{nm}: reference sheet"})
+                if (ROOT / c["clip"]).exists():
+                    media.append({"kind": "video", "path": str(ROOT / c["clip"]), "caption": f"{nm}: test clip"})
+            out.append({"key": f"characters:{pid}:{lib.get('made', '')}", "text":
+                        f"🧑‍🎨 <b>The characters for {H.escape(name)} are ready for your approval</b> ({len(chars)}).\n" + "\n".join(lines)
+                        + "\nNo animated video is made until you approve them.",
+                        "media": media, "buttons": [[("✅ Approve the characters", f"CA:{pid}"), ("↩ Send back", f"CB:{pid}")]]})
+        if not meta.get("music"):
+            tracks = [m for m in sfx.library()["music"] if m["downloaded"]]
+            if tracks:
+                out.append({"key": f"music:{pid}", "text": f"🎵 <b>Pick the background music for {H.escape(name)}</b> (or none). Listen to each above.",
+                            "media": [{"kind": "audio", "path": str(sfx.MUSIC_DIR / f"{m['id']}.mp3"), "caption": f"{m['title']} ({m['mood']})",
+                                       "buttons": [[(f"✅ Use {m['title'][:40]}", f"MU:{pid}.{m['id']}"[:64])]]} for m in tracks],
+                            "buttons": [[("🔇 No music", f"MU:{pid}.none")]]})
+        vs = voice_samples(pr)
+        if vs["voices"] and not vs["chosen"]:
+            out.append({"key": f"voice:{pid}", "text": f"🗣 <b>Pick the narrator's voice for {H.escape(name)}</b>: the same lines in {len(vs['voices'])} voices above.",
+                        "media": [{"kind": "audio", "path": str(ROOT / v["file"]), "caption": v.get("label", ""),
+                                   "buttons": [[(f"✅ Use {v.get('label', '')[:40]}", f"VO:{pid}.{i}")]]}
+                                  for i, v in enumerate(vs["voices"]) if v.get("file") and (ROOT / v["file"]).exists()],
+                        "buttons": []})
+    return out
+
+
 def working_now():
     """Who is working right now, as short lines (the phone's /status)."""
     out = []
@@ -1644,6 +1701,21 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "message": f"{key}: {short(old)} → {short(new)}. Live now, no restart."})
         if u.path.startswith("/api/unblock/"):
             return self._send(200, {"ok": True, "message": "\n".join(unblock(u.path.rsplit("/", 1)[1]))})
+        if u.path == "/api/phone/resend":   # Atlas: hq phone-resend [kind]
+            try:
+                n = phone.resend(str(self._json_body().get("kind", "all")))
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            except phone.TelegramError as e:
+                return self._send(502, {"error": f"Telegram: {e}"})
+            return self._send(200, {"ok": True, "message": f"Sent {n} card(s) to the owner's phone."})
+        if u.path == "/api/phone/send":   # Atlas: hq send-phone <file> ["caption"]
+            body = self._json_body()
+            try:
+                msg = phone.send_file(str(body.get("path", "")), str(body.get("caption", ""))[:900])
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            return self._send(200, {"ok": True, "message": msg})
         if u.path == "/api/phone/unpair":
             phone.unpair()
             cp.log("Owner", "phone_unpaired", None, {})
@@ -1741,6 +1813,7 @@ def main():
     threading.Thread(target=scheduler, daemon=True).start()
     threading.Thread(target=ghassan_loop, daemon=True).start()
     phone.STATUS_FN[0] = working_now
+    phone.PROVIDERS.append(phone_cards)
     phone.start(srv.server_port)
     threading.Thread(target=resume_jobs, daemon=True).start()
     if os.environ.get("HQ_SIMULATE") != "1":

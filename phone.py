@@ -46,6 +46,11 @@ OUT = []          # news waiting to be sent
 OUT_LOCK = threading.Lock()
 SAVE_LOCK = threading.Lock()
 STATUS_FN = [lambda: []]   # server.py sets this: what is running right now, as short lines
+PROVIDERS = []             # server.py adds functions that return more waiting cards (voice versions, characters, music, voices)
+MEDIA_ROOTS = ("content", "briefs", "plans")   # hq send-phone: only files inside these (and Atlas-HQ/review)
+PHOTO = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+AUDIO = {".mp3", ".wav", ".m4a", ".ogg", ".flac"}
+VIDEO = {".mp4", ".mov", ".webm", ".mkv"}
 
 
 # ---- settings ----------------------------------------------------------------------------------------------------------
@@ -327,7 +332,7 @@ def waits():
             out.append({"key": f"upload:{e['id']}", "text":
                         f"📺 <b>Video #{e['id']} is ready to upload: {html.escape(e['title'])}</b>{_review_line(e, 'video_review')}{copy}",
                         "buttons": [[("✅ Mark published", f"EP:{e['id']}"), ("⛔ Don't upload", f"EN:{e['id']}")]],
-                        "video": str(v) if v and v.exists() else None})
+                        "media": [{"kind": "video", "path": str(v), "caption": e["title"]}] if v and v.exists() else []})
     try:
         new = [i for i in cp.list_lnd_ideas(200) if i["status"] == "new"]
     except Exception:
@@ -351,20 +356,70 @@ def waits():
                        f"It passed every check ({len(files)} file{'s' if len(files) != 1 else ''}: {html.escape(', '.join(files[:8]))}).\n"
                        "<i>Ship puts it on your PC and restarts the office.</i>",
                        "buttons": [[("🚀 Ship", "GS"), ("✖ Discard", "GD")]]})
+    for fn in PROVIDERS:
+        try:
+            out += fn() or []
+        except Exception as e:
+            print("Phone cards:", repr(e)[:200], flush=True)
     if cp.STOP_FILE.exists():
         out.insert(0, {"key": "kill", "text": "🛑 <b>Every agent is stopped</b> (the kill switch is on). Nothing runs until you resume.",
                        "buttons": [[("▶ Resume agents", "RES")]]})
     return out
 
 
+def _fit_video(path):
+    """A video small enough for a bot (50 MB): the file itself, or a 720p copy made once next to it (<name>.phone.mp4)."""
+    path = Path(path)
+    if path.stat().st_size <= MAX_VIDEO:
+        return path
+    small = path.with_name(path.stem + ".phone.mp4")
+    if small.exists() and small.stat().st_mtime >= path.stat().st_mtime and small.stat().st_size <= MAX_VIDEO:
+        return small
+    try:
+        import shorts
+        ffmpeg = shorts.find_ffmpeg()
+    except Exception:
+        ffmpeg = "ffmpeg"
+    import subprocess
+    for crf in (28, 33):
+        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", "scale=-2:'min(1280,ih)'", "-c:v", "libx264",
+                        "-preset", "veryfast", "-crf", str(crf), "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(small)],
+                       capture_output=True, timeout=1800, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if small.exists() and small.stat().st_size <= MAX_VIDEO:
+            return small
+    raise TelegramError("too big for the phone even after compressing")
+
+
+def _markup(buttons):
+    return {"inline_keyboard": [[{"text": l, "callback_data": d} for l, d in row] for row in buttons]} if buttons else None
+
+
+def send_media(m, chat=None, quiet=False):
+    """One photo / video / audio / document, with its caption and buttons. Never raises: a failure is said in a message."""
+    chat = chat or owner_chat()
+    path, kind = Path(m["path"]), m.get("kind") or "document"
+    common = dict(chat_id=chat, caption=str(m.get("caption") or "")[:1000] or None, reply_markup=_markup(m.get("buttons")),
+                  disable_notification="true" if quiet else None)
+    try:
+        if kind == "video":
+            tg_file("sendVideo", "video", _fit_video(path), supports_streaming="true", **common)
+        elif kind == "photo" and path.stat().st_size <= 10 * 1024 * 1024:
+            tg_file("sendPhoto", "photo", path, **common)
+        elif kind == "audio" and path.stat().st_size <= MAX_VIDEO:
+            tg_file("sendAudio", "audio", path, **common)
+        elif path.stat().st_size <= MAX_VIDEO:
+            tg_file("sendDocument", "document", path, **common)
+        else:
+            raise TelegramError("over the 50 MB a bot may send")
+        return True
+    except (TelegramError, OSError) as e:
+        send(f"({path.name} couldn't be sent to the phone: {e}. It is in the office.)", chat=chat, plain=True)
+        return False
+
+
 def send_card(w, chat=None, quiet=False):
-    if w.get("video"):
-        try:
-            if Path(w["video"]).stat().st_size <= MAX_VIDEO:
-                tg_file("sendVideo", "video", w["video"], chat_id=chat or owner_chat(), supports_streaming="true",
-                        disable_notification="true" if quiet else None)
-        except (TelegramError, OSError) as e:
-            send(f"(The video couldn't be sent to the phone: {e}. Watch it in the office.)", chat=chat)
+    for m in w.get("media") or []:
+        send_media(m, chat, quiet)
     if w.get("file"):
         try:
             tg_file("sendDocument", "document", w["file"], chat_id=chat or owner_chat(), disable_notification="true" if quiet else None)
@@ -384,6 +439,25 @@ def _send_html(text, buttons, chat, quiet=False):
            disable_notification=True if quiet else None)
 
 
+def _variant(arg):
+    eid, idx = arg.split(".")
+    e = cp.get_episode(int(eid))
+    return f"/api/episode/{eid}/keep-voice", {"id": ((e or {}).get("data") or {}).get("voice_variants", [{}] * 99)[int(idx)].get("id", "")}
+
+
+def _sample(arg):
+    pid, idx = arg.split(".")
+    f = ROOT / "content" / f"project-{pid}" / "voice-samples" / "samples.json"
+    voices = json.loads(f.read_text(encoding="utf-8")).get("voices", []) if f.exists() else []
+    return f"/api/project/{pid}/voice", {"id": voices[int(idx)]["id"] if int(idx) < len(voices) else ""}
+
+
+def _send_back_characters(arg, extra):
+    STATE["reply_to_phone"] = True   # Atlas answers on the phone
+    return "/api/chat", {"phone": True, "text": f"(About project {arg}) I'm sending the characters back. What has to change: "
+                                                f"{(extra or {}).get('note') or '(no note)'}. Have them redrawn and checked again."}
+
+
 # ---- buttons ----------------------------------------------------------------------------------------------------------
 # code -> (what it does, office path, the field a reason goes in or None, extra body, ask to confirm)
 ACTIONS = {
@@ -401,17 +475,27 @@ ACTIONS = {
     "LN": ("No to Richard's idea", "/api/lnd/{}/no", "reason", {}, False),
     "GS": ("Ship Ghassan's change", "/api/ghassan/ship", None, {"by": "owner"}, True),
     "GD": ("Discard Ghassan's change", "/api/ghassan/discard", "reason", {"by": "owner"}, False),
+    "KV": ("Keep this voice", _variant, None, {}, False),
+    "VO": ("Use this voice", _sample, None, {}, False),
+    "MU": ("Use this music", lambda a: (f"/api/project/{a.split('.')[0]}/music", {"id": a.split(".", 1)[1]}), None, {}, False),
+    "CA": ("Approve the characters", "/api/project/{}/characters", None, {"action": "approve"}, False),
+    "CB": ("Send the characters back", _send_back_characters, "note", {}, False),
     "RES": ("Resume every agent", "/api/resume", None, {}, False),
     "STOP": ("Stop every agent", "/api/stop", None, {}, True),
 }
-DONE = {"R": "Sage starts researching it. Vera's verdict comes here when it's done.", "RES": "Every agent can work again.",
+TAKES_NOTE = {"CB"}   # computed routes that put the owner's note in the body themselves
+DONE = {"CB": "Atlas has your note; he'll have them redrawn and checked, and answers here.","R": "Sage starts researching it. Vera's verdict comes here when it's done.", "RES": "Every agent can work again.",
         "STOP": "Every agent is stopped. Send /resume to start again."}
 WHY = {"reason": "Why? Your reason teaches the team.", "note": "What should change? Write it in one message."}
 
 
 def _run_action(code, arg, extra=None):
     label, path, _, body, _ = ACTIONS[code]
-    ok, msg = office(path.format(arg), {**body, **(extra or {})})
+    if callable(path):
+        path, more = path(arg, extra) if code in TAKES_NOTE else path(arg)
+        ok, msg = office(path, {**body, **more, **({} if code in TAKES_NOTE else extra or {})})
+    else:
+        ok, msg = office(path.format(arg), {**body, **(extra or {})})
     msg = DONE.get(code, msg) if ok and msg == "Done." else msg
     cp.log("Owner", "phone_action", None, {"action": label, "on": arg, "ok": ok})
     return ("✅ " if ok else "⚠ ") + f"{label}: {msg}"
@@ -452,7 +536,7 @@ def _clear_buttons(q):
 # ---- messages ---------------------------------------------------------------------------------------------------------
 HELP = ("I'm your Agent HQ on the phone.\n\n"
         "• Write anything and Atlas answers (photos too).\n"
-        "• /today: everything that waits for you, with buttons\n"
+        "• /today: everything that waits for you, with buttons; or one kind: /today ghassan, videos, characters, scripts, ideas, plans, voices\n"
         "• /status: who is working and today's spend\n"
         "• /stop: stop every agent (the kill switch), /resume to start again\n"
         "• /quiet: only what needs you and finished videos, grouped, with quiet hours at night and a morning digest (the default)\n"
@@ -482,13 +566,11 @@ def on_message(m):
     cmd = text.split()[0].split("@")[0].lower() if text.startswith("/") else ""
     if cmd in ("/start", "/help"):
         return send(HELP, chat=chat, plain=True)
-    if cmd == "/today":
-        ws = waits()
-        if not ws:
-            return send("Nothing waits for you right now. 🎉", chat=chat, plain=True)
-        send(f"{len(ws)} thing{'s' if len(ws) != 1 else ''} wait for you:", chat=chat, plain=True)
-        for w in ws[:15]:
-            send_card({**w, "video": None, "file": None}, chat)
+    if cmd == "/today":   # /today, or one kind: /today ghassan | videos | characters | scripts | ideas | plans | voices
+        try:
+            resend(text.split()[1] if len(text.split()) > 1 else "all", chat)
+        except ValueError as e:
+            send(str(e), chat=chat, plain=True)
         return
     if cmd == "/status":
         return _send_html(status_text(), None, chat)
@@ -533,6 +615,48 @@ def _to_atlas(chat, text, m):
         tg("sendChatAction", chat_id=chat, action="typing")
     except TelegramError:
         pass
+
+
+KINDS = {"ghassan": ("ghassan:",), "videos": ("upload:", "voices:", "assemble:"), "characters": ("characters:",),
+         "scripts": ("script:",), "ideas": ("pitch:", "lnd:"), "plans": ("plan:", "board:"), "voices": ("voice:", "music:", "voices:")}
+
+
+def resend(kind="all", chat=None):
+    """Send the cards that wait for the owner again, all or one kind (/today <kind>, hq phone-resend). Returns how many."""
+    kind = (kind or "all").lower().strip()
+    if kind not in KINDS and kind != "all":
+        raise ValueError(f"Kinds: all, {', '.join(KINDS)}")
+    ws = [w for w in waits() if kind == "all" or w["key"].startswith(KINDS[kind])]
+    if not ws:
+        send("Nothing of that kind waits for you right now." if kind != "all" else "Nothing waits for you right now. 🎉", chat=chat, plain=True)
+        return 0
+    send(f"{len(ws)} thing{'s' if len(ws) != 1 else ''} wait{'s' if len(ws) == 1 else ''} for you" + ("" if kind == "all" else f" ({kind})") + ":",
+         chat=chat, plain=True)
+    for w in ws[:15]:
+        send_card(w, chat, quiet=True)
+    _save(seen=sorted(set(_load().get("seen") or []) | {w["key"] for w in ws}))
+    return len(ws)
+
+
+def send_file(path, caption=""):
+    """hq send-phone: a file from the company's folders (content, briefs, plans, Atlas-HQ/review) to the owner's phone."""
+    if not owner_chat():
+        raise ValueError("No phone is paired yet.")
+    import atlas_engine
+    p = Path(path)
+    p = (p if p.is_absolute() else ROOT / p).resolve()
+    roots = [(ROOT / r).resolve() for r in MEDIA_ROOTS] + [(atlas_engine.HOME / "review").resolve()]
+    if not any(p == r or r in p.parents for r in roots):
+        raise ValueError("Only files in content/, briefs/, plans/ or Atlas-HQ/review/ can be sent.")
+    if not p.is_file():
+        raise ValueError(f"No such file: {p}")
+    ext = p.suffix.lower()
+    kind = "photo" if ext in PHOTO else "audio" if ext in AUDIO else "video" if ext in VIDEO else "document"
+    ok = send_media({"kind": kind, "path": str(p), "caption": caption or p.name})
+    cp.log("Atlas", "phone_file_sent", None, {"file": str(p)[-200:], "ok": ok})
+    if not ok:
+        raise ValueError(f"Telegram didn't take {p.name} (see the phone for why).")
+    return f"Sent {p.name} to the owner's phone."
 
 
 def _pair(chat, text, m):

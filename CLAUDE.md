@@ -256,6 +256,15 @@ Agents never spend money without the owner's explicit approval.
   `server.working_now`. Protected from Ghassan. Test with the fake API: `HQ_TELEGRAM_API=http://127.0.0.1:<port>
   TELEGRAM_BOT_TOKEN=123:test HQ_PHONE_STORE=<scratch json>` and a small server that answers getMe/getUpdates/sendMessage and
   queues injected updates. Needs the PC on and the office running.
+  2.26.0 (Atlas's phone requests): cards carry `media` [{kind photo|video|audio|document, path, caption, buttons}] sent by
+  `send_media` (videos over 49 MB get a 720p `<name>.phone.mp4` copy, made once, `_fit_video`). `server.phone_cards` (registered in
+  `phone.PROVIDERS`) adds: voice versions (each video with Keep = `KV:<eid>.<index>` -> keep-voice), characters waiting for
+  approval on the current kit (sheets + test clips + Israa per character; Approve = `CA`, Send back = `CB` asks his note and
+  sends it to Atlas as an '(About project N)' chat message, his answer comes back to the phone), music while none is picked
+  (`MU:<pid>.<track|none>`), the narrator's voice while none is chosen (`VO:<pid>.<index>`). Callback data stays under 64 bytes
+  (indexes, resolved when tapped). `/today <kind>` and Atlas's `hq phone-resend [kind]` (`phone.resend`, `KINDS`: ghassan,
+  videos, characters, scripts, ideas, plans, voices); `hq send-phone <file> ["caption"]` (`phone.send_file`: only content/,
+  briefs/, plans/, Atlas-HQ/review/; type by extension; logged `phone_file_sent`).
 - OverSimplified level (2.22.1, Atlas's pick for the owner's "reach this level" request; the owner's v3 character look is kept):
   - Movement: `Character.jsx ACTIONS` (walk_in/walk_out handled by `Short.jsx walkPos`, turn = facing flip, jump, flinch, facepalm,
     shrug, double_take, nod via `actionMotion`), new poses facepalm (hand drawn over the face) and flinch; cloak/himation end swing
