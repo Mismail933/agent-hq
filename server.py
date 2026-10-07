@@ -56,9 +56,10 @@ import settings           # noqa: E402
 cp.init()
 agents.register_all()
 agents.setup_animated_projects()
+CUT_IDEAS = cp.interrupted_ideas()   # picked up again after start (resume_jobs)
 _n = cp.mark_interrupted()
 if _n:
-    cp.log("Atlas", "halted", None, {"reason": f"{_n} idea(s) were interrupted when the program last closed. Ask Atlas to retry."})
+    cp.log("Atlas", "halted", None, {"reason": f"{_n} idea(s) were interrupted when the program last closed. They are picked up again by themselves."})
 
 ATLAS = agents.Atlas()
 CHAT = [{"from": "atlas", "ts": time.time(),
@@ -343,16 +344,149 @@ def run_cast_samples(pid):
         CASTSAMPLING["pid"] = None
 
 
+# ---- Saved jobs (2.23.0): long work survives a restart -------------------------------------------------------------------
+# Every long job is written to hq.db (cp.add_job) when it starts and marked done when it ends. A job still "running" at the
+# next start was cut off (the window was closed, the PC slept, the office restarted): resume_jobs runs it again. While a
+# restart is coming (RESTARTING), new jobs are saved as "queued" instead and run right after it.
+RESTARTING = {"on": False}
+RUNNING_JOBS = set()   # job ids running in this run of the office
+JOB_TRIES = 2          # a job that was cut off this many times is given up (so a job that kills the office can't loop)
+
+
+def job_label(kind, a):
+    a = list(a) + [None] * 4
+    n = len(a[1]) if kind == "render_voices" and isinstance(a[1], list) else 0
+    return {"render": "Video #{0}", "render_voices": "Video #{0} in %d voices" % n,
+            "characters": "The characters for project {0}", "char_review": "Israa's check of project {0}'s characters",
+            "animator_test": "The Animator's test scene for episode {1}", "voice_match": "The voice match for project {0}",
+            "library_add": "Adding the voice {3}", "voice_add": "Adding the voice {2}",
+            "cast_samples": "The cast's voice samples for project {0}", "samples": "The narrator samples for project {0}",
+            "batch": "Calina's scripts for project {0}", "scout_refs": "The Scout's reference board for project {0}",
+            "review": "Calina's learning note for project {0}", "plan": "Serge's plan for idea #{0}",
+            "israa_video": "Israa's review of video #{0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+
+
+def journaled(kind, fn):
+    def run(*args, _jid=None):
+        if RESTARTING["on"] and _jid is None:
+            cp.add_job(kind, list(args), "queued")
+            atlas_says(f"**{job_label(kind, args)}** starts right after the office restarts into the new version (in a few minutes).")
+            return
+        jid = _jid or cp.add_job(kind, list(args))
+        RUNNING_JOBS.add(jid)
+        try:
+            fn(*args)
+            cp.set_job(jid, "done")
+        except Exception as e:
+            cp.set_job(jid, "failed", str(e)[:300])
+            raise
+        finally:
+            RUNNING_JOBS.discard(jid)
+    run.__name__ = fn.__name__
+    return run
+
+
+JOBS = {"render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
+        "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
+        "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
+        "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video"}
+
+
+def resume_jobs():
+    """At start: run again what the last run of the office didn't finish, one after the other, and say so."""
+    time.sleep(15)
+    jobs, ideas = cp.unfinished_jobs(), list(CUT_IDEAS)
+    if not jobs and not ideas:
+        return
+    while cp.STOP_FILE.exists():   # the kill switch is on: wait for the owner's resume
+        time.sleep(30)
+    todo, said = [], []
+    for j in jobs:
+        a, label = j["args"], job_label(j["kind"], j["args"])
+        if j["kind"] not in JOBS:
+            cp.set_job(j["id"], "given_up", "unknown kind of job")
+            continue
+        if j["state"] == "running" and j["attempts"] >= JOB_TRIES:
+            cp.set_job(j["id"], "given_up", f"cut off {JOB_TRIES + 1} times")
+            said.append(f"- {label}: stopped {JOB_TRIES + 1} times in a row, so I'm not starting it again. Ask Atlas to look.")
+            continue
+        if j["kind"] == "voice_match" and (a + [0, 0])[1]:   # it was recording the speakers: needs the owner to play the video again
+            cp.set_job(j["id"], "given_up", "recording needs the owner")
+            said.append(f"- {label}: it was recording your speakers. Press Record again and play the video.")
+            continue
+        if j["kind"] == "batch":   # only the scripts that weren't saved yet
+            made = sum(1 for e in cp.list_episodes(a[0], limit=100) if e["ts"] >= j["ts"])
+            if made and not a[1]:
+                cp.set_job(j["id"], "done", f"{made} script(s) were saved before the restart")
+                said.append(f"- {label}: {made} script(s) were saved before the restart. Ask Calina for more if you want.")
+                continue
+            if a[1]:
+                a[1] = int(a[1]) - made
+                if a[1] <= 0:
+                    cp.set_job(j["id"], "done", "every script was saved before the restart")
+                    continue
+        cp.set_job(j["id"], "running", attempt=True)   # a queued one counts too, so nothing can loop forever
+        todo.append((j, a))
+        said.append(f"- {label}" + (" (it was waiting for the restart)" if j["state"] == "queued" else ""))
+    said += [f"- Research and judgment of idea #{i}" for i in ideas]
+    if said:
+        atlas_says("**The office restarted. Picking up where it stopped:**\n" + "\n".join(said))
+    for j, a in todo:
+        try:
+            globals()[JOBS[j["kind"]]](*a, _jid=j["id"])
+        except Exception as e:
+            print("Resume:", j["kind"], repr(e), flush=True)
+    for i in ideas:
+        try:
+            run_retry(i)
+        except Exception as e:
+            print("Resume idea:", i, repr(e), flush=True)
+
+
 # ---- Ghassan, the in-house Builder (2.21.0), and the office restarting itself after the owner ships ----------------------
 def office_idle():
     return not (anim_busy() or RENDERING["lock"].locked() or agents.PRODUCING.locked() or agents.PIPELINE.locked()
-                or agents.PLANNING.locked() or STATE["busy"] or MATCHING["pid"] is not None or quality.REVIEWING.locked())
+                or agents.PLANNING.locked() or STATE["busy"] or MATCHING["pid"] is not None or quality.REVIEWING.locked()
+                or RUNNING_JOBS or agents.SCOUTING.locked() or ghassan.LOCK.locked())
+
+
+def loaded_files():
+    """The program files this office has imported: a change to one of them needs a restart."""
+    out = set()
+    for m in list(sys.modules.values()):
+        f = getattr(m, "__file__", None)
+        try:
+            out.add(Path(f).resolve().relative_to(ROOT.resolve()).as_posix())
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+def after_ship():
+    """Ghassan's change is on GitHub. If it only touches files the office doesn't hold in memory, they're copied in place and
+    nothing restarts; otherwise the office restarts once nothing is running (new jobs wait for it)."""
+    files = ghassan.install_hot(loaded_files())
+    if files is not None:
+        if any(f.startswith("atlas/") for f in files):
+            try:
+                atlas_engine.setup()   # Atlas's role and controls in Atlas-HQ
+            except Exception as e:
+                print("Atlas setup after install:", repr(e), flush=True)
+        atlas_says("**Installed without a restart.** Nothing that was running stopped." +
+                   (" Refresh the office page to see the change." if "office.html" in files else ""))
+        return
+    restart_office()
 
 
 def restart_office():
-    """After the owner clicked Ship: restart into the new version once nothing is running. The launcher (launch.py, 2.21.0+)
-    updates and starts the office again when it exits with code 75; an older launcher gets a fresh START-HERE window instead."""
+    """Restart into the new version once nothing is running. The launcher (launch.py, 2.21.0+) updates and starts the office
+    again when it exits with code 75; an older launcher gets a fresh START-HERE window instead."""
+    RESTARTING["on"] = True
     time.sleep(3)
+    if not office_idle():
+        busy = working_now()
+        atlas_says("**The new version installs as soon as the running work is done**" + (": " + "; ".join(busy) if busy else "")
+                   + ". Nothing is stopped; anything new you start meanwhile waits and runs right after the restart.")
     while not office_idle():
         time.sleep(20)
     print("Restarting the office to load the new version...", flush=True)
@@ -367,9 +501,15 @@ def ghassan_loop():
     """Every few minutes: Ghassan takes the next open request from Atlas, if there is one, and builds it up to a checked change
     that waits for the owner's Ship click. Nothing ships by itself."""
     time.sleep(90)   # let the office settle first
+    try:
+        back = ghassan.reopen_stale()
+        if back:
+            atlas_says("**Ghassan picks up again what a restart cut off:** " + "; ".join(back))
+    except Exception as e:
+        print("Ghassan:", repr(e), flush=True)
     while True:
         try:
-            if getattr(settings, "GHASSAN_ON", True) and os.environ.get("HQ_SIMULATE") != "1" and atlas_engine.find_claude():
+            if not RESTARTING["on"] and getattr(settings, "GHASSAN_ON", True) and os.environ.get("HQ_SIMULATE") != "1" and atlas_engine.find_claude():
                 ghassan.turn(atlas_says, anim_free=lambda: not anim_busy())
         except Exception as e:   # the loop must never die
             print("Ghassan:", repr(e), flush=True)
@@ -466,7 +606,7 @@ def keep_voice(eid, vid):
     d.pop("voice_variants", None)
     cp.update_episode(eid, data=d, status="rendered", video_path=(folder / "short.mp4").relative_to(ROOT).as_posix())
     cp.log("Owner", "voice_kept", None, {"episode": eid, "voice": v["label"]})
-    threading.Thread(target=quality.review_video, args=(eid,), daemon=True).start()
+    threading.Thread(target=run_israa_video, args=(eid,), daemon=True).start()
     return v, ""
 
 
@@ -558,6 +698,21 @@ def run_characters(pid, clips=True):
         atlas_says(f"The characters couldn't be made: {ex}")
     finally:
         CHARMAKING.update(pid=None, step="")
+
+
+def run_char_review(pid):
+    CHARMAKING.update(pid=pid, step="Israa is checking each character against its reference sheet")
+    try:
+        quality.review_characters(pid)
+        atlas_says("Israa has re-checked the characters: open the project's Voice & characters page.")
+    except Exception as ex:
+        atlas_says(f"Israa couldn't check the characters: {ex}")
+    finally:
+        CHARMAKING.update(pid=None, step="")
+
+
+def run_israa_video(eid):
+    quality.review_video(eid)
 
 
 def run_samples(pid):
@@ -683,7 +838,7 @@ def scheduler():
     time.sleep(20)
     while True:
         try:
-            if getattr(settings, "SCOUT_AUTOMATICALLY", False) and not cp.STOP_FILE.exists() and not agents.scouted_today():
+            if not RESTARTING["on"] and getattr(settings, "SCOUT_AUTOMATICALLY", False) and not cp.STOP_FILE.exists() and not agents.scouted_today():
                 run_scout("schedule")
         except Exception as e:
             print("scheduler:", repr(e), flush=True)
@@ -873,6 +1028,7 @@ class Handler(BaseHTTPRequestHandler):
                 "daily_cap": settings.DAILY_AI_BUDGET_USD,
                 "idea_cap": settings.PER_IDEA_BUDGET_USD,
                 "kill": cp.STOP_FILE.exists(),
+                "version": (ROOT / "VERSION").read_text(encoding="utf-8").strip() if (ROOT / "VERSION").exists() else "",
                 "simulated": os.environ.get("HQ_SIMULATE") == "1",
                 "has_key": bool(os.environ.get("ANTHROPIC_API_KEY")) or os.environ.get("HQ_SIMULATE") == "1",
             })
@@ -1028,7 +1184,7 @@ class Handler(BaseHTTPRequestHandler):
             if u.path.endswith("ship"):
                 ok, msg = ghassan.ship(anim_free=lambda: not anim_busy())
                 if ok:
-                    threading.Thread(target=restart_office, daemon=True).start()
+                    threading.Thread(target=after_ship, daemon=True).start()
             else:
                 ok, msg = ghassan.discard(str(body.get("reason", ""))[:300])
             return self._send(200 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
@@ -1144,16 +1300,7 @@ class Handler(BaseHTTPRequestHandler):
                 if what != "review" and anim_busy():
                     return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
                 if what == "review":
-                    def go():
-                        CHARMAKING.update(pid=pid, step="Israa is checking each character against its reference sheet")
-                        try:
-                            quality.review_characters(pid)
-                            atlas_says("Israa has re-checked the characters: open the project's Voice & characters page.")
-                        except Exception as ex:
-                            atlas_says(f"Israa couldn't check the characters: {ex}")
-                        finally:
-                            CHARMAKING.update(pid=None, step="")
-                    threading.Thread(target=go, daemon=True).start()
+                    threading.Thread(target=run_char_review, args=(pid,), daemon=True).start()
                     return self._send(202, {"ok": True, "message": "Israa is checking the characters (a few minutes)."})
                 cp.set_project_meta(pid, characters_approved=False)   # new tests, new approval
                 threading.Thread(target=run_characters, args=(pid, what != "sheets"), daemon=True).start()
@@ -1327,7 +1474,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(409, {"error": "There's no video to review yet."})
                 if quality.REVIEWING.locked():
                     return self._send(409, {"error": "Israa is busy reviewing something else."})
-                threading.Thread(target=quality.review_video, args=(eid,), daemon=True).start()
+                threading.Thread(target=run_israa_video, args=(eid,), daemon=True).start()
                 return self._send(202, {"ok": True, "message": "Israa is looking at the video. It takes a couple of minutes."})
             if action in ("render", "assemble"):
                 e = cp.get_episode(eid)
@@ -1449,6 +1596,10 @@ def prepare_atlas():
             print("  Phone setup failed:", repr(e), flush=True)
 
 
+for _kind, _name in JOBS.items():   # every long job is saved while it runs (see "Saved jobs" above)
+    globals()[_name] = journaled(_kind, globals()[_name])
+
+
 class Server(ThreadingHTTPServer):
     # The default lets a second office bind the same port on Windows; the old one then keeps answering with old code.
     allow_reuse_address = False
@@ -1499,6 +1650,7 @@ def main():
     threading.Thread(target=ghassan_loop, daemon=True).start()
     phone.STATUS_FN[0] = working_now
     phone.start(srv.server_port)
+    threading.Thread(target=resume_jobs, daemon=True).start()
     if os.environ.get("HQ_SIMULATE") != "1":
         threading.Thread(target=mark_healthy, daemon=True).start()
     if os.environ.get("HQ_NO_LND") != "1":

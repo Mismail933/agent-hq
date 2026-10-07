@@ -2009,7 +2009,7 @@ function showSide(id) {
   $('#p-mission').hidden = id !== 'mission'; $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team';
   if (id === 'feed') renderFeed(); else if (id === 'mission') renderPipe(); else renderTeam();
 }
-let polling = false;
+let polling = false, pageVersion = '', reloadSaid = false;
 async function poll() {
   if (polling) return; polling = true;
   try { await pollOnce(); } finally { polling = false; }
@@ -2018,6 +2018,11 @@ async function pollOnce() {
   let s;
   try { const r = await fetch('/api/state?since=' + lastId, {cache:'no-store'}); s = await r.json(); $('#offline').hidden = true; $('#sLink').textContent = 'OK'; }
   catch { $('#offline').hidden = false; $('#sLink').textContent = 'LOST'; return; }
+  // a new version installed without a restart (2.23.0): reload the page once nothing is being typed
+  if (s.version) { if (!pageVersion) pageVersion = s.version;
+    else if (s.version !== pageVersion) { const a = document.activeElement, typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+      if (!typing && !$('#chatIn').value.trim()) { location.reload(); return; }
+      if (!reloadSaid) { reloadSaid = true; toast('A new version is installed. The page refreshes when you finish typing.'); } } }
   agentInfo = s.agents;
   for (const i of s.agents) { if (!agents[i.name]) addAgent(i); Object.assign(agents[i.name], {role:i.role, model:i.model}); }
   const initial = lastId < 0;

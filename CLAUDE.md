@@ -200,11 +200,25 @@ Agents never spend money without the owner's explicit approval.
   requirements.txt, .env, settings_local.py, .gitignore), py_compile, imports, the office starts in practice mode on a free port,
   `node --check` of the page's script, a changed cartoon renders a still; one repair round. The commit stays LOCAL:
   `~/.agent-hq/ghassan-pending.json` + request `[ready to ship]` + a Today card (See the change / Ship / Discard). Only the owner's
-  click (`POST /api/ghassan/ship` with by=owner) bumps VERSION, pushes main and calls `restart_office` (waits until idle, exits 75).
+  click (`POST /api/ghassan/ship` with by=owner) bumps VERSION, pushes main and calls `server.after_ship`: if every changed file is one
+  the running office hasn't imported (`server.loaded_files()`; e.g. animate.py, animator.py, review_tools.py, voice_match.py,
+  animation/**, office.html, *.md, VERSION) `ghassan.install_hot` copies them from his clone at the shipped commit (all or none,
+  writes `.installed-commit`; the page reloads itself when /api/state's `version` changes; atlas/ changes re-run
+  `atlas_engine.setup()`); otherwise (an imported .py, requirements.txt, launch.py, a deleted/renamed file) `restart_office`.
   launch.py (2.21.0) loops: exit 75 = update and start again; GitHub's zip comment = commit -> `.installed-commit`, the server marks
   it `.last-good-commit` after 60 s up; a new version that dies within 90 s is replaced by the last good one (`.hold-version` skips
   it, `.rolled-back` makes Ghassan prepare the undo, again waiting for Ship). Changes to Ghassan's own rules or the protected files
   are done here, by the Builder chat.
+- Saved jobs (2.23.0, Atlas's "Don't lose work on restart"): `jobs` table in hq.db (`cp.add_job / set_job / unfinished_jobs`).
+  Every long runner in server.py is wrapped by `journaled(kind, fn)` (the `JOBS` table: render, render_voices, characters,
+  char_review, animator_test, voice_match, library_add, voice_add, cast_samples, samples, batch, scout_refs, review, plan,
+  israa_video); args must be JSON. A row still `running` at start was cut off; `resume_jobs` (15 s after start, waits while the kill
+  switch is on) announces and runs them again one after the other with the same row, plus `run_retry` for ideas cut off mid-research
+  (`cp.interrupted_ideas`). A batch resumes only the scripts not yet saved; a voice match that was recording is not rerun (the owner
+  must play the video again); a job cut off 3 times is `given_up`. `restart_office` sets `RESTARTING`: new jobs are saved `queued`
+  (and run after the restart), Ghassan and the daily scout don't start, and it says what it waits for; `office_idle` covers every
+  job, Doulya's scouting and Ghassan's build. `ghassan.reopen_stale()` (start of `ghassan_loop`) puts `[in progress]` requests back
+  to `[open]`. A new long job: add it to `JOBS` + `job_label`.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen

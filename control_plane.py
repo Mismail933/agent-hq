@@ -60,6 +60,9 @@ def init():
         CREATE TABLE IF NOT EXISTS refboards (
             id INTEGER PRIMARY KEY, project_id INTEGER, ts REAL, status TEXT, data TEXT, choices TEXT, note TEXT,
             decided_ts REAL);
+        CREATE TABLE IF NOT EXISTS jobs (
+            id INTEGER PRIMARY KEY, ts REAL, kind TEXT, args TEXT, state TEXT, attempts INTEGER DEFAULT 0, ended REAL,
+            note TEXT);
         """)
         cols = {r[1] for r in con.execute("PRAGMA table_info(ideas)")}
         if "pitch" not in cols:   # added in 2.2: Doulya's pitch for inbox ideas
@@ -623,6 +626,34 @@ def get_idea(idea_id):
             "pitch": json.loads(r["pitch"]) if r["pitch"] else None,
             "verdict": json.loads(r["verdict"]) if r["verdict"] else None,
             "brief": brief, "cost_usd": round(spend_for_idea(idea_id), 3)}
+
+
+# ---- Saved jobs (2.23.0): long work survives a restart -------------------------------------------------------------
+# state: queued (waits for the restart that is coming) | running | done | failed | resumed | given_up
+def add_job(kind, args, state="running"):
+    with _db() as con:
+        return con.execute("INSERT INTO jobs (ts, kind, args, state) VALUES (?,?,?,?)",
+                           (time.time(), kind, json.dumps(args), state)).lastrowid
+
+
+def set_job(jid, state, note=None, attempt=False):
+    with _db() as con:
+        con.execute("UPDATE jobs SET state=?, note=COALESCE(?, note), attempts=attempts+?, ended=? WHERE id=?",
+                    (state, note, 1 if attempt else 0, time.time() if state in ("done", "failed", "given_up") else None, jid))
+
+
+def unfinished_jobs():
+    """Jobs the last run of the office didn't finish (it was closed or restarted), oldest first."""
+    with _db() as con:
+        rows = con.execute("SELECT * FROM jobs WHERE state IN ('queued','running') ORDER BY id").fetchall()
+    return [{"id": r["id"], "ts": r["ts"], "kind": r["kind"], "args": json.loads(r["args"] or "[]"), "state": r["state"],
+             "attempts": r["attempts"]} for r in rows]
+
+
+def interrupted_ideas():
+    """Ideas mid-research when the program closed (call before mark_interrupted)."""
+    with _db() as con:
+        return [r["id"] for r in con.execute("SELECT id FROM ideas WHERE status IN ('research','judgment') ORDER BY id")]
 
 
 def mark_interrupted():

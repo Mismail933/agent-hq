@@ -125,6 +125,20 @@ def parse_requests(text):
     return out
 
 
+def reopen_stale():
+    """At start: a request left [in progress] was cut off by a restart (nothing builds yet in this run of the office).
+    Put it back to [open] so Ghassan picks it up again. Returns the titles."""
+    try:
+        reqs = parse_requests(REQUESTS.read_text(encoding="utf-8"))
+    except OSError:
+        return []
+    stale = [r for r in reqs if r["status"] == "in progress"]
+    for r in stale:
+        set_status(r, "open", f"Ghassan ({time.strftime('%Y-%m-%d %H:%M')}): a restart cut this off; picking it up again from the start.")
+        cp.log(NAME, "request_reopened", None, {"title": r["title"][:200]})
+    return [r["title"] for r in stale]
+
+
 def next_request():
     try:
         reqs = parse_requests(REQUESTS.read_text(encoding="utf-8"))
@@ -372,11 +386,13 @@ def ship(anim_free=lambda: True):
                 problem = checks(_git("diff", "--name-only", "origin/main", "HEAD").split(), anim_free)
                 if problem:
                     return False, "On top of the newest code a check fails, so it wasn't shipped: " + problem[:300]
+            base = _git("rev-parse", "origin/main").strip()
             version = bump_version()
             _git("add", "VERSION")
             _git("commit", "-q", "-m", f"Version {version} (Ghassan: {p['title'][:60]}, shipped by the owner)")
             _git("push", "--quiet", "origin", "HEAD:main", timeout=300)
             sha = _git("rev-parse", "HEAD").strip()
+            LAST_SHIP.update(base=base, sha=sha, version=version)
         except Exception as e:
             return False, f"Shipping failed, nothing reached your PC: {str(e)[:300]}"
         finally:
@@ -387,7 +403,52 @@ def ship(anim_free=lambda: True):
             set_status(req, "done", f"Ghassan: {p['summary']} (shipped by the owner as {version}, {time.strftime('%Y-%m-%d %H:%M')})"
                        + (f" Note for Atlas: {p['notes'].strip()}" if p.get("notes") else ""))
         cp.log("Owner", "ghassan_shipped", None, {"title": p["title"][:200], "version": version, "commit": sha})
-        return True, f"Shipped {version}. The office restarts by itself in a moment to load it."
+        return True, f"Shipped {version}."
+
+
+# ---- installing a shipped change without a restart (2.23.0) --------------------------------------------------------------
+LAST_SHIP = {}
+NEEDS_RESTART = {"requirements.txt", "launch.py", "START-HERE.bat"}
+
+
+def install_hot(loaded):
+    """After Ship: if every changed file is one the running office doesn't hold in memory (the cartoon renderer and the other
+    tools that run as their own process, the page, documents, the cartoon's source), copy them in place: no restart.
+    loaded: the program files the office has imported (relative paths). Returns the installed paths, or None = restart needed."""
+    s = dict(LAST_SHIP)
+    if not s:
+        return None
+    try:
+        out = _git("diff", "--name-status", "--no-renames", s["base"], s["sha"])
+    except Exception:
+        return None
+    files = []
+    for line in out.splitlines():
+        bits = line.split("\t")
+        if len(bits) < 2:
+            continue
+        st, path = bits[0].strip(), bits[-1].strip()
+        top = path.split("/")[0]
+        if st not in ("A", "M") or path in NEEDS_RESTART or path in loaded or top in ("content", "briefs", "plans") or path.startswith("."):
+            return None
+        files.append(path)
+    if not files:
+        return None
+    blobs = {}
+    for path in files:   # read everything first: either all files are installed or none
+        r = subprocess.run(["git", "show", f"{s['sha']}:{path}"], cwd=CLONE, capture_output=True, timeout=60, creationflags=NOFLAGS)
+        if r.returncode != 0:
+            return None
+        blobs[path] = r.stdout
+    for path, data in blobs.items():
+        dest = ROOT / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(dest.name + ".new")
+        tmp.write_bytes(data)
+        os.replace(tmp, dest)
+    (ROOT / ".installed-commit").write_text(s["sha"] + "\n")
+    cp.log(NAME, "installed_without_restart", None, {"version": s.get("version"), "files": files[:40]})
+    return files
 
 
 def discard(reason=""):
