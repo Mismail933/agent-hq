@@ -41,7 +41,16 @@ Agents never spend money without the owner's explicit approval.
 - `llm.py`: agent loop on the Anthropic Messages API (tools, pause_turn, server web_search), `FakeClient` when `HQ_SIMULATE=1`.
 - `agents.py`: prompts, tools and pipelines. One idea in the pipeline at a time (`PIPELINE` lock).
 - `server.py`: local web server on 127.0.0.1:8765 (`/api/state`, `/api/chat`, `/api/scout`, `/api/inbox/<id>/research|dismiss`, `/api/pitch`, `/api/retry/<id>`, `/api/idea/<id>`, `/api/stop|resume`) plus the daily scout scheduler.
-- `office.html`: single-file UI. Sci-fi HUD theme (Orbitron / Exo 2 / Share Tech Mono, cyan neon), decisions first (2.13.0): "Needs you" bar, KPI row, Your desk (Inbox/Judged/Plans/Content/L&D), Ops (Mission/Activity/Crew/Limits), hand-written isometric 3D office canvas (no libraries; android agents), Atlas comms, Activity/Crew. Rooms come online when an agent is hired into that department (`DEPT_OF`, `furnish()`, `LOOKS`).
+- `office.html`: single-file UI. Sci-fi HUD theme, calmer since 2.19.0 (Orbitron / Exo 2 / Share Tech Mono). Layout (2.19.0, the
+  owner approved the mockup): a **rail** (HQ + one tile per approved project) | a menu | pages. HQ pages: Today (what waits for him
+  grouped by project, Blocked, Working now, Done recently), Ideas (pitches > researching > judged > plans), Office & team (the
+  hand-written isometric 3D office canvas, unchanged in look, plus status plates, waiting agents walking to his office, agent panel,
+  Ops: Mission/Activity/Crew), Learning, Spend & limits. Clicking a project **enters** it (door animation, the project's own colour,
+  menu: Overview / Episodes / Voice & characters / Reference board / Plan). `agentState()` (filled by `computeStates`) is the one
+  source for Working / Waiting for you / Blocked / Idle everywhere. Atlas is a drawer; inside a project the owner's message is
+  prefixed "(About <project>)". Every waiting item has its own buttons (`waitsOf`, `hqWaits`, `blockedList`; actions are `data-do`
+  strings handled by `doAction`). Rooms come online when an agent is hired into that department (`DEPT_OF`, `furnish()`, `LOOKS`).
+  `/api/state` also carries `producing_project` (agents.PRODUCING_FOR) and `atlas_limit` for this.
 - `launch.py`: auto-updater. Compares raw GitHub `VERSION` with the local one; on mismatch downloads the main zip and overwrites program files (keeps .env, hq.db, briefs, settings_local.py, STOP, START-HERE.bat), then runs server.py.
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI

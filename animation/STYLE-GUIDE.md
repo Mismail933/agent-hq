@@ -58,7 +58,7 @@ Opening stamp over the hook: **POV** on a terracotta plate, then a parchment rib
 End card (1.7 s): "Follow for more history", the channel name and handle.
 
 ## Voice
-About 130 words a minute, a breath between lines. The owner picks from samples in Ideas → Content (Kokoro, Piper).
+About 130 words a minute, a breath between lines. The owner picks from samples in the project's Voice & characters page (Kokoro, Piper).
 A voice recorded elsewhere (ElevenLabs, a person) can replace it: save it as `voice.mp3` in the episode's folder.
 
 ## The scene file (what Calina writes, one per episode)

@@ -164,7 +164,7 @@ def run_batch(project_id, count, notes, topic=""):
                + (f". {g['note']}" if g.get("note") else ".")) if g else ""
         atlas_says(f"**Calina's batch {r['batch']} is ready: {len(r['episodes'])} scripts.**{dropped}\n{titles}{rev}\n\n"
                    + (f"{r['batch_note']}\n\n" if r.get("batch_note") else "")
-                   + "Open Ideas → Content to read each script, its sources and Israa's verdict, then approve or reject it.")
+                   + "Open the project's Episodes page to read each script, its sources and Israa's verdict, then approve or reject it.")
     except (ValueError, KeyError, TypeError):
         atlas_says(out)
 
@@ -175,7 +175,7 @@ def run_scout_refs(project_id, notes=""):
         r = json.loads(out)
         atlas_says(f"**The Scout's reference board is ready for project {r['project_id']}.** He found {r['references']} real examples "
                    f"({r['verified']} he could verify) and {len(r['options'])} directions to choose from: " + "; ".join(r["options"]) +
-                   ".\n\nOpen Ideas → Content, look at the examples, pick a direction and approve the board. Calina won't write anything until you do.")
+                   ".\n\nOpen the project's Reference board page, look at the examples, pick a direction and approve the board. Calina won't write anything until you do.")
     except (ValueError, KeyError, TypeError):
         atlas_says(out)
 
@@ -236,7 +236,7 @@ def run_voice_add(pid, voice_id, name):
     VOICEWORK["what"] = "an ElevenLabs voice is being added"
     try:
         e = _animate("voice-add", pid, voice_id, name or "", timeout=900)
-        atlas_says(f"**Voice added: {e['label']}.** Open Ideas → Content → Narrator voice to hear its sample; you can pick it, or have the next Short made in two voices to compare.")
+        atlas_says(f"**Voice added: {e['label']}.** Open the project's Voice & characters page to hear its sample; you can pick it, or have the next Short made in two voices to compare.")
     except Exception as ex:
         atlas_says(f"That voice couldn't be added: {ex}")
     finally:
@@ -254,7 +254,7 @@ def run_render_voices(eid, voices):
             d["voice_variants"] = r["variants"]
             cp.update_episode(eid, data=d)
             cp.log("Calina", "voice_variants_ready", None, {"episode": eid, "voices": [v["label"] for v in r["variants"]]})
-            atlas_says(f"**Short #{eid} is ready in {len(r['variants'])} voices.** Open Ideas → Content, watch each, and click **Keep this voice** on the one you want: "
+            atlas_says(f"**Short #{eid} is ready in {len(r['variants'])} voices.** Open the project's Episodes page, watch each, and click **Keep this voice** on the one you want: "
                        + "; ".join(v["label"] for v in r["variants"]) + ".")
         except Exception as ex:
             cp.log("Calina", "video_failed", None, {"episode": eid, "reason": str(ex)[:300]})
@@ -319,7 +319,7 @@ def run_animator_test(pid, eid, index):
             blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
             raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
         cp.log("Animator", "animator_test_ready", None, {"project": pid, "episode": eid, "scene": index})
-        atlas_says("**The Animator's test scene is ready.** Open Ideas → Content → Animator test and watch the kit's version and the Animator's version side by side.")
+        atlas_says("**The Animator's test scene is ready.** Open the project's Voice & characters page (Animator test) and watch the kit's version and the Animator's version side by side.")
     except Exception as ex:
         cp.log("Animator", "animator_test_failed", None, {"reason": str(ex)[:300]})
         atlas_says(f"The Animator's test scene couldn't be made: {ex}")
@@ -359,11 +359,11 @@ def run_characters(pid, clips=True):
                 bad = [k for k, v in rv.items() if v.get("verdict") != "pass"]
                 atlas_says("**The character tests are ready.** " + ("Israa passed all of them." if not bad else
                            f"Israa wants fixes on: {', '.join(bad)} (her notes are on each character).") +
-                           "\n\nOpen Ideas → Content → Characters, watch each test clip and approve the characters. No new Short is made until you do.")
+                           "\n\nOpen the project's Voice & characters page, watch each test clip and approve the characters. No new Short is made until you do.")
             except Exception as ex:
-                atlas_says(f"**The character tests are made,** but Israa couldn't review them: {ex}\n\nOpen Ideas → Content → Characters to watch them.")
+                atlas_says(f"**The character tests are made,** but Israa couldn't review them: {ex}\n\nOpen the project's Voice & characters page to watch them.")
         else:
-            atlas_says("The character reference sheets are ready in Ideas → Content → Characters.")
+            atlas_says("The character reference sheets are ready in the project's Voice & characters page.")
     except Exception as ex:
         cp.log("Calina", "characters_failed", None, {"reason": str(ex)[:300]})
         atlas_says(f"The characters couldn't be made: {ex}")
@@ -382,7 +382,7 @@ def run_samples(pid):
                            encoding="utf-8", errors="replace", timeout=1800, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if not any(l.startswith("RESULT ") for l in (p.stdout or "").splitlines()):
             raise RuntimeError(((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
-        atlas_says("**The voice samples are ready.** Open Ideas → Content and listen to the same lines in each voice, then pick one.")
+        atlas_says("**The voice samples are ready.** Open the project's Voice & characters page and listen to the same lines in each voice, then pick one.")
     except Exception as ex:
         atlas_says(f"The voice samples couldn't be made: {ex}")
     finally:
@@ -425,7 +425,7 @@ def run_render(eid):
                 verdict = (f"\n\n**Israa looked at it:** {word} ({rv.get('score', '?')}/10). {rv.get('summary', '')}"
                            + (f"\nHer main problems: {top}" if top and rv["verdict"] != "release" else ""))
             atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {what}).{pace}{verdict}\n\n"
-                       "Watch it in Ideas → Content. If it's good, upload it by hand with the title and description shown "
+                       "Watch it in the project's Episodes page. If it's good, upload it by hand with the title and description shown "
                        "there, turn on YouTube's altered/synthetic content setting, then click **Mark as published**.")
         except Exception as ex:
             cp.log("Calina", "video_failed", None, {"episode": eid, "reason": str(ex)[:300]})
@@ -630,7 +630,7 @@ class Handler(BaseHTTPRequestHandler):
                 "ideas": cp.list_ideas(),
                 "inbox": cp.list_inbox(),
                 "projects": cp.list_projects(20), "planning": agents.PLANNING.locked(),
-                "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(),
+                "episodes": with_upload_text(cp.list_episodes(limit=40)), "producing": agents.PRODUCING.locked(), "producing_project": agents.PRODUCING_FOR[0],
                 "rendering": RENDERING["episode"],
                 "refboards": {p["id"]: cp.latest_refboard(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
                 "board_unlocked": {p["id"]: bool(quality.style_bar(p["id"])) for p in cp.list_projects(20) if p["status"] == "approved"},
@@ -648,6 +648,7 @@ class Handler(BaseHTTPRequestHandler):
                 "limits": cp.limits_view(),
                 "scouting": agents.SCOUTING.locked(),
                 "last_scout": cp.last_event_time("scout_done", "Doulya"),
+                "atlas_limit": {"until": LIMIT_UNTIL[0], "note": LIMIT_NOTE[0]} if time.time() < LIMIT_UNTIL[0] else None,
                 "chat": chat, "busy": busy, "atlas_engine": atlas_engine.engine(), "atlas_cloud": atlas_cloud.configured(),
                 "spend_today": round(cp.spend_today(), 4),
                 "daily_cap": settings.DAILY_AI_BUDGET_USD,
@@ -857,7 +858,7 @@ class Handler(BaseHTTPRequestHandler):
                         CHARMAKING.update(pid=pid, step="Israa is checking each character against its reference sheet")
                         try:
                             quality.review_characters(pid)
-                            atlas_says("Israa has re-checked the characters: open Ideas → Content → Characters.")
+                            atlas_says("Israa has re-checked the characters: open the project's Voice & characters page.")
                         except Exception as ex:
                             atlas_says(f"Israa couldn't check the characters: {ex}")
                         finally:
@@ -916,7 +917,7 @@ class Handler(BaseHTTPRequestHandler):
             body = self._json_body()
             if action == "batch":
                 if not quality.style_bar(pid):
-                    return self._send(409, {"error": "Calina is locked until you've approved a reference board: have the Scout find what works first (Ideas -> Content -> Find what works)."})
+                    return self._send(409, {"error": "Calina is locked until you've approved a reference board: have the Scout find what works first (the project's Reference board page (Find what works))."})
                 if agents.PRODUCING.locked():
                     return self._send(409, {"error": "Calina is already writing a batch. Try again when it's done."})
                 notes, warning = clip(body.get("notes", ""), "notes")
@@ -1013,7 +1014,7 @@ class Handler(BaseHTTPRequestHandler):
                 if production.is_animated(e):
                     pr = cp.get_project(e["project_id"], with_text=False) or {}
                     if not (pr.get("meta") or {}).get("characters_approved"):
-                        return self._send(409, {"error": "You haven't approved the characters yet. Open Ideas → Content → Characters, watch the test clips, then approve. No new Short is made before that."})
+                        return self._send(409, {"error": "You haven't approved the characters yet. Open the project's Voice & characters page, watch the test clips, then approve. No new Short is made before that."})
                 if production.is_v2(e):
                     st = production.clip_status(e)
                     if not st["ready"]:

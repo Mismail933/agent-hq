@@ -133,14 +133,22 @@ not in motion or decoration that slows him down.
 - Dark only (`color-scheme: dark`). There is no light mode.
 - One accent: cyan. Magenta and violet are rare secondary accents. Green / amber / red only mean status.
 - Three type voices: Orbitron for labels and titles, Exo 2 for reading, Share Tech Mono for numbers and data.
-- Decisions first: a "Needs you" bar under the header lists everything waiting for the owner; one click opens the right tab on Your desk and highlights the item.
-- Dense dashboard: Needs you, KPI row, then a 3-column grid (Your desk, 3D office over Ops, Atlas chat) that collapses to 2 and then 1 column.
+- Calmer HUD (2.19.0, the owner's choice): the same world with fewer glows, no background grid, more space and bigger reading text.
+- Two places: **HQ** (the whole company) and **projects you step into**. A rail on the far left holds HQ plus one tile per approved
+  project; entering a project gives it its own menu, colour and pages. Ideas are not projects: an idea becomes a project when the
+  owner approves Serge's plan.
+- Decisions first: **Today** answers "what waits for me, who is blocked, who is working, what finished", grouped by project. Every
+  waiting item carries its own buttons, so the owner rarely needs the chat.
+- Atlas lives in a drawer that opens from any page; opened inside a project he is told which project the owner means.
 
 ## Colors
 
 A cold, deep-space palette: near-black blue backgrounds, translucent navy panels, cyan as the single "live" color.
 
-- **Space Black** (`bg #03050B`): page background, with faint cyan grid lines (32px) and two soft radial glows (cyan top right, magenta bottom left).
+- **Space Black** (`bg #03050B`): page background with one soft radial glow top right in the current accent.
+- **Project tints** (2.19.0): inside a project the accent tokens (`--cyan`, `--cyan-ink`, `--line`, `--line-2`, `--acc-soft`, `--acc-soft2`,
+  `--acc-glow`) are re-set from the project's hue (`HUES[id % 8]`: 318, 210, 172, 24, 280, 196, 100, 340, chosen to avoid the status
+  hues). Status colours never change. The 3D office keeps its own colours.
 - **Navy Glass** (`panel`, `panel-2`, `panel-3`, `sheet`): panels, rows, meters' track, the dossier sheet. Layer by going lighter, not by adding shadows.
 - **Hairline Cyan** (`line`, `line-2`): borders and dividers. `line` for structure, `line-2` for controls and emphasis.
 - **Starlight** (`ink #E6F1FF`): main text. **Instrument Grey** (`ink-2 #8FA3BF`): secondary text, labels, metadata.
@@ -158,10 +166,18 @@ A cold, deep-space palette: near-black blue backgrounds, translucent navy panels
 
 ## Layout
 
-- Page max width 1920px, padding 12-16px, 12px gaps between panels.
-- **KPI row:** 5 columns, 3 under 1100px, 2 under 640px.
-- **Order of importance:** Needs you > KPIs > Your desk (decisions) > Atlas chat > office > Ops. Anything the owner must act on goes on Your desk and gets a Needs-you entry.
-- **Dashboard grid** (`.dash`): "ideas office chat" / "ideas side chat" (Your desk spans the left column, Atlas 400px on the right); under 1440px "ideas chat" / "office side"; under 900px one column: desk, chat, office, ops. The mission pipeline is the first tab of Ops and opens by itself when a mission starts. Panels scroll inside (`.cb { overflow:auto }`); the page itself never scrolls sideways.
+- **Shell** (`.shell`): rail 76px | menu 248px | main (max 1500px, padding 22-28px). Sticky top bar: breadcrumb, mode tag, spend chip
+  (opens Spend & limits), Ask Atlas, Stop all agents; it never wraps (the breadcrumb shortens). Under 860px the menu hides and the rail
+  stays.
+- **HQ pages:** Today (`#pg-today`), Ideas (4 columns: new pitches, being researched, judged, plans), Office & team (3D office +
+  agent panel, Ops below: Mission / Activity / Crew), Learning, Spend & limits (KPI row + limits).
+- **Project pages** (`#contentTop`, rendered by `projectHtml`): Overview (hero with monogram, progress line, "waits for you" box,
+  team / episodes / latest here), Episodes (filter steps Scripts to review > Approved > Ready to upload > Published > Retired, then
+  the episode cards), Voice & characters (animated only), Reference board, Plan.
+- **Order of importance:** what waits for the owner > blocked > working > done. Anything the owner must act on appears on Today, in
+  its project's "waits for you" box and as a badge on the rail and menu.
+- Narrow columns stack an item's buttons under its text (`.stack .item`). Text always wraps inside its box (`overflow-wrap:anywhere`,
+  pills wrap); nothing may stick out of its box (the owner checks for this).
 - Panel header (`.ch`): 44px tall, 10-14px padding, bottom hairline.
 - Spacing steps: 6, 8, 10, 12, 14, 22px. Tight inside groups (6-8px), 12-14px between groups.
 
@@ -181,7 +197,15 @@ Flat and luminous, not shadowed. Depth comes from:
 
 ## Components
 
-- **Needs you (`.needs`, `.need`):** one button per kind of waiting item: amber count (red for problems), what it is, who sent it, an arrow. Empty state in green: "All clear". The browser tab title shows the count, e.g. `(3) Agent HQ`. Jumping to an item flashes it once (`.flash`).
+- **Rail tile (`.tile`):** 48px rounded square with the project's 2-letter monogram in its hue; amber count badge; the current one
+  has a ring and a bar on its left edge. Hover shows the name (`.rtip`).
+- **Entering a project (`.enter`):** two doors slide open over the project's monogram and name (0.8 s), then the page settles in.
+  Skipped when reduced motion is on.
+- **Waiting item (`.item`):** title, one line of context, who it's from (`.avz` dot in the agent's visor colour), and its own buttons.
+  Today shows 4 per group and a "See all" button. The browser tab title shows the total, e.g. `(3) Agent HQ`.
+- **Status pill (`.stp`):** Working (green), Waiting for you (amber), Blocked (red), Idle (grey). The same four words and colours
+  are used on the 3D office name plates, Crew, the agent panel and project teams (`agentState`).
+- **Progress line (`.prog`):** the project's steps; done = filled accent, now = ringed.
 - **Panel (`.card` + `.ch` header + `.cb` body):** the container for everything. Title in Orbitron uppercase cyan with an optional glowing dot (`.blip`) and a mono `small` counter.
 - **Primary button (`.btn`):** cyan border, 16% cyan fill, Orbitron uppercase, 46px tall (`.sm` 36px). Hover: fill to 26% + cyan glow. Disabled: 45% opacity, no glow.
 - **Ghost button (`.btn.ghost`):** for "dismiss/reject"; turns red on hover.
@@ -195,7 +219,12 @@ Flat and luminous, not shadowed. Depth comes from:
 - **Pipeline steps:** 3 columns; done = green, now = cyan with glow and a pulsing node.
 - **Chat:** Atlas left (navy, violet left border, violet "ATLAS" label), owner right (cyan tint). Suggestion chips under the messages.
 - **Toast:** bottom center, navy, cyan glow.
-- **3D office:** canvas with a scanline overlay and a slow scan sweep (only when reduced motion is off).
+- **3D office:** the hand-drawn canvas, kept as it was (the owner likes it), with a scanline overlay and a slow scan sweep (only when
+  reduced motion is off). Each agent's name plate shows the status word; what they're doing shows when zoomed in, selected or
+  blocked. A red ring pulses at a blocked agent's feet; agents who wait for the owner walk to his office ("N WAITING FOR YOU HERE").
+  Clicking one fills the agent panel (`#agentDetail`) with what they do, what they did last and the button that unblocks them.
+- **Atlas drawer (`.drawer`):** slides in from the right over a scrim; shows what the conversation is "about" (a project or an
+  agent) with a way back to the whole company. A violet dot on Ask Atlas means an unread reply.
 - Icons: inline SVG, 18px, 2px stroke, round caps, `currentColor`.
 
 ## Do's and Don'ts

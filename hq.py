@@ -186,10 +186,10 @@ def main(argv):
             count = args[1] if len(args) > 1 and args[1].isdigit() else None
             notes = " ".join(args[2:] if count else args[1:])
             order(f"/api/content/{int(args[0])}/batch", {"count": count, "notes": notes, "topic": topic},
-                  "Calina is writing the batch. The scripts will land in Ideas → Content and in the office chat.")
+                  "Calina is writing the batch. The scripts will land in the project's Episodes page and in the office chat.")
         elif cmd == "refs":   # the Scout researches what works and writes a reference board
             order(f"/api/content/{int(args[0])}/scout", {"notes": " ".join(args[1:])},
-                  "The Scout is researching what works on YouTube (5-10 minutes). The board lands in Ideas -> Content and in the office chat.")
+                  "The Scout is researching what works on YouTube (5-10 minutes). The board lands in the project's Reference board page and in the office chat.")
         elif cmd == "board":
             b = cp.latest_refboard(int(args[0]))
             if not b:
@@ -250,7 +250,7 @@ def main(argv):
             import lnd
             show(lnd.set_focus(" ".join(args)))
         elif cmd == "israa":   # Israa reviews a finished video again
-            order(f"/api/episode/{int(args[0])}/israa", {}, "Israa is looking at the video. Her verdict lands on the episode in Ideas -> Content.")
+            order(f"/api/episode/{int(args[0])}/israa", {}, "Israa is looking at the video. Her verdict lands on the episode in the project's Episodes page.")
         elif cmd == "episodes":
             eps = cp.list_episodes(int(args[0]) if args else None, limit=100)
             show([{"id": e["id"], "project": e["project_id"], "batch": e["batch"], "status": e["status"], "title": e["title"],

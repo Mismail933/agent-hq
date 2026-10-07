@@ -787,6 +787,7 @@ def setup_animated_projects():
 
 
 PRODUCING = threading.Lock()
+PRODUCING_FOR = [None]   # the project Calina is writing for (the office shows it)
 CONTENT = Path(__file__).parent / "content"
 
 
@@ -814,11 +815,12 @@ def calina_batch(project_id, count=None, notes="", topic=""):
     bar = quality.style_bar(p["id"])
     if not bar:   # standing rule: nothing is written until the owner has seen what works and chosen a direction
         return (f"Calina can't start: project {p['id']} has no approved reference board. The Scout first finds what really works "
-                "on YouTube and shows it to the owner (Ideas -> Content -> Find what works, or `hq refs "
+                "on YouTube and shows it to the owner (the project's Reference board page (Find what works), or `hq refs "
                 f"{p['id']}`); the owner picks a direction, then Calina writes.")
     if not PRODUCING.acquire(blocking=False):
         return "Calina is already working on a batch. Try again when it's done."
     try:
+        PRODUCING_FOR[0] = p["id"]
         count = max(1, min(int(count or settings.CALINA_BATCH_SIZE), 10))
         batch = cp.next_batch(p["id"])
         cp.log("Calina", "batch_started", p["idea_id"], {"project": p["id"], "batch": batch, "count": count})
@@ -944,6 +946,7 @@ def calina_batch(project_id, count=None, notes="", topic=""):
                            "dropped_without_source": len(got.get("episodes") or []) - len(episodes),
                            "batch_note": got.get("batch_note", ""), "folder": str(folder)}, indent=2)
     finally:
+        PRODUCING_FOR[0] = None
         PRODUCING.release()
 
 

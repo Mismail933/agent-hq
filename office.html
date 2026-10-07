@@ -9,8 +9,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Exo+2:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
 <style>
 /* Agent HQ command center.
-   Style: HUD / Sci-Fi FUI (ui-ux-pro-max): near-black space, cyan neon, glass panels, corner brackets, mono data.
-   Layout: dashboard first. KPI row, then mission pipeline + ideas (data), holographic 3D office, Atlas comms. */
+   Style: HUD / Sci-Fi FUI: near-black space, cyan neon, glass panels, corner brackets, mono data (see DESIGN.md).
+   Layout (2.19.0): project rail | menu | pages. HQ pages: Today, Ideas, Office & team, Learning, Spend & limits.
+   Picking a project "enters" it: its own menu, colour and pages. Atlas lives in a drawer on every page. */
 :root{
   --bg:#03050B; --panel:rgba(9,16,31,.82); --panel-2:#0D1729; --panel-3:#13213A;
   --line:rgba(56,189,248,.16); --line-2:rgba(56,189,248,.38);
@@ -356,117 +357,367 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .brief th,.brief td{border:1px solid rgba(56,189,248,.22);padding:5px 8px;text-align:left;vertical-align:top}
 .brief th{font-family:var(--display);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);background:rgba(56,189,248,.06)}
 @media (prefers-reduced-motion: reduce){.meter i{transition:none}.dots i{animation:none}button{transition:none}}
+
+/* ==== 2.19.0 shell: project rail | menu | pages, calmer HUD. Entering a project re-tints the accent (tint()). ==== */
+:root{--acc-soft:rgba(34,211,238,.14);--acc-soft2:rgba(34,211,238,.24);--acc-glow:rgba(34,211,238,.3);--ink-3:#6F84A3;--warn-ink:#FCD34D;--bad-ink:#FDA4AF;--good-ink:#6EE7B7}
+body{font-size:14.5px;background:radial-gradient(1100px 520px at 85% -10%,var(--acc-soft),transparent 62%),var(--bg);background-attachment:fixed}
+.shell{display:grid;grid-template-columns:76px 248px minmax(0,1fr);min-height:100vh}
+.mainwrap{min-width:0;display:flex;flex-direction:column}
+main{padding:22px 28px 60px;max-width:1500px;width:100%;display:flex;flex-direction:column;gap:14px}
+.page{display:flex;flex-direction:column;gap:16px;min-width:0}
+.page[hidden],#pg-project[hidden]{display:none!important}
+.card,.item,.ep,.inbox li,.ideas li{overflow-wrap:anywhere}
+.pill{white-space:normal;max-width:100%;display:inline-block}
+.meta>*{min-width:0}
+.btn{white-space:normal;text-align:center;justify-content:center;background:var(--acc-soft)}
+.btn:hover{background:var(--acc-soft2);box-shadow:0 0 14px var(--acc-glow)}
+.btn.quiet{border-color:var(--line-2);background:transparent;color:var(--ink-2)}
+.btn.quiet:hover{color:var(--ink);background:var(--acc-soft);box-shadow:none}
+.btn.okb{border-color:rgba(52,211,153,.7);background:rgba(52,211,153,.12);color:var(--good-ink)}
+.btn.okb:hover{background:rgba(52,211,153,.22);box-shadow:0 0 12px rgba(52,211,153,.25)}
+.btn.atl{border-color:rgba(167,139,250,.7);background:rgba(167,139,250,.12);color:#C4B5FD;position:relative}
+.btn.atl:hover{background:rgba(167,139,250,.22);box-shadow:0 0 14px rgba(167,139,250,.3)}
+.btn.atl.unread::after{content:"";position:absolute;top:-4px;right:-4px;width:11px;height:11px;border-radius:50%;background:#A78BFA;border:2px solid var(--bg)}
+.x{flex:none}
+
+/* rail */
+.rail{position:sticky;top:0;height:100vh;background:#02040A;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0;overflow-y:auto;z-index:6}
+.tile{position:relative;flex:none;width:48px;height:48px;border-radius:12px;border:1px solid var(--tl,rgba(56,189,248,.35));background:var(--tb,rgba(34,211,238,.08));display:grid;place-items:center;font:800 13px var(--display);letter-spacing:.06em;color:var(--tc,#67E8F9);transition:border-radius .18s cubic-bezier(.23,1,.32,1),transform .12s}
+.tile:hover{border-radius:16px}
+.tile.on{border-radius:16px;box-shadow:0 0 0 2px var(--tc,#67E8F9),0 0 18px var(--tl,rgba(34,211,238,.3))}
+.tile.on::before{content:"";position:absolute;left:-15px;top:10px;bottom:10px;width:4px;border-radius:0 3px 3px 0;background:var(--tc,#67E8F9)}
+.tile .bd{position:absolute;top:-7px;right:-8px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#1A1405;border:1px solid #FBBF24;color:#FCD34D;font:12px/18px var(--mono);letter-spacing:0;text-align:center}
+.rail hr{width:32px;border:0;border-top:1px solid var(--line);margin:2px 0;flex:none}
+.tile.add{border-style:dashed;background:transparent;color:var(--ink-3);font:400 22px var(--body)}
+.rtip{position:fixed;z-index:60;background:#13213A;border:1px solid var(--line-2);border-radius:4px;padding:6px 10px;font-size:13px;pointer-events:none;white-space:nowrap;color:var(--ink)}
+
+/* menu */
+.side{position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--line);background:rgba(5,9,19,.94);display:flex;flex-direction:column;gap:16px;padding:16px 12px;z-index:5}
+.side .brand{padding:2px 8px}
+.side .brand h1{font-size:17px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav h2{font:600 10.5px var(--display);letter-spacing:.16em;color:var(--ink-3);margin:4px 10px 6px;text-transform:uppercase}
+.nl{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid transparent;background:none;padding:8px 10px;border-radius:4px;color:var(--ink-2);min-height:42px}
+.nl:hover{background:var(--acc-soft);color:var(--ink)}
+.nl.on{background:var(--acc-soft);border-color:var(--line-2);color:var(--cyan-ink)}
+.nl .tx{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere}
+.nl .tx i{display:block;font-style:normal;font-weight:400;font-size:12px;color:var(--ink-3)}
+.pdot{width:9px;height:9px;border-radius:50%;flex:none}
+.badge{font:12px var(--mono);min-width:22px;height:20px;padding:0 6px;border-radius:10px;display:inline-grid;place-items:center;background:rgba(251,191,36,.14);color:#FCD34D;border:1px solid rgba(251,191,36,.5);flex:none}
+.badge.bad{background:rgba(244,63,94,.14);color:#FDA4AF;border-color:rgba(244,63,94,.5)}
+.side .foot{margin:auto 0 0;font-size:12.5px;color:var(--ink-3);padding:0 10px}
+.back{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--ink-2);font-size:13.5px;padding:6px 8px;min-height:36px;align-self:flex-start}
+.back:hover{color:var(--ink)}
+.pcard{padding:14px;border:1px solid var(--line-2);border-radius:4px;background:var(--acc-soft);display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+.pcard .mono{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font:800 15px var(--display);color:#02040A;background:var(--cyan)}
+.pcard b{font:700 15px/1.3 var(--display);letter-spacing:.05em;color:var(--ink)}
+.pcard>span:not(.mono):not(.stp){font-size:12.5px;color:var(--ink-2)}
+.crewrow{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink-2);background:none;border:0;text-align:left;border-radius:4px;width:100%;min-height:34px}
+.crewrow:hover{background:var(--acc-soft);color:var(--ink)}
+.crewrow i{width:8px;height:8px;border-radius:50%;flex:none}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:4;display:flex;flex-wrap:nowrap;align-items:center;gap:10px 16px;padding:10px 28px;border-bottom:1px solid var(--line);background:rgba(3,5,11,.9);backdrop-filter:blur(8px)}
+.crumb{flex:1;min-width:0;color:var(--ink-3);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar>*:not(.crumb){flex:none}
+.crumb b{color:var(--ink);font-weight:600}
+.crumb button{background:none;border:0;padding:0;color:var(--ink-3);font-size:13.5px}
+.crumb button:hover{color:var(--ink);text-decoration:underline}
+.topbar .sysline{flex:none;min-width:0;gap:14px;font-size:12px;align-items:center}
+.spendchip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:transparent;border-radius:4px;min-height:40px;padding:0 12px;font:13px var(--mono);color:var(--ink-2)}
+.spendchip:hover{border-color:var(--line-2);color:var(--ink)}
+.spendchip .meter{width:70px}
+.topbar .kill{min-height:40px}
+
+/* shared page parts */
+.hello,.phead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px}
+.hello h1,.phead h1{margin:0;font:700 21px var(--display);letter-spacing:.07em;text-wrap:balance}
+.sub{color:var(--ink-2);margin:4px 0 0;font-size:14.5px}
+.phead .acts{align-items:center}
+.ch h2 .tabcount,.hello h1 .tabcount{font-size:13px}
+.blip.warnb{background:#FBBF24;box-shadow:0 0 8px #FBBF24}.blip.badb{background:#F43F5E;box-shadow:0 0 8px #F43F5E}.blip.goodb{background:#34D399;box-shadow:0 0 8px #34D399}.blip.violetb{background:#A78BFA;box-shadow:0 0 8px #A78BFA}
+.secb{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.calm{margin:0;color:var(--ink-2);font-size:14px;padding:6px 0}
+.stp{display:inline-flex;align-items:center;gap:6px;font:12px var(--mono);padding:1px 8px;border-radius:3px;border:1px solid var(--line-2);color:var(--ink-2);max-width:100%;white-space:normal}
+.stp::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.stp.work{color:#6EE7B7;border-color:rgba(52,211,153,.5)}.stp.wait{color:#FCD34D;border-color:rgba(251,191,36,.5)}.stp.block{color:#FDA4AF;border-color:rgba(244,63,94,.5)}.stp.idle{color:var(--ink-3)}
+.stp.plain::before{display:none}.stp a{color:inherit}
+.legend{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.avz{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font:700 10.5px var(--display);color:#03050B;flex:none}
+.avz.big{width:32px;height:32px;font-size:12.5px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:center;padding:12px 14px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px}
+.item .what{min-width:0;display:flex;flex-direction:column;gap:3px}
+.item .what b{font-weight:600;font-size:14.5px}
+.item .what>span{font-size:13px;color:var(--ink-2)}
+.item .acts{justify-content:flex-end;max-width:360px}
+.whoz{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.trow{display:flex;gap:12px;align-items:flex-start;padding:9px 4px;border:0;border-top:1px solid var(--line);background:none;text-align:left;width:100%;color:inherit;font-size:14px}
+.secb>.trow:first-child{border-top:0}
+button.trow:hover b{color:var(--cyan-ink)}
+.trow .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.trow .t>span{font-size:13px;color:var(--ink-2)}
+.trow .for{font:12px var(--mono);color:var(--ink-3)}
+.trow .stp{align-self:flex-start}
+
+/* today */
+.glance{display:flex;flex-wrap:wrap;gap:10px}
+.gl{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel);text-align:left;min-height:52px}
+.gl:hover{border-color:var(--line-2)}
+.gl b{font:26px/1 var(--mono);font-variant-numeric:tabular-nums}
+.gl span{font-size:12.5px;color:var(--ink-2);line-height:1.25}
+.gl.w b{color:#FCD34D}.gl.g b{color:#6EE7B7}.gl.r b{color:#FDA4AF}
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+.group{display:flex;flex-direction:column;gap:8px}
+.group+.group{margin-top:12px}
+.ghead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ghead b{font-size:15px}
+.ghead i{font-style:normal;font-size:12.5px;color:var(--ink-3);flex:1}
+.monosm{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font:800 10.5px var(--display);border:1px solid var(--line-2);color:var(--cyan-ink);flex:none}
+.badc{border-color:rgba(244,63,94,.45)}
+.badc .item{border-color:rgba(244,63,94,.35);background:rgba(244,63,94,.05)}
+
+/* ideas */
+.scoutbox{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:12.5px var(--mono);color:var(--ink-2)}
+.scoutbox b{color:#FCD34D;font-weight:400}
+.flow4{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;align-items:start}
+.flow4 .col{max-height:calc(100vh - 210px)}
+.flow4 .ch h2{white-space:normal}
+.ideas li.live{border-left:2px solid var(--cyan);background:var(--acc-soft)}
+
+/* office */
+.officegrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+.officegrid .a-office{grid-area:auto;height:min(660px,72vh)}
+.a-office .ch{padding-top:6px;padding-bottom:6px}
+.a-office .legend{flex:1}
+.detail{padding:16px;display:flex;flex-direction:column;gap:12px;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto}
+.detail .dhead{display:flex;gap:12px;align-items:center}
+.detail .dhead>div{flex:1;min-width:0}
+.detail h3,.dtitle{margin:0;font:700 15px var(--display);letter-spacing:.08em;text-transform:uppercase}
+.detail small{color:var(--ink-2);font-size:12.5px}
+.detail .doing{padding:12px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line);font-size:14px}
+.detail .doing b{display:block;font:600 11px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.lbl{font:600 11px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.latest{margin:0;padding-left:18px;font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px}
+.latest time{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-right:6px}
+.ops{min-height:300px;max-height:520px}
+
+/* project */
+.hero{padding:22px 22px 18px;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(700px 220px at 0% 0%,var(--acc-soft),transparent 70%);pointer-events:none}
+.hero .htop{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;position:relative;z-index:1}
+.hero .hid{display:flex;gap:16px;align-items:center;min-width:0}
+.hero .hid>div{min-width:0;display:flex;flex-direction:column;gap:8px}
+.hero .mono{width:64px;height:64px;border-radius:16px;display:grid;place-items:center;font:800 22px var(--display);color:#02040A;background:var(--cyan);flex:none;box-shadow:0 0 24px var(--acc-glow)}
+.hero h1{margin:0;font:700 26px var(--display);letter-spacing:.06em;text-wrap:balance}
+.prog{display:flex;margin:22px 0 0;padding:0;list-style:none;overflow-x:auto;position:relative;z-index:1}
+.prog li{flex:1;min-width:104px;position:relative;padding:20px 8px 0 0;font-size:13px;color:var(--ink-3)}
+.prog li::before{content:"";position:absolute;top:6px;left:0;right:0;height:2px;background:var(--panel-3)}
+.prog li::after{content:"";position:absolute;top:0;left:0;width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid var(--panel-3)}
+.prog li.done{color:var(--ink-2)}
+.prog li.done::before{background:var(--cyan);opacity:.55}
+.prog li.done::after{background:var(--cyan);border-color:var(--cyan)}
+.prog li.now{color:var(--cyan-ink);font-weight:700}
+.prog li.now::after{border-color:var(--cyan);box-shadow:0 0 0 5px var(--acc-soft)}
+.next{padding:14px 16px;border:1px solid rgba(251,191,36,.5);background:rgba(251,191,36,.05);border-radius:4px;display:flex;flex-direction:column;gap:8px}
+.next>b{color:#FCD34D;font-size:14.5px}
+.next.calm{display:block;border-color:var(--line-2);background:var(--acc-soft);color:var(--ink-2)}
+.next.calm>b{color:var(--cyan-ink)}
+.livebar{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line-2);border-radius:4px;background:var(--acc-soft);font-size:13.5px;color:var(--ink-2)}
+.livebar b{color:var(--ink)}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.stat{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 6px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink-2);font-size:13.5px;text-align:left;width:100%}
+.stat:first-child{border-top:0}
+.stat b{font:20px var(--mono);color:var(--ink);font-weight:400;font-variant-numeric:tabular-nums}
+.stat:hover{color:var(--ink)}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
+.fstep{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:120px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:var(--panel);text-align:left;color:var(--ink-2)}
+.fstep b{font:22px/1 var(--mono);color:var(--ink);font-weight:400}
+.fstep span{font-size:12.5px}
+.fstep:hover{border-color:var(--line-2)}
+.fstep.hot{border-color:rgba(251,191,36,.6);background:rgba(251,191,36,.05)}
+.fstep.hot b{color:#FCD34D}
+.fstep.on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan);color:var(--ink)}
+.fstep.all{margin-left:auto}
+.flow .arrow{align-self:center;color:var(--ink-3);font-size:18px}
+#epSlot .inbox{border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+#epSlot .inbox li.empty{padding:28px 18px}
+.newbatch{flex-direction:row;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:14px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld.grow{flex:2 1 260px}.fld.grow2{flex:2 1 220px}
+.fld label{font-size:12.5px;color:var(--ink-2)}
+.fld input,.fld select{min-height:40px;background:rgba(4,8,18,.8);border:1px solid var(--line-2);border-radius:4px;color:var(--ink);padding:0 10px;font:inherit;font-size:14px}
+.fld input::placeholder{color:#6F84A3}
+.weekly{padding:10px 14px}
+.weekly summary{cursor:pointer;color:var(--ink-2);font-size:13.5px;min-height:32px;display:flex;align-items:center}
+.weekly[open] summary{margin-bottom:8px}
+.lead{margin:0 0 12px;font-size:15px;line-height:1.6;max-width:75ch}
+#contentTop{display:flex;flex-direction:column;gap:16px}
+#contentTop .board,#contentTop .voices,#contentTop .chars{background:var(--panel)}
+.limwrap{padding:14px}
+.scoutline{flex-wrap:wrap}
+
+/* entering a project */
+.enter{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,var(--ec-soft),#02040A 65%);opacity:0;pointer-events:none}
+.enter.on{animation:enterFx .8s cubic-bezier(.22,1,.36,1) forwards}
+.enter .box{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:0 16px}
+.enter .mono{width:96px;height:96px;border-radius:24px;display:grid;place-items:center;font:800 32px var(--display);color:#02040A;background:var(--ec);box-shadow:0 0 40px var(--ec-soft)}
+.enter .lbl{font:600 11px var(--display);letter-spacing:.3em;color:var(--ink-3)}
+.enter .nm{font:800 26px var(--display);letter-spacing:.1em;color:var(--ink);text-wrap:balance}
+.enter .doors{position:absolute;inset:0;display:flex;pointer-events:none}
+.enter .doors i{flex:1;background:#02040A;border-color:var(--ec);border-style:solid;border-width:0}
+.enter .doors i:first-child{border-right-width:2px}.enter .doors i:last-child{border-left-width:2px}
+.enter.on .doors i:first-child{animation:doorL .8s cubic-bezier(.65,0,.35,1) forwards}
+.enter.on .doors i:last-child{animation:doorR .8s cubic-bezier(.65,0,.35,1) forwards}
+@keyframes doorL{0%,35%{transform:translateX(0)}100%{transform:translateX(-101%)}}
+@keyframes doorR{0%,35%{transform:translateX(0)}100%{transform:translateX(101%)}}
+@keyframes enterFx{0%,70%{opacity:1}100%{opacity:0}}
+main.arrive{animation:arrive .5s cubic-bezier(.22,1,.36,1)}
+@keyframes arrive{from{opacity:.4;transform:scale(.985)}to{opacity:1;transform:none}}
+
+/* Atlas drawer */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:#060B17;border-left:1px solid rgba(167,139,250,.5);z-index:45;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .24s cubic-bezier(.22,1,.36,1);visibility:hidden}
+.drawer.open{transform:none;visibility:visible}
+.drawer .ch h2{color:#C4B5FD}
+.ctxbar{margin:10px 14px 0;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--ink-2)}
+.ctxbar .stp{color:#C4B5FD;border-color:rgba(167,139,250,.5)}
+.ctxbar button{background:none;border:0;color:var(--ink-3);font-size:12.5px;text-decoration:underline;padding:4px;min-height:28px}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:44}
+
+.stack .item{grid-template-columns:minmax(0,1fr)}.stack .item .acts{justify-content:flex-start;max-width:none}
+.more{align-self:flex-start}
+@media (max-width:1700px){.topbar .sysline>span:not(.tag){display:none}}
+@media (max-width:1280px){.cols,.cols3{grid-template-columns:minmax(0,1fr)}.officegrid{grid-template-columns:minmax(0,1fr)}.detail{position:static;max-height:none}.topbar .sysline{display:none}}
+@media (max-width:860px){
+  .shell{grid-template-columns:64px minmax(0,1fr)}
+  .side{display:none}
+  .tile{width:44px;height:44px}
+  .topbar{padding:10px 16px}.spendchip .meter{display:none}
+  main{padding:16px 16px 50px}
+  .item{grid-template-columns:minmax(0,1fr)}.item .acts{justify-content:flex-start;max-width:none}
+  .a-office{height:440px}
+}
+@media (prefers-reduced-motion:reduce){.enter{display:none!important}main.arrive{animation:none}.drawer{transition:none}.tile{transition:none}}
+
+.crew .row .av{flex:none}
 </style>
 </head>
 <body>
-<div class="app">
-  <header class="card top">
-    <div class="brand"><span class="logo" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M12 22V12M3 7l9 5 9-5"/></svg></span><h1>Agent<span>HQ</span></h1><span class="tag" id="modeTag">Live</span></div>
-    <div class="sysline"><span>STATUS <b id="sStatus" role="status" aria-live="polite">IDLE</b></span><span>CLOCK <b id="sClock">--:--</b></span><span>UPLINK <b id="sLink">OK</b></span></div>
-    <button class="kill" id="killBtn" type="button"></button>
-  </header>
-  <div class="banner" id="offline" hidden>Can't reach the engine. Make sure the Agent HQ window (START-HERE) is still open, then refresh this page.</div>
-  <div class="banner" id="nokey" hidden>No API key found. Close this, double-click START-HERE and paste your key when it asks.</div>
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="HQ and projects"></nav>
+  <aside class="side" id="side" aria-label="Menu"></aside>
+  <div class="mainwrap">
+    <header class="topbar">
+      <div class="crumb" id="crumb"></div>
+      <div class="sysline"><span>STATUS <b id="sStatus" role="status" aria-live="polite">IDLE</b></span><span>CLOCK <b id="sClock">--:--</b></span><span>UPLINK <b id="sLink">OK</b></span><span class="tag" id="modeTag">Live</span></div>
+      <button class="spendchip" type="button" data-do="go:limits" title="AI spend today out of the daily cap">$<span id="sSpendTop">0.00</span> / $<span id="sCapTop">0.00</span> today<span class="meter" id="sMeterTopBox"><i id="sMeterTop"></i></span></button>
+      <button class="btn atl" id="atlasBtn" type="button" data-do="chat"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span id="atlasLbl">Ask Atlas</span></button>
+      <button class="kill" id="killBtn" type="button"></button>
+    </header>
+    <main id="main">
+      <div class="banner" id="offline" hidden>Can't reach the engine. Make sure the Agent HQ window (START-HERE) is still open, then refresh this page.</div>
+      <div class="banner" id="nokey" hidden>No API key found. Close this, double-click START-HERE and paste your key when it asks.</div>
 
-  <section class="card needs" id="needs" aria-labelledby="hNeeds">
-    <h2 id="hNeeds"><span class="blip" aria-hidden="true"></span>Needs you</h2>
-    <div class="needlist" id="needList"><span class="allclear">Checking…</span></div>
-  </section>
-
-  <section class="kpis" aria-label="Key numbers">
-    <div class="card kpi"><span>AI spend today</span><b id="sSpend">$0.000</b><div class="meter" id="sMeterBox"><i id="sMeter"></i></div><small id="sCap">of $0.00 daily cap</small></div>
-    <div class="card kpi"><span>Ideas judged</span><b id="sIdeas">0</b><small id="sIdeasSub">0 in progress · 0 in inbox</small></div>
-    <div class="card kpi good"><span>Approved</span><b id="sApproved">0</b><small>go-ahead from Vera</small></div>
-    <div class="card kpi"><span>Crew online</span><b id="sTeam">0</b><small>of 14 planned roles</small></div>
-    <div class="card kpi"><span>Cost per idea</span><b id="sAvg">$0.00</b><small id="sIdeaCap">cap $0.00 per idea</small></div>
-  </section>
-
-  <main class="dash">
-
-    <section class="card a-office" id="officeCard" aria-labelledby="hOffice">
-      <div class="ch"><span class="blip"></span><h2 id="hOffice">HQ floor · live</h2>
-        <div class="tools">
-          <button type="button" id="zIn" aria-label="Zoom in"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-          <button type="button" id="zOut" aria-label="Zoom out"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
-          <button type="button" id="zFit" aria-label="Show the whole floor"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-          <button type="button" id="zMax" aria-label="Full screen office" aria-pressed="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
-        </div>
-      </div>
-      <div class="stage">
-        <canvas id="world" aria-label="Live 3D view of the HQ floor: Atlas, Sage and Vera at work"></canvas>
-        <div class="scan" aria-hidden="true"></div>
-        <div class="tip" id="tip">Drag to pan · scroll to zoom · click a crew member</div>
-        <div class="sel" id="sel" hidden>
-          <div class="sel-head">
-            <div class="av" id="selAv"><i id="selDot"></i></div>
-            <div><strong id="selName"></strong><small id="selRole"></small></div>
-            <button class="x" id="selClose" type="button" aria-label="Close"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <section class="page" id="pg-today" aria-labelledby="hiTitle">
+        <div class="hello"><div><h1 id="hiTitle">Hello</h1><p class="sub" id="hiSub"></p></div><div class="glance" id="glance"></div></div>
+        <div class="cols">
+          <section class="card sec" id="secWait"><div class="ch"><span class="blip warnb"></span><h2>Waiting for you <span class="tabcount" id="waitCount"></span></h2></div><div class="secb" id="todayWait"></div></section>
+          <div class="stack">
+            <section class="card sec badc" id="secBlocked" hidden><div class="ch"><span class="blip badb"></span><h2>Blocked</h2></div><div class="secb" id="todayBlocked"></div></section>
+            <section class="card sec"><div class="ch"><span class="blip goodb"></span><h2>Working now</h2><button class="btn sm quiet" type="button" data-do="go:office">See the office</button></div><div class="secb" id="todayWorking"></div></section>
+            <section class="card sec"><div class="ch"><span class="blip"></span><h2>Done recently</h2></div><div class="secb" id="todayDone"></div></section>
           </div>
-          <dl class="kv">
-            <dt>Status</dt><dd id="selStatus"></dd>
-            <dt>Doing</dt><dd id="selDoing"></dd>
-            <dt>AI cost</dt><dd class="num" id="selCost"></dd>
-            <dt>Model</dt><dd class="num" id="selModel"></dd>
-          </dl>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="card a-chat" aria-labelledby="hChat">
-      <div class="ch"><span class="blip" style="background:#A78BFA;box-shadow:0 0 8px #A78BFA"></span><h2 id="hChat">Comms · Atlas</h2><small>general manager</small></div>
-      <div class="chat">
-        <div class="msgs" id="msgs" aria-live="polite" tabindex="0" role="region" aria-label="Conversation with Atlas"></div>
-        <div class="suggest" id="suggest">
-          <button type="button">Give me a briefing</button>
-          <button type="button">What's in my Idea Inbox?</button>
-          <button type="button">I want to create a YouTube channel with AI-generated videos</button>
+      <section class="page" id="pg-ideas" hidden aria-labelledby="hIdeasPg">
+        <div class="hello"><div><h1 id="hIdeasPg">Ideas</h1><p class="sub">Every idea moves left to right. When you approve Serge's plan, the idea becomes a project on the left rail.</p></div>
+          <div class="scoutbox"><span id="scoutInfo">Doulya hasn't scouted yet</span><button class="mini" id="scoutBtn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Scout now</button></div></div>
+        <div class="flow4">
+          <section class="card col"><div class="ch"><h2>New pitches<span class="tabcount" id="inboxCount"></span></h2></div><div class="cb"><ul class="inbox" id="inbox"></ul></div></section>
+          <section class="card col"><div class="ch"><h2>Being researched<span class="tabcount" id="researchCount"></span></h2></div><div class="cb"><ul class="ideas" id="researching"></ul></div></section>
+          <section class="card col"><div class="ch"><h2>Judged by Vera<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></h2></div><div class="cb"><ul class="ideas" id="ideas"></ul></div></section>
+          <section class="card col"><div class="ch"><h2>Plans from Serge<span class="tabcount" id="plansCount"></span></h2></div><div class="cb"><ul class="inbox" id="plans"></ul></div></section>
         </div>
-        <form class="compose" id="compose">
-          <textarea id="chatIn" placeholder="Pitch an idea or ask Atlas anything" aria-label="Message to Atlas"></textarea>
-          <button class="btn" id="sendBtn" type="submit">Send<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
-        </form>
-      </div>
-    </section>
+      </section>
 
-    <section class="card a-ideas" aria-labelledby="hIdeas">
-      <div class="ch"><span class="blip" style="background:#FBBF24;box-shadow:0 0 8px #FBBF24"></span><h2 id="hIdeas">Your desk</h2>
-        <div class="seg"><button type="button" data-tab="inbox" aria-pressed="true">Inbox<span class="tabcount" id="inboxCount"></span></button><button type="button" data-tab="judged" aria-pressed="false">Judged<span class="tabcount" id="ideasCount" style="color:var(--ink-2)"></span></button><button type="button" data-tab="plans" aria-pressed="false">Plans<span class="tabcount" id="plansCount"></span></button><button type="button" data-tab="content" aria-pressed="false">Content<span class="tabcount" id="contentCount"></span></button><button type="button" data-tab="lnd" aria-pressed="false">L&amp;D<span class="tabcount" id="lndCount"></span></button></div>
-      </div>
-      <div class="cb" id="p-inbox">
-        <div class="scoutline"><span id="scoutInfo" style="flex:1">Doulya hasn't scouted yet</span><button class="mini" id="scoutBtn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Scout now</button></div>
-        <ul class="inbox" id="inbox"></ul>
-      </div>
-      <div class="cb" id="p-judged" hidden><ul class="ideas" id="ideas"></ul></div>
-      <div class="cb" id="p-plans" hidden><ul class="inbox" id="plans"></ul></div>
-      <div class="cb" id="p-lnd" hidden><div class="scoutline"><span id="lndInfo" style="flex:1">Richard hasn't sent ideas yet</span><button class="mini" id="lndBtn" type="button">Check now</button></div><div class="lrep" id="lndReport" hidden></div><ul class="inbox" id="lndList"></ul></div>
-      <div class="cb" id="p-content" hidden><div class="ctop" id="contentTop"></div><ul class="inbox" id="episodes"></ul></div>
-    </section>
-
-    <section class="card a-side" aria-label="Mission, activity and crew">
-      <div class="ch"><span class="blip"></span><h2>Ops</h2>
-        <div class="seg"><button type="button" data-pane="mission" aria-pressed="false">Mission<span class="live" id="missionLive" hidden></span></button><button type="button" data-pane="feed" aria-pressed="true">Activity</button><button type="button" data-pane="team" aria-pressed="false">Crew</button><button type="button" data-pane="limits" aria-pressed="false">Limits</button></div>
-      </div>
-      <div class="cb pipe" id="p-mission" role="status" aria-live="polite" hidden>
-        <div class="mission"><span id="pipeLabel">Standby</span><strong id="pipeTitle">No active mission</strong></div>
-        <ol class="steps" id="pipeSteps">
-          <li data-s="research"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span><b>Research</b><small>Sage</small></li>
-          <li data-s="judgment"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z"/></svg></span><b>Judgment</b><small>Vera</small></li>
-          <li data-s="report"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H8l-4 4z"/></svg></span><b>Report</b><small>Atlas</small></li>
-        </ol>
-        <div class="pnote" id="pipeNote"></div>
-        <ol class="plog" id="pipeLog"></ol>
-        <div class="pmeta">
-          <div><span>Searches</span><b id="pmSearch">0</b></div>
-          <div><span>Sources</span><b id="pmSources">0</b></div>
-          <div><span>Elapsed</span><b id="pmTime">00:00</b></div>
+      <section class="page" id="pg-office" hidden aria-labelledby="hOffice">
+        <div class="hello"><div><h1 id="hOffice">Office &amp; team</h1><p class="sub">Every agent wears a status tag. Agents who need you walk to your office and wait there. Click anyone to see what they're doing.</p></div></div>
+        <div class="officegrid">
+          <section class="card a-office" id="officeCard" aria-label="3D office">
+            <div class="ch"><span class="blip"></span><div class="legend"><span class="stp work">Working</span><span class="stp wait">Waiting for you</span><span class="stp block">Blocked</span><span class="stp idle">Idle</span></div>
+              <div class="tools">
+                <button type="button" id="zIn" aria-label="Zoom in"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+                <button type="button" id="zOut" aria-label="Zoom out"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                <button type="button" id="zFit" aria-label="Show the whole floor"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+                <button type="button" id="zMax" aria-label="Full screen office" aria-pressed="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+              </div></div>
+            <div class="stage">
+              <canvas id="world" aria-label="Live 3D view of the office: every agent with a status tag"></canvas>
+              <div class="scan" aria-hidden="true"></div>
+              <div class="tip" id="tip">Drag to pan · scroll to zoom · click an agent</div>
+            </div>
+          </section>
+          <aside class="card detail" id="agentDetail" aria-live="polite" aria-label="Selected agent"></aside>
         </div>
-      </div>
-      <div class="cb" id="p-feed" tabindex="0" role="region" aria-label="Activity log"><ul class="feed" id="feed"></ul></div>
-      <div class="cb" id="p-team" hidden><div class="team" id="team"></div></div>
-      <div class="cb" id="p-limits" hidden><div class="limits" id="limits"></div></div>
-    </section>
-  </main>
+        <section class="card ops" aria-label="Mission, activity and crew">
+          <div class="ch"><span class="blip"></span><h2>Ops</h2>
+            <div class="seg"><button type="button" data-pane="mission" aria-pressed="false">Mission<span class="live" id="missionLive" hidden></span></button><button type="button" data-pane="feed" aria-pressed="true">Activity</button><button type="button" data-pane="team" aria-pressed="false">Crew</button></div>
+          </div>
+          <div class="cb pipe" id="p-mission" role="status" aria-live="polite" hidden>
+            <div class="mission"><span id="pipeLabel">Standby</span><strong id="pipeTitle">No active mission</strong></div>
+            <ol class="steps" id="pipeSteps">
+              <li data-s="research"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span><b>Research</b><small>Sage</small></li>
+              <li data-s="judgment"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z"/></svg></span><b>Judgment</b><small>Vera</small></li>
+              <li data-s="report"><span class="node"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H8l-4 4z"/></svg></span><b>Report</b><small>Atlas</small></li>
+            </ol>
+            <div class="pnote" id="pipeNote"></div>
+            <ol class="plog" id="pipeLog"></ol>
+            <div class="pmeta"><div><span>Searches</span><b id="pmSearch">0</b></div><div><span>Sources</span><b id="pmSources">0</b></div><div><span>Elapsed</span><b id="pmTime">00:00</b></div></div>
+          </div>
+          <div class="cb" id="p-feed" tabindex="0" role="region" aria-label="Activity log"><ul class="feed" id="feed"></ul></div>
+          <div class="cb" id="p-team" hidden><div class="team" id="team"></div></div>
+        </section>
+      </section>
+
+      <section class="page" id="pg-lnd" hidden aria-labelledby="hLnd">
+        <div class="hello"><div><h1 id="hLnd">Learning<span class="tabcount" id="lndCount"></span></h1><p class="sub">Richard reads what's new every morning and suggests ways to make the company better. Yes goes to Atlas first.</p></div></div>
+        <section class="card"><div class="scoutline"><span id="lndInfo" style="flex:1">Richard hasn't sent ideas yet</span><button class="mini" id="lndBtn" type="button">Check now</button></div><div class="lrep" id="lndReport" hidden></div><ul class="inbox" id="lndList"></ul></section>
+      </section>
+
+      <section class="page" id="pg-limits" hidden aria-labelledby="hLim">
+        <div class="hello"><div><h1 id="hLim">Spend &amp; limits</h1><p class="sub">What the company may spend. Changes apply at once and show in Activity.</p></div></div>
+        <section class="kpis" aria-label="Key numbers">
+          <div class="card kpi"><span>AI spend today</span><b id="sSpend">$0.000</b><div class="meter" id="sMeterBox"><i id="sMeter"></i></div><small id="sCap">of $0.00 daily cap</small></div>
+          <div class="card kpi"><span>Ideas judged</span><b id="sIdeas">0</b><small id="sIdeasSub">0 in progress · 0 in inbox</small></div>
+          <div class="card kpi good"><span>Approved</span><b id="sApproved">0</b><small>go-ahead from Vera</small></div>
+          <div class="card kpi"><span>Crew online</span><b id="sTeam">0</b><small>of 14 planned roles</small></div>
+          <div class="card kpi"><span>Cost per idea</span><b id="sAvg">$0.00</b><small id="sIdeaCap">cap $0.00 per idea</small></div>
+        </section>
+        <section class="card"><div class="limwrap"><div class="limits" id="limits"></div></div></section>
+      </section>
+
+      <section class="page" id="pg-project" hidden><div id="contentTop"></div></section>
+    </main>
+  </div>
 </div>
+
+<div id="holder" hidden><ul class="inbox" id="episodes"></ul></div>
+<div class="enter" id="enter" hidden aria-hidden="true"><div class="box"><div class="mono" id="enMono"></div><div class="lbl">ENTERING PROJECT</div><div class="nm" id="enName"></div></div><div class="doors"><i></i><i></i></div></div>
+<div class="rtip" id="rtip" hidden></div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-label="Chat with Atlas" aria-hidden="true">
+  <div class="ch"><span class="blip violetb"></span><h2 id="hChat">Atlas · general manager</h2><button class="x" type="button" data-do="closechat" aria-label="Close chat"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="ctxbar" id="ctxbar"></div>
+  <div class="chat">
+    <div class="msgs" id="msgs" aria-live="polite" tabindex="0" role="region" aria-label="Conversation with Atlas"></div>
+    <div class="suggest" id="suggest"></div>
+    <form class="compose" id="compose">
+      <textarea id="chatIn" placeholder="Ask Atlas anything" aria-label="Message to Atlas"></textarea>
+      <button class="btn" id="sendBtn" type="submit">Send<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+    </form>
+  </div>
+</aside>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="overlay" id="overlay" hidden>
@@ -543,11 +794,18 @@ function addAgent(info) {
   const a = {name:info.name, dept, role:info.role, model:info.model, x:0, y:0, face:-Math.PI/2,
     path:[], plan:[], jobs:[], job:false, mode:'idle', timer:rnd(1, 4), working:false, carry:false, bubble:null,
     walkPh:0, room:dept, lane:null, activity:'At station'};
-  const desk = {x:R.cx - 10, y:(R.doorSide === 'bottom' ? R.y0 + 112 : R.y0 + 130)};
+  const mates = Object.values(agents).filter(o => o.dept === dept);   // up to three desks side by side in one room
+  const slot = mates.length, dx = [0, 62, -62][slot] ?? (slot * 30 - 60);
+  if (slot === 1 && !mates[0].moved) shiftDesk(mates[0], -62);
+  const desk = {x:R.cx - 10 + (slot === 1 ? 62 : slot === 2 ? 0 : dx), y:(R.doorSide === 'bottom' ? R.y0 + 112 : R.y0 + 130) + (slot === 2 ? 60 : 0)};
   a.desk = desk; a.seat = {x:desk.x, y:desk.y + 28, lane:desk.x + 70, face:-Math.PI/2};
   a.x = a.seat.x; a.y = a.seat.y; a.lane = a.seat.lane;
   agents[a.name] = a; buildScene();
   return a;
+}
+function shiftDesk(o, dx) {
+  o.moved = true; o.desk.x += dx; o.seat.x += dx; o.seat.lane += dx;
+  if (!o.path.length) { o.x = o.seat.x; o.y = o.seat.y; o.lane = o.seat.lane; }
 }
 
 /* ---------- Movement ---------- */
@@ -578,7 +836,22 @@ function runNext(a) {
 }
 function startJob(a, steps) { a.job = true; a.plan = [...steps, {fn:x => { x.job = false; }}]; if (!a.path.length) { a.timer = 0; a.mode = 'idle'; } }
 function assign(a, steps) { if (!a) return; if (a.job) a.jobs.push(steps); else startJob(a, steps); }
+function waitSpot(a) {   // agents who need the owner line up in his office
+  const waiting = Object.values(agents).filter(o => agentState(o.name).s === 'wait');
+  const i = Math.max(0, waiting.indexOf(a)), x = OW.x0 + 40 + (i % 4) * 48;
+  return {x, y:OW.y1 - 62 - Math.floor(i / 4) * 34, lane:x, face:-Math.PI / 2};
+}
 function decide(a) {
+  const st = agentState(a.name).s;
+  if (st === 'wait' && !a.working) {
+    const p = waitSpot(a);
+    if (a.room !== 'owner' || Math.hypot(a.x - p.x, a.y - p.y) > 2) { a.plan = [{go:p, room:'owner', label:'Walking to your office'}]; runNext(a); return; }
+    a.plan = [{stay:5, anim:'idle', face:-Math.PI / 2}]; runNext(a); return;
+  }
+  if (st === 'block') {
+    if (!atSeat(a)) { a.plan = [{goSeat:true}]; runNext(a); return; }
+    a.plan = [{stay:4, anim:'idle', face:-Math.PI / 2}]; runNext(a); return;
+  }
   if (!atSeat(a)) { a.plan = [{goSeat:true, label: a.working ? 'Back to work' : 'Returning to station'}]; runNext(a); return; }
   if (a.working) { a.plan = [{stay:3, anim:'type', face:-Math.PI/2}]; runNext(a); return; }
   const r = Math.random();
@@ -916,7 +1189,9 @@ function furnish(d) {
   }
 }
 
-const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}, Richard:{shell:'#E2E8F0', visor:'#A3E635'}};
+const LOOKS = {Doulya:{shell:'#F8FAFC', visor:'#FBBF24'}, Atlas:{shell:'#E2E8F0', visor:'#A78BFA'}, Sage:{shell:'#CBD5E1', visor:'#2DD4BF'}, Vera:{shell:'#F1F5F9', visor:'#F472B6'}, Serge:{shell:'#E2E8F0', visor:'#60A5FA'}, Calina:{shell:'#F8FAFC', visor:'#FB923C'}, Richard:{shell:'#E2E8F0', visor:'#A3E635'}, Scout:{shell:'#CBD5E1', visor:'#93C5FD'}, Israa:{shell:'#F8FAFC', visor:'#FDE68A'}, Animator:{shell:'#E2E8F0', visor:'#F0ABFC'}};
+const STC = {work:'#34D399', wait:'#FBBF24', block:'#F43F5E', idle:'#64748B'};
+const STL = {work:'WORKING', wait:'WAITING FOR YOU', block:'BLOCKED', idle:'IDLE'};
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function seatedNow(a) { return atSeat(a) && !a.path.length && a.mode !== 'stretch'; }
 function drawAgent(g, a, t) {
@@ -928,6 +1203,8 @@ function drawAgent(g, a, t) {
   if (killOn) g.filter = 'grayscale(100%) brightness(.7)';
   if (a === selected) { g.save(); g.strokeStyle = '#67E8F9'; g.lineWidth = 1.5; g.setLineDash([5, 4]); g.lineDashOffset = -t * 20; g.beginPath(); g.ellipse(X, Y, 24, 13, 0, 0, Math.PI * 2); g.stroke(); g.restore(); }
   g.fillStyle = `hsl(${hue} 90% 55% / .16)`; g.strokeStyle = `hsl(${hue} 95% 62% / .75)`; g.lineWidth = 1; g.beginPath(); g.ellipse(X, Y, 12, 6.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  const st = agentState(a.name).s;   // a ring at their feet: red pulses when blocked, amber when waiting for the owner
+  if (!killOn && (st === 'block' || st === 'wait')) { const p = st === 'block' ? 1 + (Math.sin(t * 4) + 1) * .18 : 1; g.strokeStyle = STC[st]; g.lineWidth = 2; g.globalAlpha = st === 'block' ? .55 + Math.sin(t * 4) * .35 : .85; g.beginPath(); g.ellipse(X, Y, 18 * p, 9.5 * p, 0, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1; }
   const bob = walking ? Math.abs(Math.sin(a.walkPh)) * 1.6 : 0, base = seated ? 13 : 0;
   if (!seated) {
     const sw = walking ? Math.sin(a.walkPh) * 3 : 0;
@@ -1057,14 +1334,28 @@ function drawOverlays(g, t) {
     else { const [sx, sy] = toScreen(d.cx, d.cy - 10, 60); chip(g, sx, sy, d.name.toUpperCase() + ' · OFFLINE', null, {center:true, ink:'#8FA3BF', line:'rgba(100,116,139,.45)'}); }
   }
   { const [sx, sy] = toScreen(18, C1, 0); chip(g, sx, sy - 22, 'ENTRANCE', null, {bg:'rgba(34,211,238,.16)', ink:'#67E8F9', line:'rgba(34,211,238,.6)'}); }
+  { const n = Object.values(agents).filter(o => agentState(o.name).s === 'wait').length;
+    if (n && !killOn) { const [sx, sy] = toScreen(OW.cx, OW.y1 - 14, 0); chip(g, sx, sy, `${n} WAITING FOR YOU HERE`, '#FBBF24', {center:true, ink:'#FCD34D', line:'rgba(251,191,36,.7)', font:'700 10px Orbitron, system-ui, sans-serif'}); } }
   const list = Object.values(agents).sort((p, q) => (p.x + p.y) - (q.x + q.y));
   for (const a of list) {
     const seated = seatedNow(a); const [sx, sy] = toScreen(a.x, a.y, (seated ? 13 : 0) + 56);
-    g.font = '600 12px "Exo 2", system-ui, sans-serif'; const nw = g.measureText(a.name).width, tw = nw + 14 + (a.working ? 10 : 0);
-    g.fillStyle = 'rgba(3,7,16,.9)'; g.fillRect(sx - nw / 2 - 7, sy - 9, tw, 18);
-    g.strokeStyle = ROOM[a.dept].color; g.lineWidth = 1; g.strokeRect(sx - nw / 2 - 6.5, sy - 8.5, tw - 1, 17);
-    g.fillStyle = '#E6F1FF'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(a.name, sx - nw / 2, sy + .5); g.textBaseline = 'alphabetic';
-    if (a.working && !killOn) { g.fillStyle = '#22D3EE'; g.shadowColor = '#22D3EE'; g.shadowBlur = 6; g.beginPath(); g.arc(sx + nw / 2 + 6, sy, 3, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0; }
+    // name plate: name + status word in its colour; what they're doing shows when zoomed in, selected or blocked
+    const S = agentState(a.name), col = killOn ? '#F43F5E' : STC[S.s], lbl = killOn ? 'HALTED' : STL[S.s];
+    g.font = '600 12px "Exo 2", system-ui, sans-serif'; const nw = g.measureText(a.name).width;
+    g.font = '700 9.5px Orbitron, system-ui, sans-serif'; const lw = g.measureText(lbl).width;
+    const tw = nw + lw + 32, x0 = sx - tw / 2;
+    g.fillStyle = 'rgba(3,7,16,.92)'; g.fillRect(x0, sy - 10, tw, 20);
+    g.strokeStyle = col; g.lineWidth = 1; g.strokeRect(x0 + .5, sy - 9.5, tw - 1, 19);
+    g.fillStyle = col; g.beginPath(); g.arc(x0 + 10, sy, 3.5, 0, Math.PI * 2); g.fill();
+    g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.font = '600 12px "Exo 2", system-ui, sans-serif'; g.fillStyle = '#E6F1FF'; g.fillText(a.name, x0 + 19, sy + .5);
+    g.font = '700 9.5px Orbitron, system-ui, sans-serif'; g.fillStyle = col; g.fillText(lbl, x0 + 26 + nw, sy + 1);
+    if (S.tag && !a.bubble && (a === selected || cam.s > cam.fitS * 2.2 || S.s === 'block')) {
+      g.font = '500 11.5px "Exo 2", system-ui, sans-serif'; const t2 = short(S.tag, 44), w = g.measureText(t2).width + 14;
+      g.fillStyle = 'rgba(3,7,16,.88)'; g.fillRect(sx - w / 2, sy + 12, w, 18);
+      g.fillStyle = '#C7D4E6'; g.textAlign = 'center'; g.fillText(t2, sx, sy + 21.5);
+    }
+    g.textBaseline = 'alphabetic';
     const b = a.bubble; if (!b) continue;
     g.save(); g.globalAlpha = Math.max(0, Math.min(1, b.t / .4));
     g.font = '500 12.5px "Exo 2", system-ui, sans-serif'; const w = g.measureText(b.text).width + 18, by = sy - 16;
@@ -1083,7 +1374,7 @@ function drawOverlays(g, t) {
   }
 }
 function drawFrame(t) {
-  if (!CW) return;
+  if (!CW || cv.offsetParent === null) return;   // the office page is closed: agents keep moving, nothing is drawn
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const grd = ctx.createRadialGradient(CW / 2, CH * .3, 10, CW / 2, CH * .3, Math.max(CW, CH));
   grd.addColorStop(0, '#0A1A33'); grd.addColorStop(1, '#02040A');
@@ -1147,7 +1438,7 @@ cv.addEventListener('pointermove', e => {
   else cv.style.cursor = agentAt(e.clientX, e.clientY) ? 'pointer' : 'grab';
 });
 cv.addEventListener('pointerup', e => {
-  if (drag && !drag.moved) { selected = agentAt(e.clientX, e.clientY); renderSel(); renderTeam(); }
+  if (drag && !drag.moved) { const a = agentAt(e.clientX, e.clientY); if (a) { selected = a; renderDetail(); renderTeam(); } }
   drag = null; cv.style.cursor = 'grab';
 });
 cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * .0015)); }, {passive:false});
@@ -1156,6 +1447,11 @@ $('#zOut').addEventListener('click', () => zoomAt(CW / 2, CH / 2, .8));
 $('#zFit').addEventListener('click', fit);
 function setFull(on) { const c = $('#officeCard'); c.classList.toggle('full', on); $('#zMax').setAttribute('aria-pressed', on); $('#zMax').setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen office'); }
 $('#zMax').addEventListener('click', () => setFull(!$('#officeCard').classList.contains('full')));
+function focusAgent(name) {   // fly the camera to one agent
+  const a = agents[name]; if (!a || !CW) return;
+  selected = a; const s = cam.fitS * 3, [X, Y] = iso(a.x, a.y, 20);
+  cam.s = s; cam.ox = CW / 2 - X * s; cam.oy = CH / 2 - Y * s; cam.user = true;
+}
 
 /* ---------- Mini markdown ---------- */
 function inline(s) {
@@ -1189,11 +1485,7 @@ let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spend
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
 let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {}, refboards = {}, characters = {}, animTest = {}, eleven = {}, boardUnlocked = {}, scoutingRefs = false, boardDraft = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
-function showIdeaTab(id) {
-  ideaTab = id;
-  document.querySelectorAll('.seg button[data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === id));
-  $('#p-inbox').hidden = id !== 'inbox'; $('#p-judged').hidden = id !== 'judged'; $('#p-plans').hidden = id !== 'plans'; $('#p-content').hidden = id !== 'content'; $('#p-lnd').hidden = id !== 'lnd';
-}
+function showIdeaTab(id) { ideaTab = id; }   // the old desk tabs are pages now; nothing jumps on its own
 function renderInbox() {
   $('#inboxCount').textContent = inbox.length ? inbox.length : '';
   $('#inbox').innerHTML = inbox.length ? inbox.map((i, n) => { const p = i.pitch || {}, busy = pending[i.id];
@@ -1470,35 +1762,6 @@ function voiceHtml(p) {
     <form class="why" data-vaddform="${p.id}"><input type="text" maxlength="60" data-vid placeholder="Add any ElevenLabs voice: paste its voice id" aria-label="ElevenLabs voice id"><input type="text" maxlength="60" data-vname placeholder="Name (optional)" aria-label="Voice name" style="max-width:160px"><button class="btn sm ghost" type="submit" ${eleven.configured ? '' : 'disabled'}>Add voice</button></form>
     <div class="acts"><button class="btn sm ${list ? 'ghost' : ''}" type="button" data-vsamples="${p.id}" ${v.making ? 'disabled' : ''}>${v.making ? 'Making samples…' : list ? 'Make them again' : 'Make voice samples'}</button></div></div>`;
 }
-function renderContent() {
-  const live = projects.filter(p => p.status === 'approved');
-  const waiting = episodes.filter(e => e.status === 'awaiting_approval');
-  $('#contentCount').textContent = waiting.length ? waiting.length : '';
-  if (!(document.activeElement && $('#contentTop').contains(document.activeElement)))
-    $('#contentTop').innerHTML = live.length ? live.map(p => `<div class="proj" data-pid="${p.id}"><div><b>${esc(short(p.title, 90))}</b> <span class="pill approve">Plan ${p.id} approved</span></div>
-      ${(p.meta || {}).channel ? `<p class="src" style="margin:0">Channel: <b style="color:var(--ink)">${esc(p.meta.channel.name)}</b> ${esc(p.meta.channel.handle || '')}${/^https?:\/\//.test(p.meta.channel.url || '') ? ` · <a href="${esc(p.meta.channel.url)}" target="_blank" rel="noopener">open</a>` : ''}</p>` : '<p class="src" style="margin:0">No channel name on record yet. Tell Atlas the name and handle.</p>'}
-      ${(() => { const pr = (production || {})[p.id] || {}; return pr.shorts_logged ? `<p class="src" style="margin:0">Pilot log: ${pr.shorts_logged} Short(s) · on average ${pr.avg_credits} credits · ${pr.avg_minutes} min of your time · ${pr.avg_retakes} retakes</p>` : ''; })()}
-      ${boardHtml(p)}
-      ${charsHtml(p)}
-      ${animHtml(p)}
-      ${voiceHtml(p)}
-      <form class="why" data-cform="batch"><input type="text" maxlength="12000" placeholder="Notes for Calina's next batch (optional)" aria-label="Notes for Calina"><button class="btn sm" type="submit" ${producing ? 'disabled' : ''}>${producing ? 'Calina is writing…' : 'New batch of scripts'}</button></form>
-      <form class="why" data-cform="review"><input type="text" maxlength="12000" placeholder="Paste this week's channel stats for a learning note" aria-label="Channel stats"><button class="btn sm ghost" type="submit">Weekly review</button></form></div>`).join('')
-      : '<p class="empty" style="margin:0">No approved content project yet. Approve one of Serge\'s plans first.</p>';
-  const order = [...waiting, ...episodes.filter(e => e.status !== 'awaiting_approval')];
-  $('#episodes').innerHTML = order.length ? order.map(e => { const d = e.data || {}, busy = pending['e' + e.id];
-    return `<li class="ep" data-eid="${e.id}"${epWait(e) ? ` data-wait="${epWait(e)}"` : ''}><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${['approved', 'published'].includes(e.status) ? 'approve' : e.status === 'rejected' ? 'reject' : e.status === 'rendered' ? 'work' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
-      <span class="t">${esc(e.title)}</span>
-      <div class="meta">${d.format === 'video' ? '<span style="color:#FCD34D">REGULAR VIDEO · NOT A SHORT</span>' : ''}<span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span>${(d.scenes || []).length ? `<span>${d.scenes.length} SCENES</span><span>${d.scenes.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span><span>ANIMATED</span>` : (d.shots || []).length ? `<span>${d.shots.length} SHOTS</span><span>${d.shots.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span>` : `<span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span>`}</div>
-      ${reviewHtml(e)}
-      ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.scenes || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${d.scenes.map(x => `${x.n}. ${esc(x.voice_line || '')}  [${esc(x.backdrop || '')}${(x.characters || []).length ? ', ' + x.characters.map(c => c.who).join(' + ') : ''}]`).join('\n')}</div>${(d.kit_requests || []).length ? `<p class="src"><b>Needs new art:</b> ${d.kit_requests.map(esc).join('; ')}</p>` : ''}` : (d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
-      <p><b style="color:var(--ink)">Surprising fact:</b> ${esc(d.surprising_fact || '')}</p>
-      <div class="src">${(d.sources || []).map(x => `${/^https?:\/\//.test(x.url || '') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.publisher || 'source')}</a>` : esc(x.publisher || 'source')}: “${esc(short(x.quote || '', 160))}”`).join('<br>')}</div>
-      <div class="acts"><button class="btn sm" type="button" data-eact="approve" ${busy ? 'disabled' : ''}>Approve</button><button class="btn sm ghost" type="button" data-eact="reject" ${busy ? 'disabled' : ''}>Reject</button></div>
-      <form class="why" hidden><input type="text" maxlength="1000" placeholder="Why not? (teaches Calina)" aria-label="Reason for rejecting"><button class="btn sm ghost" type="submit">Confirm</button></form>`
-      : (e.owner_note ? `<p class="src">Your note: ${esc(e.owner_note)}</p>` : '')}${epActions(e)}</li>`; }).join('')
-    : `<li class="empty">${producing ? 'Calina is writing the first batch…' : 'No scripts yet. Click <b>New batch of scripts</b> above, or ask Atlas.'}</li>`;
-}
 async function contentAct(url, body, okMsg) {
   try {
     const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
@@ -1527,7 +1790,7 @@ async function askPlan(ideaId, notes) {
   try {
     const r = await fetch('/api/plan/' + ideaId, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({notes:notes || ''})});
     const j = await r.json().catch(() => ({}));
-    if (r.ok) { toast('Serge is writing the plan. It will land under Plans in a few minutes.'); showIdeaTab('plans'); } else toast(j.error || 'Could not start planning.');
+    if (r.ok) { toast('Serge is writing the plan. It will land in Ideas, under Plans, in a few minutes.'); go('ideas'); } else toast(j.error || 'Could not start planning.');
   } catch { toast("Can't reach the engine."); }
   poll();
 }
@@ -1537,7 +1800,10 @@ function renderChat() {
   box.innerHTML = chat.map(m => m.from === 'you' ? `<div class="msg you">${esc(m.text)}</div>` : `<div class="msg atlas"><span class="from">ATLAS</span>${md(m.text)}</div>`).join('')
     + (busy ? '<div class="working"><span class="dots"><i></i><i></i><i></i></span>Atlas is thinking. Checking the company can take up to a minute.</div>' : '');
   if (atBottom || busy) box.scrollTop = box.scrollHeight;
-  $('#sendBtn').disabled = busy; $('#suggest').hidden = chat.length > 2;
+  $('#sendBtn').disabled = busy;
+  const last = chat[chat.length - 1];   // a reply arrived while the chat was closed: a dot on the Ask Atlas button
+  if (!$('#drawer').classList.contains('open') && last && last.from !== 'you' && chat.length > chatSeen) $('#atlasBtn').classList.add('unread');
+  if ($('#drawer').classList.contains('open')) chatSeen = chat.length;
 }
 function renderFeed() {
   $('#feed').innerHTML = feed.length ? feed.map(f => `<li class="${f.kind}"><time>${f.time}</time><div><span class="who">${esc(f.who)}</span> ${esc(f.text)}</div></li>`).join('')
@@ -1550,9 +1816,14 @@ function stagePill(i) {
   return `<span class="pill work">In ${esc(i.status)}</span>`;
 }
 function renderIdeas() {
-  $('#ideasCount').textContent = ideas.length ? ideas.length : '';
-  $('#ideas').innerHTML = ideas.length ? ideas.map(i => `<li data-id="${i.id}" tabindex="0" role="button"${['stopped','error','interrupted'].includes(i.status) && !i.verdict ? ' data-wait="stuck"' : ''}><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}${i.plan_status ? `<span>PLAN: ${esc((PLAN_STATUS[i.plan_status] || i.plan_status).toUpperCase())}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`).join('')
-    : '<li class="empty" style="cursor:default">No ideas yet. Pitch one to Atlas; it lands here with Vera\'s verdict and Sage\'s full research.</li>';
+  const row = i => `<li data-id="${i.id}" tabindex="0" role="button"${['stopped','error','interrupted'].includes(i.status) && !i.verdict ? ' data-wait="stuck"' : ''}><span class="t">${esc(i.title)}</span><span class="meta">${stagePill(i)}${i.path ? `<span>PATH ${esc(i.path)}</span>` : ''}${i.plan_status ? `<span>PLAN: ${esc((PLAN_STATUS[i.plan_status] || i.plan_status).toUpperCase())}</span>` : ''}<span>$${(+i.cost_usd).toFixed(3)}</span><span>#${i.id}</span></span></li>`;
+  const judged = ideas.filter(i => i.verdict), open = ideas.filter(i => !i.verdict);
+  $('#ideasCount').textContent = judged.length ? judged.length : '';
+  $('#researchCount').textContent = open.length ? open.length : '';
+  $('#ideas').innerHTML = judged.length ? judged.map(row).join('')
+    : '<li class="empty" style="cursor:default">No verdicts yet. Ideas land here with Vera\'s verdict and Sage\'s full research.</li>';
+  $('#researching').innerHTML = (jobLive() ? `<li class="live" style="cursor:default"><span class="t">${esc(JOB.title)}</span><span class="src">${JOB.note || 'Working…'}</span><span class="meta"><span>${JOB.searches} SEARCHES</span><span>${JOB.sources} SOURCES</span></span></li>` : '')
+    + (open.length ? open.map(row).join('') : jobLive() ? '' : '<li class="empty" style="cursor:default">Nothing being researched. Click <b>Research it</b> on a pitch, or tell Atlas an idea.</li>');
 }
 const OPEN_ROLES = ['Reporting','Builders & QA','Sales','Security & Legal','Operations','Finance & Data','Support & Feedback','L&D QA','Efficiency'];
 function statusOf(a) { if (killOn) return 'Halted'; if (a.path.length) return a.carry ? 'Delivering' : 'Moving'; if (a.working) return 'Working'; if (['drink','talk'].includes(a.mode) && a.room === 'break') return 'Recharging'; return 'Standing by'; }
@@ -1574,7 +1845,7 @@ function limField(key, extra) {
   return `<input type="number" inputmode="decimal" step="0.5" min="${l.min}" max="${l.max}" data-key="${key}" aria-label="${esc(l.label)}" value="${l.value == null ? '' : l.value}" ${l.kind === 'usd_or_none' ? 'placeholder="no cap"' : ''}>`;
 }
 function renderLimits(force) {
-  if (sidePane !== 'limits') return;
+  if (!(space === 'hq' && page === 'limits')) return;
   const k = JSON.stringify(limits); if (!force && k === limitsKey) return;
   if (!force && document.activeElement && $('#limits').contains(document.activeElement)) return;   // don't clobber typing
   limitsKey = k;
@@ -1601,21 +1872,14 @@ async function setLimit(el) {
 }
 function renderTeam() {
   if (sidePane !== 'team') return;
-  $('#team').innerHTML = agentInfo.map(i => { const a = agents[i.name]; if (!a) return ''; return `<div class="crew ${a === selected ? 'on' : ''}" data-name="${esc(i.name)}" tabindex="0" role="button" aria-label="Show ${esc(i.name)} on the floor"><div class="row"><div class="av">${esc(i.name[0])}<i style="background:${ROOM[a.dept].color}"></i></div><div><strong>${esc(i.name)}</strong><small>${esc(i.role)} · ${esc(i.dept)}</small></div><span class="pill ${a.working ? 'work' : ''}">${statusOf(a)}</span></div>
-    <dl class="kv"><dt>Doing</dt><dd>${esc(a.activity)}</dd>${runsOn(i.name)}<dt>API cost</dt><dd class="num">$${i.cost_today.toFixed(4)} · ${i.calls_today} calls today</dd>${subLine(i.name)}<dt>Tasks</dt><dd class="num">${i.tasks}</dd><dt>Model</dt><dd class="num">${esc(i.model)}</dd><dt>Tools</dt><dd>${i.tools.map(esc).join(', ')}</dd></dl></div>`; }).join('')
+  $('#team').innerHTML = agentInfo.map(i => { const a = agents[i.name]; if (!a) return ''; return `<div class="crew ${a === selected ? 'on' : ''}" data-name="${esc(i.name)}" tabindex="0" role="button" aria-label="Show ${esc(i.name)} on the floor"><div class="row"><div class="av">${esc(i.name[0])}<i style="background:${ROOM[a.dept].color}"></i></div><div><strong>${esc(i.name)}</strong><small>${esc(i.role)} · ${esc(i.dept)}</small></div><span class="stp ${killOn ? 'block' : agentState(i.name).s}">${killOn ? 'Halted' : SLABEL[agentState(i.name).s]}</span></div>
+    <dl class="kv"><dt>Doing</dt><dd>${esc(agentState(i.name).why || a.activity)}</dd>${runsOn(i.name)}<dt>API cost</dt><dd class="num">$${i.cost_today.toFixed(4)} · ${i.calls_today} calls today</dd>${subLine(i.name)}<dt>Tasks</dt><dd class="num">${i.tasks}</dd><dt>Model</dt><dd class="num">${esc(i.model)}</dd><dt>Tools</dt><dd>${i.tools.map(esc).join(', ')}</dd></dl></div>`; }).join('')
     + `<p class="h3">Rooms to fill next</p><div class="roles">${OPEN_ROLES.map(r => `<span>${esc(r)}</span>`).join('')}</div>`;
-}
-function renderSel() {
-  const a = selected; $('#sel').hidden = !a; $('#tip').hidden = !!a; if (!a) return;
-  const info = agentInfo.find(i => i.name === a.name) || {};
-  $('#selName').textContent = a.name; $('#selRole').textContent = `${a.role} · ${ROOM[a.dept].name}`;
-  const av = $('#selAv'); if (av.firstChild && av.firstChild.nodeType === 3) av.firstChild.textContent = a.name[0]; else av.insertBefore(document.createTextNode(a.name[0]), $('#selDot'));
-  $('#selDot').style.background = ROOM[a.dept].color; $('#selStatus').textContent = statusOf(a); $('#selDoing').textContent = a.activity;
-  $('#selCost').textContent = '$' + (info.cost_today || 0).toFixed(4) + ' today'; $('#selModel').textContent = info.model || '';
 }
 function renderHud(s) {
   $('#sSpend').textContent = '$' + s.spend_today.toFixed(3); $('#sCap').textContent = `of $${s.daily_cap.toFixed(2)} daily cap`;
   const pct = Math.min(100, s.spend_today / s.daily_cap * 100); $('#sMeter').style.width = pct + '%'; $('#sMeterBox').classList.toggle('hot', pct > 75);
+  $('#sSpendTop').textContent = s.spend_today.toFixed(2); $('#sCapTop').textContent = s.daily_cap.toFixed(2); $('#sMeterTop').style.width = pct + '%'; $('#sMeterTopBox').classList.toggle('hot', pct > 75);
   const judged = ideas.filter(i => i.verdict), ok = judged.filter(i => i.verdict === 'approve' || i.verdict === 'approve_smaller_version');
   const open = ideas.filter(i => !i.verdict && !['stopped','error','interrupted'].includes(i.status)).length;
   $('#sIdeas').textContent = judged.length; $('#sIdeasSub').textContent = `${open} in progress · ${inbox.length} in inbox`;
@@ -1631,8 +1895,8 @@ function renderHud(s) {
 function showSide(id) {
   sidePane = id;
   document.querySelectorAll('.seg button[data-pane]').forEach(b => b.setAttribute('aria-pressed', b.dataset.pane === id));
-  $('#p-mission').hidden = id !== 'mission'; $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team'; $('#p-limits').hidden = id !== 'limits';
-  if (id === 'feed') renderFeed(); else if (id === 'mission') renderPipe(); else if (id === 'team') renderTeam(); else renderLimits(true);
+  $('#p-mission').hidden = id !== 'mission'; $('#p-feed').hidden = id !== 'feed'; $('#p-team').hidden = id !== 'team';
+  if (id === 'feed') renderFeed(); else if (id === 'mission') renderPipe(); else renderTeam();
 }
 let polling = false;
 async function poll() {
@@ -1649,7 +1913,10 @@ async function pollOnce() {
   for (const e of s.events) {
     lastId = Math.max(lastId, e.id);
     pipeEvent(e); if (!initial) handleEvent(e);
-    const f = feedLine(e); if (f) { feed.unshift({time:clockOf(e.ts), who:f[0], text:f[1], kind:f[2]}); feedDirty = true; }
+    const d = e.detail || {};
+    if (e.kind === 'video_failed' && d.episode) lastFail[d.episode] = {ts:e.ts, reason:d.reason || ''};
+    else if (['render_started', 'video_ready', 'episode_rejected'].includes(e.kind) && d.episode) delete lastFail[d.episode];
+    const f = feedLine(e); if (f) { feed.unshift({time:clockOf(e.ts), ts:e.ts, who:f[0], text:f[1], kind:f[2], pid:d.project ?? null, ep:d.episode ?? null}); feedDirty = true; }
   }
   feed = feed.slice(0, 200);
   const wasBusy = busy; killOn = s.kill; busy = s.busy;
@@ -1661,18 +1928,20 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
-  production = s.production || {}; voiceSamples = s.voice_samples || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs;
+  producingFor = s.producing_project ?? null; reviewing = !!s.reviewing; atlasLimit = s.atlas_limit || null;
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
   planning = !!s.planning; projects = s.projects || []; const pk = JSON.stringify(projects) + planning;
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();
-  if (s.events.length) renderPipe();
-  renderTeam(); renderHud(s); renderSel(); renderNeeds();
+  if (s.events.length) { renderPipe(); renderIdeas(); }
+  renderTeam(); renderHud(s); renderNeeds(); renderDetail();
 }
 async function send(text) {
   text = text.trim(); if (!text || busy) return;
+  if (chatCtx) text = `(About ${chatCtx}) ${text}`;   // Atlas knows which project or agent the owner means
   chat.push({from:'you', text}); busy = true; renderChat();
   try { const r = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})}); if (!r.ok) { const j = await r.json().catch(() => ({})); chat.push({from:'atlas', text:j.error || 'Could not send.'}); busy = false; renderChat(); } }
   catch { $('#offline').hidden = false; }
@@ -1704,7 +1973,7 @@ async function openIdea(id) {
   $('#ovBody').innerHTML = h; $('#overlay').hidden = false; $('#ovClose').focus();
 }
 
-/* ---------- Needs you ---------- */
+/* ---------- What waits for the owner ---------- */
 function epWait(e) {
   if (e.status === 'awaiting_approval') return 'script';
   if (e.status === 'rendered') return (e.data || {}).do_not_upload ? '' : 'upload';
@@ -1712,50 +1981,442 @@ function epWait(e) {
   if (e.status === 'approved' && ((e.data || {}).shots || []).length) return (e.clips || {}).ready ? 'assemble' : 'clips';
   return '';
 }
-const NEED_KINDS = [
-  // kind, tab, label (1), label (n), who, style
-  ['pitch', 'inbox', 'idea to look at', 'ideas to look at', 'Doulya'],
-  ['plan', 'plans', 'plan to approve', 'plans to approve', 'Serge'],
-  ['overplan', 'plans', 'plan over your limits', 'plans over your limits', 'Serge', 'bad'],
-  ['board', 'content', 'reference board to choose from', 'reference boards to choose from', 'the Scout'],
-  ['script', 'content', 'script to review', 'scripts to review', 'Calina'],
-  ['assemble', 'content', 'Short ready to make', 'Shorts ready to make', 'Calina'],
-  ['upload', 'content', 'video to upload', 'videos to upload', 'Calina'],
-  ['lnd', 'lnd', 'improvement idea', 'improvement ideas', 'Richard'],
-  ['clips', 'content', 'Short waiting for your clips', 'Shorts waiting for your clips', 'OpenArt'],
-  ['stuck', 'judged', 'idea stopped', 'ideas stopped', 'ask Atlas to retry', 'bad'],
-];
-let needsKey = '';
+/* ---------- Shell: HQ and the projects you step into (2.19.0) ---------- */
+let space = 'hq', page = 'today', sub = 'overview', epFilter = '', batchOpen = false, chatCtx = '', chatSeen = 0, pendingHash = '';
+let producingFor = null, reviewing = false, atlasLimit = null, lastFail = {};
+let STATES = {}, WAITS = {hq:[], blocked:[], per:{}, P:[], total:0}, shellKey = '', detailKey = '';
+const HQ_PAGES = {today:'Today', ideas:'Ideas', office:'Office & team', lnd:'Learning', limits:'Spend & limits'};
+const HUES = [318, 210, 172, 24, 280, 196, 100, 340];
+const FMT = {animated_v1:['YouTube · animated Shorts', 'A', 'Animated'], openart_v2:['YouTube · clips made in OpenArt', 'O', 'OpenArt']};
+const FMT_PHOTO = ['YouTube · photo Shorts', 'P', 'Photo'];
+const tone = (h, l, a = 1) => `hsl(${h} 88% ${l}% / ${a})`;
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const visor = n => (LOOKS[n] || {}).visor || '#67E8F9';
+const avz = (n, big) => `<span class="avz${big ? ' big' : ''}" style="background:${visor(n)}" aria-hidden="true">${esc(n[0])}</span>`;
+const SLABEL = {work:'Working', wait:'Waiting for you', block:'Blocked', idle:'Idle'};
+const ICONS = {
+  today:'<path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/>',
+  ideas:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.8.6 1.1 1.4 1.1 2.2h5c0-.8.3-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
+  office:'<path d="M12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  lnd:'<path d="M3 7l9-4 9 4-9 4z"/><path d="M7 9v5c0 1.7 2.2 3 5 3s5-1.3 5-3V9"/>',
+  limits:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  overview:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  eps:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>',
+  voice:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  refs:'<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+  plan:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+  back:'<path d="M15 6l-6 6 6 6"/>',
+  close:'<path d="M6 6l12 12M18 6 6 18"/>',
+};
+const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+const actBtn = ([label, act, kind]) => `<button class="btn sm ${kind === 'pri' ? '' : kind === 'ok' ? 'okb' : 'quiet'}" type="button" data-do="${esc(act)}">${esc(label)}</button>`;
+
+/* ---------- projects ---------- */
+function projList() {
+  const live = projects.filter(p => p.status === 'approved').sort((a, b) => a.id - b.id);
+  const chan = p => (((p.meta || {}).channel || {}).name || '').trim();
+  return live.map(p => {
+    const meta = p.meta || {}, fmt = FMT[meta.format] || FMT_PHOTO, c = chan(p);
+    const dup = !!c && live.filter(q => chan(q) === c).length > 1;
+    const base = c || short(p.title, 40);
+    const words = base.replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean);
+    const w0 = words[0] || 'P', w1 = words[1] || '';
+    const mono = (dup ? w0[0] + fmt[1] : w0[0] + (w1 ? w1[0] : (w0[1] || ''))).toUpperCase();
+    return {id:p.id, p, meta, fmt, mono, hue:HUES[p.id % HUES.length], name:meta.display_name || (dup ? `${base} · ${fmt[2]}` : base),
+      type:fmt[0], animated:meta.format === 'animated_v1'};
+  });
+}
+const projById = id => (WAITS.P.length ? WAITS.P : projList()).find(x => x.id === +id);
+const projName = id => (projById(id) || {}).name || `project ${id}`;
+function bucketOf(e) {
+  if (e.status === 'awaiting_approval') return 'script';
+  if (e.status === 'approved') return 'approved';
+  if (e.status === 'rendered') return (e.data || {}).do_not_upload ? 'retired' : 'upload';
+  if (e.status === 'published') return 'published';
+  return 'retired';
+}
+const EP_BUCKETS = [['script', 'Scripts to review'], ['approved', 'Approved · to make'], ['upload', 'Ready to upload'], ['published', 'Published'], ['retired', 'Retired']];
+function stepsOf(P) {
+  const eps = episodes.filter(e => e.project_id === P.id), has = st => eps.some(e => st.includes(e.status));
+  const b = (refboards || {})[P.id];
+  const list = [['Plan', true], ['References', !!(b && b.status === 'approved') || !!boardUnlocked[P.id]]];
+  if (P.animated) list.push(['Voice & characters', !!P.meta.voice && !!((characters || {})[P.id] || {}).approved]);
+  list.push(['Scripts', has(['approved', 'rendered', 'published'])]);
+  if (P.meta.format === 'openart_v2') list.push(['Clips', eps.some(e => (e.clips || {}).ready) || has(['rendered', 'published'])]);
+  list.push(['Videos', has(['rendered', 'published'])], ['Published', has(['published'])]);
+  const now = list.findIndex(x => !x[1]);
+  return {list, now: now < 0 ? list.length : now, label: now < 0 ? 'Publishing' : list[now][0]};
+}
+const reviewWord = e => { const r = (e.data || {}).review || {}, v = (e.data || {}).video_review || {}, x = e.status === 'rendered' && v.verdict ? v : r;
+  const w = {pass:'passed', rework:'still has doubts', release:'good to publish', redo:'says redo', unreviewed:'not reviewed'}[x.verdict];
+  return w ? ` · Israa: ${w}${x.score ? ' ' + x.score + '/10' : ''}` : ''; };
+
+/* ---------- what waits for the owner, what is blocked ---------- */
+function waitsOf(P) {
+  const out = [], pid = P.id, b = (refboards || {})[pid], ch = (characters || {})[pid], vs = (voiceSamples || {})[pid];
+  if (b && b.status === 'ready') out.push({kind:'board', who:'Scout', t:'Reference board ready: choose a direction', d:`${((b.data || {}).references || []).length} real examples. Calina writes nothing until you choose.`, acts:[['Choose a direction', `sub:${pid}:refs`, 'pri']]});
+  if (P.animated && vs && (vs.voices || []).length && !vs.chosen && !(P.meta.voice || {}).label)
+    out.push({kind:'voice', who:'Atlas', t:"Pick the narrator's voice", d:`${vs.voices.length} samples of the same lines`, acts:[['Listen and pick', `sub:${pid}:voice`, 'pri']]});
+  if (P.animated && ch && !ch.approved && (ch.characters || []).some(x => x.has_clip))
+    out.push({kind:'chars', who:'Israa', t:'Approve the characters', d:'No animated video is made until you approve them.', acts:[['Watch the tests', `sub:${pid}:voice`, 'pri']]});
+  const words = {script:['Script to review', 'Read it'], assemble:['Approved, ready to become a video', 'Open'], clips:['Waiting for your clips from OpenArt', 'Open'], upload:['Video ready to upload', 'Watch it']};
+  for (const e of episodes.filter(e => e.project_id === pid)) {
+    const w = epWait(e); if (!w) continue;
+    const acts = [[words[w][1], `ep:${e.id}`, 'pri']];
+    if (w === 'assemble' && !rendering) acts.push(['Make the video', `render:${e.id}`]);
+    out.push({kind:w, who:'Calina', t:`#${e.id} ${e.title}`, d:words[w][0] + reviewWord(e), acts, ep:e.id});
+  }
+  return out;
+}
+function hqWaits() {
+  const out = inbox.map(i => ({kind:'pitch', who:'Doulya', t:i.title, d:"Doulya's pitch. Nothing is researched until you say so.", acts:[['Look at it', `pitch:${i.id}`, 'pri']]}));
+  for (const p of projects.filter(p => p.status === 'awaiting_approval')) out.push({kind:'plan', who:'Serge', t:`Plan: ${p.title}`, d:money(p) + '. Approving it makes this a project.', acts:[['Read the plan', `plan:${p.id}`, 'pri']]});
+  const l = lndIdeas.filter(i => i.status === 'new');
+  if (l.length) out.push({kind:'lnd', who:'Richard', t:`${l.length} improvement idea${l.length === 1 ? '' : 's'} from Richard`, d:l.map(i => (i.data || {}).title || i.id).join(' · '), acts:[['Review', 'go:lnd', 'pri']]});
+  return out;
+}
+function blockedList() {
+  const out = [];
+  if (killOn) out.push({who:'Atlas', t:'Every agent is stopped', d:'The kill switch is on. Nothing runs until you resume.', acts:[['Resume agents', 'resume', 'ok']]});
+  for (const n of Object.keys(STATES)) { const S = STATES[n]; if (S.s === 'block' && !killOn) out.push({who:n, t:S.title || S.tag, d:S.why, acts:S.acts || [], pid:S.pid}); }
+  for (const p of projects.filter(p => p.status === 'over_limit')) out.push({who:'Serge', t:`Plan over your limits: ${p.title}`, d:"It can't be approved as it is. Ask Serge for a smaller version, or raise the limits.", acts:[['Read the plan', `plan:${p.id}`], ['Change limits', 'go:limits']]});
+  return out;
+}
+const hhmm = ts => new Date(ts * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+function computeStates() {
+  const live = jobLive(), out = {};
+  const stuck = ideas.find(i => !i.verdict && ['stopped', 'error', 'interrupted'].includes(i.status));
+  const failed = Object.entries(lastFail).map(([id, f]) => ({e:episodes.find(e => e.id === +id), f})).find(x => x.e && x.e.status === 'approved' && rendering !== x.e.id);
+  const pc = n => n === 1 ? '' : 's';
+  for (const name of Object.keys(agents)) {
+    const a = agents[name], work = (tag, why, pid) => ({s:'work', tag, why:why || tag, pid}), wait = (tag, why, acts, pid) => ({s:'wait', tag, why, acts, pid});
+    let S = null;
+    if (killOn) S = {s:'block', tag:'Stopped by the kill switch', why:'The kill switch is on, so every agent is stopped.'};
+    else if (name === 'Sage' && stuck && !live) S = {s:'block', tag:'Stopped: ' + short(stuck.title, 28), title:`Research stopped: ${stuck.title}`, why:`The research on "${stuck.title}" stopped (${stuck.status}). Try it again, or ask Atlas what happened.`, acts:[['Try again', `retry:${stuck.id}`, 'ok'], ['Open the idea', `idea:${stuck.id}`]]};
+    else if (name === 'Calina' && failed && !rendering) S = {s:'block', tag:`Video #${failed.e.id} failed`, title:`Video #${failed.e.id} failed: ${failed.e.title}`, why:`Couldn't make video #${failed.e.id}: ${failed.f.reason || 'unknown error'}`, pid:failed.e.project_id, acts:[['Try again', `render:${failed.e.id}`, 'ok'], ['Open it', `ep:${failed.e.id}`]]};
+    else if (name === 'Atlas' && busy) S = work('Answering you', 'Reading your message and checking the company.');
+    else if (name === 'Doulya' && scouting) S = work('Scouting for new ideas');
+    else if (name === 'Calina' && rendering) { const e = episodes.find(x => x.id === rendering); S = work(`Making video #${rendering}`, `Making the video for #${rendering}${e ? ': ' + e.title : ''}. It takes 10-15 minutes.`, e && e.project_id); }
+    else if (name === 'Calina' && producing) S = work('Writing scripts' + (producingFor ? ' · ' + projName(producingFor) : ''), 'Writing a batch of scripts. Israa checks them before you see them.', producingFor);
+    else if (name === 'Serge' && planning) S = work('Writing a plan');
+    else if (name === 'Scout' && scoutingRefs) S = work('Finding what works on YouTube', 'Looking up real channels and Shorts in this niche. 5-10 minutes.');
+    else if (name === 'Israa' && reviewing) S = work('Reviewing', a.activity && a.activity !== 'At station' ? a.activity : 'Reviewing scripts or a video.');
+    else if ((name === 'Sage' && live && JOB.step === 'research') || (name === 'Vera' && live && JOB.step === 'judgment')) S = work(short(JOB.title, 34), (name === 'Sage' ? 'Researching: ' : 'Judging: ') + JOB.title);
+    else if (name === 'Animator' && Object.values(animTest || {}).some(t => t && t.making)) S = work('Writing a scene');
+    else if (a.working) S = work(short(a.activity || 'Working', 40), a.activity);
+    else if (name === 'Atlas' && atlasLimit) S = {s:'block', tag:'Plan limit until ' + hhmm(atlasLimit.until), title:'Atlas on this PC is at the Claude plan limit', why:`Until ${hhmm(atlasLimit.until)}. The cloud Atlas answers your messages meanwhile (1-3 minutes each).`};
+    else if (name === 'Doulya' && inbox.length) S = wait(`${inbox.length} pitch${inbox.length === 1 ? '' : 'es'} for you`, `${inbox.length} idea${pc(inbox.length)} in your inbox. Nothing is researched until you say so.`, [['See the pitches', 'go:ideas', 'pri']]);
+    else if (name === 'Serge' && projects.some(p => p.status === 'awaiting_approval')) { const p = projects.find(p => p.status === 'awaiting_approval'); S = wait('Plan ready for you', `The plan for "${p.title}" waits for your decision.`, [['Read the plan', `plan:${p.id}`, 'pri']]); }
+    else if (name === 'Calina') { const w = episodes.filter(e => ['script', 'upload', 'assemble', 'clips'].includes(epWait(e)));
+      if (w.length) { const n = k => w.filter(e => epWait(e) === k).length, bits = [[n('script'), 'script', 'to review'], [n('upload'), 'video', 'to upload'], [n('assemble'), 'approved script', 'to turn into a video'], [n('clips'), 'Short', 'waiting for your clips']].filter(x => x[0]);
+        S = wait(`${w.length} for you`, bits.map(([c, what, rest]) => `${c} ${what}${pc(c)} ${rest}`).join(', ') + '.', [['Open', `ep:${w[0].id}`, 'pri']], w[0].project_id); } }
+    else if (name === 'Scout') { const b = Object.entries(refboards || {}).find(([, b]) => b && b.status === 'ready'); if (b) S = wait('Board ready to choose from', `The reference board for ${projName(b[0])} is ready. Pick a direction.`, [['Open the board', `sub:${b[0]}:refs`, 'pri']], +b[0]); }
+    else if (name === 'Richard') { const n = lndIdeas.filter(i => i.status === 'new').length; if (n) S = wait(`${n} idea${pc(n)} for you`, `Richard has ${n} improvement idea${pc(n)} waiting for your yes or no.`, [['Review', 'go:lnd', 'pri']]); }
+    out[name] = S || {s:'idle', tag:'', why:a.activity && !['At station', 'Standing by'].includes(a.activity) ? 'Last: ' + a.activity : 'Nothing to do right now.'};
+  }
+  STATES = out;
+}
+function agentState(name) { return STATES[name] || {s:'idle', tag:''}; }
+
+/* ---------- shell rendering ---------- */
 function renderNeeds() {
-  const count = {
-    pitch: inbox.length,
-    plan: projects.filter(p => p.status === 'awaiting_approval').length,
-    overplan: projects.filter(p => p.status === 'over_limit').length,
-    lnd: lndIdeas.filter(i => i.status === 'new').length,
-    board: Object.values(refboards || {}).filter(b => b && b.status === 'ready').length,
-    stuck: ideas.filter(i => !i.verdict && ['stopped','error','interrupted'].includes(i.status)).length,
+  const before = JSON.stringify(Object.entries(STATES).map(([n, s]) => [n, s.s]));
+  computeStates();
+  if (JSON.stringify(Object.entries(STATES).map(([n, s]) => [n, s.s])) !== before) for (const a of Object.values(agents)) if (!a.path.length && !a.job) a.timer = Math.min(a.timer, .3);
+  const P = projList(), per = {};
+  for (const x of P) per[x.id] = waitsOf(x);
+  const hq = hqWaits(), blocked = blockedList();
+  const total = hq.length + Object.values(per).reduce((t, a) => t + a.length, 0);
+  WAITS = {hq, blocked, per, P, total};
+  document.title = total ? `(${total}) Agent HQ` : 'Agent HQ';
+  if (pendingHash && P.length) { const m = pendingHash.match(/^project-(\d+)(?:-(\w+))?$/); pendingHash = ''; if (m && projById(+m[1])) { space = +m[1]; sub = m[2] || 'overview'; applyView(); return; } }
+  if (space !== 'hq' && !projById(space) && projects.length) { space = 'hq'; page = 'today'; applyView(); return; }
+  const key = JSON.stringify([hq, blocked, per, STATES, P.map(x => [x.id, x.name, x.mono]), space, page, sub, feed.slice(0, 6).map(f => f.ts), busy, killOn]);
+  if (key === shellKey) return; shellKey = key;
+  renderRail(); renderSideNav(); renderCrumb(); renderToday();
+  if (space !== 'hq' && sub === 'overview') renderContent();   // other project pages refresh when their own data changes
+}
+function renderRail() {
+  const hqN = WAITS.hq.length;
+  $('#rail').innerHTML = `<button class="tile hq ${space === 'hq' ? 'on' : ''}" type="button" data-do="go:today" data-tip="HQ · the whole company" aria-label="HQ, the whole company${hqN ? ', ' + hqN + ' waiting' : ''}">HQ${hqN ? `<span class="bd">${hqN}</span>` : ''}</button><hr>`
+    + WAITS.P.map(x => { const n = (WAITS.per[x.id] || []).length;
+      return `<button class="tile ${space === x.id ? 'on' : ''}" type="button" data-do="proj:${x.id}" data-tip="${esc(x.name)}${n ? ' · ' + n + ' waiting' : ''}" aria-label="Enter ${esc(x.name)}${n ? ', ' + n + ' waiting for you' : ''}" style="--tb:${tone(x.hue, 60, .14)};--tl:${tone(x.hue, 60, .5)};--tc:${tone(x.hue, 75)}">${esc(x.mono)}${n ? `<span class="bd">${n}</span>` : ''}</button>`; }).join('')
+    + `<button class="tile add" type="button" data-do="go:ideas" data-tip="New projects start in Ideas" aria-label="Ideas, where new projects start">+</button>`;
+}
+function renderSideNav() {
+  const el = $('#side');
+  if (space === 'hq') {
+    const bl = WAITS.blocked.length, ideasN = WAITS.hq.filter(w => ['pitch', 'plan'].includes(w.kind)).length, lndN = WAITS.hq.filter(w => w.kind === 'lnd').length;
+    const items = [['today', WAITS.total, ''], ['ideas', ideasN, ''], ['office', bl, 'bad'], ['lnd', lndN ? lndIdeas.filter(i => i.status === 'new').length : 0, ''], ['limits', 0, '']];
+    el.innerHTML = `<div class="brand"><span class="logo" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M12 22V12M3 7l9 5 9-5"/></svg></span><h1>Agent<span>HQ</span></h1></div>
+      <nav class="nav" aria-label="HQ">${items.map(([k, n, cls]) => `<button class="nl ${page === k ? 'on' : ''}" type="button" data-do="go:${k}" ${page === k ? 'aria-current="page"' : ''}>${icon(k)}<span class="tx">${HQ_PAGES[k]}</span>${n ? `<span class="badge ${cls}" title="${n} ${cls ? 'blocked' : 'waiting for you'}">${n}</span>` : ''}</button>`).join('')}</nav>
+      ${WAITS.P.length ? `<div class="nav"><h2>Projects</h2>${WAITS.P.map(x => { const n = (WAITS.per[x.id] || []).length; return `<button class="nl" type="button" data-do="proj:${x.id}"><span class="pdot" style="background:${tone(x.hue, 60)}"></span><span class="tx">${esc(x.name)}<i>${esc(stepsOf(x).label)}</i></span>${n ? `<span class="badge">${n}</span>` : ''}</button>`; }).join('')}</div>` : ''}
+      <p class="foot">Pick a project on the left to step inside it.</p>`;
+    return;
+  }
+  const P = projById(space); if (!P) return;
+  const n = (WAITS.per[P.id] || []).length, w = WAITS.per[P.id] || [];
+  const badge = kinds => w.filter(x => kinds.includes(x.kind)).length;
+  const pages = [['overview', 'Overview', 0], ['eps', 'Episodes', badge(['script', 'assemble', 'clips', 'upload'])]];
+  if (P.animated) pages.push(['voice', 'Voice & characters', badge(['voice', 'chars'])]);
+  pages.push(['refs', 'Reference board', badge(['board'])], ['plan', 'Plan', 0]);
+  const team = ['Calina', 'Israa', 'Scout', 'Atlas', P.animated ? 'Animator' : ''].filter(x => x && agents[x]);
+  el.innerHTML = `<button class="back" type="button" data-do="go:today">${icon('back')}Back to HQ</button>
+    <div class="pcard"><span class="mono">${esc(P.mono)}</span><b>${esc(P.name)}</b><span>${esc(P.type)} · plan ${P.id}</span><span class="stp ${n ? 'wait' : 'work'}">${n ? n + ' waiting for you' : 'Nothing waits for you'}</span></div>
+    <nav class="nav" aria-label="${esc(P.name)}">${pages.map(([k, l, b]) => `<button class="nl ${sub === k ? 'on' : ''}" type="button" data-do="sub:${P.id}:${k}" ${sub === k ? 'aria-current="page"' : ''}>${icon(k)}<span class="tx">${l}</span>${b ? `<span class="badge">${b}</span>` : ''}</button>`).join('')}</nav>
+    <div class="nav"><h2>Team on this project</h2>${team.map(t => { const S = agentState(t); return `<button class="crewrow" type="button" data-do="agent:${t}"><i style="background:${STC[killOn ? 'block' : S.s]}"></i><span>${esc(t)} · ${esc(SLABEL[S.s].toLowerCase())}</span></button>`; }).join('')}</div>`;
+}
+function renderCrumb() {
+  const c = $('#crumb');
+  if (space === 'hq') { c.innerHTML = `<b>${HQ_PAGES[page]}</b>`; $('#atlasLbl').textContent = 'Ask Atlas'; return; }
+  const P = projById(space); if (!P) return;
+  const label = {eps:'Episodes', voice:'Voice & characters', refs:'Reference board', plan:'Plan'}[sub];
+  c.innerHTML = `<button type="button" data-do="go:today">HQ</button><span aria-hidden="true"> / </span><b>${esc(P.name)}</b>${label ? `<span aria-hidden="true"> / </span>${label}` : ''}`;
+  $('#atlasLbl').textContent = 'Ask Atlas';
+}
+const itemHtml = w => `<div class="item"><div class="what"><b>${esc(w.t)}</b>${w.d ? `<span>${esc(w.d)}</span>` : ''}${w.who ? `<span class="whoz">${avz(w.who)}${esc(w.who)}</span>` : ''}</div><div class="acts">${(w.acts || []).map(actBtn).join('')}</div></div>`;
+function greeting() { const h = new Date().getHours(); return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
+function renderToday() {
+  const W = WAITS, groups = [];
+  for (const x of W.P) if ((W.per[x.id] || []).length) groups.push({go:`proj:${x.id}`, name:x.name, mono:x.mono, hue:x.hue, items:W.per[x.id], enter:true});
+  const hi = W.hq.filter(w => ['pitch', 'plan'].includes(w.kind)), hl = W.hq.filter(w => w.kind === 'lnd');
+  if (hi.length) groups.push({go:'go:ideas', name:'Ideas', mono:'ID', items:hi});
+  if (hl.length) groups.push({go:'go:lnd', name:'Learning', mono:'LD', items:hl});
+  const working = Object.entries(STATES).filter(([, s]) => s.s === 'work'), nb = W.blocked.length;
+  $('#hiTitle').textContent = `${greeting()}, Mohamad`;
+  $('#hiSub').textContent = `${new Date().toLocaleDateString([], {weekday:'long', day:'numeric', month:'long'})} · ${W.total ? `${W.total} thing${W.total === 1 ? '' : 's'} need${W.total === 1 ? 's' : ''} you` : 'nothing needs you'}${nb ? ` · ${nb} blocked` : ''}`;
+  $('#glance').innerHTML = `<button class="gl w" type="button" data-do="scroll:secWait"><b>${W.total}</b><span>waiting<br>for you</span></button><button class="gl g" type="button" data-do="go:office"><b>${working.length}</b><span>agent${working.length === 1 ? '' : 's'}<br>working</span></button><button class="gl r" type="button" data-do="${nb ? 'scroll:secBlocked' : 'go:office'}"><b>${nb}</b><span>blocked</span></button>`;
+  $('#waitCount').textContent = W.total || '';
+  $('#todayWait').innerHTML = groups.length ? groups.map(g => `<div class="group"><div class="ghead"><span class="monosm" style="${g.hue != null ? `background:${tone(g.hue, 60)};color:#02040A` : ''}">${esc(g.mono)}</span><b>${esc(g.name)}</b><i>${g.items.length} waiting</i><button class="btn sm quiet" type="button" data-do="${g.go}">${g.enter ? 'Enter project' : 'Open'}</button></div>${g.items.slice(0, 4).map(itemHtml).join('')}${g.items.length > 4 ? `<button class="btn sm quiet more" type="button" data-do="${g.enter ? g.go.replace('proj:', 'sub:') + ':eps' : g.go}">See all ${g.items.length}</button>` : ''}</div>`).join('')
+    : '<p class="calm">Nothing waits for you. The crew carries on; anything that needs you shows up here.</p>';
+  $('#secBlocked').hidden = !nb;
+  $('#todayBlocked').innerHTML = W.blocked.map(itemHtml).join('');
+  $('#todayWorking').innerHTML = working.length ? working.map(([n, s]) => `<button class="trow" type="button" data-do="agent:${n}">${avz(n, true)}<span class="t"><b>${esc(n)}</b><span>${esc(s.why || s.tag)}</span>${s.pid ? `<span class="for">for ${esc(projName(s.pid))}</span>` : ''}</span></button>`).join('')
+    : '<p class="calm">Nobody is working right now.</p>';
+  const done = feed.filter(f => f.kind === 'good').slice(0, 5);
+  $('#todayDone').innerHTML = done.length ? done.map(f => `<div class="trow">${agents[f.who] ? avz(f.who, true) : '<span class="avz big" style="background:#E6F1FF" aria-hidden="true">Y</span>'}<span class="t"><b>${esc(f.who)}</b> ${esc(f.text)}<span class="for">${f.time}</span></span></div>`).join('')
+    : '<p class="calm">Nothing finished yet today.</p>';
+}
+
+/* ---------- office side panel ---------- */
+function showAgent(name) {
+  if (!agents[name]) return;
+  selected = agents[name]; detailKey = '';
+  if (!(space === 'hq' && page === 'office')) go('office'); else renderDetail();
+  renderTeam();
+  setTimeout(() => { resize(); focusAgent(name); }, 80);
+}
+function renderDetail() {
+  const box = $('#agentDetail'); if (!box || space !== 'hq' || page !== 'office') return;
+  const a = selected;
+  if (!a) { if (detailKey === 'none') return; detailKey = 'none';
+    box.innerHTML = `<h3 class="dtitle">Who's doing what</h3><p class="src">Click anyone on the floor, or a name in Crew below. Agents who need you walk to your office and wait there.</p>
+      <div class="legend"><span class="stp work">Working</span><span class="stp wait">Waiting for you</span><span class="stp block">Blocked</span><span class="stp idle">Idle</span></div>`; return; }
+  const S = agentState(a.name), info = agentInfo.find(i => i.name === a.name) || {};
+  const mine = feed.filter(f => f.who === a.name).slice(0, 4);
+  const key = JSON.stringify([a.name, S, a.activity, info.cost_today, mine.map(f => f.ts), usage[a.name]]); if (key === detailKey) return; detailKey = key;
+  const st = killOn ? 'block' : S.s, P = S.pid ? projById(S.pid) : null;
+  box.innerHTML = `<div class="dhead">${avz(a.name, true)}<div><h3>${esc(a.name)}</h3><small>${esc(a.role)} · ${esc(ROOM[a.dept].name)}</small></div><button class="x" type="button" data-do="unselect" aria-label="Close">${icon('close')}</button></div>
+    <div class="legend"><span class="stp ${st}">${killOn ? 'Halted' : SLABEL[S.s]}</span>${P ? `<span class="stp plain">${esc(P.name)}</span>` : ''}</div>
+    <div class="doing"><b>${st === 'block' ? 'Stuck on' : st === 'wait' ? 'Waiting for you' : st === 'work' ? 'Doing now' : 'Status'}</b>${esc(S.why || a.activity || '')}</div>
+    <dl class="kv">${runsOn(a.name)}<dt>API cost</dt><dd class="num">$${(+info.cost_today || 0).toFixed(4)} today</dd>${subLine(a.name)}${info.model ? `<dt>Model</dt><dd class="num">${esc(info.model)}</dd>` : ''}</dl>
+    ${mine.length ? `<b class="lbl">Latest</b><ol class="latest">${mine.map(f => `<li><time>${f.time}</time>${esc(f.text)}</li>`).join('')}</ol>` : ''}
+    <div class="acts">${(S.acts || []).map(actBtn).join('')}${P && !(S.acts || []).length ? actBtn([`Enter ${P.name}`, `proj:${P.id}`]) : ''}<button class="btn sm atl" type="button" data-do="chatagent:${esc(a.name)}">Ask Atlas about ${esc(a.name)}</button></div>`;
+}
+
+/* ---------- project pages ---------- */
+function epItemHtml(e) {
+  const d = e.data || {}, busy = pending['e' + e.id];
+  return `<li class="ep" data-eid="${e.id}"${epWait(e) ? ` data-wait="${epWait(e)}"` : ''}><div class="ptop"><span>Calina · batch ${e.batch} · #${e.id}</span><span class="pill ${['approved', 'published'].includes(e.status) ? 'approve' : e.status === 'rejected' ? 'reject' : e.status === 'rendered' ? 'work' : 'needs_more_data'}">${esc(EP_STATUS[e.status] || e.status)}</span></div>
+      <span class="t">${esc(e.title)}</span>
+      <div class="meta">${d.format === 'video' ? '<span style="color:#FCD34D">REGULAR VIDEO · NOT A SHORT</span>' : ''}<span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span>${(d.scenes || []).length ? `<span>${d.scenes.length} SCENES</span><span>${d.scenes.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span><span>ANIMATED</span>` : (d.shots || []).length ? `<span>${d.shots.length} SHOTS</span><span>${d.shots.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span>` : `<span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span>`}</div>
+      ${reviewHtml(e)}
+      ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.scenes || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${d.scenes.map(x => `${x.n}. ${esc(x.voice_line || '')}  [${esc(x.backdrop || '')}${(x.characters || []).length ? ', ' + x.characters.map(c => esc(c.who)).join(' + ') : ''}]`).join('\n')}</div>${(d.kit_requests || []).length ? `<p class="src"><b>Needs new art:</b> ${d.kit_requests.map(esc).join('; ')}</p>` : ''}` : (d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
+      <p><b style="color:var(--ink)">Surprising fact:</b> ${esc(d.surprising_fact || '')}</p>
+      <div class="src">${(d.sources || []).map(x => `${/^https?:\/\//.test(x.url || '') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.publisher || 'source')}</a>` : esc(x.publisher || 'source')}: “${esc(short(x.quote || '', 160))}”`).join('<br>')}</div>
+      <div class="acts"><button class="btn sm" type="button" data-eact="approve" ${busy ? 'disabled' : ''}>Approve</button><button class="btn sm ghost" type="button" data-eact="reject" ${busy ? 'disabled' : ''}>Reject</button></div>
+      <form class="why" hidden><input type="text" maxlength="1000" placeholder="Why not? (teaches Calina)" aria-label="Reason for rejecting"><button class="btn sm ghost" type="submit">Confirm</button></form>`
+      : (e.owner_note ? `<p class="src">Your note: ${esc(e.owner_note)}</p>` : '')}${epActions(e)}</li>`;
+}
+function epCounts(pid) { const c = {}; for (const e of episodes.filter(e => e.project_id === pid)) { const b = bucketOf(e); c[b] = (c[b] || 0) + 1; } return c; }
+function curFilter(pid) {
+  if (epFilter) return epFilter;
+  const c = epCounts(pid); return ['script', 'approved', 'upload'].find(b => c[b]) || 'all';
+}
+function renderEpisodes() {
+  const P = projById(space); if (!P || sub !== 'eps') return;
+  const f = curFilter(P.id), list = episodes.filter(e => e.project_id === P.id && (f === 'all' || bucketOf(e) === f));
+  list.sort((a, b) => (epWait(b) ? 1 : 0) - (epWait(a) ? 1 : 0) || b.id - a.id);
+  const label = (EP_BUCKETS.find(b => b[0] === f) || [, 'All'])[1].toLowerCase();
+  $('#episodes').innerHTML = list.length ? list.map(epItemHtml).join('')
+    : `<li class="empty">${f === 'all' ? (producingFor === P.id ? 'Calina is writing the first batch…' : 'No scripts yet. Click <b>Write new scripts</b>, or ask Atlas.') : `Nothing in “${esc(label)}” right now.`}</li>`;
+}
+function renderContent(force) {
+  if (space === 'hq') return;
+  const P = projById(space); if (!P) return;
+  const box = $('#contentTop');
+  if (!force && [...box.querySelectorAll('video, audio')].some(v => !v.paused)) return;   // never cut off a video he is watching
+  if (!force && document.activeElement && box.contains(document.activeElement) && document.activeElement !== document.body) { renderEpisodes(); return; }
+  const y = scrollY;
+  $('#holder').appendChild($('#episodes'));
+  box.dataset.pid = P.id;
+  box.style.setProperty('--hue', P.hue);
+  box.innerHTML = projectHtml(P);
+  const slot = $('#epSlot'); if (slot) slot.appendChild($('#episodes'));
+  renderEpisodes();
+  if (!force) scrollTo(0, y);
+}
+function waitBox(P) {
+  const w = WAITS.per[P.id] || [];
+  return w.length ? `<section class="next"><b>${w.length} thing${w.length === 1 ? '' : 's'} wait${w.length === 1 ? 's' : ''} for you in this project</b>${w.map(itemHtml).join('')}</section>`
+    : '<section class="next calm"><b>Nothing waits for you here.</b> The team carries on; anything that needs you shows up in this box.</section>';
+}
+function projectHtml(P) {
+  const S = stepsOf(P), ch = P.meta.channel || {}, unlocked = !!boardUnlocked[P.id];
+  const live = [];
+  if (producingFor === P.id) live.push('<b>Calina is writing a batch of scripts.</b> Israa checks them before you see them.');
+  const re = rendering && episodes.find(e => e.id === rendering && e.project_id === P.id);
+  if (re) live.push(`<b>Calina is making video #${re.id}</b> (${esc(re.title)}). It takes 10-15 minutes.`);
+  if (scoutingRefs) live.push('<b>The Scout is researching what works.</b> 5-10 minutes.');
+  const liveHtml = live.length ? `<div class="livebar"><span class="dots"><i></i><i></i><i></i></span><span>${live.join(' · ')}</span></div>` : '';
+  const writeBtn = unlocked ? `<button class="btn" type="button" data-do="batchopen">Write new scripts</button>` : `<button class="btn quiet" type="button" data-do="sub:${P.id}:refs" title="Calina is locked until you approve a reference board">Choose a direction first</button>`;
+  if (sub === 'overview') {
+    const c = epCounts(P.id), pr = (production || {})[P.id] || {};
+    const team = ['Calina', 'Israa', 'Scout', 'Atlas', P.animated ? 'Animator' : ''].filter(x => x && agents[x]);
+    const mine = feed.filter(f => f.pid === P.id || (f.ep && (episodes.find(e => e.id === f.ep) || {}).project_id === P.id)).slice(0, 6);
+    return `<section class="card hero"><div class="htop"><div class="hid"><span class="mono">${esc(P.mono)}</span><div><h1>${esc(P.name)}</h1>
+        <div class="legend"><span class="stp plain">${esc(P.type)}</span>${ch.name ? `<span class="stp plain">${/^https?:\/\//.test(ch.url || '') ? `<a href="${esc(ch.url)}" target="_blank" rel="noopener">${esc(ch.name)} ${esc(ch.handle || '')}</a>` : esc(ch.name)}</span>` : ''}<span class="stp plain">${esc(S.label)} stage</span></div></div></div>
+      <div class="acts">${writeBtn}<button class="btn atl" type="button" data-do="chat">Ask Atlas about this</button></div></div>
+      <ol class="prog" aria-label="Project progress">${S.list.map(([l], i) => `<li class="${i < S.now ? 'done' : i === S.now ? 'now' : ''}" ${i === S.now ? 'aria-current="step"' : ''}>${esc(l)}</li>`).join('')}</ol></section>
+      ${liveHtml}${waitBox(P)}
+      <div class="cols3">
+        <section class="card sec"><div class="ch"><h2>Team on this project</h2></div><div class="secb">${team.map(t => { const s = agentState(t), here = !s.pid || s.pid === P.id;
+          return `<button class="trow" type="button" data-do="agent:${t}">${avz(t, true)}<span class="t"><b>${esc(t)}</b> <span class="stp ${here ? s.s : 'work'}">${here ? SLABEL[s.s] : 'Busy elsewhere'}</span><span>${esc(here ? (s.why || '') : 'On ' + projName(s.pid))}</span></span></button>`; }).join('')}</div></section>
+        <section class="card sec"><div class="ch"><h2>Episodes</h2></div><div class="secb">${EP_BUCKETS.map(([k, l]) => `<button class="stat" type="button" data-do="filter:${k}"><span>${l}</span><b>${c[k] || 0}</b></button>`).join('')}
+          ${pr.shorts_logged ? `<p class="src">Pilot log: ${pr.shorts_logged} Short(s) · on average ${pr.avg_credits} credits · ${pr.avg_minutes} min of your time · ${pr.avg_retakes} retakes</p>` : ''}
+          <div class="acts" style="margin-top:10px"><button class="btn sm quiet" type="button" data-do="sub:${P.id}:eps">Open episodes</button></div></div></section>
+        <section class="card sec"><div class="ch"><h2>Latest here</h2></div><div class="secb">${mine.length ? mine.map(f => `<div class="trow">${agents[f.who] ? avz(f.who, true) : '<span class="avz big" style="background:#E6F1FF" aria-hidden="true">Y</span>'}<span class="t"><b>${esc(f.who)}</b> ${esc(f.text)}<span class="for">${f.time}</span></span></div>`).join('') : '<p class="calm">Nothing new here since the office opened.</p>'}</div></section>
+      </div>`;
+  }
+  const head = (title, text, extra = '') => `<div class="phead"><div><h1>${title}</h1><p class="sub">${text}</p></div><div class="acts">${extra}</div></div>`;
+  if (sub === 'eps') {
+    const c = epCounts(P.id), f = curFilter(P.id), total = Object.values(c).reduce((t, n) => t + n, 0);
+    return head('Episodes', 'Each episode moves left to right. The yellow steps need you.', writeBtn) + liveHtml
+      + (batchOpen && unlocked ? `<form class="card newbatch" data-cform="batch"><div class="fld grow"><label for="nbTopic">Topic (optional: locks every script to it)</label><input id="nbTopic" name="topic" maxlength="300" placeholder="e.g. Eratosthenes measures the Earth"></div>
+          <div class="fld"><label for="nbCount">How many</label><select id="nbCount" name="count"><option>1</option><option>3</option><option selected>5</option><option>8</option></select></div>
+          <div class="fld grow2"><label for="nbNotes">Notes for Calina (optional)</label><input id="nbNotes" name="notes" maxlength="12000" placeholder="Anything she should know"></div>
+          <div class="acts"><button class="btn" type="submit" ${producing ? 'disabled' : ''}>${producing ? 'Calina is writing…' : 'Start writing'}</button><button class="btn quiet" type="button" data-do="batchclose">Cancel</button></div></form>` : '')
+      + `<div class="flow" role="group" aria-label="Filter episodes">${EP_BUCKETS.map(([k, l], i) => `<button class="fstep ${f === k ? 'on' : ''} ${['script', 'approved', 'upload'].includes(k) && c[k] ? 'hot' : ''}" type="button" data-do="filter:${k}" aria-pressed="${f === k}"><b>${c[k] || 0}</b><span>${l}</span></button>${i < 2 ? '<span class="arrow" aria-hidden="true">›</span>' : i === 2 ? '<span class="arrow" aria-hidden="true">›</span>' : ''}`).join('')}<button class="fstep all ${f === 'all' ? 'on' : ''}" type="button" data-do="filter:all" aria-pressed="${f === 'all'}"><b>${total}</b><span>All</span></button></div>
+      <div id="epSlot"></div>
+      <details class="card weekly"><summary>Weekly review: paste this week's channel stats</summary><form class="why" data-cform="review"><input type="text" maxlength="12000" placeholder="Views, watch time, subscribers…" aria-label="Channel stats"><button class="btn sm ghost" type="submit">Write the learning note</button></form></details>`;
+  }
+  if (sub === 'voice') return head('Voice & characters', 'The narrator and the cast every video uses.') + liveHtml + voiceHtml(P.p) + charsHtml(P.p) + animHtml(P.p);
+  if (sub === 'refs') return head('Reference board', 'What really works on YouTube in this niche. Calina and Israa follow the direction you approve.') + liveHtml + boardHtml(P.p);
+  if (sub === 'plan') return head('Plan', `Serge's plan, approved by you. ${esc(money(P.p))}.`) + `<section class="card sec"><div class="secb">${P.p.summary ? `<p class="lead">${esc(P.p.summary)}</p>` : ''}<div class="acts"><button class="btn" type="button" data-do="plan:${P.id}">Read the full plan</button></div></div></section>`;
+  return '';
+}
+
+/* ---------- navigation ---------- */
+function tint() {
+  const s = document.documentElement.style, P = space === 'hq' ? null : projById(space);
+  const keys = ['--cyan', '--cyan-ink', '--line', '--line-2', '--acc-soft', '--acc-soft2', '--acc-glow'];
+  if (!P) { keys.forEach(k => s.removeProperty(k)); return; }
+  const h = P.hue;
+  [[keys[0], tone(h, 60)], [keys[1], tone(h, 78)], [keys[2], tone(h, 62, .18)], [keys[3], tone(h, 64, .4)], [keys[4], tone(h, 60, .14)], [keys[5], tone(h, 60, .24)], [keys[6], tone(h, 60, .3)]].forEach(([k, v]) => s.setProperty(k, v));
+}
+function applyView() {
+  tint();
+  for (const id of Object.keys(HQ_PAGES)) $('#pg-' + id).hidden = !(space === 'hq' && page === id);
+  $('#pg-project').hidden = space === 'hq';
+  shellKey = ''; detailKey = '';
+  renderNeeds();
+  if (space === 'hq') { if (page === 'limits') renderLimits(true); if (page === 'office') { resize(); renderDetail(); renderTeam(); } }
+  else renderContent(true);
+  scrollTo(0, 0);
+  try { history.replaceState(null, '', '#' + (space === 'hq' ? page : `project-${space}${sub !== 'overview' ? '-' + sub : ''}`)); } catch {}
+}
+function go(pg) { space = 'hq'; page = HQ_PAGES[pg] ? pg : 'today'; applyView(); }
+function openProject(pid, sp, opts = {}) {
+  const P = projById(pid); if (!P) { toast('That project is not open any more.'); return; }
+  const entering = space !== P.id;
+  const done = () => {
+    space = P.id; sub = sp || 'overview';
+    if (entering) { batchOpen = false; epFilter = ''; }
+    if (opts.filter) epFilter = opts.filter;
+    applyView();
+    if (entering && !reduced()) { const m = $('#main'); m.classList.remove('arrive'); void m.offsetWidth; m.classList.add('arrive'); }
+    if (opts.after) setTimeout(opts.after, 60);
   };
-  for (const e of episodes) { const w = epWait(e); if (w) count[w] = (count[w] || 0) + 1; }
-  const list = NEED_KINDS.filter(k => count[k[0]]);
-  const key = JSON.stringify(count); if (key === needsKey) return; needsKey = key;
-  const urgent = list.filter(k => k[0] !== 'clips').reduce((t, k) => t + count[k[0]], 0);
-  document.title = urgent ? `(${urgent}) Agent HQ` : 'Agent HQ';
-  $('#needs').classList.toggle('clear', !list.length);
-  $('#needList').innerHTML = list.length ? list.map(([kind, , one, many, who, style]) => { const n = count[kind];
-    return `<button class="need${style ? ' ' + style : ''}" type="button" data-need="${kind}"><b>${n}</b><span>${n === 1 ? one : many}<small>${esc(who)}</small></span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>`; }).join('')
-    : '<span class="allclear">All clear. Nothing is waiting for you; the crew carries on.</span>';
+  if (entering && !reduced()) enterFx(P, done); else done();
 }
-function jumpTo(kind) {
-  const k = NEED_KINDS.find(x => x[0] === kind); if (!k) return;
-  showIdeaTab(k[1]);
-  const card = $('.a-ideas'), r = card.getBoundingClientRect();
-  if (r.top < 0 || r.top > innerHeight * .5) card.scrollIntoView({block:'start', behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
-  const item = $(`#p-${k[1]} [data-wait="${kind}"]`); if (!item) return;
-  item.scrollIntoView({block:'nearest'});
-  item.classList.remove('flash'); void item.offsetWidth; item.classList.add('flash');
-  const target = item.querySelector('button.t') || item.querySelector('.acts .btn:not(.ghost)') || item.querySelector('.btn') || (item.tabIndex >= 0 ? item : null); if (target) target.focus({preventScroll:true});
+function enterFx(P, then) {
+  const el = $('#enter');
+  el.style.setProperty('--ec', tone(P.hue, 60)); el.style.setProperty('--ec-soft', tone(P.hue, 60, .25));
+  $('#enMono').textContent = P.mono; $('#enName').textContent = P.name.toUpperCase();
+  el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  setTimeout(then, 240);
+  setTimeout(() => { el.classList.remove('on'); el.hidden = true; }, 820);
 }
-$('#needList').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (b) jumpTo(b.dataset.need); });
+function flashEp(id) {
+  const li = $(`#episodes li[data-eid="${id}"]`); if (!li) return;
+  li.scrollIntoView({block:'start', behavior:reduced() ? 'auto' : 'smooth'});
+  li.classList.remove('flash'); void li.offsetWidth; li.classList.add('flash');
+  const t = li.querySelector('.acts .btn:not(.ghost)') || li.querySelector('.btn'); if (t) t.focus({preventScroll:true});
+}
+function doAction(a) {
+  const [k, x, y] = a.split(':');
+  switch (k) {
+    case 'go': return go(x);
+    case 'proj': return openProject(+x);
+    case 'sub': return openProject(+x, y);
+    case 'ep': { const e = episodes.find(e => e.id === +x); if (!e) return; return openProject(e.project_id, 'eps', {filter:bucketOf(e), after:() => flashEp(e.id)}); }
+    case 'plan': return openPlan(+x);
+    case 'pitch': return openPitch(+x);
+    case 'idea': return openIdea(+x);
+    case 'retry': return contentAct('/api/retry/' + x, {}, 'Trying again. Follow it in Ideas.');
+    case 'render': { if (rendering) { toast('Another video is being made. Try again when it finishes.'); return; } rendering = +x; renderNeeds(); return contentAct(`/api/episode/${x}/render`, {}, 'Calina is making the video. It takes 10-15 minutes.'); }
+    case 'resume': return fetch('/api/resume', {method:'POST'}).then(() => poll(), () => toast("Can't reach the engine."));
+    case 'agent': return showAgent(x);
+    case 'unselect': selected = null; detailKey = ''; renderDetail(); renderTeam(); return;
+    case 'chat': return openChat(space === 'hq' ? '' : projName(space) + ` (project ${space})`);
+    case 'chatagent': return openChat(x);
+    case 'ctxclear': return openChat('');
+    case 'closechat': return closeChat();
+    case 'filter': { epFilter = x; if (sub !== 'eps') return openProject(space, 'eps', {filter:x}); renderContent(true); return; }
+    case 'batchopen': batchOpen = true; if (sub !== 'eps') openProject(space, 'eps'); else renderContent(true); setTimeout(() => { const t = $('#nbTopic'); if (t) t.focus(); }, 90); return;
+    case 'batchclose': batchOpen = false; renderContent(true); return;
+    case 'scroll': { const el = $('#' + x); if (el) el.scrollIntoView({block:'start', behavior:reduced() ? 'auto' : 'smooth'}); return; }
+  }
+}
+
+/* ---------- Atlas drawer ---------- */
+function openChat(ctx) {
+  chatCtx = ctx || '';
+  $('#ctxbar').innerHTML = chatCtx ? `About <span class="stp plain">${esc(chatCtx)}</span><button type="button" data-do="ctxclear">talk about everything</button>` : '<span>About the whole company</span>';
+  const name = chatCtx.replace(/ \(project \d+\)$/, '');
+  const sug = chatCtx ? [`How is ${name} doing?`, `What is blocking ${name}?`, 'What should I do next here?'] : ['Give me a briefing', 'What is everyone doing?', "What's waiting for me?"];
+  $('#suggest').innerHTML = sug.map(s => `<button type="button">${esc(s)}</button>`).join('');
+  $('#drawer').classList.add('open'); $('#scrim').hidden = false; $('#drawer').setAttribute('aria-hidden', 'false');
+  $('#atlasBtn').classList.remove('unread'); chatSeen = chat.length;
+  const box = $('#msgs'); box.scrollTop = box.scrollHeight;
+  setTimeout(() => $('#chatIn').focus(), 60);
+}
+function closeChat() { $('#drawer').classList.remove('open'); $('#scrim').hidden = true; $('#drawer').setAttribute('aria-hidden', 'true'); $('#atlasBtn').focus(); }
+
+function initShell() {
+  const h = (location.hash || '').slice(1);
+  if (HQ_PAGES[h]) page = h; else if (/^project-\d+/.test(h)) pendingHash = h;
+  applyView();
+  document.addEventListener('click', e => { const b = e.target.closest('[data-do]'); if (!b) return; e.preventDefault(); $('#rtip').hidden = true; doAction(b.dataset.do); });
+  const tip = $('#rtip'), rail = $('#rail');
+  rail.addEventListener('pointermove', e => { const t = e.target.closest('[data-tip]'); if (!t) { tip.hidden = true; return; } const r = t.getBoundingClientRect(); tip.textContent = t.dataset.tip; tip.style.left = (r.right + 12) + 'px'; tip.style.top = (r.top + r.height / 2 - 15) + 'px'; tip.hidden = false; });
+  rail.addEventListener('pointerleave', () => tip.hidden = true);
+  rail.addEventListener('focusin', e => { const t = e.target.closest('[data-tip]'); if (!t) return; const r = t.getBoundingClientRect(); tip.textContent = t.dataset.tip; tip.style.left = (r.right + 12) + 'px'; tip.style.top = (r.top + r.height / 2 - 15) + 'px'; tip.hidden = false; });
+  rail.addEventListener('focusout', () => tip.hidden = true);
+  $('#scrim').addEventListener('click', closeChat);
+  $('#researching').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) openIdea(li.dataset.id); });
+  $('#researching').addEventListener('keydown', e => { const li = e.target.closest('li[data-id]'); if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openIdea(li.dataset.id); } });
+}
 
 document.querySelectorAll('.seg button[data-pane]').forEach(b => b.addEventListener('click', () => showSide(b.dataset.pane)));
 document.querySelectorAll('.seg button[data-tab]').forEach(b => b.addEventListener('click', () => showIdeaTab(b.dataset.tab)));
@@ -1795,7 +2456,7 @@ $('#ovBody').addEventListener('click', e => {
   const b = e.target.closest('[data-ov]'); if (!b) return; const id = +b.dataset.id;
   if (b.dataset.ov === 'openplan') return openPlan(id);
   if (b.dataset.ov === 'research') { $('#overlay').hidden = true; inboxAct(id, 'research'); }
-  else { $('#overlay').hidden = true; showIdeaTab('inbox'); const li = $(`#inbox li[data-id="${id}"]`); if (li) { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); } }
+  else { $('#overlay').hidden = true; go('ideas'); const li = $(`#inbox li[data-id="${id}"]`); if (li) { const f = li.querySelector('form.why'); f.hidden = false; f.querySelector('input').focus(); } }
 });
 $('#compose').addEventListener('submit', e => { e.preventDefault(); const t = $('#chatIn').value; $('#chatIn').value = ''; send(t); });
 $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#compose').requestSubmit(); } });
@@ -1809,17 +2470,21 @@ $('#lndList').addEventListener('click', e => {
 });
 $('#lndList').addEventListener('submit', e => { e.preventDefault(); const li = e.target.closest('li[data-lid]'); lndAct(li.dataset.lid, 'no', e.target.querySelector('input').value); });
 $('#contentTop').addEventListener('submit', e => {
+  if (e.target.closest('#episodes')) return;   // the episode list has its own handler
   e.preventDefault(); const f = e.target;
   if (f.dataset.vaddform) { const id = f.querySelector('[data-vid]').value.trim(); if (!id) { toast('Paste the voice id first.'); return; }
     contentAct(`/api/project/${f.dataset.vaddform}/voice-add`, {id, name: f.querySelector('[data-vname]').value.trim()}, 'Adding the voice.'); f.querySelector('[data-vid]').value = ''; return; }
   if (f.dataset.bform) { const pid = f.dataset.bform, d = boardDraft[pid] || {}; if (!d.option && !(d.note || '').trim()) { toast('Pick one of the directions, or write your own in the note.'); return; }
     contentAct(`/api/content/${pid}/board`, {option: d.option, likes: d.likes || {}, note: d.note || ''}, 'Board approved.').then(() => { delete boardDraft[pid]; }); return; }
-  const pid = +f.closest('[data-pid]').dataset.pid, v = f.querySelector('input').value;
-  if (f.dataset.cform === 'batch') { producing = true; renderContent(); contentAct(`/api/content/${pid}/batch`, {notes:v}, 'Calina is writing the batch. It takes a few minutes.'); }
-  else contentAct(`/api/content/${pid}/review`, {stats:v}, 'Calina is writing the learning note.');
-  f.querySelector('input').value = '';
+  const pid = +f.closest('[data-pid]').dataset.pid;
+  if (f.dataset.cform === 'batch') {
+    const val = n => (f.querySelector(`[name=${n}]`) || {}).value || '';
+    producing = true; producingFor = pid; batchOpen = false; renderContent();
+    contentAct(`/api/content/${pid}/batch`, {notes:val('notes'), topic:val('topic').trim(), count:+val('count') || undefined}, 'Calina is writing the batch. Israa checks it before you see it.');
+  } else { contentAct(`/api/content/${pid}/review`, {stats:f.querySelector('input').value}, 'Calina is writing the learning note.'); f.querySelector('input').value = ''; }
 });
 $('#contentTop').addEventListener('change', e => {
+  if (e.target.closest('#episodes')) return;
   if (e.target.matches('[data-bnone]')) { const pid = e.target.closest('[data-pid]').dataset.pid; (boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''})).none = e.target.checked; return; }
   const box = e.target.closest('[data-bpid]'); if (!box) return; const pid = box.dataset.bpid, d = boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''});
   if (e.target.matches('[data-blike]')) d.likes[e.target.dataset.blike] = e.target.value;
@@ -1827,6 +2492,7 @@ $('#contentTop').addEventListener('change', e => {
 });
 $('#contentTop').addEventListener('input', e => { if (e.target.matches('[data-blinks]')) { const pid = e.target.closest('[data-pid]').dataset.pid; (boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''})).links = e.target.value; return; } const box = e.target.closest('[data-bpid]'); if (box && e.target.matches('[data-bnote]')) (boardDraft[box.dataset.bpid] || (boardDraft[box.dataset.bpid] = {option:'', likes:{}, note:''})).note = e.target.value; });
 $('#contentTop').addEventListener('click', e => {
+  if (e.target.closest('#episodes')) return;
   const at = e.target.closest('[data-animtest]');
   if (at) { contentAct(`/api/project/${at.dataset.animtest}/animator-test`, {episode: 14, scene: 6}, 'The Animator is writing the scene.'); return; }
   const ch = e.target.closest('[data-chact]');
@@ -1868,21 +2534,21 @@ $('#episodes').addEventListener('submit', e => {
 $('#limits').addEventListener('change', e => { const el = e.target.closest('[data-key]'); if (el) setLimit(el); });
 $('#limits').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[data-key]')) e.target.blur(); });
 $('#team').addEventListener('keydown', e => { const c = e.target.closest('.crew'); if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); } });
-$('#team').addEventListener('click', e => { const c = e.target.closest('.crew'); if (c) { selected = agents[c.dataset.name]; renderSel(); renderTeam(); } });
+$('#team').addEventListener('click', e => { const c = e.target.closest('.crew'); if (c) showAgent(c.dataset.name); });
 $('#ovClose').addEventListener('click', () => $('#overlay').hidden = true);
 $('#overlay').addEventListener('click', e => { if (e.target.id === 'overlay') $('#overlay').hidden = true; });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('#overlay').hidden = true; setFull(false); } });
-$('#selClose').addEventListener('click', () => { selected = null; renderSel(); renderTeam(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (!$('#overlay').hidden) $('#overlay').hidden = true; else if ($('#drawer').classList.contains('open')) closeChat(); else setFull(false); } });
 $('#killBtn').addEventListener('click', async () => { await fetch(killOn ? '/api/resume' : '/api/stop', {method:'POST'}); poll(); });
 const tickClock = () => { $('#sClock').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}); };
 tickClock(); setInterval(tickClock, 1000);
 $('#killBtn').innerHTML = ICON.stop; $('#killBtn').dataset.st = 'false';
 new ResizeObserver(resize).observe(cv); resize();
 if (document.fonts) document.fonts.ready.then(buildScene);
-renderChat(); renderFeed(); renderIdeas(); renderInbox(); renderPipe();
+renderChat(); renderFeed(); renderIdeas(); renderInbox(); renderPipe(); initShell();
 poll().then(() => { if (jobLive()) showSide('mission'); }); setInterval(poll, 1000);
 requestAnimationFrame(tick);
 })();
+
 </script>
 </body>
 </html>
