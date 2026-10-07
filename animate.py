@@ -32,6 +32,7 @@ import settings  # noqa: E402
 import shorts  # noqa: E402
 import elevenlabs  # noqa: E402
 import quality  # noqa: E402
+import sfx  # noqa: E402
 from shorts import Blocked, say  # noqa: E402
 
 FPS = 30
@@ -47,9 +48,13 @@ VIDEO_CAP = 960.0     # only an absurd length (16 minutes) is refused; the story
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
 BACKDROPS = {"court", "library", "nile", "well", "study", "map", "diagram"}
 CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"}
-CAST = {"narrator", "scholar", "ruler"}
-POSES = {"stand", "point", "explain", "amazed"}
+CAST = set(quality.ON_SCREEN)   # kit v2: the narrator is a voice only, never drawn
+POSES = {"stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer"}
+EXPRESSIONS = {"neutral", "happy", "surprised", "worried", "determined", "thinking", "laughing", "angry", "smug", "scared"}
+REACTIONS = {"idle", "cheer", "gasp", "laugh", "murmur", "angry", "scared"}
 NOFLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+GAP_LINE, GAP_SCENE = 0.16, 0.28   # breaths between two lines of one scene, and between scenes
+TALK_POSES = ("explain", "present", "point")   # a character who speaks without a stage direction gestures with one of these
 
 # voices the owner can pick from: id -> (engine, voice, label)
 VOICES = {
@@ -65,12 +70,69 @@ ELEVEN_START_SPEED = 0.88   # ElevenLabs reads about 150 words a minute at 1.0; 
 
 
 def voice_spec(vid):
-    """(engine, voice, label) for a voice id, including ElevenLabs voices ('eleven:<voice id>')."""
+    """(engine, voice, label) for a voice id, including ElevenLabs voices ('eleven:<voice id>') and any Kokoro voice ('kokoro:am_adam')."""
     if vid in VOICES:
         return VOICES[vid]
     if str(vid).startswith(ELEVEN_PREFIX):
         return ("eleven", vid[len(ELEVEN_PREFIX):], "ElevenLabs voice")
+    if str(vid).startswith("kokoro:"):
+        return ("kokoro", vid[7:], f"Kokoro: {vid[7:]}")
     return VOICES[DEFAULT_VOICE]
+
+
+# The free stand-ins when ElevenLabs isn't set up: a different Kokoro voice for each kind of character.
+KOKORO_CAST = {"scholar": "kokoro:bm_lewis", "ruler": "kokoro:am_onyx", "citizen": "kokoro:am_puck", "woman": "kokoro:bf_isabella",
+               "elder": "kokoro:bm_daniel", "merchant": "kokoro:am_eric", "guard": "kokoro:am_fenrir", "worker": "kokoro:am_michael"}
+# What each character sounds like, to pick a voice from the owner's ElevenLabs account: (gender, ages, words in the description)
+CAST_SOUND = {"scholar": ("male", ("old", "middle_aged", "middle aged"), ("wise", "warm", "raspy", "deep")),
+              "ruler": ("male", ("middle_aged", "middle aged", "old"), ("deep", "confident", "authoritative", "strong")),
+              "citizen": ("male", ("young",), ("casual", "friendly", "energetic")),
+              "woman": ("female", ("young", "middle_aged", "middle aged"), ("confident", "warm", "expressive")),
+              "elder": ("male", ("old",), ("raspy", "grumpy", "gravelly", "old")),
+              "merchant": ("male", ("middle_aged", "middle aged"), ("casual", "friendly", "raspy")),
+              "guard": ("male", ("young", "middle_aged", "middle aged"), ("strong", "deep", "intense")),
+              "worker": ("male", ("young", "middle_aged", "middle aged"), ("casual", "gruff"))}
+
+
+def cast_voices(project, speakers):
+    """The voice of every speaker in a script: {who: voice id}. The narrator has the project's voice; each character has the voice the
+    owner set for it (Voice & characters page, `cast_voices` in project meta) or, the first time, one picked from his ElevenLabs account
+    by gender and age (and saved, so a character always sounds the same), or a free Kokoro voice."""
+    meta = (project or {}).get("meta") or {}
+    narrator, _ = voice_choice(project)
+    chosen = dict(meta.get("cast_voices") or {})
+    out, new = {"narrator": narrator}, {}
+    taken = {narrator} | {v for v in chosen.values() if v}
+    account = None
+    for who in [w for w in speakers if w != "narrator"]:
+        v = chosen.get(who)
+        if v and (not str(v).startswith(ELEVEN_PREFIX) or elevenlabs.configured()):
+            out[who] = v
+            continue
+        pick = None
+        if elevenlabs.configured():
+            try:
+                account = account if account is not None else elevenlabs.account_voices()
+            except elevenlabs.ElevenError as e:
+                say(f"  Couldn't read your ElevenLabs voices ({str(e)[:120]}): free voices for the characters.")
+                account = []
+            gender, ages, words = CAST_SOUND.get(who, ("male", (), ()))
+
+            def score(v):
+                s = 10 if v["gender"] == gender else -50
+                s += 4 if v["age"] in ages else 0
+                s += sum(2 for w in words if w in (v["description"] + " " + v["use_case"]))
+                return s - (30 if ELEVEN_PREFIX + v["id"] in taken else 0)
+            best = max(account, key=score, default=None)
+            if best and score(best) > 0:
+                pick = ELEVEN_PREFIX + best["id"]
+        pick = pick or KOKORO_CAST.get(who, "kokoro:am_michael")
+        out[who] = new[who] = pick
+        taken.add(pick)
+    if new and project:
+        cp.set_project_meta(project["id"], cast_voices={**chosen, **new})
+        say("  Voices picked for: " + ", ".join(f"{k} ({v})" for k, v in new.items()) + " (change them on the Voice & characters page).")
+    return out
 
 
 # ---- tools: Node + Remotion ----------------------------------------------------------
@@ -143,8 +205,31 @@ def narration(d):
 
 
 def checklist(ep):
-    d, problems = ep["data"], []
+    d, problems = quality.sync_voice_lines(ep["data"]), []
     scenes = d.get("scenes") or []
+    for s in scenes:   # dialogue (kit v2): every line has a known speaker, and every speaker but the narrator is on screen
+        n = s.get("n", "?")
+        here = {c.get("who") for c in s.get("characters") or []}
+        for x in s.get("lines") or []:
+            who = x.get("who")
+            if who not in quality.SPEAKERS:
+                problems.append(f"Scene {n}: '{who}' can't speak (speakers: {', '.join(quality.SPEAKERS)}).")
+            elif who != "narrator" and who not in here:
+                problems.append(f"Scene {n}: {who} speaks but isn't in the scene's characters.")
+            if len((x.get("text") or "").split()) > quality.MAX_LINE_WORDS and len(quality._sentences(x.get("text"))) < 2:
+                problems.append(f"Scene {n}: {who}'s line is one sentence over {quality.MAX_LINE_WORDS} words: split it.")
+            if x.get("expression") and x["expression"] not in EXPRESSIONS:
+                problems.append(f"Scene {n}: expression '{x['expression']}' isn't one of {', '.join(sorted(EXPRESSIONS))}.")
+            if x.get("pose") and x["pose"] not in POSES:
+                problems.append(f"Scene {n}: pose '{x['pose']}' isn't one of {', '.join(sorted(POSES))}.")
+        for c in s.get("characters") or []:
+            if c.get("who") == "narrator":
+                problems.append(f"Scene {n}: the narrator is a voice now, not a character on screen (and nobody holds a POV sign).")
+        if (s.get("crowd") or {}).get("reaction", "idle") not in REACTIONS:
+            problems.append(f"Scene {n}: crowd reaction '{s['crowd'].get('reaction')}' isn't one of {', '.join(sorted(REACTIONS))}.")
+        for x in s.get("sfx") or []:
+            if (x.get("name") if isinstance(x, dict) else x) not in sfx.MENU:
+                problems.append(f"Scene {n}: sound effect '{x}' isn't in the menu.")
     if not quality.MIN_SCENES <= len(scenes) <= quality.MAX_SCENES:
         problems.append(f"The scene file has {len(scenes)} scenes; it should have 9-16.")
     lines = narration(d)
@@ -155,6 +240,8 @@ def checklist(ep):
         n = s.get("n", "?")
         if not (s.get("voice_line") or "").strip():
             problems.append(f"Scene {n} has no voice line.")
+        elif s.get("lines"):
+            pass   # dialogue scenes: checked line by line above
         elif len(s["voice_line"].split()) > quality.MAX_LINE_WORDS:
             problems.append(f"Scene {n}'s voice line is over {quality.MAX_LINE_WORDS} words and is a single sentence: split that sentence into two.")
         elif not re.search(r"[.!?]['\")]?$", s["voice_line"].strip()):
@@ -240,10 +327,10 @@ class Speaker:
             from piper import PiperVoice
             self.model = PiperVoice.load(str(piper_model(self.voice)))
 
-    def line(self, text, previous="", following=""):
+    def line(self, text, previous="", following="", tag=""):
         import numpy as np
         if self.engine == "eleven":
-            a, words, n = elevenlabs.speak(self.voice, text, self.speed, previous, following)
+            a, words, n = elevenlabs.speak(self.voice, text, self.speed, previous, following, tag=tag)
             self.chars += n
             return a, words
         if self.engine == "kokoro":
@@ -313,6 +400,162 @@ def synth(voice_id, lines, wpm_target, folder, project_voice_speed=None):
     wav = folder / "_voice_raw.wav"
     sf.write(str(wav), np.concatenate(audio), Speaker.SR)
     return wav, starts, words, t, wpm, chars
+
+
+def utterances(d, project):
+    """Every spoken line of a script in order: [{scene, who, text, tag, pose, expression, crowd}] (placeholders filled)."""
+    out = []
+    for i, s in enumerate(d.get("scenes") or []):
+        for x in quality.scene_lines(s):
+            out.append({**x, "scene": i, "text": shorts.fill_placeholders(x["text"], project)})
+    return out
+
+
+def synth_dialogue(items, voices, folder):
+    """Voice every line in its speaker's voice, with a breath between lines (a longer one between scenes). Returns (audio path,
+    per-scene starts, words [[word, start, end, who]], end time, words per minute, billed characters, segments [(start, end, who)])."""
+    import numpy as np
+    import soundfile as sf
+    speakers, chars = {}, 0
+    audio, words, segs, starts = [np.zeros(int(LEAD * Speaker.SR), dtype="float32")], [], [], {}
+    t = LEAD
+    for k, it in enumerate(items):
+        vid = voices.get(it["who"]) or voices["narrator"]
+        eleven = voice_spec(vid)[0] == "eleven"
+        if vid not in speakers:
+            speakers[vid] = Speaker(vid, 1.0 if eleven else 0.92)
+        sp = speakers[vid]
+        same = [x["text"] for x in items if x["who"] == it["who"]]
+        idx = sum(1 for x in items[:k] if x["who"] == it["who"])
+        a, w = sp.line(it["text"], " ".join(same[max(0, idx - 2):idx]), " ".join(same[idx + 1:idx + 3]), tag=it.get("tag") or "")
+        if w is None:   # no timings came back: faster-whisper times the words
+            tmp = folder / "_line.wav"
+            sf.write(str(tmp), a, Speaker.SR)
+            w = whisper_words(tmp, it["text"].split(), len(a) / Speaker.SR)
+            tmp.unlink(missing_ok=True)
+        starts.setdefault(it["scene"], t)
+        dur = len(a) / Speaker.SR
+        words += [[x[0], t + x[1], t + x[2], it["who"]] for x in w]
+        segs.append((t, t + dur, it["who"]))
+        audio.append(a)
+        nxt = items[k + 1]["scene"] if k + 1 < len(items) else None
+        pad = PAD_HOOK if k == 0 else GAP_SCENE if nxt != it["scene"] else GAP_LINE
+        audio.append(np.zeros(int(pad * Speaker.SR), dtype="float32"))
+        t += dur + pad
+    chars = sum(s.chars for s in speakers.values())
+    wpm = sum(len(x["text"].split()) for x in items) / max(1e-6, (t - LEAD) / 60)
+    wav = folder / "_voice_raw.wav"
+    sf.write(str(wav), np.concatenate(audio), Speaker.SR)
+    n_scenes = max(x["scene"] for x in items) + 1 if items else 0
+    scene_starts = []
+    for i in range(n_scenes):   # a scene with no line of its own starts where the previous one ended
+        scene_starts.append(starts.get(i, scene_starts[-1] if scene_starts else LEAD))
+    return wav, scene_starts, words, t, wpm, chars, segs
+
+
+def dialogue_cached(items, voices, folder):
+    """synth_dialogue, but the voices made once for these exact lines, voices and model are reused: a retry costs no characters."""
+    key = hashlib.sha1(json.dumps([[voices.get(x["who"]) or voices["narrator"], x["who"], x["text"], x.get("tag") or ""] for x in items]
+                                  + [elevenlabs.model()]).encode("utf-8")).hexdigest()[:16]
+    cdir = folder / "_voice-cache"
+    wav_c, js_c = cdir / f"d-{key}.wav", cdir / f"d-{key}.json"
+    raw = folder / "_voice_raw.wav"
+    if wav_c.exists() and js_c.exists():
+        j = json.loads(js_c.read_text(encoding="utf-8"))
+        shutil.copy2(wav_c, raw)
+        say("  Reusing the voices already made for these lines (no ElevenLabs characters used).")
+        return raw, j["starts"], j["words"], j["t"], j["wpm"], 0, [tuple(x) for x in j["segs"]]
+    out = synth_dialogue(items, voices, folder)
+    cdir.mkdir(exist_ok=True)
+    shutil.copy2(out[0], wav_c)
+    js_c.write_text(json.dumps({"starts": out[1], "words": out[2], "t": out[3], "wpm": out[4], "segs": out[6]}), encoding="utf-8")
+    return out
+
+
+def speaker_frames(segs, total_frames):
+    """Who is talking at every frame ('' = nobody): the mouths of everyone else stay shut."""
+    who = [""] * total_frames
+    for a, b, w in segs:
+        for f in range(max(0, int(a * FPS)), min(total_frames, int(b * FPS) + 2)):
+            who[f] = w
+    return who
+
+
+def scene_beats(d, items, segs, bounds):
+    """Stage directions per scene, in frames from the scene's start: a speaker takes his line's pose and face when he starts (or a
+    talking gesture if the line has none) and goes back to his own pose when he stops; the crowd reacts on the line that says so."""
+    out = [[] for _ in d["scenes"]]
+    gesture = {}
+    for it, (a, b, who) in zip(items, segs):
+        i = it["scene"]
+        s = d["scenes"][i]
+        here = {c.get("who"): c for c in s.get("characters") or []}
+        at, end = round(a * FPS) - bounds[i], round(b * FPS) - bounds[i]
+        if who in here:
+            base = here[who].get("pose") or "stand"
+            pose = it.get("pose")
+            if not pose:
+                gesture[who] = (gesture.get(who, -1) + 1) % len(TALK_POSES)
+                pose = TALK_POSES[gesture[who]] if base in ("stand", "think") else None
+            out[i].append({"at": max(0, at), "who": who, **({"pose": pose} if pose else {}),
+                           **({"expression": it["expression"]} if it.get("expression") else {})})
+            if pose and pose != base and not it.get("pose"):
+                out[i].append({"at": max(0, end + 4), "who": who, "pose": base})
+        if it.get("crowd") and s.get("crowd"):
+            out[i].append({"at": max(0, at), "who": "crowd", "reaction": it["crowd"]})
+    for b in out:
+        b.sort(key=lambda x: x["at"])
+    return out
+
+
+def sfx_cues(d, words, bounds):
+    """[(seconds, effect name)] for every sound effect in the script: on its word if it names one, else just after the scene starts."""
+    out = []
+    for i, s in enumerate(d["scenes"]):
+        start, end = bounds[i], bounds[i + 1]
+        inside = [w for w in words if start <= round(w[1] * FPS) < end]
+        for x in s.get("sfx") or []:
+            name = x.get("name") if isinstance(x, dict) else x
+            if name not in sfx.MENU:
+                continue
+            target = _norm((x.get("on_word") if isinstance(x, dict) else "") or "")
+            hit = next((w for w in inside if target and (_norm(w[0]) == target or (len(target) >= 4 and _norm(w[0]).startswith(target[:4])))), None)
+            out.append((hit[1] if hit else start / FPS + 0.12, name))
+    return out
+
+
+def mix_audio(ffmpeg, voice, cues, music, seconds, dst):
+    """The soundtrack: the voices, each sound effect at its moment, and the music quietly under everything, ducked while anyone
+    speaks (sidechain compression), faded in and out. Then normalised like the voice. Returns (dst, characters billed for new effects)."""
+    inputs, filters, labels, billed = ["-i", str(voice)], [], ["[v]"], 0
+    filters.append("[0:a]aresample=48000,asplit=2[v][sc]")
+    n = 1
+    if music:
+        inputs += ["-stream_loop", "-1", "-i", str(music)]
+        filters.append(f"[{n}:a]aresample=48000,atrim=0:{seconds:.2f},volume=0.16,afade=t=in:d=1.2,afade=t=out:st={max(0, seconds - 2.5):.2f}:d=2.5[mus]")
+        filters.append("[mus][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=450[m]")
+        labels.append("[m]")
+        n += 1
+    else:
+        filters.append("[sc]anullsink")
+    for at, name in cues:
+        try:
+            path, b = sfx.sfx_path(name)
+        except (elevenlabs.ElevenError, OSError, KeyError) as e:
+            say(f"  Sound effect '{name}' skipped: {str(e)[:120]}")
+            continue
+        billed += b
+        inputs += ["-i", str(path)]
+        ms = max(0, int(at * 1000))
+        filters.append(f"[{n}:a]aresample=48000,volume=0.55,adelay={ms}|{ms}[s{n}]")
+        labels.append(f"[s{n}]")
+        n += 1
+    filters.append("".join(labels) + f"amix=inputs={len(labels)}:duration=first:normalize=0,alimiter=limit=0.89[out]")
+    raw = dst.with_name("_mix_raw.wav")
+    shorts.run([ffmpeg, "-y", "-loglevel", "error", *inputs, "-filter_complex", ";".join(filters), "-map", "[out]", "-ac", "1", str(raw)])
+    normalise_voice(ffmpeg, raw, dst)
+    raw.unlink(missing_ok=True)
+    return dst, billed
 
 
 def whisper_file_voice(ffmpeg, src, lines, folder):
@@ -472,20 +715,25 @@ def mouth_cues(wav, words, total_frames):
 
 
 def caption_chunks(words):
-    """Up to 3 words at a time; a sentence or comma ends a chunk. Frames."""
-    chunks, cur = [], []
+    """Up to 3 words at a time; a sentence, a comma or a new speaker ends a chunk. Frames. words: [word, start, end(, who)]."""
+    chunks, cur, who = [], [], None
     for w in words:
+        speaker = w[3] if len(w) > 3 else "narrator"
+        if cur and speaker != who:
+            chunks.append((who, cur))
+            cur = []
+        who = speaker
         cur.append({"w": w[0], "from": round(w[1] * FPS), "to": max(round(w[2] * FPS), round(w[1] * FPS) + 3)})
         if len(cur) == 3 or re.search(r"[.,!?;:]$", w[0]):
-            chunks.append(cur)
+            chunks.append((who, cur))
             cur = []
     if cur:
-        chunks.append(cur)
+        chunks.append((who, cur))
     out = []
-    for i, c in enumerate(chunks):
-        nxt = chunks[i + 1][0]["from"] if i + 1 < len(chunks) else None
+    for i, (w, c) in enumerate(chunks):
+        nxt = chunks[i + 1][1][0]["from"] if i + 1 < len(chunks) else None
         end = c[-1]["to"] + 8
-        out.append({"from": c[0]["from"], "to": min(end, nxt) if nxt else end, "words": c})
+        out.append({"from": c[0]["from"], "to": min(end, nxt) if nxt else end, "who": w, "words": c})
     return out
 
 
@@ -556,31 +804,40 @@ def render_episode(eid, voice=None, suffix=""):
     t0 = time.time()
     say(f"Episode #{ep['id']}: {ep['title']}")
     ensure_toolchain()
+    d = quality.sync_voice_lines(d)
+    items = utterances(d, project)
     lines = [shorts.fill_placeholders(l, project) for l in narration(d)]
     # the owner's own voice file (e.g. voice.mp3 from ElevenLabs); never our own generated voice.wav / voice-N.wav
     own = None if voice else next((f for f in sorted(folder.glob("voice.*")) if f.suffix.lower() in production.AUDIO_EXT and f.name.lower() != "voice.wav"), None)
-    say("Voice..." if not own else f"Voice: using your file {own.name}...")
+    say("Voices..." if not own else f"Voice: using your file {own.name}...")
+    vid = "own"
     if own:
         raw, starts, words, voice_end, wpm = whisper_file_voice(ffmpeg, own, lines, folder)
+        words = [w + ["narrator"] for w in words]
+        segs = [(w[1], w[2], "narrator") for w in words]
         used = f"your own file ({own.name})"
     else:
-        vid, speed = (voice, None) if voice else voice_choice(project)
         meta_v = (project.get("meta") or {})
+        voices = cast_voices(project, sorted({x["who"] for x in items}))
+        if voice:   # a variant: another narrator voice, the characters keep theirs
+            voices["narrator"] = voice
+        vid = voices["narrator"]
         reg = {ELEVEN_PREFIX + x["id"]: x["label"] for x in meta_v.get("eleven_voices") or []}
         label = reg.get(vid) or ((meta_v.get("voice") or {}).get("label") if not voice else None) or voice_spec(vid)[2]
         try:
-            raw, starts, words, voice_end, wpm, chars = synth_cached(vid, lines, folder, speed)
+            raw, starts, words, voice_end, wpm, chars, segs = dialogue_cached(items, voices, folder)
         except (elevenlabs.ElevenError, ImportError, OSError) as ex:
-            if voice_spec(vid)[0] != "eleven" or not getattr(settings, "ELEVEN_FALLBACK", True):
+            if not any(voice_spec(v)[0] == "eleven" for v in voices.values()) or not getattr(settings, "ELEVEN_FALLBACK", True):
                 raise Blocked(f"The voice failed: {ex}")
-            say(f"  ElevenLabs failed ({str(ex)[:160]}): using the free Kokoro voice instead. It will sound more robotic.")
-            raw, starts, words, voice_end, wpm, chars = synth(DEFAULT_VOICE, lines, TARGET_WPM, folder, None)
+            say(f"  ElevenLabs failed ({str(ex)[:160]}): using the free Kokoro voices instead. They will sound more robotic.")
+            free = {w: (KOKORO_CAST.get(w) or DEFAULT_VOICE) for w in voices}
+            raw, starts, words, voice_end, wpm, chars, segs = synth_dialogue(items, free, folder)
             label = f"Kokoro (free fallback; ElevenLabs failed: {str(ex)[:120]})"
             vid = DEFAULT_VOICE
-        used = label
+        used = label + (f" + {len(voices) - 1} character voice(s)" if len(voices) > 1 else "")
         if chars:
             cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "episode": ep["id"], "what": "short"})
-            say(f"  ElevenLabs: {chars} characters used for this Short.")
+            say(f"  ElevenLabs: {chars} characters used for the voices.")
     normalise_voice(ffmpeg, raw, folder / f"voice{suffix}.wav")
     raw.unlink(missing_ok=True)
     voice_secs = shorts.probe_seconds(ffmpeg, folder / f"voice{suffix}.wav")
@@ -600,19 +857,39 @@ def render_episode(eid, voice=None, suffix=""):
     total = int(round(total_secs * FPS))
     say(f"  {voice_secs:.1f} s of speech at {wpm:.0f} words a minute ({used}); {total_secs:.1f} s with the end card")
     bounds = [0 if i == 0 else round(starts[i] * FPS) for i in range(len(starts))] + [round(end_t * FPS)]
+    beats = scene_beats(d, items, segs, bounds) if not own else [[] for _ in d["scenes"]]
     scenes = []
     for i, s in enumerate(d["scenes"]):
-        sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n", "shows", "callout_word")}
+        sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n", "shows", "callout_word", "lines", "sfx", "link", "step_claim")}
         sc["from"] = bounds[i]
         sc["frames"] = max(12, bounds[i + 1] - bounds[i])
+        sc["beats"] = beats[i]
         if s.get("callout"):   # the callout appears on the word it belongs to, never before it is said
             sc["callout_from"] = callout_frame(s, words, bounds[i], bounds[i + 1])
         scenes.append(sc)
+    # the soundtrack: voices + sound effects on their words + the project's music (if the owner picked one), ducked under speech
+    music_id = (project.get("meta") or {}).get("music") or ""
+    music = None
+    if music_id and music_id != "none":
+        try:
+            music = sfx.music_path(music_id)
+        except (OSError, ValueError) as ex:
+            say(f"  The music couldn't be fetched ({str(ex)[:120]}): no music this time.")
+    cues = sfx_cues(d, words, bounds)
+    audio_name = f"voice{suffix}.wav"
+    if music or cues:
+        say(f"  Sound: {len(cues)} effect(s)" + (f", music: {sfx.MUSIC[music_id][0]}" if music else ", no music (none picked)"))
+        _, billed = mix_audio(ffmpeg, folder / f"voice{suffix}.wav", cues, music, end_t + OUTRO_SECONDS, folder / f"mix{suffix}.wav")
+        if billed:
+            cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": billed, "episode": ep["id"], "what": "sound effects"})
+            say(f"  ElevenLabs: {billed} characters for new sound effects (made once, reused in every later video).")
+        audio_name = f"mix{suffix}.wav"
     ch = (project.get("meta") or {}).get("channel") or {}
     props = {
         "durationInFrames": total,
-        "audio": f"voice{suffix}.wav",
-        "mouth": mouth_for(folder / f"voice{suffix}.wav", words, lines, folder, total),
+        "audio": audio_name,
+        "mouth": mouth_for(folder / f"voice{suffix}.wav", words, [x["text"] for x in items] or lines, folder, total),
+        "speaker": speaker_frames(segs, total),
         "intro": {"place": short_place(d.get("place") or ""), "year": (d.get("year") or "").upper()},
         "outro": {"channel": ch.get("name") or "POV Then History", "handle": ch.get("handle") or "@POVThenHistory"},
         "outro_from": round(end_t * FPS),
@@ -626,12 +903,18 @@ def render_episode(eid, voice=None, suffix=""):
               f"--public-dir={folder}", "--codec=h264", "--crf=20", "--log=warn", "--overwrite"], timeout=3600)
     if suffix:   # a voice variant: nothing else about the episode changes
         say(f"Variant done in {time.time() - t0:.0f}s: {out.name}")
-        return {"id": vid if not own else "own", "label": used, "video": out.relative_to(ROOT).as_posix(), "seconds": round(total_secs, 1),
-                "wpm": round(wpm), "audio": f"voice{suffix}.wav", "props": f"scene-props{suffix}.json"}
+        return {"id": vid, "label": used, "video": out.relative_to(ROOT).as_posix(), "seconds": round(total_secs, 1),
+                "wpm": round(wpm), "audio": audio_name, "voice": f"voice{suffix}.wav", "props": f"scene-props{suffix}.json"}
     credits = ["Map data: Natural Earth (public domain). Cartoon characters and backgrounds: our own artwork."]
+    if cues:
+        credits.append(sfx.CREDIT_SFX)
+    if music:
+        credits.append(sfx.music_credit(music_id))
     description = shorts.fill_placeholders((d.get("description") or "").strip(), project)
     if "AI-assisted" not in description:
         description += f"\n\n{DISCLOSURE_V3}"
+    if music and "Kevin MacLeod" not in description:   # the licence asks for this credit wherever the video is shown
+        description += "\n\n" + sfx.music_credit(music_id)
     if d.get("hashtags"):
         tags = [t for t in d["hashtags"] if not (is_video(d) and t.lower() == "#shorts")]   # a regular video is not a Short
         description += "\n\n" + " ".join(tags)
@@ -720,13 +1003,14 @@ def make_character_library(project_id=3, clips=True):
     ensure_toolchain()
     ffmpeg = shorts.find_ffmpeg()
     project = cp.get_project(project_id, with_text=False)
-    lib = {"project": project_id, "made": time.strftime("%Y-%m-%d %H:%M"), "characters": []}
+    lib = {"project": project_id, "kit": quality.KIT_VERSION, "made": time.strftime("%Y-%m-%d %H:%M"), "characters": []}
+    shutil.rmtree(root / "narrator", ignore_errors=True)   # kit v1's on-screen narrator (with the POV sign) is gone
     voice = None
     if clips:
         vid, speed = voice_choice(project)
         say("Test voice (same words for every character)...")
         lines = [l.strip() for l in re.split(r"(?<=[.!?])\s+", TEST_SCRIPT) if l.strip()]
-        raw, _, words, voice_end, wpm, chars = synth(vid, lines, TARGET_WPM, root, speed)
+        raw, _, words, voice_end, wpm, chars = synth_cached(vid, lines, root, speed)   # made once: a remake costs no characters
         if chars:
             cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "what": "character test"})
         normalise_voice(ffmpeg, raw, root / "test-voice.wav")
@@ -735,7 +1019,7 @@ def make_character_library(project_id=3, clips=True):
         total = int(round(30 * FPS))
         mouth = mouth_for(root / "test-voice.wav", words, lines, root, total)
         voice = {"label": (voice_spec(vid)[2]), "seconds": round(secs, 1)}
-    for who in sorted(CAST):
+    for who in list(quality.ON_SCREEN) + ["crowd"]:
         folder = root / who
         folder.mkdir(exist_ok=True)
         say(f"Reference sheet: {who}")
@@ -744,7 +1028,7 @@ def make_character_library(project_id=3, clips=True):
         remotion(["still", "src/index.jsx", "CharacterSheet", str(folder / "reference-sheet.png"), f"--props={props}", "--log=error",
                   "--overwrite"], timeout=900)
         entry = {"id": who, "sheet": (folder / "reference-sheet.png").relative_to(ROOT).as_posix()}
-        if clips:
+        if clips and who != "crowd":   # the crowd is a sheet only: its people are the cast's looks in other colours
             say(f"Test clip: {who} (30 s, three shots)")
             props.write_text(json.dumps({"who": who, "mouth": mouth, "audio": "test-voice.wav", "durationInFrames": total}), encoding="utf-8")
             remotion(["render", "src/index.jsx", "CharacterTest", str(folder / "test.mp4"), f"--props={props}", f"--public-dir={root}",
@@ -760,10 +1044,49 @@ def make_character_library(project_id=3, clips=True):
         old = json.loads((root / "library.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         pass
-    if old.get("reviews") and not clips:
+    if old.get("reviews") and not clips and old.get("kit") == quality.KIT_VERSION:
         lib["reviews"] = old["reviews"]
     (root / "library.json").write_text(json.dumps(lib, indent=2), encoding="utf-8")
     return lib
+
+
+CAST_LINES = {   # one line per character, in character, to hear the cast's voices (about 80 characters each)
+    "scholar": ("curious", "Patience, my friends. The shadow is telling us something... and I intend to listen."),
+    "ruler": ("proud", "I am the KING. If anyone measures the world, it will be on my orders!"),
+    "citizen": ("sarcastic", "Measure the whole Earth? With a stick? Sure. And I'll fly to the moon on a goat."),
+    "woman": ("playful", "Oh, let him try. The last time you all laughed at him, he was right."),
+    "elder": ("annoyed", "In my day, we didn't measure the Earth. We stood on it, and we were grateful."),
+    "merchant": ("excited", "Fresh scrolls! Fine papyrus! Every great idea starts on my paper, I promise you!"),
+    "guard": ("deadpan", "Sir, the man with the stick is back. He says it's science. Shall I let him in?"),
+    "worker": ("chuckles", "Dig a well, they said. Easy work, they said. Now a scholar wants to stare into it."),
+}
+
+
+def make_cast_samples(project_id=3):
+    """Each character says one line in its own voice (the voices the project gives them), for the owner to hear the cast."""
+    project = cp.get_project(project_id, with_text=False)
+    ffmpeg = shorts.find_ffmpeg()
+    voices = cast_voices(project, list(quality.ON_SCREEN))
+    folder = shorts.CONTENT / f"project-{project_id}" / "voice-samples" / "cast"
+    folder.mkdir(parents=True, exist_ok=True)
+    made, billed = [], 0
+    for who in quality.ON_SCREEN:
+        tag, text = CAST_LINES[who]
+        tmp = folder / "_s"
+        tmp.mkdir(exist_ok=True)
+        try:
+            raw, _, _, _, _, chars, _ = synth_dialogue([{"scene": 0, "who": who, "text": text, "tag": tag}], voices, tmp)
+            billed += chars
+            shorts.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), "-af", "loudnorm=I=-15:TP=-1.5:LRA=11", "-ar", "44100",
+                        "-b:a", "128k", str(folder / f"{who}.mp3")])
+            made.append({"who": who, "voice": voices[who]})
+        except Exception as e:   # one voice failing must not lose the others
+            say(f"  {who}: skipped ({type(e).__name__}: {str(e)[:160]})")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+    if billed:
+        cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": billed, "what": "cast samples"})
+    return {"made": made, "chars": billed}
 
 
 def add_eleven_voice(project_id, voice_id, name=""):
@@ -810,7 +1133,7 @@ def add_eleven_voice(project_id, voice_id, name=""):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["render", "check", "samples", "setup", "characters", "sheets", "animator-test", "voice-add", "render-voices"])
+    ap.add_argument("command", choices=["render", "check", "samples", "setup", "characters", "sheets", "animator-test", "voice-add", "render-voices", "cast-samples"])
     ap.add_argument("arg", nargs="?", type=int)
     ap.add_argument("arg2", nargs="?")
     ap.add_argument("arg3", nargs="?")
@@ -831,6 +1154,8 @@ def main():
             print("RESULT " + json.dumps(add_eleven_voice(a.arg, a.arg2, a.arg3 or "")))
         elif a.command == "render-voices":   # animate.py render-voices <episode> <voice id,voice id>
             print("RESULT " + json.dumps(render_voices(a.arg, [v for v in (a.arg2 or "").split(",") if v])))
+        elif a.command == "cast-samples":   # animate.py cast-samples <project>
+            print("RESULT " + json.dumps(make_cast_samples(a.arg or 3)))
         elif a.command in ("characters", "sheets"):
             print("RESULT " + json.dumps(make_character_library(a.arg or 3, clips=a.command == "characters")))
         elif a.command == "samples":

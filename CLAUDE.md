@@ -151,6 +151,32 @@ Agents never spend money without the owner's explicit approval.
   (`short-N.mp4`, `voice-N.wav`, `scene-props-N.json`) without touching the episode; `render-voices` makes 2-3; `keep-voice` copies
   the chosen one over short.mp4 and sets the project's voice, then Israa reviews it. The owner's own voice file is `voice.mp3`
   etc., never `voice.wav` (that name is our generated narration: re-renders used to mistake it for his file and reuse the old voice).
+- Kit v2, dialogue, voices and sound (2.20.0, the owner's "major changes" after ep 21: "monotone", "make it fun"):
+  - Cast (`Character.jsx`, his two reference images: flat "funny cartoon ancient Greece"): scholar, ruler, citizen, woman, elder,
+    merchant, guard, worker + a seeded `Crowd` (reactions idle/cheer/gasp/laugh/murmur/angry/scared); 9 poses, 10 expressions.
+    **No on-screen narrator, no POV sign** (old `narrator` on screen is refused by the checklist; `castOf` maps it to citizen).
+    The owner approves per kit: `characters_approved` holds `quality.KIT_VERSION` ("2"); `quality.characters_ok` is the gate.
+  - Scene files carry `lines` [{who, text, tag, pose, expression, crowd}] (`quality.SPEAKERS`; the narrator is a voice only), plus
+    optional `crowd` and `sfx` [{name, on_word}]. `quality.sync_voice_lines` keeps `voice_line` = everything said, so every old check
+    still works; `split_long_lines` splits dialogue scenes between lines (`MAX_SCENE_WORDS` 60). Old one-line scene files still render.
+  - `animate.py`: `cast_voices` (narrator = project voice; each character = `cast_voices` in meta, else picked once from his
+    ElevenLabs account by gender/age, else Kokoro), `synth_dialogue`/`dialogue_cached` (one voice per line, retry free),
+    `speaker_frames` (only the speaker's mouth moves), `scene_beats` (pose/face per line, crowd reactions), `sfx_cues` + `mix_audio`
+    (effects on their words, music ducked by sidechain; Rhubarb still reads the voice-only track; Remotion plays `mix.wav`).
+  - `elevenlabs.py`: **Eleven v3** by default (`settings.ELEVEN_MODEL`), the line's `tag` sent as an audio tag (stripped from the word
+    timings; tested live 2026-10-07), falls back to multilingual v2. Also `account_voices`, `shared_voices`, `similar_voices` (multipart
+    upload), `add_shared_voice`.
+  - `sfx.py`: `MENU` of ~29 effects, each made once with ElevenLabs sound generation (11 credits/second) into `content/audio-kit/sfx/`;
+    `MUSIC`: 4 Kevin MacLeod tracks (CC BY 4.0, credit added to the description), the owner picks per project (`meta.music`, or none).
+  - `voice_match.py` (shorts venv): `record` (soundcard loopback, every output device, the loudest wins; the owner plays the video:
+    we never download from YouTube) and `match` (WavLM `microsoft/wavlm-base-plus-sv` embeddings + pitch/pace; candidates from
+    ElevenLabs' similar-voices + library searches; top 5 in `content/project-N/voice-ref/matches.json`). Tested: given ep 21's voice
+    it ranked that exact library voice (Frederick Surrey) #1 of 207. Office: Voice & characters (match card, a voice per character,
+    music); `hq voice-match|cast-voice|cast-samples|music`.
+  - Voice versions are reviewed before the owner sees them: `run_render_voices` runs `quality.review_video(eid, version=1)`;
+    `hq frames <id> [version]`.
+  - Calina's V3 prompt has a MAKE IT FUN section (hook, narrator personality, characters talk in half the scenes, delivery tags, sfx,
+    crowd, honest dialogue); Israa's script review has criteria 9 (fun and life) and 10 (honest dialogue).
 - `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

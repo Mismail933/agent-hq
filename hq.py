@@ -13,6 +13,8 @@ Atlas's controls for Agent HQ.
                  characters <project id> [make|sheets|review|status|approve] | animator-test <project> <episode> [scene] | voice-add <project> <voice id> ["name"] | board-note <project> "note" | render <episode> [voice voice] | do-not-upload <episode> "why" | allow-upload <episode> | keep-voice <episode> <voice id> | frames <episode id> | credits | lnd-focus "topic for Richard"
                  refs <project id> ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
+                 voice-match <project> [record [secs] | <clip file> | show | add <voice id> <owner id> "name"] | cast-voice <project> <character> <voice>
+                 cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version]
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
 same guardrails (budgets, one idea at a time, kill switch).
@@ -207,9 +209,10 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "frames":   # eyes and ears: contact sheets + transcript of a finished video, for Atlas to read
             import quality
-            pack = quality.review_pack(int(args[0]))
+            version = int(args[1]) if len(args) > 1 else 0   # hq frames <episode> [voice version]
+            pack = quality.review_pack(int(args[0]), version)
             import shutil
-            out = Path(__import__("atlas_engine").HOME) / "review" / f"ep-{int(args[0]):03d}"
+            out = Path(__import__("atlas_engine").HOME) / "review" / (f"ep-{int(args[0]):03d}" + (f"-v{version}" if version else ""))
             shutil.rmtree(out, ignore_errors=True)
             out.mkdir(parents=True, exist_ok=True)
             sheets = []
@@ -230,7 +233,7 @@ def main(argv):
                 import quality
                 lib = quality.load_library(pid)
                 pr = cp.get_project(pid, with_text=False) or {}
-                show({"project": pid, "approved_by_owner": bool((pr.get("meta") or {}).get("characters_approved")),
+                show({"project": pid, "approved_by_owner": __import__("quality").characters_ready(pr),
                       "library": lib or "No character library yet: hq characters %d make" % pid,
                       "files": "content/project-%d/characters/<id>/reference-sheet.png and test.mp4" % pid})
             else:
@@ -295,6 +298,34 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd in ("do-not-upload", "allow-upload"):   # hq do-not-upload <episode> "why": a duplicate or superseded Short must not go live
             code, reply = office(f"/api/episode/{int(args[0])}/{cmd}", {"reason": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "voice-match":   # hq voice-match <project> [record [seconds] | add <voice id> <public owner id> "name" | show]
+            pid, what = int(args[0]), (args[1] if len(args) > 1 else "match")
+            if what == "show":
+                f = ROOT / "content" / f"project-{pid}" / "voice-ref" / "matches.json"
+                show(json.loads(f.read_text(encoding="utf-8")) if f.exists() else "No voice match yet: hq voice-match %d (needs a reference clip: record one, or put an audio file in content/project-%d/voice-ref/)" % (pid, pid))
+            else:
+                body = {"action": what}
+                if what == "record":
+                    body["seconds"] = int(args[2]) if len(args) > 2 else 40
+                elif what == "add":   # only on the owner's word: it adds a voice to his ElevenLabs account
+                    body.update(voice=args[2], owner=args[3], name=" ".join(args[4:]))
+                elif what not in ("match",) and Path(what).suffix:   # hq voice-match 3 <clip file>: copy it in as the reference
+                    import shutil
+                    dst = ROOT / "content" / f"project-{pid}" / "voice-ref"
+                    dst.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(what, dst / ("reference" + Path(what).suffix.lower()))
+                    body = {"action": "match"}
+                code, reply = office(f"/api/project/{pid}/voice-match", body)
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "cast-voice":   # hq cast-voice <project> <character> <eleven:id | kokoro:name>  (only on the owner's word)
+            code, reply = office(f"/api/project/{int(args[0])}/cast-voice", {"who": args[1], "id": args[2] if ":" in args[2] else "eleven:" + args[2]})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "cast-samples":   # hq cast-samples <project>: each character says one line in its voice
+            code, reply = office(f"/api/project/{int(args[0])}/cast-samples", {})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "music":   # hq music <project> <sneaky-snitch | scheming-weasel | investigations | minstrel-guild | none>  (owner's pick)
+            code, reply = office(f"/api/project/{int(args[0])}/music", {"id": args[1]})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "voice-add":   # hq voice-add <project> <elevenlabs voice id> ["name"]
             code, reply = office(f"/api/project/{int(args[0])}/voice-add", {"id": args[1], "name": " ".join(args[2:])})

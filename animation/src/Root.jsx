@@ -20,8 +20,8 @@ export const Root = () => (
       calculateMetadata={({props}) => ({durationInFrames: props.durationInFrames || sample.durationInFrames})}
     />
     <Still id="Sheet" component={Sheet} width={1920} height={1080} />
-    <Still id="CharacterSheet" component={CharacterSheet} width={1920} height={1080} defaultProps={{who: 'narrator'}} />
+    <Still id="CharacterSheet" component={CharacterSheet} width={1920} height={1080} defaultProps={{who: 'scholar'}} />
     <Composition id="CharacterTest" component={CharacterTest} width={W} height={H} fps={FPS} durationInFrames={900}
-      defaultProps={{who: 'narrator', mouth: []}} calculateMetadata={({props}) => ({durationInFrames: props.durationInFrames || 900})} />
+      defaultProps={{who: 'scholar', mouth: []}} calculateMetadata={({props}) => ({durationInFrames: props.durationInFrames || 900})} />
   </>
 );

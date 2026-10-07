@@ -94,6 +94,12 @@ plainly; don't soften them and don't pass it off as good. If you see a video or 
 **The owner's length rule: no fixed length.** Never put a length, duration or word count in a note, a board note or an order to Calina or Israa; the story sets it and clear full sentences beat a short cut. Don't dictate word counts or durations to Calina (that is what produced fragments): tell her the story you want and let
 the story set the length. Before you tell the owner a video is ready, run `hq frames <episode id>` and read the contact sheet
 and the transcript yourself: if you can't retell it, he can't.
+**Since 2.20.0 (the owner's "major changes" after ep 21: "monotone", "make it fun"):** animated scripts are dialogue: a narrator who
+is only a voice, plus characters on screen who speak their own lines in their own voices (each line has a delivery like excited,
+sarcastic, whispers, acted by ElevenLabs v3), crowd reactions and sound effects. The cast was redrawn in his reference style
+(scholar, ruler, citizen, woman, elder, merchant, guard, worker, crowd); there is no on-screen narrator and no POV sign. Before any
+new video: `hq characters 3 make`, then HE approves the new cast. The voice is his to choose: the matcher (`hq voice-match`) finds the
+closest library voices to a narrator he likes; he listens and adds one. Music is his to pick too (`hq music`, or the page).
 
 ## Your controls
 Run these from this folder. They talk to the running office, so everything shows up live there and goes through the
@@ -127,11 +133,16 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py refs <project id> ["notes"]` | The Scout researches what really works on YouTube in that niche and writes a reference board (real examples, views, formats, 2-3 directions). 5-10 min. Do this BEFORE any batch. |
 | `python hq.py board <project id>` | The latest reference board: examples, verified or not, options, the owner's choice. |
 | `python hq.py approve-board <project id> <A/B/C> ["his words"]` | ONLY after the owner chose a direction. Unlocks Calina for that project. |
-| `python hq.py characters <project id> [make\|sheets\|review\|status]` | The saved cast: reference sheets + a 30-second test clip per character (close-up talking, walking, gestures), checked by Israa against the sheet. `make` takes ~15 min. The owner must watch them and approve in the office (the project's Voice & characters page): **no new animated Short is made before he does**. Never approve for him. |
+| `python hq.py characters <project id> [make\|sheets\|review\|status]` | The saved cast: reference sheets + a 30-second test clip per character (close-up talking, walking, gestures), checked by Israa against the sheet. `make` takes ~40 min (eight characters + a crowd sheet; since 2.20.0 the cast is new, in the owner's reference style, no on-screen narrator, no POV sign). The owner must watch them and approve in the office (the project's Voice & characters page): **no new animated Short is made before he does**. Never approve for him. |
 | `python hq.py animator-test <project id> <episode id> [scene]` | The Animator (Opus) writes ONE bespoke scene next to the kit's version for the owner to compare (the project's Voice & characters page (Animator test)). ~10 min. |
-| `python hq.py frames <episode id>` | Eyes and ears on a finished video: contact sheets (a frame a second + every scene change, with the words spoken under each) and a transcript from its audio, saved in your `review/` folder. Read the sheets and the transcript before you tell the owner a video is ready. |
+| `python hq.py frames <episode id> [version]` | Eyes and ears on a finished video (or on voice version 1, 2... before the owner keeps one): contact sheets (a frame a second + every scene change, with the words spoken under each) and a transcript from its audio, saved in your `review/` folder. Read the sheets and the transcript before you tell the owner a video is ready. |
 | `python hq.py voice-add <project id> <ElevenLabs voice id> ["name"]` | Registers ANY ElevenLabs voice for the project (looks up its name and labels, makes its sample, remembers it). The voice must already be in the owner's ElevenLabs account (Voice Library -> Add to My Voices). |
 | `python hq.py render <episode id> <voice id> <voice id>` | Makes the same animated Short in two or three voices (e.g. `eleven:<id>`) as versions for the owner to compare in the project's Episodes page. Each costs ElevenLabs characters (about 900) and a ~10 min render. |
+| `python hq.py voice-match <project id> [record [secs] \| <clip file> \| show]` | The voice matcher (2.20.0): compares a reference narrator (recorded from the owner's speakers while HE plays the video, or an audio file he gives) with the ElevenLabs Voice Library using a speaker-recognition model (WavLM) + pitch/pace, and ranks the top 5 with library links. Free. `show` prints the last result. Never download from YouTube yourself. |
+| `python hq.py voice-match <project id> add <voice id> <public owner id> "name"` | ONLY when the owner picked one: adds that library voice to his ElevenLabs account and makes its sample. |
+| `python hq.py cast-voice <project id> <character> <eleven:id or kokoro:name>` | The voice of one on-screen character (scholar, ruler, citizen, woman, elder, merchant, guard, worker). Only on the owner's word; otherwise the first video picks from his account by age/gender and keeps it. |
+| `python hq.py cast-samples <project id>` | Each character says one line in its own voice (about 650 ElevenLabs characters). |
+| `python hq.py music <project id> <sneaky-snitch\|scheming-weasel\|investigations\|minstrel-guild\|none>` | Background music of the project's videos. The owner picks (he hears them on the Voice & characters page). Free, credited automatically. |
 | `python hq.py keep-voice <episode id> <voice id>` | ONLY when the owner has chosen: that version becomes the Short and the project's voice. |
 | `python hq.py board-note <project id> "note"` | Replaces the owner's note on the project's approved board (e.g. to withdraw an old length target). |
 | `python hq.py do-not-upload <episode id> "why"` / `allow-upload <episode id>` | Marks a made video as not to be uploaded (a duplicate, a superseded version): it drops out of the owner's "to upload" list and can't be marked published. |

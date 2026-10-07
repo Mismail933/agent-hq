@@ -359,6 +359,12 @@ SCRIPTS_TASK = """Review these scripts from Calina. Each is a short YouTube vide
 8. The spine and the links: scene-file scripts carry a `spine` and, on every scene, a `link` (because / but / so / therefore /
    first) and a `step_claim`. Check that each link really holds (does scene N truly follow from N-1 with that word?) and name
    the EXACT broken link ("scene 6 says 'so' but nothing in scene 5 causes it"). The free pre-check results are in `checks`.
+9. Fun and life (the owner's newest rule: the last video was clear but "monotonous", "you get bored"): does the first line grab in
+   three seconds? Does the narrator have a personality (wit, asides, rhythm, a pause before a reveal)? Do the characters really talk
+   and react in at least half the scenes, each with a clear personality? Are the delivery tags varied and fitting? Do the sound
+   effects and crowd reactions land on the right moments without burying a line? A clear but flat, narration-only script fails this.
+10. Honest dialogue: characters' lines are a dramatisation; fail any line that adds a fact the sources don't support, or that is
+   presented as a real quote without being one.
 A script passes only if it is genuinely good (score 7 or more out of 10) and has no blocking problem.
 
 Earlier episodes of this channel:
@@ -408,8 +414,9 @@ Judge honestly:
    edge, covered by a title or callout, off-topic, ugly? Captions readable, with proper spaces between words?
 4. Timing: callouts and pictures appear on their word, not before it.
 5. Voice: the pace and the loudness (use the measured LUFS: about -14 to -16 is right, a true peak under -1 dB). You
-   CANNOT hear the voice, so you cannot judge its tone, warmth or whether it sounds robotic. Say that plainly in the
-   summary instead of guessing, and tell the owner to listen to the first ten seconds himself.
+   CANNOT hear the voices, the sound effects or the music, so you cannot judge tone, acting, warmth or whether it sounds robotic.
+   Say that plainly in the summary instead of guessing, and tell the owner to listen to the first ten seconds himself. You CAN check
+   that each character's mouth moves only on his own lines (the words under each frame say who is talking).
 6. Would a stranger scrolling past stay, and does it stand next to the owner's references? Say where it falls short.
 Verdict "release" only if it is genuinely good enough to publish; otherwise "redo" with the specific changes that would fix it.
 """
@@ -498,20 +505,120 @@ def review_scripts(p, eps, rnd=0):
 # long a video is. These only stop the absurd and keep the engine working.
 MIN_WORDS, MAX_WORDS = 50, 1800   # the story sets the length; 1800 words (about 15 minutes) only stops an absurd script
 MIN_SCENES, MAX_SCENES = 7, 20
-MAX_LINE_WORDS = 34
+MAX_LINE_WORDS = 34      # one spoken line (the narrator's, or one character's)
+MAX_SCENE_WORDS = 60     # a scene with dialogue: the characters' gestures change on every line, so it may run longer
+
+# Kit v2 (2.20.0): the new cast. The owner approves characters per kit: an approval of an older kit doesn't count.
+KIT_VERSION = "2"
+# Who can speak. The narrator is a voice only (never drawn); the others are on screen when they speak.
+SPEAKERS = ("narrator", "scholar", "ruler", "citizen", "woman", "elder", "merchant", "guard", "worker")
+ON_SCREEN = SPEAKERS[1:]
+# Delivery directions for ElevenLabs v3 (audio tags); other engines ignore them.
+DELIVERY = ("excited", "curious", "dramatic", "whispers", "sarcastic", "laughs", "chuckles", "sighs", "gasps", "shouting",
+            "nervous", "proud", "deadpan", "playful", "mischievously", "impressed", "annoyed", "awe")
+
+
+CAST_NAMES = {"scholar": "The Scholar", "ruler": "The Ruler", "citizen": "The Citizen", "woman": "The Woman", "elder": "The Elder",
+              "merchant": "The Merchant", "guard": "The Guard", "worker": "The Worker", "crowd": "The Crowd"}
+
+
+def characters_ok(meta):
+    """The owner approved the characters of the CURRENT kit."""
+    return str((meta or {}).get("characters_approved")) == KIT_VERSION
+
+
+def characters_ready(project):
+    """The owner approved the current kit AND the saved test clips are of the current kit."""
+    lib = load_library(project["id"]) if project else None
+    return bool(project) and characters_ok(project.get("meta")) and bool(lib) and str(lib.get("kit") or "1") == KIT_VERSION
+
+
+def scene_lines(s):
+    """The spoken lines of a scene in order: [{who, text, tag, pose, expression}]. Old scene files have one narrator line."""
+    got = [dict(x) for x in (s.get("lines") or []) if (x.get("text") or "").strip()]
+    if got:
+        for x in got:
+            x["text"] = x["text"].strip()
+            x["who"] = x.get("who") if x.get("who") in SPEAKERS else "narrator"
+        return got
+    line = (s.get("voice_line") or "").strip()
+    return [{"who": "narrator", "text": line}] if line else []
+
+
+def sync_voice_lines(d):
+    """Every scene's voice_line is the words spoken in it (all its lines, in order), so every check that reads voice_line keeps
+    working on dialogue scenes. Returns d."""
+    for s in d.get("scenes") or []:
+        if s.get("lines"):
+            s["voice_line"] = " ".join(x["text"] for x in scene_lines(s))
+    if d.get("scenes") and not (d.get("hook") or "").strip():
+        d["hook"] = d["scenes"][0].get("voice_line", "")
+    return d
 
 
 def _sentences(text):
     return [x for x in re.split(r"(?<=[.!?])[\"')\]]*\s+", (text or "").strip()) if x]
 
 
+def _split_items(items):
+    """A spoken line over MAX_LINE_WORDS made of whole sentences becomes several lines by the same speaker (words unchanged)."""
+    out = []
+    for it in items:
+        sents = _sentences(it["text"])
+        if len(it["text"].split()) <= MAX_LINE_WORDS or len(sents) < 2:
+            out.append(it)
+            continue
+        cur = []
+        for sent in sents:
+            if cur and sum(len(x.split()) for x in cur) + len(sent.split()) > MAX_LINE_WORDS:
+                out.append({**it, "text": " ".join(cur)})
+                it = {k: v for k, v in it.items() if k not in ("tag", "pose", "expression")}
+                cur = []
+            cur.append(sent)
+        out.append({**it, "text": " ".join(cur)})
+    return out
+
+
+def _group_of(groups, word):
+    w = _tokens(word)
+    return next((gi for gi, g in enumerate(groups) if w and w & _tokens(" ".join(x["text"] for x in g))), 0)
+
+
 def split_long_lines(scenes, spine=None):
     """Any scene whose voice line is over MAX_LINE_WORDS but is made of several whole sentences is split at the sentence boundaries
     into consecutive scenes (same backdrop, camera, characters, props, source; the callout stays on the part that holds its word).
+    A dialogue scene (with `lines`) is split between lines instead, only past MAX_SCENE_WORDS.
     The words themselves never change. A single sentence over the limit is left alone (the checklist says so). Returns
     (new_scenes, how_many_splits, new_spine)."""
     out, splits, answer_map = [], 0, {}
     for s in scenes or []:
+        if s.get("lines"):
+            items = _split_items(scene_lines(s))
+            groups, cur = [], []
+            for it in items:
+                if cur and sum(len(x["text"].split()) for x in cur) + len(it["text"].split()) > MAX_SCENE_WORDS:
+                    groups.append(cur)
+                    cur = []
+                cur.append(it)
+            groups.append(cur)
+            word = _tokens(s.get("callout_word"))
+            home = next((gi for gi, g in enumerate(groups) if word and word & _tokens(" ".join(x["text"] for x in g))), 0)
+            for gi, g in enumerate(groups):
+                part = dict(s)
+                part["lines"] = g
+                part["voice_line"] = " ".join(x["text"] for x in g)
+                if gi:
+                    part["link"] = "so"
+                    part.pop("bespoke", None)
+                # a sound effect goes with the part that says its word (one without a word opens the scene)
+                part["sfx"] = [x for x in s.get("sfx") or [] if _group_of(groups, x.get("on_word")) == gi]
+                if gi != home:
+                    part.pop("callout", None)
+                    part.pop("callout_word", None)
+                out.append(part)
+            splits += len(groups) - 1 + (len(items) - len(scene_lines(s)))
+            answer_map[s.get("n", len(out))] = len(out)
+            continue
         line = (s.get("voice_line") or "").strip()
         sents = _sentences(line)
         if len(line.split()) <= MAX_LINE_WORDS or len(sents) < 2:
@@ -878,7 +985,7 @@ of the hands and prop, not for being "waist-up".
 {dense}
 
 For EACH of the three shots, say whether {name} is consistent with the reference sheet: same face, skin, hair or hat or
-goggles, outfit colours and sash, held prop, proportions, line weight, and nothing detached, cropped by the screen edge or
+helmet, beard, outfit colours and cloak, held prop, proportions, line weight, and nothing detached, cropped by the screen edge or
 broken. Then judge:
 - Mouths: do the mouth shapes change with the words under the frames (open on vowels like AA, closed on P/B/M, teeth on
   F/V)? A mouth that stays the same, or doesn't match the word, is a fault.
@@ -933,7 +1040,7 @@ def review_characters(project_id):
             if not c.get("clip"):
                 continue
             who = c["id"]
-            name = {"narrator": "The Traveller", "scholar": "The Scholar", "ruler": "The Ruler"}.get(who, who)
+            name = CAST_NAMES.get(who, who)
             if _sim():
                 got = {"shots": [{"shot": s, "consistent": True, "issues": []} for s in ("close-up", "walk", "gestures")], "mouths": "Simulated.",
                        "expressions": "Simulated.", "motion": "Simulated.", "verdict": "pass", "summary": f"Simulated: {name} holds together.",
@@ -1011,15 +1118,15 @@ def shorts_python():
     return str(p) if Path(p).exists() else None
 
 
-def review_pack(eid):
+def review_pack(eid, version=0):
     """Eyes and ears for one finished video: contact sheets + a transcript made from its audio (review_tools.py, in the video
-    tools' Python). Returns {"sheets": [...], "transcript": path, "seconds", "frames", "words"} with paths relative to the
-    program folder. Raises workers.Unavailable when it can't be made."""
+    tools' Python). version: a voice version (short-1.mp4 ...) instead of the kept Short. Returns {"sheets": [...], "transcript": path,
+    "seconds", "frames", "words"} with paths relative to the program folder. Raises workers.Unavailable when it can't be made."""
     py = shorts_python()
     if not py:
         raise workers.Unavailable("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
     root = Path(__file__).parent
-    p = subprocess.run([py, str(root / "review_tools.py"), str(int(eid))], cwd=root, capture_output=True, text=True, encoding="utf-8",
+    p = subprocess.run([py, str(root / "review_tools.py"), str(int(eid))] + ([str(int(version))] if version else []), cwd=root, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", timeout=1500, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     lines = (p.stdout or "").splitlines()
     res = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
@@ -1062,15 +1169,18 @@ def stranger_video(p, e, pack, names):
     return got
 
 
-def review_video(eid):
+def review_video(eid, version=0):
     """Israa watches a finished video: contact sheets, transcript, measured sound, and the stranger test.
+    version: review a voice version (short-1.mp4 ...) before the owner picks one; the pictures are the same in every version, so
+    one review covers them, and the owner never watches an unreviewed video.
     Returns the stored review dict (verdict release | redo | unreviewed)."""
     e = cp.get_episode(int(eid))
-    if not e or not e["video_path"]:
+    variants = (e or {}).get("data", {}).get("voice_variants") or [] if e else []
+    if not e or (not version and not e["video_path"]) or (version and not 1 <= version <= len(variants)):
         return None
     p = cp.get_project(e["project_id"], with_text=False)
     root = Path(__file__).parent
-    video = root / e["video_path"]
+    video = root / (variants[version - 1]["video"] if version else e["video_path"])
     measured, pack, stranger = {}, None, None
     with REVIEWING:
         try:
@@ -1085,7 +1195,7 @@ def review_video(eid):
                 import shorts
                 ffmpeg = shorts.find_ffmpeg()
                 secs, facts, measured = _facts(ffmpeg, video, e["data"])
-                pack = review_pack(e["id"])
+                pack = review_pack(e["id"], version)
                 names = _stage(e["id"], pack)
                 stranger = stranger_video(p, e, pack, names)
                 d = {k: v for k, v in e["data"].items() if k not in ("review", "review_history", "video_review")}
@@ -1108,13 +1218,14 @@ def review_video(eid):
         got["summary"] = "Failed the stranger test: a viewer who knew nothing could not follow it. " + got.get("summary", "")
     e = cp.get_episode(e["id"])
     d = e["data"]
-    d["video_review"] = {**got, "by": ISRAA, "measured": measured, "stranger": stranger,
+    d["video_review"] = {**got, "by": ISRAA, "measured": measured, "stranger": stranger, "version": version or None,
+                         "version_label": variants[version - 1].get("label") if version else None,
                          "pack": {k: pack.get(k) for k in ("sheets", "transcript", "frames", "words")} if pack else None}
     cp.update_episode(e["id"], data=d)
     cp.log(ISRAA, "video_reviewed", p["idea_id"] if p else None, {"episode": e["id"], "verdict": got["verdict"], "score": got.get("score"),
                                                                  "stranger": None if stranger is None else _stranger_ok(stranger)})
     try:
-        lines = [f"# Israa's review of Short #{e['id']}: {e['title']}", f"Verdict: **{got['verdict']}** ({got.get('score', '?')}/10)", "",
+        lines = [f"# Israa's review of Short #{e['id']}: {e['title']}" + (f" (voice version {version}; the pictures are the same in every version)" if version else ""), f"Verdict: **{got['verdict']}** ({got.get('score', '?')}/10)", "",
                  got.get("summary", ""), "", "## Stranger test",
                  ("(not run)" if stranger is None else f"{'Understood' if _stranger_ok(stranger) else 'FAILED'}. {stranger.get('retelling', '')}"),
                  "", "## What works"] + [f"- {x}" for x in got.get("what_works", [])] + ["", "## Problems"] + \

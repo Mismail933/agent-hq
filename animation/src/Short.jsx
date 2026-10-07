@@ -3,7 +3,7 @@ import {AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame} from 'remoti
 import {C, W, H, easeOut, clamp01} from './theme';
 import {Camera, SAFE} from './Camera';
 import {BACKDROPS} from './Backdrops';
-import {Character, reach} from './Character';
+import {Character, Crowd, reach} from './Character';
 import {MapIntro} from './MapIntro';
 import {Diagram} from './Diagram';
 import {Rod, Globe, Callout} from './Extras';
@@ -16,23 +16,56 @@ import GENERATED from './generated/index.js';
  *   intro: {place, year}, outro: {channel, handle}, caption_chunks, outro_from,
  *   scenes: [{from, frames, backdrop, tone, camera, characters, props, callout, map, diagram, transition}]
  */
-const SLOTS = {left: 370, center: 540, right: 710};
+const SLOTS = {left: 330, center: 540, right: 750};
+const SLOTS3 = {left: 250, center: 540, right: 830};
 const TRANSITION = 9; // frames the next scene takes to arrive
 
-const Scene = ({scene, mouth, index}) => {
+// Who is doing what at this frame of the scene: a character's pose and face change on its own lines (beats), blending in over 8 frames.
+const stateAt = (c, beats, frame) => {
+  let pose = c.pose || 'stand';
+  let prev = pose;
+  let since = null;
+  let expression = c.expression || 'neutral';
+  for (const b of beats) {
+    if (b.who !== c.who || b.at > frame) continue;
+    if (b.pose && b.pose !== pose) {
+      prev = pose;
+      pose = b.pose;
+      since = frame - b.at;
+    }
+    if (b.expression) expression = b.expression;
+  }
+  return {pose: prev, poseTo: pose, blend: since === null ? 1 : easeOut(clamp01(since / 8)), expression};
+};
+
+const Scene = ({scene, mouth, speaker, index}) => {
   const frame = useCurrentFrame();
   const g = frame + scene.from; // frame on the whole timeline
-  const two = (scene.characters || []).length > 1;
+  const cast = scene.characters || [];
+  const n = cast.length;
+  const beats = scene.beats || [];
   const topLimit = index === 0 ? 410 : scene.callout && !['map', 'diagram'].includes(scene.backdrop) ? 340 : SAFE;
-  // keep every character (and the POV sign) inside the safe area
-  const chars = (scene.characters || []).map((c) => {
-    const r = reach(c.who, c.pose || 'stand');
-    const y = c.y ?? (two ? 1190 : 1210);
-    // the top of the picture belongs to the title card (first scene) and to callouts: heads and signs stay below them
-    const sc = Math.min(c.scale ?? (two ? 0.92 : 1.2), (W - 2 * SAFE) / (r.left + r.right), (y - topLimit) / r.top);
-    const x0 = c.x ?? SLOTS[c.at || 'center'];
+  // keep every character (and its prop, in every pose it takes in this scene) inside the safe area
+  const chars = cast.map((c) => {
+    const poses = [c.pose || 'stand', ...beats.filter((b) => b.who === c.who && b.pose).map((b) => b.pose)];
+    const rs = poses.map((p) => reach(c.who, p));
+    const r = {left: Math.max(...rs.map((q) => q.left)), right: Math.max(...rs.map((q) => q.right)), top: Math.max(...rs.map((q) => q.top))};
+    const y = c.y ?? (n > 1 ? 1190 : 1210);
+    // the top of the picture belongs to the title card (first scene) and to callouts: heads and props stay below them
+    const sc = Math.min(c.scale ?? (n > 2 ? 0.74 : n > 1 ? 0.9 : 1.15), (W - 2 * SAFE) / (r.left + r.right), (y - topLimit) / r.top);
+    const x0 = c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'];
     return {...c, scale: sc, y, r, x: Math.min(W - SAFE - r.right * sc, Math.max(SAFE + r.left * sc, x0))};
   });
+  const who = speaker ? speaker[Math.min(g, speaker.length - 1)] || '' : null;
+  const speakingChar = who ? chars.find((c) => c.who === who) : null;
+  const mouthOf = (c) => {
+    if (who === null) return (c.speaks ?? c.who === 'narrator') ? mouth[Math.min(g, mouth.length - 1)] || 0 : 0;   // old scene files
+    return who === c.who ? mouth[Math.min(g, mouth.length - 1)] || 'X' : 'X';
+  };
+  // everyone else looks at whoever is talking
+  const lookOf = (c) => (speakingChar && speakingChar !== c ? [Math.sign(speakingChar.x - c.x) * 7, 0] : [0, 0]);
+  const crowdBeat = [...beats].reverse().find((b) => b.who === 'crowd' && b.at <= frame);
+  const crowdReaction = (crowdBeat && crowdBeat.reaction) || (scene.crowd && scene.crowd.reaction) || 'idle';
   // the props that matter (the rod and its shadow) count too
   const rodShadow = (p) => 60 + 360 * (p.shadow ?? 0.5);
   const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: Math.max(SAFE + rodShadow(p), Math.min(W - SAFE - 40, p.x ?? 300))} : p));
@@ -70,27 +103,28 @@ const Scene = ({scene, mouth, index}) => {
             if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} />;
             return null;
           })}
-          {chars.map((c, i) => (
-            <Character
-              key={i}
-              who={c.who}
-              pose={c.pose}
-              x={c.x ?? SLOTS[c.at || 'center']}
-              y={c.y}
-              scale={c.scale}
-              mouth={(c.speaks ?? c.who === 'narrator') ? mouth[Math.min(g, mouth.length - 1)] || 0 : 0}
-              frame={frame}
-              enterAt={4 + i * 6}
-              seed={i + index}
-            />
-          ))}
+          {scene.crowd && (
+            <Crowd size={scene.crowd.size || 5} reaction={crowdReaction} frame={frame} seed={index + 1}
+              y={chars.length ? Math.min(...chars.map((c) => c.y)) - 120 : 1180} scale={chars.length ? 0.48 : 0.62} />
+          )}
+          {chars.map((c, i) => {
+            const st = stateAt(c, beats, frame);
+            return (
+              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} look={lookOf(c)}
+                x={c.x} y={c.y} scale={c.scale} mouth={mouthOf(c)} frame={frame} enterAt={4 + i * 6} seed={i + index} facing={c.facing || 1} />
+            );
+          })}
         </Camera>
       )}
       {isDiagram && chars.length > 0 && (
         <g>
-          {chars.map((c, i) => (
-            <Character key={i} who={c.who} pose={c.pose} x={c.x ?? 190} y={c.y ?? 1500} scale={c.scale ?? 0.8} mouth={(c.speaks ?? c.who === 'narrator') ? mouth[Math.min(g, mouth.length - 1)] || 0 : 0} frame={frame} enterAt={10} seed={i + index} />
-          ))}
+          {chars.map((c, i) => {
+            const st = stateAt(c, beats, frame);
+            return (
+              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} x={cast[i].x ?? 190} y={cast[i].y ?? 1500}
+                scale={cast[i].scale ?? 0.7} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} />
+            );
+          })}
         </g>
       )}
       {scene.callout && frame >= (scene.callout_from ?? 0) && (
@@ -114,13 +148,13 @@ const Scene = ({scene, mouth, index}) => {
 
 export const Short = (props) => {
   const frame = useCurrentFrame();
-  const {scenes, mouth = [], intro, outro, caption_chunks: chunks = [], outro_from: outroFrom, audio} = props;
+  const {scenes, mouth = [], speaker = null, intro, outro, caption_chunks: chunks = [], outro_from: outroFrom, audio} = props;
   return (
     <AbsoluteFill style={{backgroundColor: C.ink}}>
       {audio && <Audio src={staticFile(audio)} />}
       {scenes.map((s, i) => (
         <Sequence key={i} from={s.from} durationInFrames={s.frames + (i < scenes.length - 1 ? TRANSITION + 2 : 0)}>
-          <Scene scene={s} mouth={mouth} index={i} />
+          <Scene scene={s} mouth={mouth} speaker={speaker} index={i} />
         </Sequence>
       ))}
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>

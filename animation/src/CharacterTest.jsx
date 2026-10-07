@@ -35,7 +35,7 @@ const MOVES = [
   [830, 900, 2, 'amazed', 'surprised', [0, 0], null],
 ];
 
-export const CharacterTest = ({who = 'narrator', mouth = [], audio}) => {
+export const CharacterTest = ({who = 'scholar', mouth = [], audio}) => {
   const frame = useCurrentFrame();
   let mi = MOVES.findIndex((m) => frame < m[1]);
   if (mi < 0) mi = MOVES.length - 1;
@@ -47,9 +47,9 @@ export const CharacterTest = ({who = 'narrator', mouth = [], audio}) => {
   const poseFrom = prev ? prev[3] : pose;
   // the widest reach of the poses involved, so nothing is cropped while one pose melts into the next
   const rs = [reach(who, pose, shot.noProp), reach(who, poseFrom, shot.noProp)];
-  const r = shot.fit === 'head' ? {left: 125, right: 125, top: 600}
+  const r = shot.fit === 'head' ? {left: 130, right: 130, top: 640}
     : {left: Math.max(rs[0].left, rs[1].left), right: Math.max(rs[0].right, rs[1].right), top: Math.max(rs[0].top, rs[1].top)};
-  const y = shot.headY ? shot.headY + 440 * shot.scale : shot.y;
+  const y = shot.headY ? shot.headY + 478 * shot.scale : shot.y;
   const scale = Math.min(shot.scale, (W - 2 * SAFE) / (r.left + r.right), (y - SAFE) / r.top);
   const lo = SAFE + r.left * scale;
   const hi = W - SAFE - r.right * scale;

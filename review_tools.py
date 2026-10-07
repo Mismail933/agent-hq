@@ -126,11 +126,20 @@ def main():
                                       "sheets": [s.relative_to(ROOT).as_posix() for s in sheets]}))
         return 0
     ep = cp.get_episode(int(sys.argv[1]))
-    if not ep or not ep["video_path"]:
-        print("BLOCKED no video for that episode")
+    version = int(sys.argv[2]) if len(sys.argv) > 2 else 0   # a voice version (short-1.mp4...): same pictures, another voice
+    variants = (ep or {}).get("data", {}).get("voice_variants") or [] if ep else []
+    if version:
+        if not 1 <= version <= len(variants):
+            print(f"BLOCKED that episode has no voice version {version} (it has {len(variants)})")
+            return 1
+        rel = variants[version - 1]["video"]
+    elif not ep or not ep["video_path"]:
+        print("BLOCKED no video for that episode" + (f" yet (it has {len(variants)} voice versions: add the version number)" if variants else ""))
         return 1
-    video = ROOT / ep["video_path"]
-    folder = production.episode_folder(ep) / "review"
+    else:
+        rel = ep["video_path"]
+    video = ROOT / rel
+    folder = production.episode_folder(ep) / ("review" if not version else f"review-v{version}")
     folder.mkdir(parents=True, exist_ok=True)
     ffmpeg = shorts.find_ffmpeg()
     secs = shorts.probe_seconds(ffmpeg, video)

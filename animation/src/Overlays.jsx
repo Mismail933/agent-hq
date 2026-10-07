@@ -6,7 +6,7 @@ const STROKE = (px) => ({WebkitTextStroke: `${px}px ${C.ink}`, paintOrder: 'stro
 
 /**
  * Big readable captions, 2-3 words at a time, the spoken word highlighted. Sits above YouTube's bottom UI.
- * chunks: [{from, to, words: [{w, from, to}]}] in frames.
+ * chunks: [{from, to, who, words: [{w, from, to}]}] in frames. A character's own line (not the narrator's) is tinted sky blue.
  */
 export const Captions = ({chunks, frame}) => {
   const chunk = chunks.find((c) => frame >= c.from && frame < c.to);
@@ -38,7 +38,7 @@ export const Captions = ({chunks, frame}) => {
           const active = frame >= w.from && frame < w.to;
           const done = frame >= w.to;
           return (
-            <span key={i} style={{display: 'inline-block', margin: 0, color: active ? C.gold : C.white, transform: active ? 'scale(1.1) rotate(-2deg)' : 'none', opacity: done || active ? 1 : 0.92, ...STROKE(16)}}>
+            <span key={i} style={{display: 'inline-block', margin: 0, color: active ? C.gold : chunk.who && chunk.who !== 'narrator' ? C.sky : C.white, transform: active ? 'scale(1.1) rotate(-2deg)' : 'none', opacity: done || active ? 1 : 0.92, ...STROKE(16)}}>
               {w.w}
             </span>
           );

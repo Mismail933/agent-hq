@@ -47,6 +47,7 @@ import lnd                # noqa: E402
 import elevenlabs         # noqa: E402
 import production         # noqa: E402
 import quality            # noqa: E402
+import sfx                # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -232,6 +233,113 @@ def _animate(*args, timeout=3600):
     return json.loads(res)
 
 
+# ---- voice matcher, the cast's voices, music (2.20.0) ---------------------------------------
+MATCHING = {"pid": None, "step": ""}
+ACCOUNT_VOICES = {"at": 0.0, "list": []}
+CASTSAMPLING = {"pid": None}
+KOKORO_OPTIONS = [("kokoro:bm_george", "Kokoro: George (British man, free)"), ("kokoro:bm_lewis", "Kokoro: Lewis (British man, free)"),
+                  ("kokoro:bm_daniel", "Kokoro: Daniel (British man, free)"), ("kokoro:am_onyx", "Kokoro: Onyx (deep American man, free)"),
+                  ("kokoro:am_puck", "Kokoro: Puck (young American man, free)"), ("kokoro:am_eric", "Kokoro: Eric (American man, free)"),
+                  ("kokoro:am_fenrir", "Kokoro: Fenrir (American man, free)"), ("kokoro:am_michael", "Kokoro: Michael (American man, free)"),
+                  ("kokoro:bf_isabella", "Kokoro: Isabella (British woman, free)"), ("kokoro:af_heart", "Kokoro: Heart (American woman, free)")]
+
+
+def account_voices_cached():
+    """The owner's ElevenLabs voices, read at most every 10 minutes (the office polls often)."""
+    if elevenlabs.configured() and time.time() - ACCOUNT_VOICES["at"] > 600:
+        ACCOUNT_VOICES["at"] = time.time()
+        try:
+            ACCOUNT_VOICES["list"] = elevenlabs.account_voices()
+        except elevenlabs.ElevenError:
+            pass
+    return ACCOUNT_VOICES["list"]
+
+
+def _tool(script, *args, timeout=3600):
+    """Run one of our scripts (animate.py, voice_match.py) in the video tools' Python and return its RESULT json."""
+    py = shorts_python()
+    if not py:
+        raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+    p = subprocess.run([py, str(ROOT / script), *map(str, args)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       timeout=timeout, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    lines = (p.stdout or "").splitlines()
+    res = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
+    if not res:
+        blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+        raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+    return json.loads(res)
+
+
+def voice_match_view(p):
+    folder = ROOT / "content" / f"project-{p['id']}" / "voice-ref"
+    try:
+        m = json.loads((folder / "matches.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        m = None
+    ref = folder / "reference.wav"
+    return {"matches": m, "reference": ref.exists(), "reference_at": time.strftime("%Y-%m-%d %H:%M", time.localtime(ref.stat().st_mtime)) if ref.exists() else None,
+            "busy": MATCHING["step"] if MATCHING["pid"] == p["id"] else ""}
+
+
+def cast_view(p):
+    meta = p.get("meta") or {}
+    cast = meta.get("cast_voices") or {}
+    opts = [{"id": "eleven:" + v["id"], "label": f"ElevenLabs: {v['name']}" + (f" ({', '.join(x for x in (v['gender'], v['age'], v['accent']) if x)})" if v["gender"] else "")}
+            for v in account_voices_cached()] + [{"id": k, "label": l} for k, l in KOKORO_OPTIONS]
+    folder = ROOT / "content" / f"project-{p['id']}" / "voice-samples" / "cast"
+    return {"voices": cast, "options": opts, "samples": sorted(f.stem for f in folder.glob("*.mp3")) if folder.exists() else [],
+            "making": CASTSAMPLING["pid"] == p["id"], "model": getattr(settings, "ELEVEN_MODEL", "")}
+
+
+def music_view(p):
+    lib = sfx.library()
+    return {"choices": lib["music"], "chosen": (p.get("meta") or {}).get("music") or "", "sfx_made": sum(1 for x in lib["sfx"] if x["made"]),
+            "sfx_total": len(lib["sfx"])}
+
+
+def run_voice_match(pid, record_secs=0):
+    MATCHING.update(pid=pid, step="Recording: play the video now" if record_secs else "Comparing voices")
+    try:
+        if record_secs:
+            r = _tool("voice_match.py", "record", pid, record_secs, timeout=record_secs + 120)
+            atlas_says(f"**Recorded {r['seconds']:.0f} s of the reference voice.** Now comparing it with the ElevenLabs Voice Library (a few minutes).")
+            MATCHING["step"] = "Comparing voices (a few minutes)"
+        m = _tool("voice_match.py", "match", pid, timeout=3600)
+        top = m.get("top") or []
+        cp.log("Calina", "voice_matched", None, {"project": pid, "compared": m.get("compared"), "top": [t["name"] for t in top]})
+        atlas_says("**Voice match ready.** The closest ElevenLabs voices to your reference: "
+                   + "; ".join(f"{t['name']} ({round(t['score'] * 100)}%)" for t in top) +
+                   ". Open the project's Voice & characters page to listen and add the one you like (free).")
+    except Exception as ex:
+        atlas_says(f"The voice match didn't work: {ex}")
+    finally:
+        MATCHING.update(pid=None, step="")
+
+
+def run_library_add(pid, owner_id, voice_id, name):
+    VOICEWORK["what"] = "a Voice Library voice is being added"
+    try:
+        new_id = elevenlabs.add_shared_voice(owner_id, voice_id, name)
+        e = _animate("voice-add", pid, new_id, name or "", timeout=900)
+        cp.log("Owner", "library_voice_added", None, {"project": pid, "voice": name, "id": new_id})
+        atlas_says(f"**Added to your ElevenLabs voices: {e['label']}.** Its sample is on the Voice & characters page; pick it as the narrator or give it to a character.")
+    except Exception as ex:
+        atlas_says(f"That voice couldn't be added: {ex}")
+    finally:
+        VOICEWORK["what"] = ""
+
+
+def run_cast_samples(pid):
+    CASTSAMPLING["pid"] = pid
+    try:
+        r = _animate("cast-samples", pid, timeout=1800)
+        atlas_says(f"**The cast's voices are ready** ({len(r.get('made', []))} characters, one line each). Listen on the Voice & characters page.")
+    except Exception as ex:
+        atlas_says(f"The cast's voice samples couldn't be made: {ex}")
+    finally:
+        CASTSAMPLING["pid"] = None
+
+
 def run_voice_add(pid, voice_id, name):
     VOICEWORK["what"] = "an ElevenLabs voice is being added"
     try:
@@ -254,7 +362,12 @@ def run_render_voices(eid, voices):
             d["voice_variants"] = r["variants"]
             cp.update_episode(eid, data=d)
             cp.log("Calina", "voice_variants_ready", None, {"episode": eid, "voices": [v["label"] for v in r["variants"]]})
-            atlas_says(f"**Short #{eid} is ready in {len(r['variants'])} voices.** Open the project's Episodes page, watch each, and click **Keep this voice** on the one you want: "
+            # review before the owner: the pictures are identical in every version, so Israa reviews version 1 (sheets, transcript,
+            # stranger test) and her verdict covers all of them
+            atlas_says(f"**Short #{eid} is ready in {len(r['variants'])} voices.** Israa is reviewing it now (a few minutes); you'll get her verdict before you watch.")
+            rv = quality.review_video(eid, version=1) or {}
+            atlas_says(f"**Israa's review of Short #{eid}: {rv.get('verdict', 'unreviewed')}** ({rv.get('score', '?')}/10). {rv.get('summary', '')}\n\n"
+                       "Open the project's Episodes page, watch each version, and click **Keep this voice** on the one you want: "
                        + "; ".join(v["label"] for v in r["variants"]) + ".")
         except Exception as ex:
             cp.log("Calina", "video_failed", None, {"episode": eid, "reason": str(ex)[:300]})
@@ -272,7 +385,9 @@ def keep_voice(eid, vid):
         return None, "That voice isn't one of this Short's versions."
     folder = (ROOT / v["video"]).parent
     shutil.copy2(ROOT / v["video"], folder / "short.mp4")
-    shutil.copy2(folder / v["audio"], folder / "voice.wav")
+    shutil.copy2(folder / (v.get("voice") or v["audio"]), folder / "voice.wav")
+    if v.get("audio", "").startswith("mix"):   # the soundtrack with effects and music
+        shutil.copy2(folder / v["audio"], folder / "mix.wav")
     shutil.copy2(folder / v["props"], folder / "scene-props.json")
     cp.set_project_meta(e["project_id"], voice={"id": vid, "label": v["label"]})
     d = e["data"]
@@ -295,6 +410,8 @@ def anim_busy():
         return "the voice samples are being made"
     if VOICEWORK["what"]:
         return VOICEWORK["what"]
+    if CASTSAMPLING["pid"] is not None:
+        return "the cast's voice samples are being made"
     return ""
 
 
@@ -330,17 +447,17 @@ def run_animator_test(pid, eid, index):
 def characters_view(p):
     """The character library for an animated project: reference sheets, test clips, Israa's review, the owner's approval."""
     lib = quality.load_library(p["id"]) or {"characters": []}
-    names = {"narrator": "The Traveller", "scholar": "The Scholar", "ruler": "The Ruler"}
+    names = quality.CAST_NAMES
     return {"characters": [{"id": c["id"], "name": names.get(c["id"], c["id"]), "has_sheet": bool(c.get("sheet")), "has_clip": bool(c.get("clip")),
                             "review": (lib.get("reviews") or {}).get(c["id"])} for c in lib["characters"]],
             "made": lib.get("made"), "voice": (lib.get("voice") or {}).get("label"),
-            "approved": bool((p.get("meta") or {}).get("characters_approved")),
+            "approved": quality.characters_ready(p), "kit": lib.get("kit") or "1", "current_kit": quality.KIT_VERSION,
             "making": CHARMAKING["step"] if CHARMAKING["pid"] == p["id"] else ""}
 
 
 def run_characters(pid, clips=True):
     """Make the reference sheets (and the 30 s test clips), then Israa reviews them. Minutes, not seconds: the owner is told."""
-    CHARMAKING.update(pid=pid, step="Making the characters' reference sheets and test clips (about 15 minutes)")
+    CHARMAKING.update(pid=pid, step="Making the characters' reference sheets and test clips (eight characters and a crowd sheet: about 40 minutes)")
     try:
         py = shorts_python()
         if not py:
@@ -642,6 +759,9 @@ class Handler(BaseHTTPRequestHandler):
                 "scouting_refs": quality.SCOUTING.locked(), "reviewing": quality.REVIEWING.locked(),
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
+                "voice_match": {p["id"]: voice_match_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
+                "cast": {p["id"]: cast_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
+                "music": {p["id"]: music_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "production": {p["id"]: agents.production_summary(p["id"]) for p in cp.list_projects(20) if p["status"] == "approved"},
                 "usage": cp.usage_today(), "allowance": getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}),
                 "engines": {a: workers.engine(a) for a in cp.WORKERS},
@@ -697,6 +817,32 @@ class Handler(BaseHTTPRequestHandler):
             if not ok:
                 return self._send(404, {"error": "no such file"})
             return self._send_file(path, "image/png" if path.suffix == ".png" else "video/mp4")
+        if u.path.startswith("/api/voice-ref/"):   # /api/voice-ref/<project>: the recorded reference clip
+            try:
+                path = ROOT / "content" / f"project-{int(u.path.strip('/').split('/')[2])}" / "voice-ref" / "reference.wav"
+            except (ValueError, IndexError):
+                path = None
+            if not path or not path.exists():
+                return self._send(404, {"error": "no reference"})
+            return self._send_file(path, "audio/wav")
+        if u.path.startswith("/api/cast-sample/"):   # /api/cast-sample/<project>/<character>
+            try:
+                pid, who = u.path.strip("/").split("/")[2:4]
+                path = ROOT / "content" / f"project-{int(pid)}" / "voice-samples" / "cast" / f"{Path(who).name}.mp3"
+            except (ValueError, IndexError):
+                path = None
+            if not path or not path.exists():
+                return self._send(404, {"error": "no sample"})
+            return self._send_file(path, "audio/mpeg")
+        if u.path.startswith("/api/music/"):   # /api/music/<track id>: downloaded once (free, credited)
+            mid = u.path.rsplit("/", 1)[1]
+            try:
+                path = sfx.music_path(mid)
+            except OSError:
+                path = None
+            if not path or not path.exists():
+                return self._send(404, {"error": "no such track"})
+            return self._send_file(path, "audio/mpeg")
         if u.path.startswith("/api/voice-sample/"):   # /api/voice-sample/<project>/<voice id>
             try:
                 pid, vid = u.path.strip("/").split("/")[2:4]
@@ -843,7 +989,9 @@ class Handler(BaseHTTPRequestHandler):
                     lib = quality.load_library(pid)
                     if not lib or not any(c.get("clip") for c in lib["characters"]):
                         return self._send(409, {"error": "Make the character tests first, then watch them before approving."})
-                    cp.set_project_meta(pid, characters_approved=True)
+                    if (lib.get("kit") or "1") != quality.KIT_VERSION:
+                        return self._send(409, {"error": "These test clips are from the old cast. Make the new characters first, then approve them."})
+                    cp.set_project_meta(pid, characters_approved=quality.KIT_VERSION)
                     cp.log("Owner", "characters_approved", None, {"project": pid})
                     return self._send(200, {"ok": True, "message": "Characters approved. New Shorts can be made."})
                 if what == "revoke":
@@ -867,7 +1015,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(202, {"ok": True, "message": "Israa is checking the characters (a few minutes)."})
                 cp.set_project_meta(pid, characters_approved=False)   # new tests, new approval
                 threading.Thread(target=run_characters, args=(pid, what != "sheets"), daemon=True).start()
-                return self._send(202, {"ok": True, "message": "Making the characters: about 15 minutes. You'll be told when they're ready."})
+                return self._send(202, {"ok": True, "message": "Making the characters: about 40 minutes (eight characters). You'll be told when they're ready."})
             if action == "animator-test":   # the Animator writes one bespoke scene to compare with the kit's
                 body = self._json_body()
                 try:
@@ -878,6 +1026,47 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
                 threading.Thread(target=run_animator_test, args=(pid, eid, idx), daemon=True).start()
                 return self._send(202, {"ok": True, "message": "The Animator is writing the scene: about 10 minutes."})
+            if action == "voice-match":   # record | match | add (a Voice Library voice into the owner's account)
+                body = self._json_body()
+                what = body.get("action", "match")
+                if what == "add":
+                    if not elevenlabs.configured():
+                        return self._send(409, {"error": "ElevenLabs isn't set up: restart START-HERE and paste the key when it asks."})
+                    if anim_busy():
+                        return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+                    threading.Thread(target=run_library_add, args=(pid, str(body.get("owner", "")), str(body.get("voice", "")),
+                                                                    str(body.get("name", "")).strip()[:60]), daemon=True).start()
+                    return self._send(202, {"ok": True, "message": "Adding the voice to your ElevenLabs account and making its sample: about a minute."})
+                if MATCHING["pid"] is not None:
+                    return self._send(409, {"error": f"The voice matcher is busy: {MATCHING['step']}."})
+                if not elevenlabs.configured():
+                    return self._send(409, {"error": "ElevenLabs isn't set up: the matcher searches its Voice Library."})
+                secs = max(15, min(90, int(body.get("seconds") or 40))) if what == "record" else 0
+                threading.Thread(target=run_voice_match, args=(pid, secs), daemon=True).start()
+                return self._send(202, {"ok": True, "message": f"Recording {secs} seconds: press play on the video NOW." if secs else "Comparing voices: a few minutes."})
+            if action == "cast-voice":   # the voice of one character
+                body = self._json_body()
+                who, vid = str(body.get("who", "")), str(body.get("id", ""))
+                if who not in quality.ON_SCREEN:
+                    return self._send(400, {"error": "Unknown character."})
+                if not (vid.startswith("eleven:") or vid.startswith("kokoro:")):
+                    return self._send(400, {"error": "Pick one of the listed voices."})
+                pr = cp.get_project(pid, with_text=False) or {}
+                cp.set_project_meta(pid, cast_voices={**((pr.get("meta") or {}).get("cast_voices") or {}), who: vid})
+                cp.log("Owner", "cast_voice_chosen", None, {"project": pid, "character": who, "voice": vid})
+                return self._send(200, {"ok": True, "message": f"{quality.CAST_NAMES.get(who, who)} now has that voice (from the next video)."})
+            if action == "cast-samples":
+                if CASTSAMPLING["pid"] is not None or anim_busy():
+                    return self._send(409, {"error": f"Busy: {anim_busy() or 'the cast samples are being made'}. Try again when it's done."})
+                threading.Thread(target=run_cast_samples, args=(pid,), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Each character is saying one line in its voice: about 2 minutes."})
+            if action == "music":   # the background music of the project's videos (or none)
+                mid = str(self._json_body().get("id", ""))
+                if mid not in sfx.MUSIC and mid != "none":
+                    return self._send(400, {"error": "Pick one of the listed tracks, or no music."})
+                cp.set_project_meta(pid, music=mid)
+                cp.log("Owner", "music_chosen", None, {"project": pid, "music": mid})
+                return self._send(200, {"ok": True, "message": "No music from the next video." if mid == "none" else f"Music: {sfx.MUSIC[mid][0]} from the next video."})
             if action == "voice-add":   # register any ElevenLabs voice id for the project
                 body = self._json_body()
                 vid = str(body.get("id", "")).strip()
@@ -1013,7 +1202,7 @@ class Handler(BaseHTTPRequestHandler):
                     voices = [v if v in known or ":" in v else "eleven:" + v for v in voices]
                 if production.is_animated(e):
                     pr = cp.get_project(e["project_id"], with_text=False) or {}
-                    if not (pr.get("meta") or {}).get("characters_approved"):
+                    if not quality.characters_ready(pr):
                         return self._send(409, {"error": "You haven't approved the characters yet. Open the project's Voice & characters page, watch the test clips, then approve. No new Short is made before that."})
                 if production.is_v2(e):
                     st = production.clip_status(e)

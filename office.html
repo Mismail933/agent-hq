@@ -283,6 +283,12 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .voices{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:4px;padding:10px;background:rgba(4,8,18,.45)}
 .voices .vs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
 .voices .vs span{flex:1 1 220px}
+.voices select{min-height:34px;max-width:100%;border:1px solid var(--line-2);border-radius:4px;padding:4px 8px;font:inherit;font-size:13px;background:rgba(4,8,18,.8);color:var(--ink)}
+.voices select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 2px rgba(34,211,238,.18)}
+.voices .vm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px;font-size:13px}
+.voices .vm audio{grid-column:1/-1;width:100%;height:32px}
+.voices .meter{display:inline-block;width:64px;height:6px;border-radius:3px;background:rgba(148,163,184,.2);vertical-align:middle;overflow:hidden}
+.voices .meter i{display:block;height:100%;background:var(--cyan)}
 .voices audio{height:34px;max-width:100%}
 .chk{display:flex;flex-wrap:wrap;gap:4px}
 .chk span{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;color:var(--ink-2)}
@@ -1483,6 +1489,7 @@ let inbox = [], inboxKey = '', ideaTab = null, scouting = false, lastScout = nul
 let projects = [], projectsKey = '', planning = false, waitingPlans = 0;
 let usage = {}, allowance = {}, engines = {}, limits = {}, limitsKey = '', spendNow = 0;
 let episodes = [], episodesKey = '', producing = false, waitingEps = 0, rendering = null;
+let voiceMatch = {}, castVoices = {}, musicState = {};
 let lndIdeas = [], lndReport = {}, lndKey = '', lndStatus = {}, waitingLnd = 0, production = {}, voiceSamples = {}, refboards = {}, characters = {}, animTest = {}, eleven = {}, boardUnlocked = {}, scoutingRefs = false, boardDraft = {};
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 5000); }
 function showIdeaTab(id) { ideaTab = id; }   // the old desk tabs are pages now; nothing jumps on its own
@@ -1731,6 +1738,7 @@ function charsHtml(p) {
       ${x.has_clip ? `<video controls preload="metadata" src="${f(x.id, 'test.mp4')}?v=${esc(c.made || '')}"></video>` : '<p class="src">No test clip yet.</p>'}
       ${r ? `<div class="cinfo review ${r.verdict === 'pass' ? 'pass' : 'rework'}"><span>${esc(r.summary || '')}</span><span class="src"><b>Mouths:</b> ${esc(r.mouths || '')}</span><span class="src"><b>Expressions:</b> ${esc(r.expressions || '')} <b>Motion:</b> ${esc(r.motion || '')}</span>${(r.shots || []).filter(s => !s.consistent).map(s => `<span class="src"><b>${esc(s.shot)}:</b> ${(s.issues || []).map(esc).join('; ')}</span>`).join('')}${r.could_not_judge ? `<span class="src"><b>She could not judge:</b> ${esc(r.could_not_judge)}</span>` : ''}</div>` : ''}</div>`; }).join('');
   return `<div class="chars"><b style="color:var(--ink)">The characters</b>
+    ${c.current_kit && c.kit !== c.current_kit ? '<p class="src" style="margin:0"><b style="color:#FCD34D">The cast was redrawn (new characters in your reference style, no POV sign).</b> These are the old tests: click <b>Make the tests again</b> to see the new cast, then approve it.</p>' : ''}
     <p class="src" style="margin:0">${c.approved ? '<b style="color:#6EE7B7">You approved these characters.</b> New Shorts use them.' : '<b style="color:#FDA4AF">Not approved yet.</b> Watch each 30-second test (close-up talking, walking, gestures) next to its reference sheet. No new Short is made until you approve.'}${c.voice ? ' Test voice: ' + esc(c.voice) + '.' : ''}</p>
     ${busy ? `<p class="src"><b>${esc(c.making)}…</b></p>` : ''}${cards || '<p class="src" style="margin:0">No character tests yet.</p>'}
     <div class="acts"><button class="btn sm ${c.characters.length ? 'ghost' : ''}" type="button" data-chact="make" data-pid="${p.id}" ${busy ? 'disabled' : ''}>${c.characters.length ? 'Make the tests again' : 'Make the character tests'}</button>
@@ -1756,11 +1764,52 @@ function voiceHtml(p) {
   const chosen = (p.meta.voice || {}).label;
   const list = v.voices.map(x => `<div class="vs"><span>${esc(x.label)}${v.chosen === x.id ? ' <b style="color:var(--ok,#4ADE80)">✓ chosen</b>' : ''}</span><audio controls preload="none" src="/api/voice-sample/${p.id}/${esc(x.id)}"></audio><button class="btn sm ${v.chosen === x.id ? 'ghost' : ''}" type="button" data-vpick="${esc(x.id)}" data-pid="${p.id}">${v.chosen === x.id ? 'Chosen' : 'Pick this voice'}</button></div>`).join('');
   return `<div class="voices"><b style="color:var(--ink)">Narrator voice</b>
-    <p class="src" style="margin:0">${chosen ? 'Chosen: ' + esc(chosen) + '.' : 'Not chosen yet: the first Short uses the default until you pick.'} All samples say the same lines at about 130 words a minute. Want ElevenLabs? Make a sample on its free tier and save it as <b>voice.mp3</b> in the episode's folder: the Short uses it.</p>
+    <p class="src" style="margin:0">${chosen ? 'Chosen: ' + esc(chosen) + '.' : 'Not chosen yet: the first Short uses the default until you pick.'} The narrator is a voice only (never on screen); the characters speak in their own voices (below). ElevenLabs voices act each line (Eleven v3: excited, whispering, laughing...).</p>
     <p class="src" style="margin:0">${eleven.configured ? `ElevenLabs: ${(eleven.chars_month || 0).toLocaleString()} of ${(eleven.limit || 0).toLocaleString()} characters used this month.` : 'ElevenLabs is not set up yet: restart START-HERE and paste the key when it asks (the free voices work meanwhile).'}</p>
     ${list || '<p class="src" style="margin:0">No samples yet.</p>'}
     <form class="why" data-vaddform="${p.id}"><input type="text" maxlength="60" data-vid placeholder="Add any ElevenLabs voice: paste its voice id" aria-label="ElevenLabs voice id"><input type="text" maxlength="60" data-vname placeholder="Name (optional)" aria-label="Voice name" style="max-width:160px"><button class="btn sm ghost" type="submit" ${eleven.configured ? '' : 'disabled'}>Add voice</button></form>
     <div class="acts"><button class="btn sm ${list ? 'ghost' : ''}" type="button" data-vsamples="${p.id}" ${v.making ? 'disabled' : ''}>${v.making ? 'Making samples…' : list ? 'Make them again' : 'Make voice samples'}</button></div></div>`;
+}
+function voiceMatchHtml(p) {
+  if ((p.meta || {}).format !== 'animated_v1') return '';
+  const v = (voiceMatch || {})[p.id] || {}, m = v.matches, busy = !!v.busy;
+  const pct = x => Math.round((x || 0) * 100);
+  const bar = x => `<span class="meter" aria-hidden="true"><i style="width:${pct(x)}%"></i></span> ${pct(x)}%`;
+  const rows = ((m || {}).top || []).map((x, i) => `<div class="vm"><span><b style="color:var(--ink)">${i + 1}. ${esc(x.name)}</b> <span class="src">${esc([x.gender, x.age, x.accent].filter(Boolean).join(', '))}</span><br>
+      <span class="src">Match ${bar(x.score)} · voice ${pct(x.voice)}% · way of talking ${pct(x.way_of_talking)}%${x.eleven_rank ? ` · ElevenLabs' own rank #${x.eleven_rank}` : ''}</span></span>
+      <span class="acts" style="margin:0"><a class="btn sm ghost" href="${esc(x.library_url)}" target="_blank" rel="noopener">Library</a><button class="btn sm" type="button" data-vmadd="${esc(x.voice_id)}" data-owner="${esc(x.public_owner_id || '')}" data-name="${esc(x.name.split(' - ')[0])}" data-pid="${p.id}" ${eleven.configured ? '' : 'disabled'}>Add to my voices</button></span>
+      ${x.preview_url ? `<audio controls preload="none" src="${esc(x.preview_url)}"></audio>` : ''}</div>`).join('');
+  return `<div class="voices"><b style="color:var(--ink)">Match a voice you like</b>
+    <p class="src" style="margin:0">Click <b>Record</b>, then play the video whose narrator you want (in your browser, 40 seconds, a part with talking and little music). The office records what your speakers play, then compares that voice with the ElevenLabs Voice Library using a speaker-recognition model and ranks the closest voices. Free: it uses no ElevenLabs characters. You can also drop an audio file in <b>content/project-${p.id}/voice-ref/</b> and click <b>Compare again</b>.</p>
+    ${busy ? `<p class="src"><b>${esc(v.busy)}…</b></p>` : ''}
+    ${v.reference ? `<div class="vs"><span class="src">Your reference (${esc(v.reference_at || '')})</span><audio controls preload="none" src="/api/voice-ref/${p.id}?v=${esc(v.reference_at || '')}"></audio></div>` : ''}
+    ${m ? `<p class="src" style="margin:0">${esc(m.made)}: compared ${m.compared} library voices. ${esc(m.how || '')}</p>${rows}` : ''}
+    <div class="acts"><button class="btn sm" type="button" data-vmrec="${p.id}" ${busy || !eleven.configured ? 'disabled' : ''}>Record 40 s, then play the video</button>
+      ${v.reference ? `<button class="btn sm ghost" type="button" data-vmmatch="${p.id}" ${busy ? 'disabled' : ''}>Compare again</button>` : ''}</div></div>`;
+}
+const CAST_ORDER = ['scholar', 'ruler', 'citizen', 'woman', 'elder', 'merchant', 'guard', 'worker'];
+const CAST_LABEL = {scholar: 'The Scholar', ruler: 'The Ruler', citizen: 'The Citizen', woman: 'The Woman', elder: 'The Elder', merchant: 'The Merchant', guard: 'The Guard', worker: 'The Worker'};
+function castHtml(p) {
+  if ((p.meta || {}).format !== 'animated_v1') return '';
+  const c = (castVoices || {})[p.id] || {voices: {}, options: [], samples: []};
+  const rows = CAST_ORDER.map(who => { const cur = (c.voices || {})[who] || '';
+    const opts = (cur && !c.options.some(o => o.id === cur) ? [{id: cur, label: cur}] : []).concat(c.options);
+    return `<div class="vs"><span><b style="color:var(--ink)">${CAST_LABEL[who]}</b></span><select data-castv="${who}" data-pid="${p.id}" aria-label="${CAST_LABEL[who]}'s voice">${cur ? '' : '<option value="">Picked automatically at the first video</option>'}${opts.map(o => `<option value="${esc(o.id)}" ${o.id === cur ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
+      ${(c.samples || []).includes(who) ? `<audio controls preload="none" src="/api/cast-sample/${p.id}/${who}?v=${esc(cur)}"></audio>` : ''}</div>`; }).join('');
+  return `<div class="voices"><b style="color:var(--ink)">The characters' voices</b>
+    <p class="src" style="margin:0">When a character talks on screen, it speaks in its own voice and its mouth moves (the others stay quiet). Pick a voice for each, or leave it: the first video picks one from your ElevenLabs voices by age and gender, and keeps it.</p>
+    ${rows}
+    <div class="acts"><button class="btn sm ghost" type="button" data-castsamples="${p.id}" ${c.making ? 'disabled' : ''}>${c.making ? 'Making…' : 'Hear each character (one line each, about 650 characters)'}</button></div></div>`;
+}
+function musicHtml(p) {
+  if ((p.meta || {}).format !== 'animated_v1') return '';
+  const m = (musicState || {})[p.id] || {choices: [], chosen: ''};
+  const rows = m.choices.map(x => `<div class="vs"><span><b style="color:var(--ink)">${esc(x.title)}</b> <span class="src">${esc(x.mood)}</span>${m.chosen === x.id ? ' <b style="color:var(--ok,#4ADE80)">✓ chosen</b>' : ''}</span><audio controls preload="none" src="/api/music/${x.id}"></audio><button class="btn sm ${m.chosen === x.id ? 'ghost' : ''}" type="button" data-music="${x.id}" data-pid="${p.id}">${m.chosen === x.id ? 'Chosen' : 'Use this'}</button></div>`).join('');
+  return `<div class="voices"><b style="color:var(--ink)">Music and sound effects</b>
+    <p class="src" style="margin:0">Music plays quietly under every video and dips while anyone talks. Free tracks by Kevin MacLeod (credited in the description automatically). ${m.chosen === 'none' ? '<b>No music chosen.</b>' : m.chosen ? '' : '<b>Nothing picked yet: videos have no music until you pick.</b>'}</p>
+    ${rows}
+    <div class="acts"><button class="btn sm ghost" type="button" data-music="none" data-pid="${p.id}" ${m.chosen === 'none' ? 'disabled' : ''}>No music</button></div>
+    <p class="src" style="margin:0">Sound effects: Calina places them in the script (a crowd gasp, a whoosh, a "dun dun"). Each is made once with ElevenLabs (about 11 characters a second) and reused: ${m.sfx_made || 0} of ${m.sfx_total || 0} made so far.</p></div>`;
 }
 async function contentAct(url, body, okMsg) {
   try {
@@ -1929,7 +1978,7 @@ async function pollOnce() {
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
   producingFor = s.producing_project ?? null; reviewing = !!s.reviewing; atlasLimit = s.atlas_limit || null;
-  production = s.production || {}; voiceSamples = s.voice_samples || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(voiceMatch) + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
@@ -2231,7 +2280,7 @@ function epItemHtml(e) {
       <span class="t">${esc(e.title)}</span>
       <div class="meta">${d.format === 'video' ? '<span style="color:#FCD34D">REGULAR VIDEO · NOT A SHORT</span>' : ''}<span>${esc(d.place || '')}</span><span>${esc(d.year || '')}</span>${(d.scenes || []).length ? `<span>${d.scenes.length} SCENES</span><span>${d.scenes.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span><span>ANIMATED</span>` : (d.shots || []).length ? `<span>${d.shots.length} SHOTS</span><span>${d.shots.map(x => x.voice_line || '').join(' ').split(/\s+/).filter(Boolean).length} WORDS</span>` : `<span>${(d.script || '').split(/\s+/).filter(Boolean).length} WORDS</span>`}</div>
       ${reviewHtml(e)}
-      ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.scenes || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${d.scenes.map(x => `${x.n}. ${esc(x.voice_line || '')}  [${esc(x.backdrop || '')}${(x.characters || []).length ? ', ' + x.characters.map(c => esc(c.who)).join(' + ') : ''}]`).join('\n')}</div>${(d.kit_requests || []).length ? `<p class="src"><b>Needs new art:</b> ${d.kit_requests.map(esc).join('; ')}</p>` : ''}` : (d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
+      ${e.status === 'awaiting_approval' ? `<p><b style="color:var(--ink)">Hook:</b> ${esc(d.hook || '')}</p>${(d.scenes || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${d.scenes.map(x => `${x.n}. ${(x.lines || []).length ? x.lines.map(l => (l.who === 'narrator' ? '' : (CAST_LABEL[l.who] || l.who).replace('The ', '').toUpperCase() + ': ') + esc(l.text || '')).join(' / ') : esc(x.voice_line || '')}  [${esc(x.backdrop || '')}${(x.characters || []).length ? ', ' + x.characters.map(c => esc(c.who)).join(' + ') : ''}]`).join('\n')}</div>${(d.kit_requests || []).length ? `<p class="src"><b>Needs new art:</b> ${d.kit_requests.map(esc).join('; ')}</p>` : ''}` : (d.shots || []).length ? `<p><b style="color:var(--ink)">Story:</b> ${esc(d.storyline || '')}</p><div class="script">${(d.shots || []).slice().sort((a, b) => (a.n || 0) - (b.n || 0)).map(x => `${x.n}. ${esc(x.voice_line || '')}`).join('\n')}</div>` : `<div class="script">${esc(d.script || '')}</div>`}
       <p><b style="color:var(--ink)">Surprising fact:</b> ${esc(d.surprising_fact || '')}</p>
       <div class="src">${(d.sources || []).map(x => `${/^https?:\/\//.test(x.url || '') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.publisher || 'source')}</a>` : esc(x.publisher || 'source')}: “${esc(short(x.quote || '', 160))}”`).join('<br>')}</div>
       <div class="acts"><button class="btn sm" type="button" data-eact="approve" ${busy ? 'disabled' : ''}>Approve</button><button class="btn sm ghost" type="button" data-eact="reject" ${busy ? 'disabled' : ''}>Reject</button></div>
@@ -2310,7 +2359,7 @@ function projectHtml(P) {
       <div id="epSlot"></div>
       <details class="card weekly"><summary>Weekly review: paste this week's channel stats</summary><form class="why" data-cform="review"><input type="text" maxlength="12000" placeholder="Views, watch time, subscribers…" aria-label="Channel stats"><button class="btn sm ghost" type="submit">Write the learning note</button></form></details>`;
   }
-  if (sub === 'voice') return head('Voice & characters', 'The narrator and the cast every video uses.') + liveHtml + voiceHtml(P.p) + charsHtml(P.p) + animHtml(P.p);
+  if (sub === 'voice') return head('Voice & characters', 'The narrator, the cast, their voices and the music every video uses.') + liveHtml + voiceHtml(P.p) + voiceMatchHtml(P.p) + charsHtml(P.p) + castHtml(P.p) + musicHtml(P.p) + animHtml(P.p);
   if (sub === 'refs') return head('Reference board', 'What really works on YouTube in this niche. Calina and Israa follow the direction you approve.') + liveHtml + boardHtml(P.p);
   if (sub === 'plan') return head('Plan', `Serge's plan, approved by you. ${esc(money(P.p))}.`) + `<section class="card sec"><div class="secb">${P.p.summary ? `<p class="lead">${esc(P.p.summary)}</p>` : ''}<div class="acts"><button class="btn" type="button" data-do="plan:${P.id}">Read the full plan</button></div></div></section>`;
   return '';
@@ -2485,6 +2534,7 @@ $('#contentTop').addEventListener('submit', e => {
 });
 $('#contentTop').addEventListener('change', e => {
   if (e.target.closest('#episodes')) return;
+  if (e.target.matches('[data-castv]')) { if (e.target.value) contentAct(`/api/project/${e.target.dataset.pid}/cast-voice`, {who: e.target.dataset.castv, id: e.target.value}, 'Voice set.'); return; }
   if (e.target.matches('[data-bnone]')) { const pid = e.target.closest('[data-pid]').dataset.pid; (boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''})).none = e.target.checked; return; }
   const box = e.target.closest('[data-bpid]'); if (!box) return; const pid = box.dataset.bpid, d = boardDraft[pid] || (boardDraft[pid] = {option:'', likes:{}, note:''});
   if (e.target.matches('[data-blike]')) d.likes[e.target.dataset.blike] = e.target.value;
@@ -2503,6 +2553,13 @@ $('#contentTop').addEventListener('click', e => {
     fetch(`/api/content/${pid}/scout`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({notes: dr.note || '', links, none: !!dr.none})})
       .then(async r => { const j = await r.json().catch(() => ({})); toast(r.ok ? 'The Scout is researching. It takes 5-10 minutes.' : (j.error || 'That did not work.')); if (r.ok) { scoutingRefs = true; renderContent(); } poll(); }, () => toast("Can't reach the engine."));
     return; }
+  const vr = e.target.closest('[data-vmrec]'), vmm = e.target.closest('[data-vmmatch]'), vma = e.target.closest('[data-vmadd]');
+  if (vr) { contentAct(`/api/project/${vr.dataset.vmrec}/voice-match`, {action: 'record', seconds: 40}, 'Recording: play the video now.'); return; }
+  if (vmm) { contentAct(`/api/project/${vmm.dataset.vmmatch}/voice-match`, {action: 'match'}, 'Comparing voices.'); return; }
+  if (vma) { contentAct(`/api/project/${vma.dataset.pid}/voice-match`, {action: 'add', voice: vma.dataset.vmadd, owner: vma.dataset.owner, name: vma.dataset.name}, 'Adding the voice.'); return; }
+  const cs = e.target.closest('[data-castsamples]'), mu = e.target.closest('[data-music]');
+  if (cs) { contentAct(`/api/project/${cs.dataset.castsamples}/cast-samples`, {}, 'Making the cast samples.'); return; }
+  if (mu) { contentAct(`/api/project/${mu.dataset.pid}/music`, {id: mu.dataset.music}, 'Music chosen.'); return; }
   const pick = e.target.closest('[data-vpick]'), make = e.target.closest('[data-vsamples]');
   if (pick) contentAct(`/api/project/${pick.dataset.pid}/voice`, {id: pick.dataset.vpick}, 'Voice chosen.');
   else if (make) { contentAct(`/api/project/${make.dataset.vsamples}/voice-samples`, {}, 'Making the voice samples.'); }
