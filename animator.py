@@ -44,7 +44,7 @@ API = """THE KIT YOU MAY IMPORT (nothing else, no other packages, no other files
         expression="neutral|happy|surprised|worried|determined|thinking" look={[dx, dy]} mouth={letter A-H or X} noProp
         x={feet x} y={feet y} scale={0.6-1.3} frame={frame} enterAt={0} seed={0} walking />
      The figure is about 560 units tall at scale 1 (feet at y); use mouth={mouth[frame]} for the speaking character.
-  import {BACKDROPS} from './Backdrops';  // BACKDROPS.court | library | nile | well | study, each <Back frame={frame} tone="noon|sunset|night" />
+  import {BACKDROPS} from './Backdrops';  // BACKDROPS.court | library | nile | well | study | street | desert, each <Back frame={frame} tone="noon|sunset|night" />
   import {Rod, Globe, Callout} from './Extras';  // <Rod x y shadow={0..1} frame /> <Globe x y r frame /> <Callout text frame y />
 
 YOUR FILE MUST: export default function Scene({frame, frames, words, mouth}) { return <g>...</g>; }

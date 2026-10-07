@@ -125,7 +125,7 @@ class _Messages:
                       content=[NS(type="tool_use", id=_id(), name="submit_plan", input=plan)])
         if ("You are Calina," in system[:30000]) and "as SCENE FILES" in system:
             def ep3(place, year):
-                kit = ["court", "library", "nile", "well", "study", "map", "court", "study", "nile"]
+                kit = ["court", "library", "nile", "well", "study", "map", "street", "study", "desert"]
                 lines = [f"It is {year}, and you wake up in {place}.", "The street smells of bread and smoke.",
                          "A stranger hands you a sealed letter.", "Nobody here can read it but you.",
                          "Inside is a map to the city's lost well.", "By noon, the whole market is following you.",
@@ -139,11 +139,13 @@ class _Messages:
                         "scenes": [{"n": i + 1, "backdrop": kit[i], "camera": ["push_in", "pan_left", "pull_out"][i % 3],
                                     "lines": [{"who": "narrator", "text": l, "tag": ["excited", "curious", "dramatic"][i % 3]}]
                                     + ([{"who": "citizen", "text": "Wait. A letter? For ME?", "tag": "gasps", "pose": "amazed", "expression": "surprised"},
-                                        {"who": "elder", "text": "Don't get excited, boy. Nobody reads here.", "tag": "annoyed", "crowd": "laugh"}] if i in (2, 5) else []),
+                                        {"who": "elder", "text": "Don't get excited, boy. Nobody reads here.", "tag": "annoyed", "crowd": "laugh",
+                                         "reacts": [{"who": "citizen", "action": "facepalm"}], "camera": "punch_in"}] if i in (2, 5) else []),
+                                    "gag": {"type": "freeze_label", "text": "The well-keeper, unimpressed", "on_word": "Nobody", "who": "elder"} if i == 2 else None,
                                     "crowd": {"size": 5, "reaction": "murmur"} if i in (2, 5) else None,
                                     "sfx": [{"name": "whoosh"}] + ([{"name": "crowd_gasp", "on_word": "letter"}] if i == 2 else []),
                                     "link": "first" if i == 0 else ["because", "but", "so", "therefore"][i % 4], "step_claim": f"Step {i + 1}.", "shows": "Simulated.",
-                                    "characters": [{"who": "citizen", "pose": "stand", "at": "left"}, {"who": "elder", "pose": "stand", "at": "right", "expression": "smug"}] if i in (2, 5) else [],
+                                    "characters": [{"who": "citizen", "pose": "stand", "at": "left", "action": "walk_in"}, {"who": "elder", "pose": "stand", "at": "right", "expression": "smug"}] if i in (2, 5) else [],
                                     "map": {"focus": [30, 30], "zoom": 40, "pins": []} if kit[i] == "map" else None,
                                     "source_note": "Example Museum"} for i, l in enumerate(lines)],
                         "sources": [{"url": "https://example.com/source", "quote": "Simulated quote", "publisher": "Example Museum"}],

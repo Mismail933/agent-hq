@@ -365,6 +365,10 @@ SCRIPTS_TASK = """Review these scripts from Calina. Each is a short YouTube vide
    effects and crowd reactions land on the right moments without burying a line? A clear but flat, narration-only script fails this.
 10. Honest dialogue: characters' lines are a dramatisation; fail any line that adds a fact the sources don't support, or that is
    presented as a real quote without being one.
+11. Movement and comedy timing (OverSimplified is the bar): do characters DO things (walk in or out, turn, jump, flinch, facepalm,
+   shrug, double-take) instead of standing in poses? Are there comedy beats where they help (a freeze-frame label, a cutaway, a
+   character interrupting the narrator, a deadpan pause before a punchline), with a camera hit (punch_in, whip) on the punchline?
+   A scene that runs long with nothing planned to happen on screen is a pacing fault: name it. Gags must never blur a fact.
 A script passes only if it is genuinely good (score 7 or more out of 10) and has no blocking problem.
 
 Earlier episodes of this channel:
@@ -418,6 +422,10 @@ Judge honestly:
    Say that plainly in the summary instead of guessing, and tell the owner to listen to the first ten seconds himself. You CAN check
    that each character's mouth moves only on his own lines (the words under each frame say who is talking).
 6. Would a stranger scrolling past stay, and does it stand next to the owner's references? Say where it falls short.
+7. Pacing (the OverSimplified bar): something should change on screen every 2-4 seconds (a cut, a camera move or punch-in, a
+   character walking, turning or reacting, a prop, a gag). Go through the sheets in order and name every stretch longer than
+   about 4 seconds where the frames look the same, with its start and end time (area "pace"). The measured longest still
+   stretch above is from the plan of the video; the sheets show what really happened.
 Verdict "release" only if it is genuinely good enough to publish; otherwise "redo" with the specific changes that would fix it.
 """
 
@@ -517,6 +525,14 @@ ON_SCREEN = SPEAKERS[1:]
 # Delivery directions for ElevenLabs v3 (audio tags); other engines ignore them.
 DELIVERY = ("excited", "curious", "dramatic", "whispers", "sarcastic", "laughs", "chuckles", "sighs", "gasps", "shouting",
             "nervous", "proud", "deadpan", "playful", "mischievously", "impressed", "annoyed", "awe")
+# The OverSimplified layer (2.22.1): what a character does, camera hits on a line, comedy beats, scene changes. The schema,
+# the checklist and the renderer (Character.jsx ACTIONS, Camera.jsx HITS) use the same names.
+ACTIONS = ("walk_in", "walk_out", "turn", "jump", "flinch", "facepalm", "shrug", "double_take", "nod")
+CAM_HITS = ("punch_in", "release", "whip", "shake", "hold")
+GAGS = ("freeze_label", "cutaway", "interrupt", "deadpan")
+TRANSITIONS = ("cut", "whip", "slide_left", "slide_up", "iris")
+BACKDROPS = ("court", "library", "nile", "well", "study", "street", "desert", "map", "diagram")
+STILL_MAX = 4.0   # seconds: no stretch of a finished video may go longer without something changing on screen
 
 
 CAST_NAMES = {"scholar": "The Scholar", "ruler": "The Ruler", "citizen": "The Citizen", "woman": "The Woman", "elder": "The Elder",
@@ -613,6 +629,10 @@ def split_long_lines(scenes, spine=None):
                     part.pop("bespoke", None)
                 # a sound effect goes with the part that says its word (one without a word opens the scene)
                 part["sfx"] = [x for x in s.get("sfx") or [] if _group_of(groups, x.get("on_word")) == gi]
+                if s.get("gag") and _group_of(groups, s["gag"].get("on_word")) != gi:   # a gag happens once, in the part with its word
+                    part.pop("gag", None)
+                if gi and part.get("transition") is None:
+                    part["transition"] = "cut"   # the same place carrying on: a cut, not a new slide
                 if gi != home:
                     part.pop("callout", None)
                     part.pop("callout_word", None)
@@ -635,12 +655,17 @@ def split_long_lines(scenes, spine=None):
         groups.append(cur)
         word = _tokens(s.get("callout_word"))
         home = next((gi for gi, g in enumerate(groups) if word and word & _tokens(" ".join(g))), 0)
+        gag_home = next((gi for gi, g in enumerate(groups) if (s.get("gag") or {}).get("on_word") and _tokens(s["gag"]["on_word"]) & _tokens(" ".join(g))), 0)
         for gi, g in enumerate(groups):
             part = dict(s)
             part["voice_line"] = " ".join(g)
             if gi:
                 part["link"] = "so"
                 part.pop("bespoke", None)
+            if s.get("gag") and gi != gag_home:
+                part.pop("gag", None)
+            if gi and part.get("transition") is None:
+                part["transition"] = "cut"
             if gi != home:
                 part.pop("callout", None)
                 part.pop("callout_word", None)
@@ -1106,12 +1131,20 @@ def _facts(ffmpeg, video, d):
     sc = subprocess.run([ffmpeg, "-hide_banner", "-i", str(video), "-vf", "select='gt(scene,0.25)',showinfo", "-an", "-f", "null", "-"],
                         capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=flags).stderr
     cuts = len(re.findall(r"pts_time:", sc))
+    pacing = {}
+    try:   # what the renderer planned (animate.py writes it into the props file next to the video; short-1.mp4 -> scene-props-1.json)
+        props = Path(video).parent / f"scene-props{Path(video).stem[len('short'):]}.json"
+        pacing = json.loads(props.read_text(encoding="utf-8")).get("pacing") or {}
+    except (OSError, ValueError):
+        pass
     f = [f"- length: {secs:.1f} s",
+         (f"- pacing (planned): {pacing.get('changes')} visual changes, the longest still stretch {pacing.get('longest_still_s')} s "
+          f"(at {pacing.get('longest_still_at')}; the bar is {STILL_MAX:.0f} s)") if pacing else "",
          f"- narration: {words} words = {words / secs * 60:.0f} words per minute over the whole video" if words and secs else "- narration: unknown",
          f"- hard visual changes (scene cuts): {cuts} in {secs:.0f} s = one every {secs / max(cuts, 1):.1f} s" if secs else "",
          f"- loudness: {lufs.group(1)} LUFS integrated, sample peak {peak.group(1)} dBFS (target about -14 to -16 LUFS, peak under -1)" if lufs and peak else ""]
     return secs, [x for x in f if x], {"seconds": round(secs, 1), "wpm": round(words / secs * 60) if words and secs else None, "cuts": cuts,
-                                         "lufs": float(lufs.group(1)) if lufs else None}
+                                         "lufs": float(lufs.group(1)) if lufs else None, "longest_still_s": pacing.get("longest_still_s")}
 
 
 def shorts_python():

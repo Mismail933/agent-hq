@@ -218,6 +218,21 @@ Agents never spend money without the owner's explicit approval.
   `server.working_now`. Protected from Ghassan. Test with the fake API: `HQ_TELEGRAM_API=http://127.0.0.1:<port>
   TELEGRAM_BOT_TOKEN=123:test HQ_PHONE_STORE=<scratch json>` and a small server that answers getMe/getUpdates/sendMessage and
   queues injected updates. Needs the PC on and the office running.
+- OverSimplified level (2.22.1, Atlas's pick for the owner's "reach this level" request; the owner's v3 character look is kept):
+  - Movement: `Character.jsx ACTIONS` (walk_in/walk_out handled by `Short.jsx walkPos`, turn = facing flip, jump, flinch, facepalm,
+    shrug, double_take, nod via `actionMotion`), new poses facepalm (hand drawn over the face) and flinch; cloak/himation end swing
+    (`Body flow`), beards sway. Scene files: `characters[].action`, `lines[].action`, `lines[].reacts` [{who, action, expression,
+    on_word}], `lines[].camera`, scene `gag` and `transition`; the names live in `quality.ACTIONS / CAM_HITS / GAGS / TRANSITIONS /
+    BACKDROPS` (schema, checklist and renderer agree). `animate.scene_beats` turns them into beats (pose-actions held `ACTION_HOLD`).
+  - Pacing and comedy: `animate.comedy_and_pacing` -> per-scene camera `hits` (Camera.jsx: punch_in frames one speaker inside the safe
+    area, release, whip, shake, hold), shot/reverse-shot punch-ins in conversations, a camera beat in any gap over `REFRAME_EVERY`,
+    gags (freeze_label freezes the picture `FREEZE_FRAMES` with a label; cutaway tag; interrupt; deadpan hold), auto sfx on actions /
+    whips / gags / map pins (only menu effects, max 5 extra a scene), `quiet` windows where `mix_audio` stops the music, and
+    `props.pacing` (longest still stretch). Israa's video review gets that number and criterion 7 (pace, from the sheets); her
+    script review criterion 11 (movement and comedy timing). Slide transitions now really slide (CSS px); split parts arrive with a cut.
+  - Backdrops redrawn in the cast's style (thin brown lines, muted sepia `K`), new `street` and `desert`; maps: arrowheads, `map.arrows`
+    drawn on one by one, city names pop. Still to do: the Animator drawing missing backdrops waits for the "Animator as the company's
+    character artist" request.
 - `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

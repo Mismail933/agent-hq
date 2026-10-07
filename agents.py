@@ -653,6 +653,20 @@ MAKE IT FUN, CATCHY AND ALIVE (as important as the story)
   but no line may add a fact the sources don't support, and nothing is presented as a real historical quote unless it is one (then
   its source_note says where it comes from). The narrator's facts follow the same sourcing rules as always.
 
+MOVE AND TIME IT LIKE OVERSIMPLIFIED (the owner's bar for the animation: its comedy timing and its simple, expressive movement)
+- Characters DO things, they don't just stand in poses: walk in and out, turn, jump, flinch, facepalm, shrug, double-take, nod.
+  Give a character an `action` when he enters a scene (walk_in) or leaves it (walk_out); give a line an `action` (what the speaker
+  does as he starts) and `reacts` (what the others do when he finishes: the doubter facepalms, the king double-takes).
+- Something changes on screen every two to four seconds. The engine adds camera beats where nothing is planned, but plan the
+  good ones yourself: a `camera` hit on a line (punch_in on the punchline or the reaction, whip into a surprise, shake on a
+  shock, hold for a deadpan beat).
+- Comedy beats, where they help and never blurring a fact (about one every three or four scenes): a FREEZE-FRAME LABEL (the
+  picture stops on a word and a label names someone: "Eratosthenes, professional overachiever"), a CUTAWAY (a short scene that
+  jumps somewhere for a joke, tagged "MEANWHILE..." or similar), the narrator INTERRUPTED by a character (end the narrator's line
+  with a dash, the character cuts in), a DEADPAN pause before a punchline (the camera stops, the music stops, then the punch).
+- Every action gets its sound (footsteps, boing, gulp, slap, whoosh are added for you); add the ones only you know (a scroll
+  unrolling, coins, a splash) in `sfx`.
+
 WRITE A STORY, IN FULL SENTENCES, FOR THE EAR
 - Every line is a complete spoken sentence, written to be heard, like a good storyteller talking to one friend. Read each
   aloud in your head. Telegram fragments ("Far south in Syene, a well.", "Noon. No shadow.") are forbidden. Contractions
@@ -701,9 +715,12 @@ SOURCES AND SAFETY
 
 THE KIT (use only these names; the engine rejects anything else)
 - backdrop: court (sunlit colonnaded courtyard by the sea; tone noon|sunset|night), library (scroll shelves, indoors),
-  nile (river, palms, dunes), well (looking down a well), study (lamplit desk at dusk), map (real map: the camera flies
+  nile (river, palms, dunes), well (looking down a well), study (lamplit desk at dusk), street (an Alexandria street: houses,
+  a market stall, the lighthouse at the end; tone noon|sunset|night), desert (a desert road with a caravan on the dunes; tone),
+  map (real map: the camera flies
   from the world to a place; give "map": {{"focus": [lat, lon], "zoom": 40-70 (pixels per degree; 60 = a region),
-  "pins": [{{"label": "ROME", "lat": 41.9, "lon": 12.5}}], "route": [0, 1], "route_label": "about 800 km"}}),
+  "pins": [{{"label": "ROME", "lat": 41.9, "lon": 12.5}}], "route": [0, 1], "route_label": "about 800 km",
+  "arrows": [{{"from": 0, "to": 1, "label": "800 km"}}] (thick arrows that draw on one after another; the cities pop in)}}),
   diagram (only for the Earth-angle explanation; it draws the Earth, the sun's rays, the two sticks, the shadow and the angle:
   "diagram": {{"angle_label": "7.2°", "fraction": "1/50", "a_label": "ALEXANDRIA", "b_label": "SYENE", "a_note": "SHADOW",
   "b_note": "NO SHADOW"}}). Stories that need a setting we don't have (a Japanese court, a market...):
@@ -713,10 +730,18 @@ THE KIT (use only these names; the engine rejects anything else)
   (round, pompous king: diadem, sceptre), citizen (young everyman), woman (sharp-witted woman), elder (grumpy old man, staff),
   merchant (plump trader, coin purse), guard (soldier: helmet, spear), worker (strong labourer). Say in `cast_roles` who each one
   plays in this story ({{"scholar": "Eratosthenes", "ruler": "King Ptolemy III"}}). pose = stand, point, explain, amazed, wave, think,
-  present, shrug, cheer; expression = neutral, happy, surprised, worried, determined, thinking, laughing, angry, smug, scared;
-  at = left, center, right. Each id at most once per scene.
+  present, shrug, cheer, facepalm, flinch; expression = neutral, happy, surprised, worried, determined, thinking, laughing, angry,
+  smug, scared; at = left, center, right; action (optional) = walk_in or walk_out (or any action below, as the scene opens).
+  Each id at most once per scene.
 - lines: [{{"who": "narrator" or a character in the scene, "text": "...", "tag": a delivery, "pose": optional new pose for the speaker
-  on this line, "expression": optional new face, "crowd": optional crowd reaction on this line}}].
+  on this line, "expression": optional new face, "crowd": optional crowd reaction on this line, "action": optional (the speaker's),
+  "reacts": optional [{{"who": another character in the scene, "action": ..., "expression": ..., "on_word": optional}}],
+  "camera": optional hit as the line starts}}]. actions: walk_in, walk_out, turn, jump, flinch, facepalm, shrug, double_take, nod.
+  camera hits: punch_in (on the speaker), release, whip, shake, hold.
+- gag (optional, one per scene): {{"type": "freeze_label", "text": "Eratosthenes, overachiever", "on_word": "...", "who": "scholar"}},
+  {{"type": "cutaway", "text": "MEANWHILE IN ROME"}}, {{"type": "interrupt", "who": the character who cuts in}}, or
+  {{"type": "deadpan", "on_word": the first word of the punchline}}.
+- transition (optional, how this scene arrives): cut, whip, slide_left, slide_up, iris.
 - crowd (optional): {{"size": 3-8, "reaction": idle | cheer | gasp | laugh | murmur | angry | scared}}: townspeople behind the cast.
 - sfx (optional): [{{"name": one of the menu, "on_word": the exact word it lands on (or leave it out to open the scene)}}]. Menu:
   {sfx_menu}.
@@ -735,21 +760,33 @@ SCENE_SCHEMA = {"type": "object", "properties": {
         "who": {"type": "string", "enum": list(quality.SPEAKERS)},
         "text": {"type": "string", "description": "One to three short spoken sentences, at most 34 words"},
         "tag": {"type": "string", "enum": list(quality.DELIVERY), "description": "How it is said"},
-        "pose": {"type": "string", "enum": ["stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer"]},
+        "pose": {"type": "string", "enum": ["stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer", "facepalm", "flinch"]},
         "expression": {"type": "string", "enum": ["neutral", "happy", "surprised", "worried", "determined", "thinking", "laughing", "angry", "smug", "scared"]},
-        "crowd": {"type": "string", "enum": ["idle", "cheer", "gasp", "laugh", "murmur", "angry", "scared"]}},
+        "crowd": {"type": "string", "enum": ["idle", "cheer", "gasp", "laugh", "murmur", "angry", "scared"]},
+        "action": {"type": "string", "enum": list(quality.ACTIONS), "description": "What the speaker does as he starts this line"},
+        "reacts": {"type": "array", "description": "What the others in the scene do when this line ends (or on on_word)", "items": {"type": "object", "properties": {
+            "who": {"type": "string", "enum": list(quality.ON_SCREEN)}, "action": {"type": "string", "enum": list(quality.ACTIONS)},
+            "expression": {"type": "string", "enum": ["neutral", "happy", "surprised", "worried", "determined", "thinking", "laughing", "angry", "smug", "scared"]},
+            "on_word": {"type": "string"}}, "required": ["who", "action"]}},
+        "camera": {"type": "string", "enum": list(quality.CAM_HITS), "description": "A camera hit as this line starts"}},
         "required": ["who", "text", "tag"]}},
     "shows": {"type": "string", "description": "What the viewer sees that matches the voice at this moment"},
     "link": {"type": "string", "enum": ["because", "but", "so", "first", "therefore"], "description": "How this scene follows the previous one (scene 1 is 'first')"},
     "step_claim": {"type": "string", "description": "One plain sentence: what the viewer now knows that they did not before"},
-    "backdrop": {"type": "string", "enum": ["court", "library", "nile", "well", "study", "map", "diagram"]},
+    "backdrop": {"type": "string", "enum": list(quality.BACKDROPS)},
     "tone": {"type": "string", "enum": ["noon", "sunset", "night"]},
     "camera": {"type": "string", "enum": ["push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"]},
+    "transition": {"type": "string", "enum": list(quality.TRANSITIONS)},
     "characters": {"type": "array", "maxItems": 3, "items": {"type": "object", "properties": {
         "who": {"type": "string", "enum": list(quality.ON_SCREEN)},
-        "pose": {"type": "string", "enum": ["stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer"]},
+        "pose": {"type": "string", "enum": ["stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer", "facepalm", "flinch"]},
         "expression": {"type": "string", "enum": ["neutral", "happy", "surprised", "worried", "determined", "thinking", "laughing", "angry", "smug", "scared"]},
-        "at": {"type": "string", "enum": ["left", "center", "right"]}}, "required": ["who", "pose", "at"]}},
+        "at": {"type": "string", "enum": ["left", "center", "right"]},
+        "action": {"type": "string", "enum": list(quality.ACTIONS), "description": "walk_in / walk_out, or an action as the scene opens"}},
+        "required": ["who", "pose", "at"]}},
+    "gag": {"type": "object", "description": "One comedy beat in this scene", "properties": {
+        "type": {"type": "string", "enum": list(quality.GAGS)}, "text": {"type": "string", "description": "The freeze-frame label or the cutaway's tag"},
+        "on_word": {"type": "string"}, "who": {"type": "string", "enum": list(quality.ON_SCREEN)}}, "required": ["type"]},
     "crowd": {"type": "object", "properties": {"size": {"type": "integer"}, "reaction": {"type": "string", "enum": ["idle", "cheer", "gasp", "laugh", "murmur", "angry", "scared"]}}},
     "sfx": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string", "enum": list(sfx.MENU)},
         "on_word": {"type": "string"}}, "required": ["name"]}},

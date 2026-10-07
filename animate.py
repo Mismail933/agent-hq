@@ -46,10 +46,10 @@ LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 1.7
 SHORT_LIMIT = 178.0   # YouTube calls a vertical video of up to 3 minutes a Short: nothing is decided or refused here, the label just follows the length
 VIDEO_CAP = 960.0     # only an absurd length (16 minutes) is refused; the story decides, Israa judges whether it earns its length
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
-BACKDROPS = {"court", "library", "nile", "well", "study", "map", "diagram"}
+BACKDROPS = set(quality.BACKDROPS)
 CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"}
 CAST = set(quality.ON_SCREEN)   # kit v2: the narrator is a voice only, never drawn
-POSES = {"stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer"}
+POSES = {"stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer", "facepalm", "flinch"}
 EXPRESSIONS = {"neutral", "happy", "surprised", "worried", "determined", "thinking", "laughing", "angry", "smug", "scared"}
 REACTIONS = {"idle", "cheer", "gasp", "laugh", "murmur", "angry", "scared"}
 NOFLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -222,9 +222,28 @@ def checklist(ep):
                 problems.append(f"Scene {n}: expression '{x['expression']}' isn't one of {', '.join(sorted(EXPRESSIONS))}.")
             if x.get("pose") and x["pose"] not in POSES:
                 problems.append(f"Scene {n}: pose '{x['pose']}' isn't one of {', '.join(sorted(POSES))}.")
+            if x.get("action") and (x["action"] not in quality.ACTIONS or who not in here):
+                problems.append(f"Scene {n}: action '{x['action']}' needs an on-screen speaker and one of {', '.join(quality.ACTIONS)}.")
+            if x.get("camera") and x["camera"] not in quality.CAM_HITS:
+                problems.append(f"Scene {n}: camera hit '{x['camera']}' isn't one of {', '.join(quality.CAM_HITS)}.")
+            for r in x.get("reacts") or []:
+                if r.get("who") not in here or r.get("action") not in quality.ACTIONS:
+                    problems.append(f"Scene {n}: the reaction {r.get('who')}/{r.get('action')} needs a character in the scene and one of {', '.join(quality.ACTIONS)}.")
         for c in s.get("characters") or []:
             if c.get("who") == "narrator":
                 problems.append(f"Scene {n}: the narrator is a voice now, not a character on screen (and nobody holds a POV sign).")
+            if c.get("action") and c["action"] not in quality.ACTIONS:
+                problems.append(f"Scene {n}: action '{c['action']}' isn't one of {', '.join(quality.ACTIONS)}.")
+        gag = s.get("gag")
+        if gag:
+            if gag.get("type") not in quality.GAGS:
+                problems.append(f"Scene {n}: gag '{gag.get('type')}' isn't one of {', '.join(quality.GAGS)}.")
+            elif gag["type"] == "freeze_label" and not (gag.get("text") or "").strip():
+                problems.append(f"Scene {n}: a freeze-frame gag needs its label text.")
+            elif gag["type"] == "interrupt" and gag.get("who") not in {x.get("who") for x in s.get("lines") or []} - {"narrator"}:
+                problems.append(f"Scene {n}: an interrupt gag needs 'who': a character who speaks in that scene.")
+        if s.get("transition") and s["transition"] not in quality.TRANSITIONS:
+            problems.append(f"Scene {n}: transition '{s['transition']}' isn't one of {', '.join(quality.TRANSITIONS)}.")
         if (s.get("crowd") or {}).get("reaction", "idle") not in REACTIONS:
             problems.append(f"Scene {n}: crowd reaction '{s['crowd'].get('reaction')}' isn't one of {', '.join(sorted(REACTIONS))}.")
         for x in s.get("sfx") or []:
@@ -481,31 +500,180 @@ def speaker_frames(segs, total_frames):
     return who
 
 
-def scene_beats(d, items, segs, bounds):
+ACTION_POSE = {"facepalm": "facepalm", "shrug": "shrug", "flinch": "flinch"}   # actions that are also a pose for a moment
+ACTION_FACE = {"flinch": "scared", "double_take": "surprised", "facepalm": "worried"}
+ACTION_SFX = {"walk_in": "footsteps", "walk_out": "footsteps", "jump": "boing", "flinch": "gulp", "facepalm": "slap", "double_take": "whoosh"}
+ACTION_HOLD = 30        # frames a pose-action is held before he goes back to his pose
+WALK_OUT_LEAD = 36      # a character who leaves the scene starts walking this many frames before it ends
+FREEZE_FRAMES = 48      # a freeze-frame label holds the picture this long (the voice carries on)
+REFRAME_EVERY = 2.8     # seconds: a stretch with nothing planned gets a camera beat this often
+
+
+def _word_frame(words, start, end, target):
+    """Frame (on the whole timeline) at which a named word is said inside [start, end), or None."""
+    t = _norm(target or "")
+    if not t:
+        return None
+    inside = [w for w in words if start <= round(w[1] * FPS) < end]
+    hit = next((w for w in inside if _norm(w[0]) == t), None) or next(
+        (w for w in inside if len(t) >= 4 and (_norm(w[0]).startswith(t[:4]) or t.startswith(_norm(w[0])[:4]))), None)
+    return round(hit[1] * FPS) if hit else None
+
+
+def _action_beats(who, act, at, back, expression=None):
+    """One action as beats: the action, a pose for a moment if it is one (then `back`), and the face that goes with it."""
+    b = {"at": max(0, at), "who": who, "action": act}
+    if ACTION_POSE.get(act):
+        b["pose"] = ACTION_POSE[act]
+    if expression or ACTION_FACE.get(act):
+        b["expression"] = expression or ACTION_FACE[act]
+    out = [b]
+    if b.get("pose"):
+        out.append({"at": max(0, at) + ACTION_HOLD, "who": who, "pose": back})
+    return out
+
+
+def scene_beats(d, items, segs, bounds, words=()):
     """Stage directions per scene, in frames from the scene's start: a speaker takes his line's pose and face when he starts (or a
-    talking gesture if the line has none) and goes back to his own pose when he stops; the crowd reacts on the line that says so."""
+    talking gesture if the line has none) and goes back to his own pose when he stops; the crowd reacts on the line that says so.
+    Actions (2.22.1): a character's `action` opens the scene (walk_out: near its end), a line's `action` is the speaker's as he
+    starts, and `reacts` are the others' reactions at the end of the line (or on their `on_word`)."""
     out = [[] for _ in d["scenes"]]
     gesture = {}
+    for i, s in enumerate(d["scenes"]):
+        n = bounds[i + 1] - bounds[i]
+        for c in s.get("characters") or []:
+            act = c.get("action")
+            if act in quality.ACTIONS:
+                at = max(0, n - WALK_OUT_LEAD) if act == "walk_out" else 0 if act == "walk_in" else 8
+                out[i] += _action_beats(c["who"], act, at, c.get("pose") or "stand", c.get("expression"))
     for it, (a, b, who) in zip(items, segs):
         i = it["scene"]
         s = d["scenes"][i]
         here = {c.get("who"): c for c in s.get("characters") or []}
         at, end = round(a * FPS) - bounds[i], round(b * FPS) - bounds[i]
+        act = it.get("action") if it.get("action") in quality.ACTIONS else None
         if who in here:
             base = here[who].get("pose") or "stand"
             pose = it.get("pose")
-            if not pose:
+            if not pose and not ACTION_POSE.get(act):
                 gesture[who] = (gesture.get(who, -1) + 1) % len(TALK_POSES)
                 pose = TALK_POSES[gesture[who]] if base in ("stand", "think") else None
             out[i].append({"at": max(0, at), "who": who, **({"pose": pose} if pose else {}),
                            **({"expression": it["expression"]} if it.get("expression") else {})})
             if pose and pose != base and not it.get("pose"):
                 out[i].append({"at": max(0, end + 4), "who": who, "pose": base})
+            if act:
+                out[i] += _action_beats(who, act, at, it.get("pose") or base, it.get("expression"))
+        for r in it.get("reacts") or []:
+            if r.get("who") in here and r.get("action") in quality.ACTIONS:
+                wf = _word_frame(words, bounds[i] + max(0, at), bounds[i] + end + 1, r.get("on_word"))
+                rat = (wf - bounds[i]) if wf is not None else end
+                out[i] += _action_beats(r["who"], r["action"], rat, here[r["who"]].get("pose") or "stand", r.get("expression"))
         if it.get("crowd") and s.get("crowd"):
             out[i].append({"at": max(0, at), "who": "crowd", "reaction": it["crowd"]})
     for b in out:
         b.sort(key=lambda x: x["at"])
     return out
+
+
+def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cues=()):
+    """The OverSimplified layer (2.22.1), worked out from the script and the real voice timings, per scene:
+    - camera hits: a line's own `camera`; in a conversation, a punch-in on whoever speaks (shot / reverse shot) and a release when
+      the narrator takes over; the gags' own hits; and a camera beat in any stretch where nothing else is planned, so the picture
+      never sits still for more than about three seconds;
+    - the gag the renderer draws (freeze-frame label, cutaway tag) with its frame;
+    - sound effects that go with the actions, the whip-pans, the gags and the map's pins (never on top of the script's own);
+    - quiet windows: the music stops for a freeze-frame and for a deadpan pause.
+    Returns (hits per scene, gag per scene, cues [(seconds, effect)], quiet [(from s, to s)], pacing stats)."""
+    hits_all, gags, cues, quiet = [], [], [], []
+    longest, longest_at, changes = 0.0, "", 0
+    lines_of = [[] for _ in d["scenes"]]
+    if not own:
+        for it, seg in zip(items, segs):
+            lines_of[it["scene"]].append((it, seg))
+    for i, s in enumerate(d["scenes"]):
+        start, end = bounds[i], bounds[i + 1]
+        n = max(1, end - start)
+        here = {c.get("who") for c in s.get("characters") or []}
+        hits, auto = [], []
+        prev = None
+        for it, (a, b, who) in lines_of[i]:
+            at = max(0, round(a * FPS) - start)
+            cam = it.get("camera") if it.get("camera") in quality.CAM_HITS else None
+            if cam:
+                hits.append({"at": at, "cam": cam, **({"who": who} if who in here else {})})
+                if cam == "whip":
+                    auto.append((a, "whoosh"))
+            elif who in here and len(here) >= 2 and who != prev:
+                hits.append({"at": at, "cam": "punch_in", "who": who})
+            elif who == "narrator" and prev in here and len(here) >= 2:
+                hits.append({"at": at, "cam": "release"})
+            prev = who
+        gag = s.get("gag") or {}
+        out_gag = None
+        if gag.get("type") in quality.GAGS:
+            wf = _word_frame(words, start, end, gag.get("on_word"))
+            at = (wf - start) if wf is not None else n // 2
+            sec = (start + at) / FPS
+            who_at = next((w for (x, y, w) in segs if x <= sec < y + 0.05), None) if not own else None
+            if gag["type"] == "freeze_label":
+                out_gag = {"type": "freeze_label", "text": str(gag.get("text") or "")[:44], "at": at, "frames": FREEZE_FRAMES,
+                           **({"who": gag["who"]} if gag.get("who") in here else {})}
+                auto.append((sec, "record_scratch"))
+                quiet.append((sec, sec + FREEZE_FRAMES / FPS))
+            elif gag["type"] == "deadpan":   # the camera stops dead, the music stops, then a punch-in on the punchline
+                hits.append({"at": max(0, at - 30), "cam": "hold"})
+                hits.append({"at": at, "cam": "punch_in", **({"who": who_at} if who_at in here else {})})
+                quiet.append((max(0, sec - 1.0), sec + 0.6))
+            elif gag["type"] == "interrupt":   # a character cuts in on the narrator: punch on him and a jolt
+                first = next((round(a * FPS) - start for it, (a, b, w) in lines_of[i] if w == gag.get("who")), at)
+                hits += [{"at": max(0, first), "cam": "punch_in", "who": gag.get("who")}, {"at": max(0, first), "cam": "shake"}]
+                auto.append(((start + max(0, first)) / FPS, "pop"))
+            elif gag["type"] == "cutaway":
+                out_gag = {"type": "cutaway", "text": str(gag.get("text") or "MEANWHILE...")[:28]}
+                auto.append((start / FPS + 0.05, "whoosh"))
+        gags.append(out_gag)
+        for bt in beats[i]:
+            if ACTION_SFX.get(bt.get("action")):
+                auto.append(((start + bt["at"]) / FPS, ACTION_SFX[bt["action"]]))
+        if s.get("backdrop") == "map":
+            for k, _ in enumerate(((s.get("map") or {}).get("pins") or [])[:4]):
+                auto.append(((start + n * 0.5 + k * 7 + 4) / FPS, "pop"))
+        # pacing: whatever is planned to change on screen; a long gap gets a camera beat (on whoever is speaking then)
+        moving = s.get("backdrop") in ("map", "diagram") or bool(s.get("generated"))
+        marks = sorted({0, n} | {h["at"] for h in hits} | {bt["at"] for bt in beats[i]} | ({out_gag["at"], out_gag["at"] + FREEZE_FRAMES} if out_gag and "at" in out_gag else set()))
+        if not moving:
+            fill = []
+            for x, y in zip(marks, marks[1:]):
+                k = int((y - x) / FPS // REFRAME_EVERY)
+                before = [h["cam"] for h in sorted(hits, key=lambda h: h["at"]) if h["at"] <= x and h["cam"] in ("punch_in", "release", "whip")]
+                zoomed = bool(before) and before[-1] == "punch_in"   # each beat does the opposite of where the camera is
+                for j in range(1, k + 1):
+                    f = x + round((y - x) * j / (k + 1))
+                    sec = (start + f) / FPS
+                    who = next((w for (p, q, w) in segs if p <= sec < q), None) if not own else None
+                    zoomed = not zoomed
+                    fill.append({"at": f, "cam": "punch_in", **({"who": who} if who in here else {})} if zoomed else {"at": f, "cam": "release"})
+            hits += fill
+        hits.sort(key=lambda h: h["at"])
+        allmarks = sorted({0, n} | {h["at"] for h in hits} | set(marks))
+        changes += len(allmarks) - 1
+        if not moving:
+            for x, y in zip(allmarks, allmarks[1:]):
+                if (y - x) / FPS > longest:
+                    longest, longest_at = (y - x) / FPS, f"scene {s.get('n', i + 1)}, {(start + x) / FPS:.1f}-{(start + y) / FPS:.1f} s"
+        hits_all.append(hits)
+        # at most five extra sounds a scene, never within 0.4 s of another sound (the script's own come first)
+        taken = [c[0] for c in script_cues] + [c[0] for c in cues]
+        kept = 0
+        for t, name in sorted(auto):
+            if kept >= 5 or any(abs(t - u) < 0.4 for u in taken):
+                continue
+            cues.append((t, name))
+            taken.append(t)
+            kept += 1
+    return hits_all, gags, cues, quiet, {"longest_still_s": round(longest, 1), "longest_still_at": longest_at, "changes": changes}
 
 
 def sfx_cues(d, words, bounds):
@@ -524,15 +692,20 @@ def sfx_cues(d, words, bounds):
     return out
 
 
-def mix_audio(ffmpeg, voice, cues, music, seconds, dst):
+def mix_audio(ffmpeg, voice, cues, music, seconds, dst, quiet=()):
     """The soundtrack: the voices, each sound effect at its moment, and the music quietly under everything, ducked while anyone
-    speaks (sidechain compression), faded in and out. Then normalised like the voice. Returns (dst, characters billed for new effects)."""
+    speaks (sidechain compression), faded in and out, and stopped dead in the `quiet` windows [(from s, to s)] (a freeze-frame,
+    a deadpan pause: the comic stop). Then normalised like the voice. Returns (dst, characters billed for new effects)."""
     inputs, filters, labels, billed = ["-i", str(voice)], [], ["[v]"], 0
     filters.append("[0:a]aresample=48000,asplit=2[v][sc]")
     n = 1
     if music:
         inputs += ["-stream_loop", "-1", "-i", str(music)]
-        filters.append(f"[{n}:a]aresample=48000,atrim=0:{seconds:.2f},volume=0.16,afade=t=in:d=1.2,afade=t=out:st={max(0, seconds - 2.5):.2f}:d=2.5[mus]")
+        vol = "0.16"
+        if quiet:
+            off = "+".join(f"between(t,{a:.2f},{b:.2f})" for a, b in quiet)
+            vol = f"'if({off},0,0.16)':eval=frame"
+        filters.append(f"[{n}:a]aresample=48000,atrim=0:{seconds:.2f},volume={vol},afade=t=in:d=1.2,afade=t=out:st={max(0, seconds - 2.5):.2f}:d=2.5[mus]")
         filters.append("[mus][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=450[m]")
         labels.append("[m]")
         n += 1
@@ -857,13 +1030,21 @@ def render_episode(eid, voice=None, suffix=""):
     total = int(round(total_secs * FPS))
     say(f"  {voice_secs:.1f} s of speech at {wpm:.0f} words a minute ({used}); {total_secs:.1f} s with the end card")
     bounds = [0 if i == 0 else round(starts[i] * FPS) for i in range(len(starts))] + [round(end_t * FPS)]
-    beats = scene_beats(d, items, segs, bounds) if not own else [[] for _ in d["scenes"]]
+    beats = scene_beats(d, items, segs, bounds, words) if not own else [[] for _ in d["scenes"]]
+    # the OverSimplified layer: camera hits, gags, the sounds that go with them, where the music stops, and how still it ever gets
+    script_cues = sfx_cues(d, words, bounds)
+    hits, gags, auto_cues, quiet, pacing = comedy_and_pacing(d, items, segs, words, bounds, beats, own=bool(own), script_cues=script_cues)
+    if pacing["longest_still_s"] > quality.STILL_MAX:
+        say(f"  Pacing: the longest still stretch is {pacing['longest_still_s']} s ({pacing['longest_still_at']}).")
     scenes = []
     for i, s in enumerate(d["scenes"]):
-        sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n", "shows", "callout_word", "lines", "sfx", "link", "step_claim")}
+        sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n", "shows", "callout_word", "lines", "sfx", "link", "step_claim", "gag")}
         sc["from"] = bounds[i]
         sc["frames"] = max(12, bounds[i + 1] - bounds[i])
         sc["beats"] = beats[i]
+        sc["hits"] = hits[i]
+        if gags[i]:
+            sc["gag"] = gags[i]
         if s.get("callout"):   # the callout appears on the word it belongs to, never before it is said
             sc["callout_from"] = callout_frame(s, words, bounds[i], bounds[i + 1])
         scenes.append(sc)
@@ -875,11 +1056,11 @@ def render_episode(eid, voice=None, suffix=""):
             music = sfx.music_path(music_id)
         except (OSError, ValueError) as ex:
             say(f"  The music couldn't be fetched ({str(ex)[:120]}): no music this time.")
-    cues = sfx_cues(d, words, bounds)
+    cues = sorted(script_cues + auto_cues)
     audio_name = f"voice{suffix}.wav"
     if music or cues:
-        say(f"  Sound: {len(cues)} effect(s)" + (f", music: {sfx.MUSIC[music_id][0]}" if music else ", no music (none picked)"))
-        _, billed = mix_audio(ffmpeg, folder / f"voice{suffix}.wav", cues, music, end_t + OUTRO_SECONDS, folder / f"mix{suffix}.wav")
+        say(f"  Sound: {len(cues)} effect(s) ({len(auto_cues)} on actions and gags)" + (f", music: {sfx.MUSIC[music_id][0]}" if music else ", no music (none picked)"))
+        _, billed = mix_audio(ffmpeg, folder / f"voice{suffix}.wav", cues, music, end_t + OUTRO_SECONDS, folder / f"mix{suffix}.wav", quiet=quiet)
         if billed:
             cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": billed, "episode": ep["id"], "what": "sound effects"})
             say(f"  ElevenLabs: {billed} characters for new sound effects (made once, reused in every later video).")
@@ -895,6 +1076,7 @@ def render_episode(eid, voice=None, suffix=""):
         "outro_from": round(end_t * FPS),
         "caption_chunks": caption_chunks(words),
         "scenes": scenes,
+        "pacing": pacing,
     }
     (folder / f"scene-props{suffix}.json").write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
     say("Animating (this is the slow part: a few minutes)...")

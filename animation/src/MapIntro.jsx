@@ -3,12 +3,19 @@ import {spring, useVideoConfig} from 'remotion';
 import {C, HEAD, W, H, easeInOut, lerp, clamp01} from './theme';
 import {LAND, RIVERS, K} from './mapdata';
 
+const ArrowHead = ({x, y, angle, color}) => (
+  <g transform={`translate(${x} ${y}) rotate(${(angle * 180) / Math.PI})`}>
+    <path d="M 34 0 L -18 -30 L -8 0 L -18 30 Z" fill={color} stroke={C.ink} strokeWidth="7" strokeLinejoin="round" />
+  </g>
+);
+
 /*
  * Animated map (also the intro). The camera flies from a world view down to the place, pins drop in, and an optional
  * route draws between pins. Real geography (Natural Earth, public domain): x = lon, y = lat, so a pin is just lat/lon.
  *
  * map: { focus: [lat, lon], zoom: pixels per degree at the end (e.g. 60 = a region), from_zoom: start (default 3.4),
- *        pins: [{label, lat, lon}], route: [pinIndexA, pinIndexB], route_label: "about 5,000 stadia" }
+ *        pins: [{label, lat, lon}], route: [pinIndexA, pinIndexB], route_label: "about 5,000 stadia",
+ *        arrows: [{from: pinIndex, to: pinIndex, label, color: terracotta|gold|teal, bend}] (2.22.1: drawn on one after another) }
  */
 export const MapIntro = ({map, frame, frames}) => {
   const {fps} = useVideoConfig();
@@ -74,8 +81,50 @@ export const MapIntro = ({map, frame, frames}) => {
           )}
         </g>
       )}
+      {r && routeProgress > 0.02 && routeProgress < 1.01 && (() => {   // an arrowhead on the route's moving tip
+        const x0 = sx(r[0].lon);
+        const y0 = sy(r[0].lat);
+        const x1 = lerp(x0, sx(r[1].lon), routeProgress);
+        const y1 = lerp(y0, sy(r[1].lat), routeProgress);
+        return <ArrowHead x={x1} y={y1} angle={Math.atan2(y1 - y0, x1 - x0)} color={C.terracotta} />;
+      })()}
+      {(map.arrows || []).map((a, i, all) => {
+        // OverSimplified-style arrows: thick, curved, drawn on one after another, each with its head and an optional label
+        const A = pins[a.from];
+        const B = pins[a.to];
+        if (!A || !B) return null;
+        const n = all.length;
+        const p = easeInOut(clamp01((frame - frames * (0.5 + (0.42 * i) / n)) / Math.max(6, (frames * 0.34) / n)));
+        if (p <= 0) return null;
+        const [ax, ay, bx, by] = [sx(A.lon), sy(A.lat), sx(B.lon), sy(B.lat)];
+        const len = Math.hypot(bx - ax, by - ay) || 1;
+        const bend = (a.bend ?? 0.22) * len;
+        const cx = (ax + bx) / 2 + ((by - ay) / len) * bend;
+        const cy = (ay + by) / 2 - ((bx - ax) / len) * bend;
+        const q = (t, u, v, w) => (1 - t) * (1 - t) * u + 2 * (1 - t) * t * v + t * t * w;
+        const tx = q(p, ax, cx, bx);
+        const ty = q(p, ay, cy, by);
+        const dx = 2 * (1 - p) * (cx - ax) + 2 * p * (bx - cx);
+        const dy = 2 * (1 - p) * (cy - ay) + 2 * p * (by - cy);
+        const col = a.color === 'gold' ? C.gold : a.color === 'teal' ? C.teal : C.terracotta;
+        const d = `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`;
+        return (
+          <g key={`a${i}`}>
+            <path d={d} pathLength="1" fill="none" stroke={C.ink} strokeWidth="30" strokeLinecap="round" strokeDasharray="1 2" strokeDashoffset={1 - p} />
+            <path d={d} pathLength="1" fill="none" stroke={col} strokeWidth="18" strokeLinecap="round" strokeDasharray="1 2" strokeDashoffset={1 - p} />
+            <ArrowHead x={tx} y={ty} angle={Math.atan2(dy, dx)} color={col} />
+            {a.label && p > 0.7 && (
+              <g transform={`translate(${cx} ${cy - 30})`} opacity={clamp01((p - 0.7) * 4)}>
+                <rect x={-a.label.length * 13 - 22} y="-36" width={a.label.length * 26 + 44} height="72" rx="16" fill={C.parchment} stroke={C.ink} strokeWidth="6" />
+                <text textAnchor="middle" y="14" fontFamily={HEAD} fontSize="40" fill={C.ink}>{a.label}</text>
+              </g>
+            )}
+          </g>
+        );
+      })}
       {pins.map((pin, i) => {
         const drop = spring({frame: frame - frames * 0.5 - i * 7, fps, config: {damping: 9, stiffness: 140, mass: 0.6}});
+        const pop = spring({frame: frame - frames * 0.5 - i * 7 - 4, fps, config: {damping: 6, stiffness: 220, mass: 0.5}});   // the city's name pops with a bounce
         const x = sx(pin.lon);
         const y = sy(pin.lat);
         return (
@@ -83,7 +132,7 @@ export const MapIntro = ({map, frame, frames}) => {
             <ellipse cx="0" cy={(1 - drop) * 220} rx="22" ry="8" fill={C.ink} opacity="0.3" />
             <path d="M 0 0 C -38 -46 -38 -98 0 -98 C 38 -98 38 -46 0 0 Z" fill={C.terracotta} stroke={C.ink} strokeWidth="7" strokeLinejoin="round" />
             <circle cx="0" cy="-66" r="13" fill={C.parchment} stroke={C.ink} strokeWidth="5" />
-            <g transform={`translate(0 ${-150}) scale(${0.6 + 0.4 * drop})`}>
+            <g transform={`translate(0 ${-150}) scale(${Math.max(0.01, pop)})`}>
               <rect x={-pin.label.length * 14 - 24} y="-42" width={pin.label.length * 28 + 48} height="84" rx="18" fill={C.parchment} stroke={C.ink} strokeWidth="7" />
               <text textAnchor="middle" y="16" fontFamily={HEAD} fontSize="48" fill={C.ink}>{pin.label}</text>
             </g>

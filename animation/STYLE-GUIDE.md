@@ -55,14 +55,34 @@ carry a `speaker` per frame). The others look at the speaker. A speaker without 
 The owner approves the cast per kit version (`quality.KIT_VERSION`); an approval of an older kit doesn't count.
 
 ## Backdrops (layered, with parallax and ambient motion)
-`court` (Alexandrian courtyard; tone `noon` / `sunset` / `night`), `library`, `nile`, `well`, `study`, `map`, `diagram`.
+`court` (Alexandrian courtyard; tone `noon` / `sunset` / `night`), `library`, `nile`, `well`, `study`, `street` (an Alexandria
+street: houses, a market stall, the lighthouse at the end; tone), `desert` (a desert road, a caravan on the dunes; tone), `map`,
+`diagram`. Since 2.22.1 they are drawn like the cast: thin warm-brown lines (`#4A2C20`, 3.6 px), the muted sepia palette
+(`K` in `Backdrops.jsx`), flat soft shading, 3-4 depth layers (`Layer depth`) for parallax.
 `map` is real geography (Natural Earth, public domain): give a latitude/longitude and the camera flies there from the
-world view; pins drop in; an optional dashed route draws between two pins.
+world view; pins drop in and their names pop; a dashed route draws between two pins with an arrowhead; `arrows`
+[{from, to, label, color}] are thick curved OverSimplified-style arrows that draw on one after another.
 New backdrops are added only when a script needs one (Calina lists them in `kit_requests`).
 
 ## Camera
 Every scene has one move: `push_in`, `pull_out`, `pan_left`, `pan_right`, `pan_up`, `pan_down`, `drift`.
-Scene changes: a slide or a circular iris, 9 frames.
+On top of it, camera hits (2.22.1, `Camera.jsx HITS`) at a frame: `punch_in` (a 5-frame zoom that frames one speaker, still inside
+the safe area; without a speaker, on the group), `release`, `whip` (a fast blurred pan), `shake`, `hold` (the move stops: deadpan).
+Scene changes (`transition`): `cut`, `whip`, a slide or a circular iris; split parts of one scene arrive with a cut.
+
+## Movement, pacing and comedy (2.22.1, the OverSimplified bar)
+- Actions (`Character.jsx ACTIONS`): `walk_in`, `walk_out` (walk on or off the picture, ~1 s), `turn`, `jump` (with a squash on
+  landing), `flinch` (pose: hands up, scared), `facepalm` (pose: the hand over the face), `shrug`, `double_take` (a glance away and a
+  snap back, surprised), `nod`. Poses `facepalm` and `flinch` are new. Secondary motion: cloaks and the hanging end of a himation swing,
+  long and full beards sway, the body breathes.
+- Pacing: something changes every 2-4 s. `animate.comedy_and_pacing` adds a punch-in on whoever speaks in a conversation (release when
+  the narrator takes over) and a camera beat in any stretch with nothing planned (every ~2.8 s); the longest still stretch is written
+  into the props file (`pacing`) and Israa gets it with the contact sheets (bar: `quality.STILL_MAX`, 4 s).
+- Gags (`gag` on a scene): `freeze_label` (the picture stops for 1.6 s on its word, tints, a label ribbon points at someone; record
+  scratch; the music stops), `cutaway` (a whip in and a "MEANWHILE..." tag), `interrupt` (a character cuts in on the narrator: punch-in,
+  a jolt, a pop), `deadpan` (the camera holds and the music stops for a second, then a punch-in on the punchline).
+- Sound: every action gets its effect (footsteps, boing, gulp, slap, whoosh), map pins pop; never within 0.4 s of another effect and at
+  most five extra a scene.
 
 ## Captions
 Lilita One, 124 px, upper case, white with a thick Ink outline, 2-3 words at a time, the spoken word turns Gold.
@@ -87,9 +107,12 @@ End card (1.7 s): "Follow for more history", the channel name and handle.
   "cast_roles": {"scholar": "Eratosthenes", "ruler": "King Ptolemy III"},
   "scenes": [ {
       "n": 1, "backdrop": "court", "tone": "noon", "camera": "push_in",
-      "characters": [ {"who": "scholar", "pose": "think", "at": "right", "expression": "neutral"} ],
+      "characters": [ {"who": "scholar", "pose": "think", "at": "right", "expression": "neutral"},
+                      {"who": "ruler", "pose": "stand", "at": "left", "action": "walk_in"} ],
       "lines": [ {"who": "narrator", "text": "Two thousand years ago, a man measured the planet... with a stick.", "tag": "mischievously"},
-                 {"who": "scholar", "text": "It's a very GOOD stick.", "tag": "deadpan", "pose": "present", "expression": "smug"} ],
+                 {"who": "scholar", "text": "It's a very GOOD stick.", "tag": "deadpan", "pose": "present", "expression": "smug",
+                  "camera": "punch_in", "reacts": [ {"who": "ruler", "action": "facepalm"} ]} ],
+      "gag": {"type": "freeze_label", "text": "Eratosthenes, overachiever", "on_word": "stick", "who": "scholar"},
       "crowd": {"size": 5, "reaction": "murmur"},
       "sfx": [ {"name": "dun_dun", "on_word": "stick"} ],
       "props": [ {"type": "rod", "x": 300, "shadow": 0.6} ],

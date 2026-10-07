@@ -1,6 +1,6 @@
 import React from 'react';
-import {AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame} from 'remotion';
-import {C, W, H, easeOut, clamp01} from './theme';
+import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {C, HEAD, W, H, easeOut, clamp01, lerp} from './theme';
 import {Camera, SAFE} from './Camera';
 import {BACKDROPS} from './Backdrops';
 import {Character, Crowd, reach} from './Character';
@@ -19,27 +19,101 @@ import GENERATED from './generated/index.js';
 const SLOTS = {left: 330, center: 540, right: 750};
 const SLOTS3 = {left: 250, center: 540, right: 830};
 const TRANSITION = 9; // frames the next scene takes to arrive
+const WALK = 28;      // frames a walk in or out takes
+const OFF = 420;      // how far off the picture a character waits before walking in
 
-// Who is doing what at this frame of the scene: a character's pose and face change on its own lines (beats), blending in over 8 frames.
+// Who is doing what at this frame of the scene: a character's pose and face change on its own lines (beats), blending in over 8
+// frames; actions (2.22.1) say how long ago the last one began, how often he has turned, and where a walk in or out has got to.
 const stateAt = (c, beats, frame) => {
   let pose = c.pose || 'stand';
   let prev = pose;
   let since = null;
   let expression = c.expression || 'neutral';
+  let action = null;
+  let actionAt = 0;
+  let turns = 0;
+  let walkIn = null;
+  let walkOut = null;
   for (const b of beats) {
-    if (b.who !== c.who || b.at > frame) continue;
+    if (b.who !== c.who) continue;
+    if (b.action === 'walk_in') walkIn = b.at;   // known from the start: he waits off the picture until then
+    if (b.at > frame) continue;
     if (b.pose && b.pose !== pose) {
       prev = pose;
       pose = b.pose;
       since = frame - b.at;
     }
     if (b.expression) expression = b.expression;
+    if (b.action) {
+      action = b.action;
+      actionAt = b.at;
+      if (b.action === 'turn') turns += 1;
+      if (b.action === 'walk_out') walkOut = b.at;
+    }
   }
-  return {pose: prev, poseTo: pose, blend: since === null ? 1 : easeOut(clamp01(since / 8)), expression};
+  return {pose: prev, poseTo: pose, blend: since === null ? 1 : easeOut(clamp01(since / 8)), expression, action,
+    actionAge: action ? frame - actionAt : null, turns, walkIn, walkOut};
+};
+
+// Where a walking character is: [x, walking, direction]. side: -1 = he comes from / leaves by the left.
+const walkPos = (x, st, frame) => {
+  const side = x < W / 2 ? -1 : 1;
+  const off = side < 0 ? -OFF : W + OFF;
+  if (st.walkOut !== null && frame >= st.walkOut) {
+    const p = clamp01((frame - st.walkOut) / WALK);
+    return [lerp(x, off, p), p < 1, side];
+  }
+  if (st.walkIn !== null) {
+    if (frame < st.walkIn) return [off, false, -side];
+    const p = clamp01((frame - st.walkIn) / WALK);
+    return [lerp(off, x, p), p < 1, -side];
+  }
+  return [x, false, 0];
+};
+
+// The freeze-frame label (OverSimplified's "Eratosthenes, overachiever"): the picture stops, tints, a ribbon slides in.
+const FreezeLabel = ({text, age, frames, pointX}) => {
+  const {fps} = useVideoConfig();
+  const pop = spring({frame: age - 2, fps, config: {damping: 12, stiffness: 170, mass: 0.6}});
+  const out = 1 - easeOut(clamp01((age - frames + 6) / 6));
+  const fs = Math.max(44, Math.min(76, 900 / Math.max(1, text.length * 0.56)));
+  const w = Math.min(W - 160, text.length * fs * 0.56 + 100);
+  const px = Math.max(W / 2 - w / 2 + 60, Math.min(W / 2 + w / 2 - 60, pointX ?? W / 2));
+  return (
+    <g opacity={out}>
+      <rect x="-400" y="-200" width="1880" height="2300" fill="#8A6A45" opacity="0.32" style={{mixBlendMode: 'multiply'}} />
+      {age < 3 && <rect x="-400" y="-200" width="1880" height="2300" fill={C.white} opacity={0.7 * (1 - age / 3)} />}
+      <g transform={`translate(${W / 2 + (1 - pop) * -W} 560) rotate(-2)`}>
+        <path d={`M ${px - W / 2 - 24} 52 L ${px - W / 2} 96 L ${px - W / 2 + 24} 52 Z`} fill={C.parchment} stroke={C.ink} strokeWidth="8" strokeLinejoin="round" />
+        <rect x={-w / 2} y="-60" width={w} height="116" rx="20" fill={C.parchment} stroke={C.ink} strokeWidth="9" />
+        <text textAnchor="middle" y={fs * 0.34} fontFamily={HEAD} fontSize={fs} fill={C.ink}>{text}</text>
+      </g>
+    </g>
+  );
+};
+
+// A cutaway's tag in the corner ("MEANWHILE...") for its first second and a half.
+const CutawayTag = ({text, frame}) => {
+  const {fps} = useVideoConfig();
+  if (frame > 50) return null;
+  const pop = spring({frame: frame - 3, fps, config: {damping: 11, stiffness: 160}});
+  const out = 1 - easeOut(clamp01((frame - 42) / 8));
+  const fs = 52;
+  const w = Math.min(W - 160, text.length * fs * 0.56 + 70);
+  return (
+    <g opacity={out} transform={`translate(${SAFE + 20 + w / 2} 420) rotate(-4) scale(${Math.max(0.01, pop)})`}>
+      <rect x={-w / 2} y="-46" width={w} height="88" rx="16" fill={C.terracotta} stroke={C.ink} strokeWidth="8" />
+      <text textAnchor="middle" y="18" fontFamily={HEAD} fontSize={fs} fill={C.parchment}>{text}</text>
+    </g>
+  );
 };
 
 const Scene = ({scene, mouth, speaker, index}) => {
-  const frame = useCurrentFrame();
+  const real = useCurrentFrame();
+  // a freeze-frame gag stops the picture (everything, mouths too) while the voice goes on; then it carries on from now
+  const gag = scene.gag || null;
+  const frozen = gag && gag.type === 'freeze_label' && real >= gag.at && real < gag.at + (gag.frames || 48);
+  const frame = frozen ? gag.at : real;
   const g = frame + scene.from; // frame on the whole timeline
   const cast = scene.characters || [];
   const n = cast.length;
@@ -76,15 +150,29 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const focus = [(minX + maxX) / 2, H / 2];
   const spread = xs.length ? (maxX - minX) / 2 : 0;
   const topY = chars.length ? Math.min(...chars.map((c) => c.y - c.r.top * c.scale)) : null;
+  // camera hits name a character: the camera frames that one person (his own width and height, inside the safe area)
+  const subjects = {};
+  chars.forEach((c) => {
+    const l = c.x - c.r.left * c.scale;
+    const r = c.x + c.r.right * c.scale;
+    subjects[c.who] = {focus: (l + r) / 2, spread: (r - l) / 2, topY: c.y - c.r.top * c.scale};
+  });
+  const hits = (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
   const Back = BACKDROPS[scene.backdrop];
   const t = easeOut(clamp01(frame / TRANSITION));
-  const kind = scene.transition || ['slide_left', 'iris', 'slide_up', 'iris'][index % 4];
+  const kind = scene.transition || (gag && gag.type === 'cutaway' ? 'whip' : ['slide_left', 'iris', 'slide_up', 'iris'][index % 4]);
   let wrap = {};
   let clip = null;
+  let blur = false;
   if (index > 0 && frame < TRANSITION + 1) {
-    if (kind === 'slide_left') wrap = {transform: `translate(${(1 - t) * W} 0)`};
-    else if (kind === 'slide_up') wrap = {transform: `translate(0 ${(1 - t) * H})`};
+    if (kind === 'slide_left') wrap = {transform: `translate(${(1 - t) * W}px, 0px)`};
+    else if (kind === 'slide_up') wrap = {transform: `translate(0px, ${(1 - t) * H}px)`};
     else if (kind === 'iris') clip = (1 - t) * 0 + t * 1500;
+    else if (kind === 'whip') {
+      const tw = easeOut(clamp01(frame / 6));
+      wrap = {transform: `translate(${(1 - tw) * W}px, 0px)`};
+      blur = tw < 1;
+    }
   }
   const Bespoke = scene.generated ? GENERATED[scene.generated] : null; // a scene the Animator wrote (animator.py)
   const isMap = scene.backdrop === 'map';
@@ -96,7 +184,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
       {isMap && <MapIntro map={scene.map || {focus: [30, 30], zoom: 20}} frame={frame} frames={scene.frames} />}
       {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame} frames={scene.frames} />}
       {!isMap && !isDiagram && (
-        <Camera move={scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit}>
+        <Camera move={scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit} hits={hits}>
           {Back && <Back frame={frame} tone={scene.tone} />}
           {props.map((p, i) => {
             if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x ?? 300} y={p.y ?? 1250} shadow={p.shadow ?? 0.5} />;
@@ -109,9 +197,12 @@ const Scene = ({scene, mouth, speaker, index}) => {
           )}
           {chars.map((c, i) => {
             const st = stateAt(c, beats, frame);
+            const [x, walking, dir] = walkPos(c.x, st, frame);
+            const facing = (dir || c.facing || 1) * (st.turns % 2 ? -1 : 1);
             return (
               <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} look={lookOf(c)}
-                x={c.x} y={c.y} scale={c.scale} mouth={mouthOf(c)} frame={frame} enterAt={4 + i * 6} seed={i + index} facing={c.facing || 1} />
+                x={x} y={c.y} scale={c.scale} mouth={mouthOf(c)} frame={frame} enterAt={st.walkIn !== null ? -1000 : 4 + i * 6} seed={i + index}
+                facing={facing} walking={walking} action={st.action} actionAge={st.actionAge} />
             );
           })}
         </Camera>
@@ -130,18 +221,22 @@ const Scene = ({scene, mouth, speaker, index}) => {
       {scene.callout && frame >= (scene.callout_from ?? 0) && (
         <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isMap || isDiagram ? scene.callout_y ?? 520 : 215} />
       )}
+      {gag && gag.type === 'cutaway' && <CutawayTag text={(gag.text || 'MEANWHILE...').toUpperCase()} frame={frame} />}
     </>
   );
+  const pointAt = gag && gag.who && subjects[gag.who] ? subjects[gag.who].focus : null;
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0, ...wrap}}>
-      {clip !== null && (
-        <defs>
+      <defs>
+        {clip !== null && (
           <clipPath id={`iris-${index}`}>
             <circle cx={W / 2} cy={H * 0.55} r={clip} />
           </clipPath>
-        </defs>
-      )}
-      <g clipPath={clip !== null ? `url(#iris-${index})` : undefined}>{body}</g>
+        )}
+        {blur && <filter id={`whip-in-${index}`} x="-20%" y="0" width="140%" height="100%"><feGaussianBlur stdDeviation="30 0" /></filter>}
+      </defs>
+      <g clipPath={clip !== null ? `url(#iris-${index})` : undefined} filter={blur ? `url(#whip-in-${index})` : undefined}>{body}</g>
+      {frozen && gag.text && <FreezeLabel text={gag.text} age={real - gag.at} frames={gag.frames || 48} pointX={pointAt} />}
     </svg>
   );
 };

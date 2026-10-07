@@ -23,6 +23,30 @@ export const POSES = {
   present: {L: [10, 14], R: [52, 62], head: -2},
   shrug: {L: [46, 90], R: [46, 90], head: 7},
   cheer: {L: [158, 10], R: [158, 10], head: -5},
+  facepalm: {L: [10, 14], R: [130, 136], head: 9},   // the hand over the eyes (drawn in front of the face)
+  flinch: {L: [60, 120], R: [60, 120], head: -8},    // both hands up by the head
+};
+// Actions (2.22.1): short movements on top of the pose, timed by the scene's beats. walk_in / walk_out / turn are handled by the
+// scene (position and facing); facepalm / shrug / flinch also set a pose for a moment.
+export const ACTIONS = ['walk_in', 'walk_out', 'turn', 'jump', 'flinch', 'facepalm', 'shrug', 'double_take', 'nod'];
+const actionMotion = (action, age) => {
+  const m = {up: 0, squash: 1, lean: 0, nod: 0, away: false};
+  if (age === null || age < 0) return m;
+  if (action === 'jump') {
+    if (age < 16) m.up = Math.sin((Math.PI * age) / 16) * 110;
+    else if (age < 22) m.squash = 1 - 0.08 * Math.sin((Math.PI * (age - 16)) / 6);
+  } else if (action === 'flinch') {
+    m.lean = age < 4 ? (-10 * age) / 4 : -10 * Math.max(0, 1 - (age - 4) / 20);
+    m.up = age < 8 ? Math.sin((Math.PI * age) / 8) * 22 : 0;
+  } else if (action === 'double_take') {
+    m.away = age >= 3 && age < 11;   // a glance away... then the snap back
+    if (age >= 11 && age < 19) m.up = Math.sin((Math.PI * (age - 11)) / 8) * 40;
+  } else if (action === 'nod') {
+    m.nod = age < 20 ? Math.sin(age / 3) * 7 : 0;
+  } else if (action === 'shrug') {
+    m.up = age < 10 ? Math.sin((Math.PI * age) / 10) * 12 : 0;
+  }
+  return m;
 };
 // The nine mouth shapes of Rhubarb Lip Sync (MIT licence): A closed (P B M), B teeth together (K S T), C open (EH), D wide
 // (AA), E rounded (AO), F pucker (OO W), G teeth on lip (F V), H tongue up (L), X rest. Old scene files use 0/1/2.
@@ -490,7 +514,7 @@ const Nose = ({skin}) => (
   </g>
 );
 
-const Face = ({c, mouth, blink, brow = 0, expression = 'neutral', look = [0, 0]}) => {
+const Face = ({c, mouth, blink, brow = 0, expression = 'neutral', look = [0, 0], beardSway = 0}) => {
   const e = EXPR[expression] || EXPR.neutral;
   const by = -26 - brow - e.lift;
   const t = e.tilt;
@@ -512,7 +536,7 @@ const Face = ({c, mouth, blink, brow = 0, expression = 'neutral', look = [0, 0]}
       {c.lashes && !blink && !e.shut && <path d="M -32 -10 L -36 -13 M 32 -10 L 36 -13" stroke={INK} strokeWidth="2" strokeLinecap="round" />}
       <path d={`M -36 ${by + t * 0.5 - e.asym} Q -22 ${by - 5 - e.asym} -9 ${by - t * 0.5 - e.asym}`} fill="none" stroke={browColor} strokeWidth={bw} strokeLinecap="round" />
       <path d={`M 9 ${by - t * 0.5} Q 22 ${by - 5} 36 ${by + t * 0.5}`} fill="none" stroke={browColor} strokeWidth={bw} strokeLinecap="round" />
-      <Beard c={c} />
+      <g transform={beardSway ? `rotate(${beardSway} 0 30)` : undefined}><Beard c={c} /></g>
       <Mouth shape={mouth} rest={e.rest} skin={c.skin} />
       <Moustache c={c} />
       <Nose skin={c.skin} />
@@ -547,7 +571,7 @@ const Leg = ({x, swing, lift, skin, sandal = '#7A4E36'}) => (
   </g>
 );
 
-const Body = ({c, step = null}) => {
+const Body = ({c, step = null, flow = 0}) => {   // flow: degrees the hanging cloth swings this frame
   const b = c.build || 1;
   const sw = 60 * b;
   const belly = b > 1.15 ? 60 * (b - 1.15) : 0;
@@ -569,7 +593,7 @@ const Body = ({c, step = null}) => {
   return (
     <g>
       {c.cloak && (   // the chlamys hanging behind: its inside is in shade
-        <g>
+        <g transform={`rotate(${flow} 0 -486)`}>
           <path d={`M ${-sw} -486 Q ${-sw - 30} -300 ${-sw - 46} ${cloakHem} Q 0 ${cloakHem + 14} ${sw + 46} ${cloakHem} Q ${sw + 30} -300 ${sw} -486 Z`} fill={shade(c.cloak, 0.8)} {...ol()} />
           <path d={`M ${-sw - 20} -300 Q ${-sw - 30} -220 ${-sw - 34} ${cloakHem + 4} M ${sw + 20} -300 Q ${sw + 30} -220 ${sw + 34} ${cloakHem + 4}`} {...fold()} />
         </g>
@@ -610,9 +634,11 @@ const Body = ({c, step = null}) => {
           ))}
           <path d={`M ${-hemW * 0.5} -330 Q ${hemW * 0.1} -290 ${hemW * 0.85} -340 M ${-hemW * 0.3} -270 Q ${hemW * 0.2} -236 ${hemW * 0.8} -280`} {...fold(1.5, 0.4)} />
           {c.trim && <path d={`M ${hemW + 10} ${hemD} Q ${hemW * 0.4} ${hemD + 18} ${-hemW * 0.1} ${hemD + 6} Q ${-hemW * 0.6} ${hemD - 4} ${-hemW - 12} ${hemD + 14}`} fill="none" stroke={c.trim} strokeWidth="4" />}
-          {/* its end hanging down the front from the left shoulder, with a zigzag hem */}
-          <path d={`M ${-sw + 4} -492 Q ${-sw + 26} -440 ${-sw + 20} -378 L ${-sw + 28} -340 L ${-sw + 8} -352 L ${-sw - 6} -330 Q ${-sw - 12} -420 ${-sw + 4} -492 Z`} fill={c.drape} {...ol(LW * 0.9)} />
-          <path d={`M ${-sw + 6} -470 Q ${-sw + 12} -410 ${-sw + 8} -356`} {...fold(1.5, 0.45)} />
+          {/* its end hanging down the front from the left shoulder, with a zigzag hem (it swings a little) */}
+          <g transform={`rotate(${flow * 1.5} ${-sw + 4} -492)`}>
+            <path d={`M ${-sw + 4} -492 Q ${-sw + 26} -440 ${-sw + 20} -378 L ${-sw + 28} -340 L ${-sw + 8} -352 L ${-sw - 6} -330 Q ${-sw - 12} -420 ${-sw + 4} -492 Z`} fill={c.drape} {...ol(LW * 0.9)} />
+            <path d={`M ${-sw + 6} -470 Q ${-sw + 12} -410 ${-sw + 8} -356`} {...fold(1.5, 0.45)} />
+          </g>
         </g>
       )}
       {c.cloak && (   // the cloak's front over both shoulders, pinned with a round brooch
@@ -681,10 +707,12 @@ const HeldProp = ({c, x, y, tilt}) => {
 /**
  * who, pose (blends into poseTo by `blend`), mouth (Rhubarb letter, or the old 0|1|2), x and y (where the feet are), scale,
  * frame (frames since the scene began), enterAt (frames before popping in), seed (desynchronises idle motion), expression,
- * look [x, y] (eyes), walking, noProp, look_ (a crowd person's own look instead of a cast member), facing (-1 = mirrored)
+ * look [x, y] (eyes), walking, noProp, look_ (a crowd person's own look instead of a cast member), facing (-1 = mirrored),
+ * action + actionAge (frames since that action began: jump, flinch, double_take, nod, shrug add their movement on top)
  */
 export const Character = ({who = 'scholar', pose = 'stand', poseTo = null, blend = 0, mouth = 0, x = 540, y = 1180, scale = 1.3, frame,
-  enterAt = 0, seed = 0, expression = 'neutral', look = [0, 0], walking = false, noProp = false, look_ = null, facing = 1, hop = 0}) => {
+  enterAt = 0, seed = 0, expression = 'neutral', look = [0, 0], walking = false, noProp = false, look_ = null, facing = 1, hop = 0,
+  action = null, actionAge = null}) => {
   const {fps} = useVideoConfig();
   const c = look_ || castOf(who);
   const A = POSES[pose] || POSES.stand;
@@ -711,20 +739,27 @@ export const Character = ({who = 'scholar', pose = 'stand', poseTo = null, blend
   const eff = Math.max(0, enter);
   const k = scale * (0.9 + 0.1 * eff);
   const pointing = (pose === 'point' && (!poseTo || blend < 0.5)) || (poseTo === 'point' && blend >= 0.5);
+  const palm = (pose === 'facepalm' && (!poseTo || blend < 0.5)) || (poseTo === 'facepalm' && blend >= 0.5);   // that hand goes over the face
+  const act = actionMotion(action, actionAge);
+  // secondary motion: the hanging cloth and a long beard swing a little after the body (more when walking or jumping)
+  const flow = walking ? Math.sin(stride - 0.6) * 4 : Math.sin(t / 17) * 1.5 + act.up * 0.03;
+  const beardSway = Math.sin(t / 19 + 1) * 1.6 + (walking ? Math.sin(stride - 0.8) * 2.5 : 0);
+  const armR = <Arm side={1} shoulder={rsh + (walking ? -swayArm : swayArm) + (palm ? 0 : gestureArm)} elbow={rel} skin={c.skin} sleeve={c.tunic} build={b} finger={pointing} armour={c.armour} />;
   return (
-    <g transform={`translate(${x} ${y + bob + (1 - eff) * 80}) scale(${k * facing} ${k * tall * (1 + breathe)}) rotate(${sway * 0.4 + laughShake * 0.3})`} opacity={Math.min(1, eff * 2)}>
-      <ellipse cx="0" cy="22" rx={80 * b} ry="12" fill={INK} opacity="0.14" />
-      <Body c={c} step={stride} />
-      <Arm side={1} shoulder={rsh + (walking ? -swayArm : swayArm) + gestureArm} elbow={rel} skin={c.skin} sleeve={c.tunic} build={b} finger={pointing} armour={c.armour} />
+    <g transform={`translate(${x} ${y + bob + (1 - eff) * 80 - act.up * k}) scale(${k * facing * (act.away ? -1 : 1)} ${k * tall * (1 + breathe) * act.squash}) rotate(${sway * 0.4 + laughShake * 0.3 + act.lean})`} opacity={Math.min(1, eff * 2)}>
+      <ellipse cx="0" cy="22" rx={80 * b} ry="12" fill={INK} opacity={0.14 * Math.max(0.4, 1 - act.up / 200)} transform={`translate(0 ${act.up})`} />
+      <Body c={c} step={stride} flow={flow} />
+      {!palm && armR}
       <Arm side={-1} shoulder={lsh + swayArm} elbow={lel} skin={c.skin} sleeve={c.drape || c.tunic} build={b} armour={c.armour} />
       {!noProp && <HeldProp c={c} x={hx} y={hy} tilt={-hth * 0.22} />}
-      <g transform={`translate(0 ${HEAD_Y}) rotate(${P.head + sway + nod + laughShake}) scale(${HEAD_K})`}>
+      <g transform={`translate(0 ${HEAD_Y}) rotate(${P.head + sway + nod + laughShake + act.nod}) scale(${HEAD_K})`}>
         <HairBack c={c} />
         <Face c={c} mouth={mouth} blink={blinkNow} brow={pose === 'amazed' ? 6 : talking ? Math.max(0, Math.sin(t / 11)) * 3 : 0}
-          expression={pose === 'amazed' && expression === 'neutral' ? 'surprised' : expression} look={look} />
+          expression={pose === 'amazed' && expression === 'neutral' ? 'surprised' : expression} look={look} beardSway={c.beard === 'long' || c.beard === 'full' ? beardSway : 0} />
         <HairFront c={c} />
         <Headwear c={c} />
       </g>
+      {palm && armR}
     </g>
   );
 };
