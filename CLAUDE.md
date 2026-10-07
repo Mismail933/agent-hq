@@ -113,8 +113,13 @@ Agents never spend money without the owner's explicit approval.
   until then. Rhubarb 1.14.0 (MIT, checked: commercial use allowed) is downloaded once into ~/.agent-hq-anim/rhubarb with a pinned
   SHA256; `RHUBARB = False` falls back to the old loudness mouths. This PC has an MX150 (2 GB): no local image generation
   (request step 4 skipped by its own rule).
-- Render limits in one place (2.18.6): `quality.MIN/MAX_WORDS` (50-420), `MIN/MAX_SCENES` (7-20), `MAX_LINE_WORDS` (34); `animate.checklist`
-  and `quality.length_problems` both use them (no length target, only the platform's 3-minute ceiling). A voice line over the cap that
+- Length is nobody's decision (2.18.7): no length ever blocks a script or a render. The story sets it. `animate.render_episode` labels the
+  episode `data.format = "video"` by itself when the finished piece is over `SHORT_LIMIT` (178 s; YouTube's own rule for vertical video),
+  drops `#shorts` from the description then, and the office shows REGULAR VIDEO · NOT A SHORT; there is no switch and no `--long`. Only an
+  absurd 16+ minutes (`VIDEO_CAP`) or 1800+ words (`quality.MAX_WORDS`) is refused. An ElevenLabs voice made once for the same words, voice
+  and speed is cached in `ep-NNN/_voice-cache/` (`animate.synth_cached`), so a retry costs no characters.
+- Render limits in one place (2.18.6): `quality.MIN/MAX_WORDS`, `MIN/MAX_SCENES` (7-20), `MAX_LINE_WORDS` (34); `animate.checklist`
+  and `quality.length_problems` both use them. A voice line over the cap that
   is made of whole sentences is **split at the sentence boundaries into consecutive scenes** (`quality.split_long_lines`: same
   backdrop/camera/characters/source, words unchanged, the callout stays on the part holding its word, `spine.question_answered_in_scene`
   renumbered) instead of refusing: at write time in `pre_review` and again at render (`animate.auto_split`, saved on the episode as
@@ -130,8 +135,7 @@ Agents never spend money without the owner's explicit approval.
 - No length cap (2.18.2): the owner's rule is that the story sets the length. `quality.style_bar` strips every length target from the
   board before Calina or Israa read it (`no_length`: only the offending clause goes), starts with an explicit LENGTH rule, and
   Israa's base prompt and Calina's V3 prompt both say it overrides boards, guides and Atlas's notes. `hq board-note <project> "..."`
-  replaces the owner's note on the approved board. The code caps are only absurd ones (animate.checklist 50-420 words, MAX_TOTAL
-  178 s = YouTube's 3 minutes). `episodes.data.do_not_upload` (`hq do-not-upload|allow-upload`, buttons in Content) keeps a duplicate
+  replaces the owner's note on the approved board. The code caps are only absurd ones (see 2.18.7 above). `episodes.data.do_not_upload` (`hq do-not-upload|allow-upload`, buttons in Content) keeps a duplicate
   Short out of the owner's upload list and refuses `mark_published`.
 - Voices (2.18.1): any ElevenLabs voice id can be registered per project (`animate.py voice-add`, stored in project meta
   `eleven_voices`, sample in voice-samples/, kept in every later sample set); `render_episode(eid, voice, suffix)` writes variants

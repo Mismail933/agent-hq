@@ -1001,7 +1001,8 @@ class Handler(BaseHTTPRequestHandler):
                 e = cp.get_episode(eid)
                 if not e or e["status"] not in ("approved", "rendered"):
                     return self._send(409, {"error": "Only an approved script can be made into a video."})
-                voices = [str(v) for v in (self._json_body().get("voices") or []) if str(v)]
+                body = self._json_body()   # read the request once
+                voices = [str(v) for v in (body.get("voices") or []) if str(v)]
                 if voices:
                     if not production.is_animated(e):
                         return self._send(409, {"error": "Comparing voices only works for animated Shorts."})

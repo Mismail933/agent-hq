@@ -42,7 +42,8 @@ APP = HOME / "app"
 PIPER_DIR = HOME / "piper"
 PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/"
 LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 1.7
-MAX_TOTAL = 178.0   # YouTube's limit for a Short is 3 minutes; there is no other cap: the story decides, Israa judges whether it earns its length
+SHORT_LIMIT = 178.0   # YouTube calls a vertical video of up to 3 minutes a Short: nothing is decided or refused here, the label just follows the length
+VIDEO_CAP = 960.0     # only an absurd length (16 minutes) is refused; the story decides, Israa judges whether it earns its length
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
 BACKDROPS = {"court", "library", "nile", "well", "study", "map", "diagram"}
 CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"}
@@ -497,6 +498,31 @@ def voice_choice(project):
     return (vid if ok else DEFAULT_VOICE), v.get("speed")
 
 
+def is_video(d):
+    return (d or {}).get("format") == "video"
+
+
+def synth_cached(vid, lines, folder, speed):
+    """synth(), but an ElevenLabs voice made once for these exact words, this voice and this speed is reused: a retry (after a refused
+    length check, a render that failed...) costs no characters. Returns the same tuple as synth."""
+    if voice_spec(vid)[0] != "eleven":
+        return synth(vid, lines, TARGET_WPM, folder, speed)
+    key = hashlib.sha1((vid + "|" + str(speed) + "|" + "\n".join(lines)).encode("utf-8")).hexdigest()[:16]
+    cdir = folder / "_voice-cache"
+    wav_c, js_c = cdir / f"{key}.wav", cdir / f"{key}.json"
+    raw = folder / "_voice_raw.wav"
+    if wav_c.exists() and js_c.exists():
+        j = json.loads(js_c.read_text(encoding="utf-8"))
+        shutil.copy2(wav_c, raw)
+        say("  Reusing the voice already made for these words (no ElevenLabs characters used).")
+        return raw, j["starts"], j["words"], j["t"], j["wpm"], 0
+    out = synth(vid, lines, TARGET_WPM, folder, speed)
+    cdir.mkdir(exist_ok=True)
+    shutil.copy2(out[0], wav_c)
+    js_c.write_text(json.dumps({"starts": out[1], "words": out[2], "t": out[3], "wpm": out[4]}), encoding="utf-8")
+    return out
+
+
 def auto_split(ep):
     """Lines over the per-scene limit that are made of whole sentences are split into scenes (words unchanged) instead of refusing the
     render. Saved on the episode so the owner sees what was rendered. Returns the (possibly updated) episode."""
@@ -543,7 +569,7 @@ def render_episode(eid, voice=None, suffix=""):
         reg = {ELEVEN_PREFIX + x["id"]: x["label"] for x in meta_v.get("eleven_voices") or []}
         label = reg.get(vid) or ((meta_v.get("voice") or {}).get("label") if not voice else None) or voice_spec(vid)[2]
         try:
-            raw, starts, words, voice_end, wpm, chars = synth(vid, lines, TARGET_WPM, folder, speed)
+            raw, starts, words, voice_end, wpm, chars = synth_cached(vid, lines, folder, speed)
         except (elevenlabs.ElevenError, ImportError, OSError) as ex:
             if voice_spec(vid)[0] != "eleven" or not getattr(settings, "ELEVEN_FALLBACK", True):
                 raise Blocked(f"The voice failed: {ex}")
@@ -560,8 +586,17 @@ def render_episode(eid, voice=None, suffix=""):
     voice_secs = shorts.probe_seconds(ffmpeg, folder / f"voice{suffix}.wav")
     end_t = max(voice_secs, voice_end)
     total_secs = end_t + OUTRO_SECONDS
-    if total_secs > MAX_TOTAL:
-        raise Blocked(f"The Short would be {total_secs:.0f} s, over YouTube's 3-minute limit for a Short. Split the story or tighten it.")
+    if total_secs > VIDEO_CAP:
+        raise Blocked(f"This would be {total_secs:.0f} s (over 16 minutes): that is a mistake, not a story. The voice is kept, so a retry costs nothing.")
+    # nobody chooses Short or regular video: it follows from how long the finished piece is (YouTube's own rule for vertical video)
+    kind = "video" if total_secs > SHORT_LIMIT else "short"
+    if is_video(d) != (kind == "video"):
+        if kind == "video":
+            d["format"] = "video"
+        else:
+            d.pop("format", None)
+        cp.update_episode(ep["id"], data=d)
+        say(f"  {total_secs:.0f} s: this is a " + ("regular video, not a Short." if kind == "video" else "Short."))
     total = int(round(total_secs * FPS))
     say(f"  {voice_secs:.1f} s of speech at {wpm:.0f} words a minute ({used}); {total_secs:.1f} s with the end card")
     bounds = [0 if i == 0 else round(starts[i] * FPS) for i in range(len(starts))] + [round(end_t * FPS)]
@@ -598,7 +633,8 @@ def render_episode(eid, voice=None, suffix=""):
     if "AI-assisted" not in description:
         description += f"\n\n{DISCLOSURE_V3}"
     if d.get("hashtags"):
-        description += "\n\n" + " ".join(d["hashtags"])
+        tags = [t for t in d["hashtags"] if not (is_video(d) and t.lower() == "#shorts")]   # a regular video is not a Short
+        description += "\n\n" + " ".join(tags)
     (folder / "title.txt").write_text(shorts.fill_placeholders(d.get("title", ""), project)[:100] + "\n", encoding="utf-8")
     (folder / "description.txt").write_text(description + "\n", encoding="utf-8")
     (folder / "sources.txt").write_text(

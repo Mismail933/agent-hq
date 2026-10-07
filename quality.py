@@ -494,9 +494,9 @@ def review_scripts(p, eps, rnd=0):
     return {e["id"]: by[e["id"]] for e in eps if e["id"] in by}
 
 
-# The render's limits, in one place (animate.checklist uses them too). There is NO length target: only the platform's ceiling
-# (a Short may run 3 minutes) and limits that keep the engine working.
-MIN_WORDS, MAX_WORDS = 50, 420
+# The render's limits, in one place (animate.checklist uses them too). There is NO length target and no length ceiling: nobody decides how
+# long a video is. These only stop the absurd and keep the engine working.
+MIN_WORDS, MAX_WORDS = 50, 1800   # the story sets the length; 1800 words (about 15 minutes) only stops an absurd script
 MIN_SCENES, MAX_SCENES = 7, 20
 MAX_LINE_WORDS = 34
 
@@ -558,8 +558,8 @@ def length_problems(d):
     out = []
     words = sum(len((s.get("voice_line") or "").split()) for s in scenes)
     if words > MAX_WORDS:
-        out.append({"issue": f"The narration is {words} words (counted): too long for the 3-minute ceiling of a Short.",
-                    "fix": "Tell the same story more tightly, or split it; do not drop the steps that make it make sense."})
+        out.append({"issue": f"The narration is {words} words (counted): absurdly long, about {words // 130} minutes of speech.",
+                    "fix": "Split it into two stories; do not drop the steps that make each one make sense."})
     if words < MIN_WORDS:
         out.append({"issue": f"The narration is only {words} words (counted): too short to tell a story.", "fix": "Tell the whole story: the problem, the clue, what he did, the reasoning, the answer."})
     if not MIN_SCENES <= len(scenes) <= MAX_SCENES:

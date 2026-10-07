@@ -135,6 +135,7 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py keep-voice <episode id> <voice id>` | ONLY when the owner has chosen: that version becomes the Short and the project's voice. |
 | `python hq.py board-note <project id> "note"` | Replaces the owner's note on the project's approved board (e.g. to withdraw an old length target). |
 | `python hq.py do-not-upload <episode id> "why"` / `allow-upload <episode id>` | Marks a made video as not to be uploaded (a duplicate, a superseded version): it drops out of the owner's "to upload" list and can't be marked published. |
+| (length) | **Nobody decides how long a video is, and no length ever blocks a render.** The story sets it. Whether it is labelled a Short or a regular video simply follows the finished length (up to 3 minutes = a Short, more = a regular video, shown in the office; `#shorts` is dropped automatically). Only an absurd 16+ minutes is refused. A voice made once for the same words is reused, so a retry costs no ElevenLabs characters. |
 | `python hq.py credits` | ElevenLabs characters used this month against the 30,000 quota (every Short and every voice sample counts). |
 | `python hq.py lnd-focus "topic"` | When the owner asks: gives Richard a topic for his next morning run (he reads it first). |
 | `python hq.py israa <episode id>` | Israa reviews a finished video again (frames, voice pace, cuts). |
