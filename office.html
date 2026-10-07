@@ -309,6 +309,9 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .lrow input{font-family:var(--mono)}
 .lrow select:focus,.lrow input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 2px rgba(34,211,238,.18)}
 .limits .note{margin:0;color:var(--ink-2);font-size:12.5px}
+.lrow.rchanged{border-left:2px solid var(--cyan);padding-left:8px}
+.lrow label .btn{margin-top:4px}
+.lrow .rtext{font-size:12px;color:var(--ink-2);overflow-wrap:anywhere}
 .roles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .roles span{font-family:var(--mono);font-size:12px;border:1px dashed var(--line-2);border-radius:3px;padding:6px 8px;color:var(--ink-2)}
 
@@ -711,6 +714,7 @@ main.arrive{animation:arrive .5s cubic-bezier(.22,1,.36,1)}
         </section>
         <section class="card"><div class="limwrap"><div class="limits" id="limits"></div></div></section>
         <section class="card"><div class="limwrap"><div class="limits" id="phoneCard"></div></div></section>
+        <section class="card"><div class="limwrap"><div class="limits" id="rulesCard"></div></div></section>
       </section>
 
       <section class="page" id="pg-project" hidden><div id="contentTop"></div></section>
@@ -1935,6 +1939,33 @@ function renderLimits(force) {
 }
 /* ---------- Your phone: the private Telegram bot (phone.py, 2.22.0) ---------- */
 let phoneKey = '';
+/* ---------- Team rules: live settings Atlas changes without a Builder or a restart (rules.py, 2.25.0) ---------- */
+let rulesKey = '';
+async function renderRules(force) {
+  if (!(space === 'hq' && page === 'limits')) return;
+  const box = $('#rulesCard'); if (!force && box.contains(document.activeElement)) return;
+  let v; try { v = (await (await fetch('/api/rules', {cache:'no-store'})).json()).rules || []; } catch { return; }
+  const k = JSON.stringify(v); if (!force && k === rulesKey) return; rulesKey = k;
+  const field = r => {
+    if (Array.isArray(r.allowed) && typeof r.allowed[0] === 'string') return `<select data-rule="${esc(r.key)}" aria-label="${esc(r.label)}">${r.allowed.map(o => `<option ${o === String(r.value) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+    if (r.allowed === 'on/off') return `<select data-rule="${esc(r.key)}" aria-label="${esc(r.label)}"><option value="on" ${r.value ? 'selected' : ''}>On</option><option value="off" ${r.value ? '' : 'selected'}>Off</option></select>`;
+    if (Array.isArray(r.allowed)) return `<input type="number" inputmode="decimal" step="any" min="${r.allowed[0]}" max="${r.allowed[1]}" data-rule="${esc(r.key)}" aria-label="${esc(r.label)}" value="${esc(String(r.value))}">`;
+    return `<span class="rtext">${r.changed ? esc(String(r.value).slice(0, 120)) + (String(r.value).length > 120 ? '…' : '') : 'none'}</span>`;
+  };
+  const row = r => `<div class="lrow${r.changed ? ' rchanged' : ''}"><label>${esc(r.label)}<small>${esc(r.key)}${r.changed ? ` · changed by ${esc(r.by)}${r.when ? ' ' + esc(r.when) : ''}${r.why ? ': ' + esc(r.why) : ''}` : ''}</small>${r.changed ? `<button class="btn sm ghost" type="button" data-undo="${esc(r.key)}">Undo</button>` : ''}</label>${field(r)}</div>`;
+  const groups = [...new Set(v.map(r => r.group))];
+  const changed = v.filter(r => r.changed).length;
+  box.innerHTML = `<p class="note">The team's rules. Atlas changes them when you ask him (no Builder, no restart); you can change them here too. ${changed ? `<b>${changed} changed</b> from the program's defaults (highlighted, with Undo).` : 'All at their defaults.'} Money stays in the limits above.</p>`
+    + groups.map(g => `<div class="lim"><strong>${esc(g)}</strong>${v.filter(r => r.group === g && (g !== 'Agent instructions' || r.changed || r.key.endsWith('.extra'))).map(row).join('')}</div>`).join('');
+}
+async function setRule(body) {
+  try { const r = await fetch('/api/rules', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...body, by:'owner'})});
+    const j = await r.json().catch(() => ({})); toast(r.ok ? j.message : (j.error || 'Not saved.')); }
+  catch { toast("Can't reach the engine."); }
+  renderRules(true);
+}
+document.addEventListener('change', e => { const el = e.target.closest('[data-rule]'); if (el) { el.blur(); setRule({key:el.dataset.rule, value:el.value, action:'set', why:'changed in the office'}); } });
+document.addEventListener('click', e => { const b = e.target.closest('[data-undo]'); if (b) setRule({key:b.dataset.undo, action:'undo'}); });
 async function renderPhone(force) {
   if (!(space === 'hq' && page === 'limits')) return;
   const box = $('#phoneCard'); if (!force && box.contains(document.activeElement)) return;
@@ -2032,6 +2063,7 @@ async function pollOnce() {
     const d = e.detail || {};
     if (e.kind === 'video_failed' && d.episode) lastFail[d.episode] = {ts:e.ts, reason:d.reason || ''};
     else if (['render_started', 'video_ready', 'voice_variants_ready', 'episode_rejected'].includes(e.kind) && d.episode) delete lastFail[d.episode];
+    else if (e.kind === 'block_cleared' && d.agent === 'Calina') lastFail = {};   // Atlas's `hq unblock Calina`
     // a later video that worked means the renderer works now: older failures are stale (the episode still waits as "to turn into a video")
     if (['video_ready', 'voice_variants_ready'].includes(e.kind)) for (const k of Object.keys(lastFail)) if (lastFail[k].ts < e.ts) delete lastFail[k];
     const f = feedLine(e); if (f) { feed.unshift({time:clockOf(e.ts), ts:e.ts, who:f[0], text:f[1], kind:f[2], pid:d.project ?? null, ep:d.episode ?? null}); feedDirty = true; }
@@ -2046,7 +2078,7 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
-  if (Date.now() - (window._phoneAt || 0) > 5000) { window._phoneAt = Date.now(); renderPhone(); }
+  if (Date.now() - (window._phoneAt || 0) > 5000) { window._phoneAt = Date.now(); renderPhone(); renderRules(); }
   producingFor = s.producing_project ?? null; reviewing = !!s.reviewing; atlasLimit = s.atlas_limit || null;
   production = s.production || {}; voiceSamples = s.voice_samples || {}; ghassan = s.ghassan || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(voiceMatch) + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
@@ -2472,7 +2504,7 @@ function applyView() {
   $('#pg-project').hidden = space === 'hq';
   shellKey = ''; detailKey = '';
   renderNeeds();
-  if (space === 'hq') { if (page === 'limits') { renderLimits(true); renderPhone(true); } if (page === 'office') { resize(); renderDetail(); renderTeam(); } }
+  if (space === 'hq') { if (page === 'limits') { renderLimits(true); renderPhone(true); renderRules(true); } if (page === 'office') { resize(); renderDetail(); renderTeam(); } }
   else renderContent(true);
   scrollTo(0, 0);
   try { history.replaceState(null, '', '#' + (space === 'hq' ? page : `project-${space}${sub !== 'overview' ? '-' + sub : ''}`)); } catch {}

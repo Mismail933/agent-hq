@@ -35,6 +35,11 @@ def run(agent, model, system, messages, tools=None, tool_choice=None,
     Returns the final response.
     """
     handlers = handlers or {}
+    try:
+        import rules
+        system = system + rules.extra(agent)   # standing instructions Atlas set for this agent (live rule)
+    except Exception:
+        pass
     for _ in range(MAX_TURNS):
         cp.check_can_run(agent, idea_id)
         kwargs = dict(model=model, system=system, messages=messages, max_tokens=max_tokens)

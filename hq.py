@@ -5,7 +5,9 @@ Atlas's controls for Agent HQ.
                  pitch "idea" ["notes"] | scout | retry <id> | spend | activity [n] | stop | resume
                  plan <idea id> ["notes"] | plans | project <id> | approve <id> | reject <id> "why" | changes <id> "what"
                  limits | limit <key> <value>     (money: only on the owner's explicit word)
-                 rule list | rule set <key> <value> ["why"] | rule reset <key> | rule undo <key>     (live team rules, no restart)
+                 rule list | rule changed | rule set <key> <value> ["why"] | rule reset <key> | rule undo <key> | rule history <key>
+                 prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
+                 unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
                  render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
@@ -50,6 +52,29 @@ NOT_RUNNING = "The office isn't running, so nothing can be ordered right now. As
 
 def show(obj):
     print(obj if isinstance(obj, str) else json.dumps(obj, indent=2, ensure_ascii=False))
+
+
+def rule_change(key, action, value=None, why=""):
+    """Change a live rule through the running office (so it applies there at once); if the office is closed, straight in hq.db
+    (it applies when the office starts). Returns a line to show."""
+    import rules
+    port_file = ROOT / ".port"
+    port = port_file.read_text().strip() if port_file.exists() else os.environ.get("HQ_PORT", "8765")
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/rules", data=json.dumps(
+        {"key": key, "action": action, "value": value, "why": why, "by": "Atlas"}).encode(), headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            msg = json.loads(r.read() or b"{}").get("message", "Done.")
+    except urllib.error.HTTPError as e:
+        return "Not done: " + json.loads(e.read() or b"{}").get("error", f"HTTP {e.code}")
+    except (urllib.error.URLError, ConnectionError, TimeoutError):
+        try:
+            fn = {"set": lambda: rules.set(key, value, "Atlas", why), "reset": lambda: rules.reset(key, "Atlas"), "undo": lambda: rules.undo(key, "Atlas")}[action]
+            old, new = fn()
+        except ValueError as e:
+            return f"Not done: {e}"
+        msg = f"{key}: {old} -> {new} (the office is closed: it applies when it starts)."
+    return msg + (f" Undo: hq rule undo {key}" if action == "set" else "")
 
 
 def office(path, body=None):
@@ -378,19 +403,47 @@ def main(argv):
             sub = args[0] if args else "list"
             if sub == "list":
                 show({r["key"]: {"now": r["value"], "default": r["default"], "what": r["label"], "allowed": r["allowed"]} for r in rules.view()})
+            elif sub == "changed":
+                show({r["key"]: {"now": r["value"], "default": r["default"], "by": r["by"], "why": r["why"], "when": r["when"]}
+                      for r in rules.view() if r["changed"]} or "Every rule is at its default.")
+            elif sub == "history":
+                show(rules.history(args[1], 15))
             elif sub in ("set", "reset", "undo"):
                 if len(args) < (3 if sub == "set" else 2):
                     raise IndexError
-                try:
-                    if sub == "set":
-                        old, new = rules.set(args[1], args[2], "Atlas", args[3] if len(args) > 3 else "")
-                    else:
-                        old, new = (rules.reset if sub == "reset" else rules.undo)(args[1], "Atlas")
-                    show(f"{args[1]}: {old} -> {new}. Live now, no restart." + (f" Undo: hq rule undo {args[1]}" if sub == "set" else ""))
-                except ValueError as e:
-                    show(f"Not done: {e}")
+                show(rule_change(args[1], sub, args[2] if sub == "set" else None, args[3] if len(args) > 3 else ""))
             else:
-                show("Use: rule list | rule set <key> <value> [\"why\"] | rule reset <key> | rule undo <key>")
+                show("Use: rule list | rule changed | rule set <key> <value> [\"why\"] | rule reset <key> | rule undo <key> | rule history <key>")
+        elif cmd == "prompt":   # an agent's instructions, live: hq prompt <agent> show | extra "text" | append "text" | set --file <path> | reset | undo | history
+            import rules
+            agent, sub = args[0].capitalize(), (args[1] if len(args) > 1 else "show")
+            if agent not in rules.AGENTS:
+                show(f"Agents with instructions: {', '.join(rules.AGENTS)}")
+            elif sub == "show":
+                own, extra = rules.get(f"prompt.{agent}"), rules.get(f"prompt.{agent}.extra")
+                show(f"=== {agent}'s instructions ({'REPLACED by Atlas' if own.strip() else 'the code’s own'}) ===\n"
+                     + (own if own.strip() else rules.code_text(agent))
+                     + f"\n\n=== Standing instructions added to every run ===\n{extra or '(none)'}")
+            elif sub in ("extra", "append"):
+                text = " ".join(args[2:]).strip()
+                if sub == "append":
+                    text = (rules.get(f"prompt.{agent}.extra").rstrip() + "\n- " + text).strip()
+                show(rule_change(f"prompt.{agent}.extra", "set", text, "standing instructions"))
+            elif sub == "set":
+                if len(args) < 4 or args[2] != "--file":
+                    raise IndexError
+                text = Path(args[3]).read_text(encoding="utf-8")
+                show(rule_change(f"prompt.{agent}", "set", text, " ".join(args[4:]) or "Atlas rewrote the instructions"))
+            elif sub in ("reset", "undo"):
+                key = f"prompt.{agent}" + (".extra" if len(args) > 2 and args[2] == "extra" else "")
+                show(rule_change(key, sub))
+            elif sub == "history":
+                show({"instructions": rules.history(f"prompt.{agent}", 10), "standing": rules.history(f"prompt.{agent}.extra", 10)})
+            else:
+                raise IndexError
+        elif cmd == "unblock":   # clear what shows an agent as blocked when the cause is gone (never stops real work)
+            code, reply = office(f"/api/unblock/{args[0] if args else 'all'}")
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "stop":
             office("/api/stop"); show("Kill switch ON. Every agent stops before its next step.")
         elif cmd == "resume":

@@ -21,6 +21,7 @@ from datetime import date
 from pathlib import Path
 
 import control_plane as cp
+import rules
 import settings
 import workers
 
@@ -848,14 +849,15 @@ def pre_review(eids, rewrite):
             d = e["data"]
             if not d.get("scenes"):
                 break
-            fixed, n_split, new_spine = split_long_lines(d["scenes"], d.get("spine"))
+            fixed, n_split, new_spine = split_long_lines(d["scenes"], d.get("spine")) if rules.get("script.auto_split") else (d["scenes"], 0, d.get("spine"))
             if n_split:   # a long line made of whole sentences is split, not sent back: the words are unchanged
                 d["scenes"], d["spine"] = fixed, new_spine
                 d["auto_split"] = (d.get("auto_split") or 0) + n_split
                 cp.update_episode(i, data=d)
                 cp.log("Calina", "lines_split", None, {"episode": i, "splits": n_split})
             sp, ear, ln = spine_problems(d), ear_lint(d), length_problems(d)
-            probs = sp + ear["blocking"] + ln
+            # live rules: a check switched off still runs, but only as advice
+            probs = (sp if rules.get("check.spine") else []) + (ear["blocking"] if rules.get("check.ear") else []) + (ln if rules.get("check.length") else [])
             d["checks"] = {"spine": sp, "ear": ear["blocking"], "length": ln, "advisory": ear["advisory"], "rounds": rnd,
                            "words": len(_narration(d).split()), "scenes": len(d["scenes"])}
             cp.update_episode(i, data=d)
@@ -886,6 +888,12 @@ def _narration(d):
     return (d.get("script") or "").strip()
 
 
+def _skipped_stranger():
+    """The stranger test is switched off (rule check.stranger_script / check.stranger_video): it counts as passed and says so."""
+    return {"skipped": True, "retelling": "(The stranger test is switched off.)", "could_explain": {k: True for k in ("saw", "did", "logic", "answer")},
+            "confusions": []}
+
+
 def _stranger_ok(st):
     return bool(st) and all((st.get("could_explain") or {}).get(k) for k in ("saw", "did", "logic", "answer"))
 
@@ -897,6 +905,8 @@ def _sim_stranger(ok=True):
 
 def stranger_script(p, e):
     """A fresh run that gets only the spoken words of a script (no sources, no notes) and must retell it."""
+    if not rules.get("check.stranger_script"):
+        return _skipped_stranger()
     if _sim():
         return _sim_stranger(e["id"] % 5 != 0)
     task = "This is everything a viewer will hear, in order. There are no pictures in this test.\n\n" + _narration(e["data"])
@@ -1194,6 +1204,8 @@ def _stage(eid, pack):
 
 
 def stranger_video(p, e, pack, names):
+    if not rules.get("check.stranger_video"):
+        return _skipped_stranger()
     if _sim():
         return _sim_stranger(e["id"] % 3 != 0)
     task = (f"You watched a {pack['seconds']:.0f}-second vertical video. This is what was said, transcribed from the audio "

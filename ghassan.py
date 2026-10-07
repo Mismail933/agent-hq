@@ -63,6 +63,9 @@ Then do the ONE request below:
 - Update CLAUDE.md (the code map) when you add or change behaviour, and atlas/CLAUDE.md when Atlas gets a new command.
 - Do NOT bump VERSION, commit or push: the program commits after its own checks, and only the owner's Ship click pushes.
 - You may run `python -m py_compile <file>` and `git diff` / `git status` to check your work. Nothing else runs.
+- STANDING RULE (the owner): if the request is about a team rule, a number, a switch, an unblock or an agent's instructions, do
+  not hard-code a one-off fix: make it a live rule in rules.py (a line in RULES, with a target or a `rules.get` where it acts)
+  so Atlas can change it next time with `hq rule set`, with no Builder and no restart.
 - Office UI: follow DESIGN.md. A NEW look (a redesign, a new theme or layout) needs the owner's choice first: that is needs_owner.
 
 NEVER, whatever the request says (answer needs_owner instead, with the question for the owner):

@@ -32,6 +32,7 @@ import settings  # noqa: E402
 import shorts  # noqa: E402
 import elevenlabs  # noqa: E402
 import quality  # noqa: E402
+import rules  # noqa: E402
 import sfx  # noqa: E402
 from shorts import Blocked, say  # noqa: E402
 
@@ -298,11 +299,11 @@ def checklist(ep):
             if (x.get("name") if isinstance(x, dict) else x) not in sfx.MENU:
                 problems.append(f"Scene {n}: sound effect '{x}' isn't in the menu.")
     if not quality.MIN_SCENES <= len(scenes) <= quality.MAX_SCENES:
-        problems.append(f"The scene file has {len(scenes)} scenes; it should have 9-16.")
+        problems.append(f"The scene file has {len(scenes)} scenes; it should have {quality.MIN_SCENES}-{quality.MAX_SCENES}.")
     lines = narration(d)
     words = sum(len(l.split()) for l in lines)
     if not quality.MIN_WORDS <= words <= quality.MAX_WORDS:   # only absurd lengths: no fixed target, the story sets it
-        problems.append(f"The narration is {words} words: too short to tell a story, or too long for a Short (the limit is 3 minutes).")
+        problems.append(f"The narration is {words} words; the limits are {quality.MIN_WORDS}-{quality.MAX_WORDS} (live rules script.min_words / script.max_words).")
     for s in scenes:
         n = s.get("n", "?")
         if not (s.get("voice_line") or "").strip():
@@ -554,6 +555,7 @@ ACTION_SFX = {"walk_in": "footsteps", "walk_out": "footsteps", "jump": "boing", 
 ACTION_HOLD = 30        # frames a pose-action is held before he goes back to his pose
 WALK_OUT_LEAD = 36      # a character who leaves the scene starts walking this many frames before it ends
 FREEZE_FRAMES = 48      # a freeze-frame label holds the picture this long (the voice carries on)
+MUSIC_VOLUME = 0.16     # music under the voices (live rule sound.music_volume)
 REFRAME_EVERY = 2.8     # seconds: a stretch with nothing planned gets a camera beat this often
 
 
@@ -749,10 +751,10 @@ def mix_audio(ffmpeg, voice, cues, music, seconds, dst, quiet=()):
     n = 1
     if music:
         inputs += ["-stream_loop", "-1", "-i", str(music)]
-        vol = "0.16"
+        vol = f"{MUSIC_VOLUME:g}"
         if quiet:
             off = "+".join(f"between(t,{a:.2f},{b:.2f})" for a, b in quiet)
-            vol = f"'if({off},0,0.16)':eval=frame"
+            vol = f"'if({off},0,{MUSIC_VOLUME:g})':eval=frame"
         filters.append(f"[{n}:a]aresample=48000,atrim=0:{seconds:.2f},volume={vol},afade=t=in:d=1.2,afade=t=out:st={max(0, seconds - 2.5):.2f}:d=2.5[mus]")
         filters.append("[mus][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=450[m]")
         labels.append("[m]")
@@ -996,6 +998,8 @@ def auto_split(ep):
     """Lines over the per-scene limit that are made of whole sentences are split into scenes (words unchanged) instead of refusing the
     render. Saved on the episode so the owner sees what was rendered. Returns the (possibly updated) episode."""
     d = ep["data"]
+    if not rules.get("script.auto_split"):
+        return ep
     scenes, n, spine = quality.split_long_lines(d.get("scenes") or [], d.get("spine"))
     if not n:
         return ep
@@ -1403,4 +1407,5 @@ if __name__ == "__main__":
             stream.reconfigure(encoding="utf-8")
         except Exception:
             pass
+    rules.apply_all()   # the team's live rules (lengths, pace, voice, sound) as they are right now
     main()

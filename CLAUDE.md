@@ -219,13 +219,25 @@ Agents never spend money without the owner's explicit approval.
   (and run after the restart), Ghassan and the daily scout don't start, and it says what it waits for; `office_idle` covers every
   job, Doulya's scouting and Ghassan's build. `ghassan.reopen_stale()` (start of `ghassan_loop`) puts `[in progress]` requests back
   to `[open]`. A new long job: add it to `JOBS` + `job_label`.
-- `rules.py` (2.24.0): live team rules. `RULES` (key: kind, default, range/choices, label), stored in hq.db `rules`, read fresh by
-  `rules.get` every time (no restart), changed with `hq rule list|set|reset|undo` (by Atlas, logged `rule_changed` with why;
-  undo puts back the value before the last change). Today: `phone.send` (decisions|everything|nothing = /quiet /all /mute),
-  `phone.group_minutes` (cards held and sent together, one alert, the rest silent), `phone.quiet_from/to` (PC hours; skipped
-  for an hour after the owner writes), `phone.digest_hour`. Money, keys, hires, uploads and the safety scan are never rules
-  (they stay `cp.LIMITS`). Standing rule (the owner, 2026-10-08): whatever Atlas can't change himself that is a team rule,
-  setting, unblock or instruction becomes a rule here, not a one-off fix. To add one: a line in RULES + `rules.get` where it acts.
+- `rules.py` (2.24.0; the full list 2.25.0, Atlas's "Team rules are settings Atlas changes live"): every behaviour rule of the team.
+  `RULES` (key: group, kind, default, range/choices, label, optional `target` (module, attribute) + `scale`). Stored in hq.db `rules`
+  (only values that differ from the default) + `rules_history` (every version, full texts). Targeted rules are written onto the
+  setting by `apply_all()`: at office start, before every journaled job, in the scheduler and Ghassan loops, right after a change,
+  and by animate.py when it starts (so the renderer, a separate process, uses them too). The ORIGINAL code value is captured the
+  first time, so reset/default puts it back. Untargeted rules are read where they act (`rules.get`): `check.spine/ear/length`
+  (pre_review: off = advice only), `check.stranger_script/video` (off = `_skipped_stranger`, counts as passed and says so),
+  `script.auto_split`, `review.video` / `review.voice_versions` (server), `phone.*` (phone.py). Agent instructions: `prompt.<Agent>`
+  replaces the code's prompt constant (`PROMPT_TARGET`; must keep exactly its {placeholders}, checked against `code_text()`, which
+  reads the constant from the file with ast; the Animator's isn't formatted) and `prompt.<Agent>.extra` is appended to every run by
+  `workers.run` and `llm.run` (`rules.extra`). Atlas: `hq rule list|changed|set|reset|undo|history`, `hq prompt <agent>
+  show|extra|append|set --file|reset|undo|history` (through the office's `POST /api/rules`; straight to hq.db if it's closed),
+  `hq unblock <agent|all>` (`server.unblock`: clears old video-failure blocks (`block_cleared` event), stale flags whose job isn't
+  running, archives stopped ideas, the Atlas plan-limit pause, Ghassan's status; never stops real work). Office: Spend & limits ->
+  Team rules (changed ones highlighted with who/why and Undo; the owner can change them there, logged as Owner).
+  NOT rules: money, keys, hires, uploads, the safety scan, the off-limits list (`cp.LIMITS`). Not yet rules (need code first):
+  video format/resolution, captions/callouts on/off, voice-version count, ElevenLabs style/speed per voice, topic lock default.
+  STANDING RULE (the owner, 2026-10-08; also in Ghassan's prompt): whatever Atlas can't change himself that is a team rule,
+  setting, unblock or instruction becomes a rule here, not a one-off fix. To add one: a line in RULES (+ `rules.get` if untargeted).
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen

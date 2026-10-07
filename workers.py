@@ -36,6 +36,15 @@ def engine(agent):
     return getattr(settings, "WORKER_ENGINE", {}).get(agent, "api")
 
 
+def _extra(agent):
+    """Standing instructions Atlas set for this agent (live rule prompt.<agent>.extra)."""
+    try:
+        import rules
+        return rules.extra(agent)
+    except Exception:
+        return ""
+
+
 def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20, cwd=None, allowed=None, disallowed=(), timeout=None):
     """One run. Returns (structured output or result text, info). Raises Unavailable or cp.Halt.
     cwd: work in that folder instead of the agent's empty one (Ghassan works in his copy of the code); allowed/disallowed:
@@ -53,7 +62,7 @@ def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20, cwd
     folder.mkdir(parents=True, exist_ok=True)
     model = getattr(settings, "WORKER_MODELS", {}).get(agent, "sonnet")
     cmd = [exe, "-p", "--output-format", "json", "--no-session-persistence", "--max-turns", str(max_turns),
-           "--model", model, "--system-prompt", system + (CC_NOTE if tools else ""), "--tools", ",".join(tools)]
+           "--model", model, "--system-prompt", system + _extra(agent) + (CC_NOTE if tools else ""), "--tools", ",".join(tools)]
     if tools:
         cmd += ["--allowedTools", *(allowed or tools)]
     if disallowed:

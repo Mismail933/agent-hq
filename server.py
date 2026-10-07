@@ -50,10 +50,12 @@ import quality            # noqa: E402
 import sfx                # noqa: E402
 import ghassan            # noqa: E402
 import phone              # noqa: E402
+import rules              # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
 cp.init()
+rules.apply_all()   # the team's live rules onto the settings they change (again before every job)
 agents.register_all()
 agents.setup_animated_projects()
 CUT_IDEAS = cp.interrupted_ideas()   # picked up again after start (resume_jobs)
@@ -349,7 +351,7 @@ def run_cast_samples(pid):
 # next start was cut off (the window was closed, the PC slept, the office restarted): resume_jobs runs it again. While a
 # restart is coming (RESTARTING), new jobs are saved as "queued" instead and run right after it.
 RESTARTING = {"on": False}
-RUNNING_JOBS = set()   # job ids running in this run of the office
+RUNNING_JOBS = {}   # job id -> kind, running in this run of the office
 JOB_TRIES = 2          # a job that was cut off this many times is given up (so a job that kills the office can't loop)
 
 
@@ -373,7 +375,8 @@ def journaled(kind, fn):
             atlas_says(f"**{job_label(kind, args)}** starts right after the office restarts into the new version (in a few minutes).")
             return
         jid = _jid or cp.add_job(kind, list(args))
-        RUNNING_JOBS.add(jid)
+        RUNNING_JOBS[jid] = kind
+        rules.apply_all()   # live rules Atlas changed since the last job
         try:
             fn(*args)
             cp.set_job(jid, "done")
@@ -381,7 +384,7 @@ def journaled(kind, fn):
             cp.set_job(jid, "failed", str(e)[:300])
             raise
         finally:
-            RUNNING_JOBS.discard(jid)
+            RUNNING_JOBS.pop(jid, None)
     run.__name__ = fn.__name__
     return run
 
@@ -450,6 +453,43 @@ def office_idle():
                 or RUNNING_JOBS or agents.SCOUTING.locked() or ghassan.LOCK.locked())
 
 
+def unblock(agent):
+    """Atlas's `hq unblock <agent|all>`: clear what shows an agent as blocked when the cause is gone. Never stops real work: a flag is
+    only cleared when no job of that kind is running. Returns what was cleared (lines)."""
+    who = agent.strip().capitalize() if agent.strip().lower() != "all" else "all"
+    kinds = set(RUNNING_JOBS.values())
+    done = []
+    if who in ("Calina", "Animator", "all"):
+        cp.log("Atlas", "block_cleared", None, {"agent": "Calina"})   # the office forgets old "video failed" blocks
+        done.append("Calina: old video failures no longer show as a block (the next render shows the truth)")
+        for flag, kind, what in ((CHARMAKING, "characters", "characters being made"), (ANIMTEST, "animator_test", "a test scene"),
+                                 (CASTSAMPLING, "cast_samples", "cast voice samples"), (MATCHING, "voice_match", "a voice match")):
+            if flag.get("pid") is not None and kind not in kinds and not (kind == "characters" and "char_review" in kinds):
+                flag.update(pid=None, **({"step": ""} if "step" in flag else {}))
+                done.append(f"cleared a stale '{what}' flag")
+        if VOICEWORK["what"] and not kinds & {"voice_add", "library_add", "samples"}:
+            VOICEWORK["what"] = ""
+            done.append("cleared a stale voice-work flag")
+    if who in ("Sage", "Vera", "all"):
+        stuck = [i for i in cp.list_ideas(200) if not i.get("verdict") and i.get("status") in ("stopped", "error", "interrupted")]
+        for i in stuck:
+            cp.update_idea(i["id"], status="archived")
+        if stuck:
+            cp.log("Atlas", "block_cleared", None, {"agent": "Sage", "ideas": [i["id"] for i in stuck]})
+            done.append(f"Sage: {len(stuck)} stopped idea(s) archived: " + ", ".join(f"#{i['id']}" for i in stuck)
+                        + " (retry one with hq retry <id> if you still want it)")
+    if who in ("Atlas", "all") and LIMIT_UNTIL[0]:
+        LIMIT_UNTIL[0] = 0.0
+        done.append("Atlas: the plan-limit pause is cleared; the next message tries Claude Code on this PC first")
+    if who in ("Ghassan", "all") and not ghassan.LOCK.locked():
+        ghassan.STATUS.update(state="idle", request="")
+        back = ghassan.reopen_stale()
+        done.append("Ghassan: status reset" + (f"; reopened: {'; '.join(back)}" if back else ""))
+    if who not in ("Calina", "Animator", "Sage", "Vera", "Atlas", "Ghassan", "all"):
+        done.append(f"{agent}: nothing can be stuck for this agent outside a running job (their locks free themselves when the job ends)")
+    return done or ["Nothing was blocked."]
+
+
 def loaded_files():
     """The program files this office has imported: a change to one of them needs a restart."""
     out = set()
@@ -508,6 +548,7 @@ def ghassan_loop():
     except Exception as e:
         print("Ghassan:", repr(e), flush=True)
     while True:
+        rules.apply_all()   # Ghassan's on/off and pace are live rules
         try:
             if not RESTARTING["on"] and getattr(settings, "GHASSAN_ON", True) and os.environ.get("HQ_SIMULATE") != "1" and atlas_engine.find_claude():
                 ghassan.turn(atlas_says, anim_free=lambda: not anim_busy())
@@ -576,6 +617,10 @@ def run_render_voices(eid, voices):
             cp.log("Calina", "voice_variants_ready", None, {"episode": eid, "voices": [v["label"] for v in r["variants"]]})
             # review before the owner: the pictures are identical in every version, so Israa reviews version 1 (sheets, transcript,
             # stranger test) and her verdict covers all of them
+            if not rules.get("review.voice_versions"):   # live rule: Israa doesn't review voice versions
+                atlas_says(f"**Short #{eid} is ready in {len(r['variants'])} voices:** " + "; ".join(v["label"] for v in r["variants"])
+                           + ". (Israa's review of voice versions is switched off.) Open the project's Episodes page and keep the one you like.")
+                return
             atlas_says(f"**Short #{eid} is ready in {len(r['variants'])} voices.** Israa is reviewing it now (a few minutes); you'll get her verdict before you watch.")
             rv = quality.review_video(eid, version=1) or {}
             atlas_says(f"**Israa's review of Short #{eid}: {rv.get('verdict', 'unreviewed')}** ({rv.get('score', '?')}/10). {rv.get('summary', '')}\n\n"
@@ -756,7 +801,7 @@ def run_render(eid):
                 raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
             r = json.loads(result)
             cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
-            rv = quality.review_video(eid)   # Israa looks at it before the owner does
+            rv = quality.review_video(eid) if rules.get("review.video") else None   # Israa looks at it before the owner does (live rule)
             pace = (f" The voice still reads at {r['wpm']} words a minute even after slowing it: lower the speed in OpenArt's "
                     "text-to-speech next time." if r.get("wpm", 0) > 158 else "")
             what = (f"{r['images']} animated scenes, voice: {r.get('voice', '')}" if animated else
@@ -837,6 +882,7 @@ def scheduler():
     """Doulya scouts once a day while the engine is running."""
     time.sleep(20)
     while True:
+        rules.apply_all()   # Doulya's schedule is a live rule
         try:
             if not RESTARTING["on"] and getattr(settings, "SCOUT_AUTOMATICALLY", False) and not cp.STOP_FILE.exists() and not agents.scouted_today():
                 run_scout("schedule")
@@ -990,6 +1036,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (ROOT / "office.html").read_bytes(), "text/html")
         if u.path == "/api/phone":   # the office's 'Your phone' card (never the token)
             return self._send(200, phone.view())
+        if u.path == "/api/rules":   # the team's live rules (Spend & limits -> Team rules; hq rule list)
+            return self._send(200, {"rules": rules.view()})
+        if u.path.startswith("/api/prompt/"):   # an agent's instructions as they are now
+            a = u.path.rsplit("/", 1)[1].capitalize()
+            if a not in rules.AGENTS:
+                return self._send(404, {"error": f"Agents with instructions: {', '.join(rules.AGENTS)}"})
+            own = rules.get(f"prompt.{a}")
+            return self._send(200, {"agent": a, "replaced": bool(own.strip()), "text": own if own.strip() else rules.code_text(a),
+                                    "extra": rules.get(f"prompt.{a}.extra"), "history": rules.history(f"prompt.{a}", 5)
+                                    + rules.history(f"prompt.{a}.extra", 5)})
         if u.path == "/api/state":
             since = int(parse_qs(u.query).get("since", ["-1"])[0])
             with LOCK:
@@ -1552,6 +1608,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(409, {"error": "Telegram didn't accept that token: " + v["error"]})
             cp.log("Owner", "phone_token_set", None, {"bot": v["bot"]})
             return self._send(200, {"ok": True, "message": f"Connected to @{v['bot']}. Now pair your phone with the code.", **v})
+        if u.path == "/api/rules":   # set | reset | undo a live rule: Atlas (hq rule ...) or the owner (Team rules card)
+            body = self._json_body()
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            key, action = str(body.get("key", "")), str(body.get("action", "set"))
+            try:
+                if action == "set":
+                    old, new = rules.set(key, body.get("value"), by, str(body.get("why", ""))[:300])
+                elif action in ("reset", "undo"):
+                    old, new = (rules.reset if action == "reset" else rules.undo)(key, by)
+                else:
+                    return self._send(400, {"error": "action must be set, reset or undo"})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            short = lambda v: (v if len(v) <= 80 else v[:80] + f"... ({len(v):,} characters)") if isinstance(v, str) else v
+            return self._send(200, {"ok": True, "message": f"{key}: {short(old)} → {short(new)}. Live now, no restart."})
+        if u.path.startswith("/api/unblock/"):
+            return self._send(200, {"ok": True, "message": "\n".join(unblock(u.path.rsplit("/", 1)[1]))})
         if u.path == "/api/phone/unpair":
             phone.unpair()
             cp.log("Owner", "phone_unpaired", None, {})
