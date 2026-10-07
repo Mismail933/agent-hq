@@ -48,7 +48,7 @@ NOFLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 # Files only the owner's Builder chat may change: the updater, the guardrails (budgets, caps, kill switch, allowances, Atlas's
 # permissions), the installed libraries, the owner's private files, and Ghassan's own rules.
 PROTECTED = ("ghassan.py", "launch.py", "START-HERE.bat", "control_plane.py", "settings.py", "workers.py", "atlas_engine.py",
-             "requirements.txt", ".env", "settings_local.py", ".gitignore")
+             "requirements.txt", ".env", "settings_local.py", ".gitignore", "phone.py")
 PRIORITY = {"urgent": 0, "highest": 0, "high": 1, "medium": 2, "normal": 2, "low": 3}
 
 SYSTEM = """You are Ghassan, the in-house Builder of Agent HQ, a small AI-run company owned by Mohamad (a software engineer in

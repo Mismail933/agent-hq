@@ -7,6 +7,8 @@ content/
 STOP
 settings_local.py
 .atlas-cloud-skip
+.elevenlabs-skip
+.telegram-skip
 __pycache__/
 *.pyc
 .port

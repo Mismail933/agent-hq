@@ -49,6 +49,7 @@ import production         # noqa: E402
 import quality            # noqa: E402
 import sfx                # noqa: E402
 import ghassan            # noqa: E402
+import phone              # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
@@ -109,6 +110,7 @@ def atlas_says(text):
     with LOCK:
         CHAT.append({"from": "atlas", "ts": time.time(), "text": text})
         NEWS.append(text)
+    phone.notify(text)
 
 
 def run_scout(trigger):
@@ -372,6 +374,31 @@ def ghassan_loop():
         except Exception as e:   # the loop must never die
             print("Ghassan:", repr(e), flush=True)
         time.sleep(60 * getattr(settings, "GHASSAN_EVERY_MINUTES", 10))
+
+
+def working_now():
+    """Who is working right now, as short lines (the phone's /status)."""
+    out = []
+    if STATE["busy"]:
+        out.append("Atlas is answering you")
+    if agents.SCOUTING.locked():
+        out.append("Doulya is scouting for ideas")
+    if agents.PIPELINE.locked():
+        out.append("Sage and Vera are researching and judging an idea")
+    if agents.PLANNING.locked():
+        out.append("Serge is writing a plan")
+    if agents.PRODUCING.locked():
+        out.append("Calina is writing scripts")
+    if RENDERING["lock"].locked():
+        out.append(f"Calina is making video #{RENDERING['episode']}")
+    if quality.REVIEWING.locked():
+        out.append("Israa is reviewing")
+    if ghassan.LOCK.locked():
+        out.append("Ghassan is building: " + str(ghassan.STATUS.get("request") or "a request"))
+    busy = anim_busy()
+    if busy and not RENDERING["lock"].locked():
+        out.append(str(busy))
+    return out
 
 
 def mark_healthy():
@@ -749,6 +776,7 @@ def run_chat(text):
         CHAT.append({"from": "atlas", "ts": time.time(), "text": reply})
         STATE["busy"] = False
     cp.log("Atlas", "reply", None, {"chars": len(reply)})
+    phone.atlas_replied(reply)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -805,6 +833,8 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if u.path in ("/", "/index.html"):
             return self._send(200, (ROOT / "office.html").read_bytes(), "text/html")
+        if u.path == "/api/phone":   # the office's 'Your phone' card (never the token)
+            return self._send(200, phone.view())
         if u.path == "/api/state":
             since = int(parse_qs(u.query).get("since", ["-1"])[0])
             with LOCK:
@@ -975,10 +1005,13 @@ class Handler(BaseHTTPRequestHandler):
                 if STATE["busy"]:
                     return self._send(409, {"error": "Atlas is still working on your last message."})
                 STATE["busy"] = True
-                CHAT.append({"from": "you", "ts": time.time(), "text": text, **({"images": images} if images else {})})
+                CHAT.append({"from": "you", "ts": time.time(), "text": text, **({"images": images} if images else {}),
+                             **({"via": "phone"} if body.get("phone") else {})})
             prompt = text
+            if body.get("phone"):   # from the owner's Telegram (phone.py): the reply is read on a phone screen
+                prompt = "[Sent from the owner's phone. Your reply goes back to his phone, so keep it short and plain.]\n" + text
             if images:   # Atlas opens them with Read, which shows images
-                prompt = ((text or "(no text, only images)") + f"\n\n[The owner attached {len(images)} image(s) in the chat. Open each with Read to SEE it before you answer: "
+                prompt = ((prompt or "(no text, only images)") + f"\n\n[The owner attached {len(images)} image(s) in the chat. Open each with Read to SEE it before you answer: "
                           + ", ".join(str(UPLOADS / n) for n in images) + "]")
                 cp.log("Owner", "chat_images", None, {"files": images})
             threading.Thread(target=run_chat, args=(prompt,), daemon=True).start()
@@ -1361,6 +1394,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": str(e)})
             fmt = lambda v: "no cap" if v is None else f"${v:.2f}" if isinstance(v, (int, float)) else str(v)
             return self._send(200, {"ok": True, "message": f"{cp.LIMITS[key][3]}: {fmt(old)} → {fmt(new)}"})
+        if u.path == "/api/phone":   # the owner pastes the bot token from @BotFather; it goes only into .env
+            t = str(self._json_body().get("token", "")).strip()
+            if not t or len(t) > 100 or ":" not in t or any(c.isspace() for c in t):
+                return self._send(400, {"error": "That doesn't look like a bot token. @BotFather gives one like 123456789:AA... ."})
+            phone.save_token(t)
+            phone.start(phone.STATE["port"])
+            v = phone.view()
+            if v["error"]:
+                return self._send(409, {"error": "Telegram didn't accept that token: " + v["error"]})
+            cp.log("Owner", "phone_token_set", None, {"bot": v["bot"]})
+            return self._send(200, {"ok": True, "message": f"Connected to @{v['bot']}. Now pair your phone with the code.", **v})
+        if u.path == "/api/phone/unpair":
+            phone.unpair()
+            cp.log("Owner", "phone_unpaired", None, {})
+            return self._send(200, {"ok": True, "message": "Unpaired. A new code is shown to pair a phone again.", **phone.view()})
         if u.path == "/api/stop":
             cp.STOP_FILE.write_text("stop")
             cp.log("Owner", "kill_switch", None, {"on": True})
@@ -1395,6 +1443,10 @@ def prepare_atlas():
             elevenlabs.offer_setup()
         except Exception as e:
             print("  ElevenLabs setup failed:", repr(e), flush=True)
+        try:
+            phone.offer_setup()
+        except Exception as e:
+            print("  Phone setup failed:", repr(e), flush=True)
 
 
 class Server(ThreadingHTTPServer):
@@ -1445,6 +1497,8 @@ def main():
     print("  Close this window to stop everything.\n", flush=True)
     threading.Thread(target=scheduler, daemon=True).start()
     threading.Thread(target=ghassan_loop, daemon=True).start()
+    phone.STATUS_FN[0] = working_now
+    phone.start(srv.server_port)
     if os.environ.get("HQ_SIMULATE") != "1":
         threading.Thread(target=mark_healthy, daemon=True).start()
     if os.environ.get("HQ_NO_LND") != "1":

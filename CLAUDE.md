@@ -40,7 +40,7 @@ Agents never spend money without the owner's explicit approval.
 - `control_plane.py`: plain-code guardrails: SQLite `hq.db` (agents, events, costs, ideas), default-deny tool permissions, budgets, per-agent caps, STOP-file kill switch, audit log.
 - `llm.py`: agent loop on the Anthropic Messages API (tools, pause_turn, server web_search), `FakeClient` when `HQ_SIMULATE=1`.
 - `agents.py`: prompts, tools and pipelines. One idea in the pipeline at a time (`PIPELINE` lock).
-- `server.py`: local web server on 127.0.0.1:8765 (`/api/state`, `/api/chat`, `/api/scout`, `/api/inbox/<id>/research|dismiss`, `/api/pitch`, `/api/retry/<id>`, `/api/idea/<id>`, `/api/stop|resume`) plus the daily scout scheduler.
+- `server.py`: local web server on 127.0.0.1:8765 (`/api/phone`, `/api/state`, `/api/chat`, `/api/scout`, `/api/inbox/<id>/research|dismiss`, `/api/pitch`, `/api/retry/<id>`, `/api/idea/<id>`, `/api/stop|resume`) plus the daily scout scheduler.
 - `office.html`: single-file UI. Sci-fi HUD theme, calmer since 2.19.0 (Orbitron / Exo 2 / Share Tech Mono). Layout (2.19.0, the
   owner approved the mockup): a **rail** (HQ + one tile per approved project) | a menu | pages. HQ pages: Today (what waits for him
   grouped by project, Blocked, Working now, Done recently), Ideas (pitches > researching > judged > plans), Office & team (the
@@ -205,6 +205,19 @@ Agents never spend money without the owner's explicit approval.
   it `.last-good-commit` after 60 s up; a new version that dies within 90 s is replaced by the last good one (`.hold-version` skips
   it, `.rolled-back` makes Ghassan prepare the undo, again waiting for Ship). Changes to Ghassan's own rules or the protected files
   are done here, by the Builder chat.
+- `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
+  `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
+  in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
+  cards, offset, muted), 5 wrong codes lock it until a restart, every other chat is ignored. Long polling, so nothing is opened
+  to the internet. Sends: every `atlas_says` (news; `/mute`), one card per new waiting item (`phone.waits()` mirrors Today:
+  pitches, plans + the plan file, scripts with Israa's verdict, approved scenes -> Make the video, videos to upload as the mp4
+  (<= 49 MB) + title/description to copy, Richard's ideas, Ghassan's change, the kill switch), and Atlas's reply to a phone
+  message. Buttons call the office's own routes on 127.0.0.1 (`ACTIONS`; reasons asked in the next message, /skip; Ship and
+  Stop ask "Are you sure?"), logged as `phone_action`. Text and photos go to Atlas via `/api/chat` with `phone: true` (prompt
+  prefix asks for short replies; the chat shows `via: phone`). `/today /status /stop /resume /mute /unmute /help`; /status uses
+  `server.working_now`. Protected from Ghassan. Test with the fake API: `HQ_TELEGRAM_API=http://127.0.0.1:<port>
+  TELEGRAM_BOT_TOKEN=123:test HQ_PHONE_STORE=<scratch json>` and a small server that answers getMe/getUpdates/sendMessage and
+  queues injected updates. Needs the PC on and the office running.
 - `animator.py` (2.18.0): the Animator writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

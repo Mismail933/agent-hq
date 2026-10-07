@@ -710,6 +710,7 @@ main.arrive{animation:arrive .5s cubic-bezier(.22,1,.36,1)}
           <div class="card kpi"><span>Cost per idea</span><b id="sAvg">$0.00</b><small id="sIdeaCap">cap $0.00 per idea</small></div>
         </section>
         <section class="card"><div class="limwrap"><div class="limits" id="limits"></div></div></section>
+        <section class="card"><div class="limwrap"><div class="limits" id="phoneCard"></div></div></section>
       </section>
 
       <section class="page" id="pg-project" hidden><div id="contentTop"></div></section>
@@ -1932,6 +1933,46 @@ function renderLimits(force) {
       ${row('Budget per project, one-off, $', 'project_one_off', "Serge's plans must fit")}
       ${row('Budget per project, monthly, $', 'project_monthly', "Serge's plans must fit")}</div>`;
 }
+/* ---------- Your phone: the private Telegram bot (phone.py, 2.22.0) ---------- */
+let phoneKey = '';
+async function renderPhone(force) {
+  if (!(space === 'hq' && page === 'limits')) return;
+  const box = $('#phoneCard'); if (!force && box.contains(document.activeElement)) return;
+  let v; try { v = await (await fetch('/api/phone', {cache:'no-store'})).json(); } catch { return; }
+  const k = JSON.stringify(v); if (!force && k === phoneKey) return; phoneKey = k;
+  const bot = v.bot ? `<a href="https://t.me/${encodeURIComponent(v.bot)}" target="_blank" rel="noopener">@${esc(v.bot)}</a>` : 'your bot';
+  let body;
+  if (!v.configured || (v.error && !v.running)) body = `
+      <p class="note">Get the office's news on your phone and approve things with one tap. It's a private Telegram bot that only answers you.</p>
+      <p class="note">1. In Telegram, open <b>@BotFather</b> and send <b>/newbot</b>. Pick any name.<br>2. Paste the token it gives you here. It stays in the .env file on this computer.</p>
+      ${v.error ? `<p class="note" style="color:#FDA4AF">Telegram said: ${esc(v.error)}</p>` : ''}
+      <form class="lrow" id="phoneForm"><label>Bot token<small>Looks like 123456789:AA…</small></label><input type="password" id="phoneTok" autocomplete="off" spellcheck="false" aria-label="Telegram bot token"></form>
+      <div><button class="btn sm" type="submit" form="phoneForm">Connect</button></div>`;
+  else if (!v.paired) body = v.locked
+      ? `<p class="note">Too many wrong codes were sent to ${bot}. Close the black window and double-click START-HERE for a new code.</p>`
+      : `<p class="note">Open ${bot} in Telegram, press <b>Start</b>, then send this code:</p>
+      <div class="lrow"><label>Pairing code<small>Only the phone that sends it is obeyed.</small></label><b style="font-family:var(--mono);font-size:22px;letter-spacing:.2em;color:var(--cyan-ink)">${esc(v.code)}</b></div>`;
+  else body = `<p class="note">Connected to ${bot}. Pitches, plans, scripts, videos and Ghassan's changes come to your phone with buttons, and you can write to Atlas there.
+      News is <b>${v.muted ? 'paused (/unmute in Telegram)' : 'on'}</b>. In Telegram, send /help for the commands.</p>
+      ${v.error ? `<p class="note" style="color:#FDA4AF">Last problem reaching Telegram: ${esc(v.error)}</p>` : ''}
+      <div><button class="btn sm ghost" type="button" id="phoneUnpair">Unpair this phone</button></div>`;
+  box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>`;
+  const f = $('#phoneForm');
+  if (f) f.addEventListener('submit', async e => {
+    e.preventDefault(); const t = $('#phoneTok').value.trim(); if (!t) return;
+    try { const r = await fetch('/api/phone', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:t})});
+      const j = await r.json().catch(() => ({})); toast(r.ok ? j.message : (j.error || 'Not saved.')); }
+    catch { toast("Can't reach the engine."); }
+    renderPhone(true);
+  });
+  const u = $('#phoneUnpair');
+  if (u) u.addEventListener('click', async () => {
+    if (!confirm('Unpair this phone? It stops getting news until you pair it again.')) return;
+    try { const r = await fetch('/api/phone/unpair', {method:'POST'}); const j = await r.json().catch(() => ({})); toast(j.message || j.error || 'Done.'); }
+    catch { toast("Can't reach the engine."); }
+    renderPhone(true);
+  });
+}
 async function setLimit(el) {
   try {
     const r = await fetch('/api/limits', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:el.dataset.key, value:el.value})});
@@ -2000,6 +2041,7 @@ async function pollOnce() {
   scouting = !!s.scouting; lastScout = s.last_scout; renderScout();
   usage = s.usage || {}; allowance = s.allowance || {}; engines = s.engines || {}; limits = s.limits || {}; spendNow = +s.spend_today || 0;
   renderLimits();
+  if (Date.now() - (window._phoneAt || 0) > 5000) { window._phoneAt = Date.now(); renderPhone(); }
   producingFor = s.producing_project ?? null; reviewing = !!s.reviewing; atlasLimit = s.atlas_limit || null;
   production = s.production || {}; voiceSamples = s.voice_samples || {}; ghassan = s.ghassan || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(voiceMatch) + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
@@ -2425,7 +2467,7 @@ function applyView() {
   $('#pg-project').hidden = space === 'hq';
   shellKey = ''; detailKey = '';
   renderNeeds();
-  if (space === 'hq') { if (page === 'limits') renderLimits(true); if (page === 'office') { resize(); renderDetail(); renderTeam(); } }
+  if (space === 'hq') { if (page === 'limits') { renderLimits(true); renderPhone(true); } if (page === 'office') { resize(); renderDetail(); renderTeam(); } }
   else renderContent(true);
   scrollTo(0, 0);
   try { history.replaceState(null, '', '#' + (space === 'hq' ? page : `project-${space}${sub !== 'overview' ? '-' + sub : ''}`)); } catch {}
