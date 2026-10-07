@@ -41,45 +41,90 @@ def ref_dir(pid):
 
 
 # ---- 1. the reference -----------------------------------------------------------------
+def level_file(pid):
+    return ref_dir(pid) / "_level.json"   # live progress for the office's meter ("_" files are never the reference)
+
+
 def record(pid, seconds=40):
     """Record what the PC's speakers play for `seconds` (every output device at once; the loudest one wins). The owner starts the
-    video right after clicking. Saves voice-ref/reference.wav, trimmed of the silence before he pressed play."""
+    video right after clicking. Records in small chunks (wall clock, so a silent device can't hang it) and writes the live level to
+    voice-ref/_level.json for the office's meter. Saves voice-ref/reference.wav, trimmed of the silence before he pressed play."""
     try:
         import soundcard as sc
     except ImportError:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "soundcard==0.4.5"], creationflags=NOFLAGS)
-        import soundcard as sc
+        p = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "soundcard==0.4.5"], capture_output=True, text=True, creationflags=NOFLAGS)
+        try:
+            import soundcard as sc
+        except ImportError:
+            raise Blocked("Couldn't install the speaker recorder (soundcard): " + ((p.stderr or p.stdout or "").strip().splitlines() or ["no internet?"])[-1][:200])
     import warnings
     import numpy as np
     import soundfile as sf
     warnings.filterwarnings("ignore")   # soundcard warns about discontinuities on loopback; harmless here
-    devices = [m for m in sc.all_microphones(include_loopback=True) if m.isloopback]
+    folder = ref_dir(pid)
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        devices = [m for m in sc.all_microphones(include_loopback=True) if m.isloopback]
+    except Exception as e:
+        raise Blocked(f"Couldn't list the speakers to record from: {str(e)[:200]}")
     if not devices:
-        raise Blocked("This PC has no output device that can be recorded.")
-    got = {}
+        raise Blocked("This PC has no speaker output that can be recorded (no loopback device). Plug in or turn on speakers/headphones and try again.")
+    got, errors, live = {}, {}, {}
+    start = time.time()
 
     def grab(m):
+        if os.name == "nt":   # each recording thread needs COM on Windows
+            try:
+                import ctypes
+                ctypes.windll.ole32.CoInitializeEx(None, 0)
+            except Exception:
+                pass
+        chunks = []
         try:
             with m.recorder(samplerate=48000, channels=1) as r:
-                got[m.name] = r.record(numframes=int(48000 * seconds))
+                while time.time() - start < seconds:
+                    try:
+                        c = r.record(numframes=None)   # whatever has arrived; nothing while the device is silent
+                    except TypeError:
+                        c = r.record(numframes=4800)
+                    if c is None or not len(c):
+                        time.sleep(0.02)
+                        continue
+                    c = np.asarray(c, dtype="float32").reshape(-1)
+                    chunks.append(c)
+                    live[m.name] = float(np.sqrt(np.mean(c ** 2)))
+            got[m.name] = np.concatenate(chunks) if chunks else np.zeros(0, dtype="float32")
         except Exception as e:   # one odd device must not stop the others
-            got[m.name + " (failed)"] = None
+            errors[m.name] = str(e)[:160]
             say(f"  {m.name}: {str(e)[:100]}")
-    say(f"Recording {seconds} s from the speakers: play the video now.")
+    say(f"Recording {seconds} s from the speakers ({len(devices)} output device(s)): play the video now.")
     threads = [threading.Thread(target=grab, args=(m,), daemon=True) for m in devices]
     for t in threads:
         t.start()
-    for t in threads:
-        t.join(seconds + 20)
-    best = max(((k, a) for k, a in got.items() if a is not None), key=lambda kv: float(np.sqrt(np.mean(kv[1] ** 2))), default=(None, None))
-    if best[1] is None or float(np.sqrt(np.mean(best[1] ** 2))) < 0.003:
-        raise Blocked("Nothing was playing while I recorded. Click Record, then press play on the video within a couple of seconds.")
+    peak = {}
+    while any(t.is_alive() for t in threads) and time.time() - start < seconds + 20:
+        now = list(live.items())   # the recording threads add to `live` while we read it
+        for k, v in now:
+            peak[k] = max(peak.get(k, 0.0), v)
+        top = max(now,key=lambda kv: peak.get(kv[0], 0), default=(None, 0.0))
+        try:
+            level_file(pid).write_text(json.dumps({"elapsed": round(min(time.time() - start, seconds), 1), "seconds": seconds,
+                                                   "level": round(min(1.0, top[1] * 4), 3), "device": top[0], "heard": max(peak.values(), default=0) >= 0.003,
+                                                   "failed": len(errors), "devices": len(devices)}), encoding="utf-8")
+        except OSError:
+            pass
+        time.sleep(0.25)
+    rms = lambda a: float(np.sqrt(np.mean(a ** 2))) if len(a) else 0.0
+    best = max(got.items(), key=lambda kv: rms(kv[1]), default=(None, None))
+    if best[1] is None:
+        raise Blocked("Recording failed on every speaker output: " + ("; ".join(f"{k}: {v}" for k, v in errors.items())[:300] or "no answer from the sound system"))
+    if rms(best[1]) < 0.003:
+        raise Blocked("Nothing was playing while I recorded. Click Record, then press play on the video within a couple of seconds "
+                      "(and check the video isn't muted).")
     a = best[1].reshape(-1).astype("float32")
     env = np.abs(a)
     loud = np.nonzero(env > 0.02)[0]
     a = a[max(0, loud[0] - 4800):loud[-1] + 4800] if len(loud) else a
-    folder = ref_dir(pid)
-    folder.mkdir(parents=True, exist_ok=True)
     out = folder / "reference.wav"
     sf.write(str(out), a, 48000)
     say(f"  Saved {len(a) / 48000:.0f} s from {best[0]}.")
@@ -273,7 +318,10 @@ def main():
     pid = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     try:
         if cmd == "record":
-            print("RESULT " + json.dumps(record(pid, int(sys.argv[3]) if len(sys.argv) > 3 else 40)))
+            try:
+                print("RESULT " + json.dumps(record(pid, int(sys.argv[3]) if len(sys.argv) > 3 else 40)))
+            finally:
+                level_file(pid).unlink(missing_ok=True)
         elif cmd == "match":
             print("RESULT " + json.dumps(match(pid, sys.argv[3] if len(sys.argv) > 3 else None)))
         else:

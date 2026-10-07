@@ -240,7 +240,8 @@ def _animate(*args, timeout=3600):
 
 
 # ---- voice matcher, the cast's voices, music (2.20.0) ---------------------------------------
-MATCHING = {"pid": None, "step": ""}
+MATCHING = {"pid": None, "step": "", "recording": False, "secs": 0}
+VM_ERRORS = {}   # project -> the last record/match failure, shown on the Voice page until the next try
 ACCOUNT_VOICES = {"at": 0.0, "list": []}
 CASTSAMPLING = {"pid": None}
 KOKORO_OPTIONS = [("kokoro:bm_george", "Kokoro: George (British man, free)"), ("kokoro:bm_lewis", "Kokoro: Lewis (British man, free)"),
@@ -283,8 +284,15 @@ def voice_match_view(p):
     except (OSError, ValueError):
         m = None
     ref = folder / "reference.wav"
+    busy = MATCHING["pid"] == p["id"]
+    live = None
+    if busy and MATCHING.get("recording"):   # the recorder's live level (voice_match.py writes it 4 times a second)
+        try:
+            live = json.loads((folder / "_level.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            live = {"elapsed": 0, "seconds": MATCHING.get("secs") or 40, "level": 0, "starting": True}
     return {"matches": m, "reference": ref.exists(), "reference_at": time.strftime("%Y-%m-%d %H:%M", time.localtime(ref.stat().st_mtime)) if ref.exists() else None,
-            "busy": MATCHING["step"] if MATCHING["pid"] == p["id"] else ""}
+            "busy": MATCHING["step"] if busy else "", "live": live, "error": "" if busy else VM_ERRORS.get(p["id"], "")}
 
 
 def cast_view(p):
@@ -304,12 +312,18 @@ def music_view(p):
 
 
 def run_voice_match(pid, record_secs=0):
-    MATCHING.update(pid=pid, step="Recording: play the video now" if record_secs else "Comparing voices")
+    VM_ERRORS.pop(pid, None)
+    MATCHING.update(pid=pid, step="Recording: play the video now" if record_secs else "Comparing voices", recording=bool(record_secs), secs=record_secs)
+    stage = "record" if record_secs else "match"
     try:
         if record_secs:
+            (ROOT / "content" / f"project-{pid}" / "voice-ref" / "_level.json").unlink(missing_ok=True)
+            cp.log("Owner", "voice_recording", None, {"project": pid, "seconds": record_secs})
             r = _tool("voice_match.py", "record", pid, record_secs, timeout=record_secs + 120)
+            cp.log("Calina", "voice_recorded", None, {"project": pid, "seconds": r.get("seconds"), "device": r.get("device"), "file": r.get("file")})
+            MATCHING.update(recording=False, step=f"Saved {r['seconds']:.0f} s from {r.get('device') or 'the speakers'}. Matching voices (a few minutes)")
             atlas_says(f"**Recorded {r['seconds']:.0f} s of the reference voice.** Now comparing it with the ElevenLabs Voice Library (a few minutes).")
-            MATCHING["step"] = "Comparing voices (a few minutes)"
+            stage = "match"
         m = _tool("voice_match.py", "match", pid, timeout=3600)
         top = m.get("top") or []
         cp.log("Calina", "voice_matched", None, {"project": pid, "compared": m.get("compared"), "top": [t["name"] for t in top]})
@@ -317,9 +331,12 @@ def run_voice_match(pid, record_secs=0):
                    + "; ".join(f"{t['name']} ({round(t['score'] * 100)}%)" for t in top) +
                    ". Open the project's Voice & characters page to listen and add the one you like (free).")
     except Exception as ex:
-        atlas_says(f"The voice match didn't work: {ex}")
+        why = "it took too long" if isinstance(ex, subprocess.TimeoutExpired) else str(ex)
+        VM_ERRORS[pid] = (f"The recording didn't work: {why}" if stage == "record" else f"The voice match didn't work: {why}")
+        cp.log("Calina", "voice_record_failed" if stage == "record" else "voice_match_failed", None, {"project": pid, "error": why[:300]})
+        atlas_says(VM_ERRORS[pid])
     finally:
-        MATCHING.update(pid=None, step="")
+        MATCHING.update(pid=None, step="", recording=False, secs=0)
 
 
 def run_library_add(pid, owner_id, voice_id, name):
@@ -1386,7 +1403,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(409, {"error": f"The voice matcher is busy: {MATCHING['step']}."})
                 if not elevenlabs.configured():
                     return self._send(409, {"error": "ElevenLabs isn't set up: the matcher searches its Voice Library."})
-                secs = max(15, min(90, int(body.get("seconds") or 40))) if what == "record" else 0
+                if not shorts_python():
+                    return self._send(409, {"error": "The video tools aren't set up on this computer, so the office can't record the speakers."})
+                secs =max(15, min(90, int(body.get("seconds") or 40))) if what == "record" else 0
                 threading.Thread(target=run_voice_match, args=(pid, secs), daemon=True).start()
                 return self._send(202, {"ok": True, "message": f"Recording {secs} seconds: press play on the video NOW." if secs else "Comparing voices: a few minutes."})
             if action == "cast-voice":   # the voice of one character

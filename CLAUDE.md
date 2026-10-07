@@ -180,6 +180,11 @@ Agents never spend money without the owner's explicit approval.
     ElevenLabs' similar-voices + library searches; top 5 in `content/project-N/voice-ref/matches.json`). Tested: given ep 21's voice
     it ranked that exact library voice (Frederick Surrey) #1 of 207. Office: Voice & characters (match card, a voice per character,
     music); `hq voice-match|cast-voice|cast-samples|music`.
+    Record (fixed 2026-10-08: a press once saved nothing and said nothing): every loopback device is read in small chunks on the wall
+    clock (a silent device can't hang it; COM initialised per thread), the live level goes to `voice-ref/_level.json` and shows as a
+    meter on the card (`vmLiveInner`/`paintVmLive`, repainted without re-rendering the page), then "Saved N s from <device>.
+    Matching voices" and the match runs by itself. Events `voice_recording`, `voice_recorded`, `voice_record_failed`,
+    `voice_match_failed`; the last failure stays on the card in red (`server.VM_ERRORS`) until the next try.
   - Voice versions are reviewed before the owner sees them: `run_render_voices` runs `quality.review_video(eid, version=1)`;
     `hq frames <id> [version]`.
   - Calina's V3 prompt has a MAKE IT FUN section (hook, narrator personality, characters talk in half the scenes, delivery tags, sfx,

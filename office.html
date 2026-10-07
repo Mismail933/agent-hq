@@ -289,6 +289,10 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .voices .vm audio{grid-column:1/-1;width:100%;height:32px}
 .voices .meter{display:inline-block;width:64px;height:6px;border-radius:3px;background:rgba(148,163,184,.2);vertical-align:middle;overflow:hidden}
 .voices .meter i{display:block;height:100%;background:var(--cyan)}
+.voices .vmlive{display:flex;align-items:center;gap:10px}
+.voices .meter.lv{width:220px;max-width:50%;height:8px}
+.voices .meter.lv i{transition:width .2s}
+.voices .meter.lv.hot i{background:var(--warn)}
 .voices audio{height:34px;max-width:100%}
 .chk{display:flex;flex-wrap:wrap;gap:4px}
 .chk span{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;color:var(--ink-2)}
@@ -1787,6 +1791,18 @@ function voiceHtml(p) {
     <form class="why" data-vaddform="${p.id}"><input type="text" maxlength="60" data-vid placeholder="Add any ElevenLabs voice: paste its voice id" aria-label="ElevenLabs voice id"><input type="text" maxlength="60" data-vname placeholder="Name (optional)" aria-label="Voice name" style="max-width:160px"><button class="btn sm ghost" type="submit" ${eleven.configured ? '' : 'disabled'}>Add voice</button></form>
     <div class="acts"><button class="btn sm ${list ? 'ghost' : ''}" type="button" data-vsamples="${p.id}" ${v.making ? 'disabled' : ''}>${v.making ? 'Making samples…' : list ? 'Make them again' : 'Make voice samples'}</button></div></div>`;
 }
+function vmLiveInner(l) {   // the recorder's live level: is sound arriving from the speakers?
+  const left = Math.max(0, Math.round((l.seconds || 0) - (l.elapsed || 0)));
+  const msg = l.starting ? 'Starting the recorder…' : l.heard ? `Hearing ${esc(l.device || 'the speakers')}.` : 'No sound yet: press play on the video.';
+  return `<span class="meter lv ${l.heard || l.starting ? '' : 'hot'}" aria-hidden="true"><i style="width:${Math.round((l.level || 0) * 100)}%"></i></span>
+    <span class="src">${msg} ${left} s left.</span>`;
+}
+function vmKey() {   // the live level changes 4 times a second: it repaints only its meter (paintVmLive), not the whole page
+  return JSON.stringify(Object.fromEntries(Object.entries(voiceMatch || {}).map(([k, v]) => [k, {...v, live: !!v.live}])));
+}
+function paintVmLive() {
+  for (const el of document.querySelectorAll('[data-vmlive]')) { const l = ((voiceMatch || {})[el.dataset.vmlive] || {}).live; if (l) el.innerHTML = vmLiveInner(l); }
+}
 function voiceMatchHtml(p) {
   if ((p.meta || {}).format !== 'animated_v1') return '';
   const v = (voiceMatch || {})[p.id] || {}, m = v.matches, busy = !!v.busy;
@@ -1799,6 +1815,8 @@ function voiceMatchHtml(p) {
   return `<div class="voices"><b style="color:var(--ink)">Match a voice you like</b>
     <p class="src" style="margin:0">Click <b>Record</b>, then play the video whose narrator you want (in your browser, 40 seconds, a part with talking and little music). The office records what your speakers play, then compares that voice with the ElevenLabs Voice Library using a speaker-recognition model and ranks the closest voices. Free: it uses no ElevenLabs characters. You can also drop an audio file in <b>content/project-${p.id}/voice-ref/</b> and click <b>Compare again</b>.</p>
     ${busy ? `<p class="src"><b>${esc(v.busy)}…</b></p>` : ''}
+    ${v.live ? `<div class="vmlive" data-vmlive="${p.id}">${vmLiveInner(v.live)}</div>` : ''}
+    ${v.error ? `<p class="src" role="alert" style="color:var(--bad-ink)"><b>${esc(v.error)}</b></p>` : ''}
     ${v.reference ? `<div class="vs"><span class="src">Your reference (${esc(v.reference_at || '')})</span><audio controls preload="none" src="/api/voice-ref/${p.id}?v=${esc(v.reference_at || '')}"></audio></div>` : ''}
     ${m ? `<p class="src" style="margin:0">${esc(m.made)}: compared ${m.compared} library voices. ${esc(m.how || '')}</p>${rows}` : ''}
     <div class="acts"><button class="btn sm" type="button" data-vmrec="${p.id}" ${busy || !eleven.configured ? 'disabled' : ''}>Record 40 s, then play the video</button>
@@ -2080,7 +2098,7 @@ async function pollOnce() {
   renderLimits();
   if (Date.now() - (window._phoneAt || 0) > 5000) { window._phoneAt = Date.now(); renderPhone(); renderRules(); }
   producingFor = s.producing_project ?? null; reviewing = !!s.reviewing; atlasLimit = s.atlas_limit || null;
-  production = s.production || {}; voiceSamples = s.voice_samples || {}; ghassan = s.ghassan || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + JSON.stringify(voiceMatch) + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
+  production = s.production || {}; voiceSamples = s.voice_samples || {}; ghassan = s.ghassan || {}; voiceMatch = s.voice_match || {}; castVoices = s.cast || {}; musicState = s.music || {}; refboards = s.refboards || {}; boardUnlocked = s.board_unlocked || {}; eleven = s.eleven || {}; characters = s.characters || {}; animTest = s.animator_test || {}; scoutingRefs = !!s.scouting_refs; producing = !!s.producing; rendering = s.rendering || null; episodes = s.episodes || []; const ek = JSON.stringify(episodes) + producing + rendering + JSON.stringify(projects.map(p => [p.status, p.meta])) + JSON.stringify(production) + JSON.stringify(voiceSamples) + vmKey() + JSON.stringify(castVoices) + JSON.stringify(musicState) + JSON.stringify(refboards) + JSON.stringify(boardUnlocked) + JSON.stringify(eleven) + JSON.stringify(characters) + JSON.stringify(animTest) + scoutingRefs + producingFor + JSON.stringify(lastFail) + space + sub + epFilter;
   if (ek !== episodesKey && !(document.activeElement && $('#episodes').contains(document.activeElement) && document.activeElement.matches('input'))) { const w = episodes.filter(e => e.status === 'awaiting_approval').length, grew = w > waitingEps; waitingEps = w; episodesKey = ek; renderContent(); if (grew && !initial) showIdeaTab('content'); }
   lndIdeas = s.lnd || []; lndStatus = s.lnd_status || {}; lndReport = s.lnd_report || {}; const lk = JSON.stringify(lndIdeas) + JSON.stringify(lndStatus) + JSON.stringify(lndReport);
   if (lk !== lndKey) { const w = lndIdeas.filter(i => i.status === 'new').length, grew = w > waitingLnd; waitingLnd = w; lndKey = lk; renderLnd(); if (grew && !initial) showIdeaTab('lnd'); }
@@ -2088,7 +2106,7 @@ async function pollOnce() {
   if (pk !== projectsKey) { const w = projects.filter(p => p.status === 'awaiting_approval').length, grew = w > waitingPlans; waitingPlans = w; projectsKey = pk; renderPlans(); if (grew && !initial) showIdeaTab('plans'); }
   if (sidePane === 'feed' && feedDirty) renderFeed();
   if (s.events.length) { renderPipe(); renderIdeas(); }
-  renderTeam(); renderHud(s); renderNeeds(); renderDetail();
+  renderTeam(); renderHud(s); renderNeeds(); renderDetail(); paintVmLive();
 }
 let pendingImgs = [];   // [{name, data}] waiting to be sent with the next message
 const IMG_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
