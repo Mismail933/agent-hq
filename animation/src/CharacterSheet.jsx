@@ -46,17 +46,17 @@ export const CharacterSheet = ({who = 'scholar'}) => {
         ))}
         <text x="640" y="470" fontFamily={BODY} fontSize="22" fill={C.teal}>MOUTHS (Rhubarb Lip Sync shapes)</text>
         {MOUTHS.map((m, i) => (
-          <g key={m} transform={`translate(${700 + i * 135} 560) scale(0.46)`}>
+          <g key={m} transform={`translate(${700 + i * 135} 545) scale(0.7)`}>
             <Head who={who} mouth={m} />
-            <text x="0" y="300" textAnchor="middle" fontFamily={BODY} fontSize="40" fill={C.ink}>{m}</text>
-            <text x="0" y="340" textAnchor="middle" fontFamily={BODY} fontSize="30" fill={C.teal}>{MOUTH_NOTE[m]}</text>
+            <text x="0" y="180" textAnchor="middle" fontFamily={BODY} fontSize="34" fill={C.ink}>{m}</text>
+            <text x="0" y="214" textAnchor="middle" fontFamily={BODY} fontSize="26" fill={C.teal}>{MOUTH_NOTE[m]}</text>
           </g>
         ))}
         <text x="640" y="760" fontFamily={BODY} fontSize="22" fill={C.teal}>EXPRESSIONS (eyes, lids, brows, rest mouth)</text>
         {EXPRESSIONS.map((ex, i) => (
-          <g key={ex} transform={`translate(${690 + i * 122} 850) scale(0.42)`}>
+          <g key={ex} transform={`translate(${690 + i * 122} 850) scale(0.62)`}>
             <Head who={who} expression={ex} />
-            <text x="0" y="310" textAnchor="middle" fontFamily={BODY} fontSize="40" fill={C.ink}>{ex}</text>
+            <text x="0" y="200" textAnchor="middle" fontFamily={BODY} fontSize="34" fill={C.ink}>{ex}</text>
           </g>
         ))}
         <text x="640" y="1060" fontFamily={BODY} fontSize="20" fill={C.ink} opacity="0.7">Moves: idle (breathing, sway), blink, talking head-nod, gestures (poses blend), point with a finger, wave, shrug, cheer.</text>

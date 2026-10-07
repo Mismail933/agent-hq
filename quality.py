@@ -508,8 +508,9 @@ MIN_SCENES, MAX_SCENES = 7, 20
 MAX_LINE_WORDS = 34      # one spoken line (the narrator's, or one character's)
 MAX_SCENE_WORDS = 60     # a scene with dialogue: the characters' gestures change on every line, so it may run longer
 
-# Kit v2 (2.20.0): the new cast. The owner approves characters per kit: an approval of an older kit doesn't count.
-KIT_VERSION = "2"
+# Kit v3: the cast redrawn to match the owner's reference image (natural proportions, thin brown lines, calm faces, drapery).
+# The owner approves characters per kit: an approval of an older kit doesn't count.
+KIT_VERSION = "3"
 # Who can speak. The narrator is a voice only (never drawn); the others are on screen when they speak.
 SPEAKERS = ("narrator", "scholar", "ruler", "citizen", "woman", "elder", "merchant", "guard", "worker")
 ON_SCREEN = SPEAKERS[1:]

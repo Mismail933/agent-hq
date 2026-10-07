@@ -1,25 +1,28 @@
 import React from 'react';
 import {spring, useVideoConfig} from 'remotion';
-import {C, LINE, rnd} from './theme';
+import {C, rnd} from './theme';
 
 /*
- * The cast (kit v2, 2.20.0): funny cartoon ancient-world people in the owner's reference style (flat vector, warm earth colours,
- * ink outlines, long faces with big noses, heavy lids, curly hair and beards, tunics with a draped cloak, bare legs, sandals).
- * Drawn in parts (legs, tunic, drape, arms with hands, head with hair, beard, headwear, held prop) so poses, mouths and
- * expressions are just numbers. Local coordinates: origin between the feet, y grows downward, a figure is ~600 tall.
- * There is no on-screen narrator any more: the narrator is a voice only. Nobody holds a POV sign.
+ * The cast (kit v3, 2.21.x): ancient Greek people drawn like the owner's reference image (five men queuing by a voting urn).
+ * Not a funny cartoon: natural adults about 6.5-7 heads tall, normal hands and limbs, thin warm dark-brown outlines of varied
+ * weight, calm natural faces (small eyes, gentle mouths, real noses, beards and hair in flowing curls), flowing drapery with fold
+ * lines (a himation wrapped over the tunic, cloaks that hang and are pinned with a brooch), a muted sepia/terracotta palette with
+ * flat soft shading. Drawn in parts (legs, tunic, drape, arms with hands, head with hair, beard, headwear, held prop) so poses,
+ * mouths and expressions are just numbers. Local coordinates: origin between the feet, y grows downward, a figure is ~600 tall.
+ * The head is drawn in its own larger units (face ~150 tall) and scaled by HEAD_K onto the body.
+ * There is no on-screen narrator: the narrator is a voice only. Nobody holds a POV sign.
  */
 export const POSES = {
   // [shoulder, elbow] in degrees, "outward and up" is positive. L is the arm that holds the prop.
-  stand: {L: [14, 20], R: [12, 14], head: 0},
-  point: {L: [14, 20], R: [88, 4], head: -4},
-  explain: {L: [14, 20], R: [48, 80], head: 3},
-  amazed: {L: [118, 40], R: [150, 16], head: -7},
-  wave: {L: [14, 20], R: [152, 24], head: 3},
-  think: {L: [14, 20], R: [40, 140], head: 6},
-  present: {L: [14, 20], R: [58, 70], head: -2},
-  shrug: {L: [52, 96], R: [52, 96], head: 8},
-  cheer: {L: [160, 10], R: [160, 10], head: -6},
+  stand: {L: [10, 14], R: [8, 10], head: 0},
+  point: {L: [10, 14], R: [84, 4], head: -4},
+  explain: {L: [10, 14], R: [40, 74], head: 3},
+  amazed: {L: [110, 36], R: [140, 16], head: -6},
+  wave: {L: [10, 14], R: [146, 22], head: 3},
+  think: {L: [10, 14], R: [12, 166], head: 6},   // hand up at the beard
+  present: {L: [10, 14], R: [52, 62], head: -2},
+  shrug: {L: [46, 90], R: [46, 90], head: 7},
+  cheer: {L: [158, 10], R: [158, 10], head: -5},
 };
 // The nine mouth shapes of Rhubarb Lip Sync (MIT licence): A closed (P B M), B teeth together (K S T), C open (EH), D wide
 // (AA), E rounded (AO), F pucker (OO W), G teeth on lip (F V), H tongue up (L), X rest. Old scene files use 0/1/2.
@@ -27,89 +30,112 @@ export const MOUTHS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'X'];
 export const EXPRESSIONS = ['neutral', 'happy', 'surprised', 'worried', 'determined', 'thinking', 'laughing', 'angry', 'smug', 'scared'];
 const LEGACY_MOUTH = {0: 'X', 1: 'C', 2: 'D'};
 
-// lift: brows up (px); tilt: inner brow ends up (+, worried) or down (-, cross); asym: left brow extra lift; lid: how far the upper
-// lid covers the eye (0 open .. 1 shut, the sleepy-funny look of the reference is ~0.3); eyeH: eye height; pupil: radius;
-// rest: the mouth when nobody is talking; cheek: blush
+// Subtle, natural faces. lift: brows up; tilt: inner brow ends up (+, worried) or down (-, cross); asym: left brow extra lift;
+// lid: how far the upper lid comes down (0 open .. 1 shut; a calm face is ~0.15); eyeH: eye opening; rest: the mouth when
+// nobody is talking; cheek: a faint warm flush; squint: lower lids up (a real smile)
 const EXPR = {
-  neutral: {lift: 0, tilt: 0, asym: 0, lid: 0.32, eyeH: 1, pupil: 6.5, rest: 'smile', cheek: 0.16},
-  happy: {lift: 7, tilt: -3, asym: 0, lid: 0.2, eyeH: 0.92, pupil: 6.5, rest: 'big', cheek: 0.42},
-  surprised: {lift: 20, tilt: 0, asym: 0, lid: 0, eyeH: 1.3, pupil: 5, rest: 'o', cheek: 0.1},
-  worried: {lift: 9, tilt: 16, asym: 0, lid: 0.12, eyeH: 1.05, pupil: 6, rest: 'frown', cheek: 0.1},
-  determined: {lift: -2, tilt: -14, asym: 0, lid: 0.38, eyeH: 0.92, pupil: 6.5, rest: 'flat', cheek: 0.16},
-  thinking: {lift: 4, tilt: 4, asym: 14, lid: 0.3, eyeH: 0.95, pupil: 6, rest: 'side', cheek: 0.14, up: true},
-  laughing: {lift: 9, tilt: -2, asym: 0, lid: 1, eyeH: 1, pupil: 0, rest: 'laugh', cheek: 0.55, shut: true},
-  angry: {lift: -5, tilt: -24, asym: 0, lid: 0.42, eyeH: 0.9, pupil: 6, rest: 'grit', cheek: 0.45},
-  smug: {lift: 2, tilt: -6, asym: 12, lid: 0.56, eyeH: 1, pupil: 6.5, rest: 'smirk', cheek: 0.2},
-  scared: {lift: 17, tilt: 19, asym: 0, lid: 0, eyeH: 1.3, pupil: 3.6, rest: 'wobble', cheek: 0, sweat: true},
+  neutral: {lift: 0, tilt: 0, asym: 0, lid: 0.14, eyeH: 1, rest: 'smile', cheek: 0.08},
+  happy: {lift: 2, tilt: -1, asym: 0, lid: 0.22, eyeH: 0.9, rest: 'big', cheek: 0.2, squint: true},
+  surprised: {lift: 9, tilt: 0, asym: 0, lid: 0, eyeH: 1.3, rest: 'o', cheek: 0.05},
+  worried: {lift: 4, tilt: 8, asym: 0, lid: 0.1, eyeH: 1.05, rest: 'frown', cheek: 0.05},
+  determined: {lift: -2, tilt: -5, asym: 0, lid: 0.26, eyeH: 0.94, rest: 'flat', cheek: 0.08},
+  thinking: {lift: 2, tilt: 2, asym: 6, lid: 0.2, eyeH: 0.96, rest: 'side', cheek: 0.06, up: true},
+  laughing: {lift: 4, tilt: -1, asym: 0, lid: 1, eyeH: 1, rest: 'laugh', cheek: 0.26, shut: true},
+  angry: {lift: -4, tilt: -10, asym: 0, lid: 0.3, eyeH: 0.92, rest: 'grit', cheek: 0.22},
+  smug: {lift: 1, tilt: -2, asym: 5, lid: 0.4, eyeH: 1, rest: 'smirk', cheek: 0.1},
+  scared: {lift: 8, tilt: 9, asym: 0, lid: 0, eyeH: 1.28, rest: 'wobble', cheek: 0, sweat: true},
 };
 
-const UPPER = 118;
-const FORE = 110;
-const SHOULDER_Y = -352;
-const SHOULDER_X = 76;
-const HEAD_Y = -478;   // centre of the face
-const HIP_Y = -196;
+// Body geometry (a ~6.8-head adult: chin at -506, crotch near half height, fingertips at mid-thigh)
+const UPPER = 120;
+const FORE = 104;
+const HAND = 16;          // from the wrist to the middle of the hand
+const SHOULDER_Y = -484;
+const SHOULDER_X = 56;
+const HEAD_K = 0.56;      // head units -> body units
+export const HEAD_Y = -548;   // centre of the face
+const HIP_Y = -324;
+const LEG = 300;
 
-// Hair and beard colours, skin tones and cloth colours of the reference (muted, warm).
-const HAIR = {black: '#2A1B14', brown: '#5A3522', auburn: '#7A3B1E', grey: '#A7A39C', white: '#F2EEE6'};
-const SKINS = ['#F0C9A0', '#E3B184', '#D9A06F', '#B97A4E', '#9C6240'];
-const CLOTH = ['#F1E6CF', '#D9A45A', '#C8573A', '#7D8A4A', '#3E7C7A', '#8C5A3C', '#5F6B8A', '#B9876A'];
+// Line: thin warm dark brown, heavier on silhouettes, lighter inside.
+const INK = '#4A2C20';
+const LW = 3.4;           // body outline
+const LF = 2;             // folds and details
+const MOUTH_IN = '#5A2A22';
+const TONGUE = '#C9776A';
+const TEETH = '#FBF6EE';
+
+// Muted reference palette: peach skin, dark-brown and grey hair, cream and linen tunics, soft brown/grey/terracotta cloaks.
+const HAIR = {black: '#3B2620', brown: '#5E3626', auburn: '#7A4430', grey: '#B3ACA2', white: '#F1ECE4'};
+const SKINS = ['#F4D9C2', '#EECBAE', '#E3B694', '#C99474', '#A87454'];
+const CLOTH = ['#F3EADB', '#E6D8C0', '#A8664C', '#9A6B55', '#9E978F', '#C49A88', '#8C8A64', '#7F8790', '#C49A5C'];
+
+/** Flat soft shading: the same colour, a little darker (k < 1) or lighter (k > 1). */
+const shade = (hex, k = 0.86) => {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return '#' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => f(v).toString(16).padStart(2, '0')).join('');
+};
 
 /*
- * Each person: skin, hair (colour, style: curly | fringe | bald | bun | short | none), beard (none | stubble | short | full | long),
- * brows, tunic (colour, long or short), drape (the himation over one shoulder), cloak (behind), build (1 slim .. 1.3 plump),
- * headwear (diadem | laurel | helmet | band | veil), held prop (scroll | sceptre | spear | bag | staff | none), wrinkles, earrings.
+ * Each person: skin, hair (colour, style: curly | short | receding | bald | bun | none), beard (none | stubble | short | full |
+ * long), brows, tunic (colour, long or short), drape (a himation wrapped over the left shoulder), cloak (a chlamys hanging behind,
+ * pinned at the shoulder), build (0.9 slim .. 1.3 heavy), tall (0.95 .. 1.04), headwear (diadem | laurel | helmet | band),
+ * held prop (scroll | sceptre | spear | bag | staff | none), wrinkles, earrings.
  */
 const CAST = {
-  scholar: {name: 'The Scholar', skin: SKINS[1], hair: HAIR.white, hairStyle: 'fringe', beard: 'long', beardColor: HAIR.white, brows: HAIR.white,
-    tunic: CLOTH[0], long: true, drape: CLOTH[5], build: 1.0, prop: 'scroll', wrinkles: true},
-  ruler: {name: 'The Ruler', skin: SKINS[2], hair: HAIR.black, hairStyle: 'curly', beard: 'full', beardColor: HAIR.black, brows: HAIR.black,
-    tunic: CLOTH[0], long: true, drape: '#6E2A4F', trim: C.gold, build: 1.28, prop: 'sceptre', headwear: 'diadem'},
-  citizen: {name: 'The Citizen', skin: SKINS[2], hair: HAIR.brown, hairStyle: 'curly', beard: 'stubble', beardColor: HAIR.brown, brows: HAIR.brown,
-    tunic: CLOTH[1], long: false, drape: CLOTH[2], build: 1.0, prop: 'none'},
-  woman: {name: 'The Woman', skin: SKINS[1], hair: HAIR.auburn, hairStyle: 'bun', beard: 'none', brows: HAIR.auburn, tunic: CLOTH[4], long: true,
-    drape: CLOTH[0], build: 0.96, prop: 'none', headwear: 'band', earrings: true, lashes: true},
-  elder: {name: 'The Elder', skin: SKINS[3], hair: HAIR.grey, hairStyle: 'fringe', beard: 'full', beardColor: HAIR.grey, brows: HAIR.grey,
-    tunic: CLOTH[0], long: true, drape: CLOTH[7], build: 1.05, prop: 'staff', wrinkles: true},
-  merchant: {name: 'The Merchant', skin: SKINS[2], hair: HAIR.black, hairStyle: 'bald', beard: 'full', beardColor: HAIR.black, brows: HAIR.black,
-    tunic: CLOTH[3], long: true, drape: CLOTH[1], build: 1.32, prop: 'bag'},
+  scholar: {name: 'The Scholar', skin: SKINS[1], hair: HAIR.white, hairStyle: 'receding', beard: 'long', beardColor: HAIR.white, brows: HAIR.grey,
+    tunic: CLOTH[0], long: true, drape: CLOTH[4], build: 1.0, tall: 0.97, prop: 'scroll', wrinkles: true},
+  ruler: {name: 'The Ruler', skin: SKINS[2], hair: HAIR.brown, hairStyle: 'curly', beard: 'full', beardColor: HAIR.brown, brows: HAIR.brown,
+    tunic: CLOTH[0], long: true, drape: '#7A4B5C', trim: '#C9A060', build: 1.2, tall: 1.03, prop: 'sceptre', headwear: 'diadem'},
+  citizen: {name: 'The Citizen', skin: SKINS[0], hair: HAIR.brown, hairStyle: 'curly', beard: 'none', brows: HAIR.brown,
+    tunic: CLOTH[0], long: false, build: 0.92, tall: 0.99, prop: 'none'},
+  woman: {name: 'The Woman', skin: SKINS[1], hair: HAIR.auburn, hairStyle: 'bun', beard: 'none', brows: HAIR.auburn, tunic: '#B9C2B4', long: true,
+    drape: CLOTH[1], build: 0.9, tall: 0.95, prop: 'none', headwear: 'band', earrings: true, lashes: true},
+  elder: {name: 'The Elder', skin: SKINS[2], hair: HAIR.grey, hairStyle: 'receding', beard: 'full', beardColor: HAIR.white, brows: HAIR.grey,
+    tunic: CLOTH[1], long: true, drape: CLOTH[3], build: 1.04, tall: 0.96, prop: 'staff', wrinkles: true},
+  merchant: {name: 'The Merchant', skin: SKINS[2], hair: HAIR.black, hairStyle: 'bald', beard: 'short', beardColor: HAIR.black, brows: HAIR.black,
+    tunic: CLOTH[1], long: true, drape: CLOTH[8], build: 1.3, tall: 0.98, prop: 'bag'},
   guard: {name: 'The Guard', skin: SKINS[3], hair: HAIR.black, hairStyle: 'short', beard: 'short', beardColor: HAIR.black, brows: HAIR.black,
-    tunic: '#B07A3A', long: false, cloak: C.terracotta, build: 1.12, prop: 'spear', headwear: 'helmet', armour: true},
-  worker: {name: 'The Worker', skin: SKINS[4], hair: HAIR.black, hairStyle: 'short', beard: 'stubble', beardColor: HAIR.black, brows: HAIR.black,
-    tunic: '#CDB892', long: false, build: 1.12, prop: 'none', headwear: 'band'},
+    tunic: '#B98A6A', long: false, cloak: '#A4513C', build: 1.12, tall: 1.04, prop: 'spear', headwear: 'helmet', armour: true},
+  worker: {name: 'The Worker', skin: SKINS[3], hair: HAIR.brown, hairStyle: 'short', beard: 'short', beardColor: HAIR.brown, brows: HAIR.brown,
+    tunic: CLOTH[1], long: false, cloak: CLOTH[4], build: 1.08, tall: 1.0, prop: 'none'},
 };
 export const CAST_IDS = Object.keys(CAST);
 export const CAST_INFO = {
-  scholar: {name: 'The Scholar', role: 'Old thinker: bald crown, white fringe and long white beard, cream tunic, brown cloak. The scientist or philosopher of the story.', prop: 'a scroll'},
-  ruler: {name: 'The Ruler', role: 'Round, pompous king: black curls and beard, gold diadem, purple cloak with gold trim.', prop: 'a sceptre'},
-  citizen: {name: 'The Citizen', role: 'Young everyman: brown curls, stubble, short ochre tunic, terracotta cloak. Reacts to everything.', prop: 'nothing'},
-  woman: {name: 'The Woman', role: 'Sharp-witted woman: auburn hair in a bun with a band, long teal dress, cream shawl, earrings.', prop: 'nothing'},
-  elder: {name: 'The Elder', role: 'Grumpy old man: grey fringe and beard, cream tunic, brown cloak, walking staff.', prop: 'a staff'},
-  merchant: {name: 'The Merchant', role: 'Plump, bald trader: black beard, olive tunic, ochre cloak, coin purse.', prop: 'a coin purse'},
-  guard: {name: 'The Guard', role: 'Soldier: bronze helmet with a red crest, bronze armour, red cloak, spear.', prop: 'a spear'},
-  worker: {name: 'The Worker', role: 'Strong labourer: short black hair, headband, plain short tunic.', prop: 'nothing'},
+  scholar: {name: 'The Scholar', role: 'Old thinker: bald crown, white hair at the sides, long flowing white beard, cream tunic, grey himation. The scientist or philosopher of the story.', prop: 'a scroll'},
+  ruler: {name: 'The Ruler', role: 'Tall, heavy-set man: brown curls and full beard, thin gold diadem, plum himation with a gold edge over a long tunic.', prop: 'a sceptre'},
+  citizen: {name: 'The Citizen', role: 'Young man: thick brown curls, clean-shaven, short cream tunic. The everyman of the story.', prop: 'nothing'},
+  woman: {name: 'The Woman', role: 'Woman: auburn hair in a bun with a band, long sage dress, linen shawl, small earrings.', prop: 'nothing'},
+  elder: {name: 'The Elder', role: 'Old man: receding grey hair, full white beard, linen tunic, soft brown himation, walking staff.', prop: 'a staff'},
+  merchant: {name: 'The Merchant', role: 'Heavy, bald trader: short black beard, linen tunic, ochre himation, coin purse.', prop: 'a coin purse'},
+  guard: {name: 'The Guard', role: 'Soldier: bronze helmet with a red crest, bronze cuirass, red cloak, spear.', prop: 'a spear'},
+  worker: {name: 'The Worker', role: 'Labourer: short brown hair and beard, plain short tunic, grey cloak pinned at the shoulder.', prop: 'nothing'},
 };
 // Old scene files may still name the on-screen narrator: he is gone, so a citizen stands in.
 const ALIAS = {narrator: 'citizen'};
 export const castOf = (who) => CAST[ALIAS[who] || who] || CAST.citizen;
 
-/** A seeded crowd person: one of the cast's looks with its own colours, so a crowd never looks cloned. */
+/** A seeded crowd person: one of the cast's looks with its own colours, hair and build, so a crowd never looks cloned. */
 export const crowdLook = (seed) => {
   const base = ['citizen', 'woman', 'elder', 'merchant', 'worker', 'citizen', 'woman'][Math.floor(rnd(seed * 3.1) * 7)];
   const c = {...CAST[base]};
-  c.skin = SKINS[Math.floor(rnd(seed * 5.7) * SKINS.length)];
-  c.tunic = CLOTH[Math.floor(rnd(seed * 7.3) * CLOTH.length)];
-  c.drape = rnd(seed * 2.2) < 0.6 ? CLOTH[Math.floor(rnd(seed * 9.1) * CLOTH.length)] : null;
+  c.skin = SKINS[Math.floor(rnd(seed * 5.7) * 4)];
+  c.tunic = CLOTH[Math.floor(rnd(seed * 7.3) * 2)];
+  c.drape = rnd(seed * 2.2) < 0.55 ? CLOTH[2 + Math.floor(rnd(seed * 9.1) * (CLOTH.length - 2))] : null;
+  c.cloak = !c.drape && rnd(seed * 4.9) < 0.5 ? CLOTH[2 + Math.floor(rnd(seed * 6.1) * (CLOTH.length - 2))] : null;
   if (base !== 'woman' && base !== 'elder') {
-    const h = [HAIR.black, HAIR.brown, HAIR.auburn, HAIR.black][Math.floor(rnd(seed * 4.4) * 4)];
+    const h = [HAIR.black, HAIR.brown, HAIR.auburn, HAIR.brown][Math.floor(rnd(seed * 4.4) * 4)];
     c.hair = h;
     c.brows = h;
     c.beardColor = h;
     c.beard = ['none', 'stubble', 'short', 'full'][Math.floor(rnd(seed * 6.6) * 4)];
-    c.hairStyle = ['curly', 'short', 'curly', 'bald'][Math.floor(rnd(seed * 8.8) * 4)];
+    c.hairStyle = ['curly', 'short', 'curly', 'receding'][Math.floor(rnd(seed * 8.8) * 4)];
   }
+  c.headwear = base === 'woman' ? c.headwear : null;
   c.prop = 'none';
-  c.build = 0.95 + rnd(seed * 1.9) * 0.35;
+  c.build = 0.9 + rnd(seed * 1.9) * 0.35;
+  c.tall = 0.95 + rnd(seed * 2.3) * 0.08;
   return c;
 };
 
@@ -123,51 +149,80 @@ const handAt = (side, shoulder, elbow, build = 1) => {
   const th1 = side < 0 ? shoulder : -shoulder;
   const th2 = side < 0 ? shoulder + elbow : -(shoulder + elbow);
   const [ux, uy] = rot(th1, UPPER);
-  const [fx, fy] = rot(th2, FORE);
+  const [fx, fy] = rot(th2, FORE + HAND);
   return [side * SHOULDER_X * build + ux + fx, SHOULDER_Y + uy + fy, th2];
 };
 
 // Extents of each held prop in the hand's frame (x across, y down from the hand).
 const PROP_BOX = {
-  scroll: [[-30, -70], [30, 80]],
-  sceptre: [[-34, -350], [34, -350], [0, 60]],
-  spear: [[-24, -470], [24, -470], [0, 170]],
-  staff: [[-20, -260], [20, -260], [0, 250]],
-  bag: [[-40, 10], [40, 10], [0, 100]],
+  scroll: [[-18, -56], [18, 66]],
+  sceptre: [[-22, -330], [22, -330], [0, 60]],
+  spear: [[-16, -470], [16, -470], [0, 170]],
+  staff: [[-14, -250], [24, -250], [0, 250]],
+  bag: [[-28, 8], [28, 8], [0, 76]],
   none: [],
 };
-const HEAD_TOP = {helmet: -690, diadem: -620, laurel: -610, band: -600, veil: -600};
+const HEAD_TOP = {helmet: -668, diadem: -616, laurel: -612, band: -606};
 
 /**
  * How far a character reaches from the point between its feet, in drawing units at scale 1 (hands, the held prop, the head and
- * its hat, the robe). The scene uses it to keep everything inside the safe area, whatever the pose.
+ * its hat, the robe and cloak). The scene uses it to keep everything inside the safe area, whatever the pose.
  */
 export const reach = (who, pose, noProp = false) => {
   const c = castOf(who);
   const b = c.build || 1;
+  const tall = c.tall || 1;
   const P = POSES[pose] || POSES.stand;
-  const pts = [[-120 * b, 0], [120 * b, 0], [-110 * b, -300], [110 * b, -300], [-90, HEAD_Y], [90, HEAD_Y], [0, HEAD_TOP[c.headwear] || -592]];
-  if (c.cloak) pts.push([-130 * b, -40], [130 * b, -40]);
+  const pts = [[-64 * b, 0], [64 * b, 0], [-(76 * b + 24), -300], [76 * b + 24, -300], [-50, HEAD_Y], [50, HEAD_Y], [0, HEAD_TOP[c.headwear] || -612]];
+  if (c.cloak) pts.push([-(60 * b + 50), -120], [60 * b + 50, -120]);
   const [lx, ly, lth] = handAt(-1, P.L[0], P.L[1], b);
   const [rx, ry] = handAt(1, P.R[0], P.R[1], b);
-  pts.push([lx - 32, ly], [lx + 32, ly], [rx - 32, ry], [rx + 32, ry]);
+  pts.push([lx - 22, ly], [lx + 22, ly], [rx - 22, ry], [rx + 22, ry]);
   const tilt = (-lth * 0.22 * Math.PI) / 180;
-  const place = (px, py) => [lx + px * Math.cos(tilt) - py * Math.sin(tilt), ly + 4 + px * Math.sin(tilt) + py * Math.cos(tilt)];
+  const place = (px, py) => [lx + px * Math.cos(tilt) - py * Math.sin(tilt), ly + px * Math.sin(tilt) + py * Math.cos(tilt)];
   if (!noProp) (PROP_BOX[c.prop] || []).forEach(([a, q]) => pts.push(place(a, q)));
   const xs = pts.map((q) => q[0]);
-  const ys = pts.map((q) => q[1]);
+  const ys = pts.map((q) => q[1] * tall);
   return {left: -Math.min(...xs), right: Math.max(...xs), top: -Math.min(...ys)};
 };
 
-const ol = (w = LINE) => ({stroke: C.ink, strokeWidth: w, strokeLinejoin: 'round', strokeLinecap: 'round'});
+const ol = (w = LW) => ({stroke: INK, strokeWidth: w, strokeLinejoin: 'round', strokeLinecap: 'round'});
+const fold = (w = LF, o = 0.55) => ({fill: 'none', stroke: INK, strokeWidth: w, strokeLinecap: 'round', opacity: o});
 
-// A mitten hand with a thumb; `finger` adds a pointing index finger.
+// Points along an ellipse (SVG angles: 180 = left, 270 = top, 360 = right) and a soft scalloped edge through them: curls.
+const arcPts = (cx, cy, rx, ry, a0, a1, n) => Array.from({length: n + 1}, (_, i) => {
+  const a = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180;
+  return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
+});
+const bumps = (pts, cx, cy, k) => pts.slice(1).map((p, i) => {
+  const q = pts[i];
+  const mx = (p[0] + q[0]) / 2;
+  const my = (p[1] + q[1]) / 2;
+  const d = Math.hypot(mx - cx, my - cy) || 1;
+  return `Q ${(mx + ((mx - cx) / d) * k).toFixed(1)} ${(my + ((my - cy) / d) * k).toFixed(1)} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+}).join(' ');
+// Little curl strokes inside hair and beards (seeded, so every frame is the same)
+const curlMarks = (pts, color, seed, w = 1.8) => pts.map(([x, y], i) => {
+  const s = rnd(seed + i * 1.7) > 0.5 ? 1 : -1;
+  return <path key={i} d={`M ${x.toFixed(1)} ${y.toFixed(1)} q ${4 * s} -6 ${9 * s} -1 q ${3 * s} 5 ${-1 * s} 9`} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" />;
+});
+
+// A natural hand: palm, fingers together with two finger lines, a thumb on the inside; `finger` = a fist with the index out.
 const Hand = ({skin, finger = false, side}) => (
-  <g transform={`translate(0 ${FORE + 4}) scale(${side} 1)`}>
-    {finger && <rect x="-9" y="10" width="18" height="44" rx="9" fill={skin} {...ol(5)} />}
-    <ellipse cx="0" cy="8" rx="22" ry="26" fill={skin} {...ol(6)} />
-    <ellipse cx="17" cy="-2" rx="9" ry="14" fill={skin} {...ol(5)} transform="rotate(-28 17 -2)" />
-    <path d="M -10 22 Q -4 30 6 26" fill="none" stroke={C.ink} strokeWidth="3" opacity="0.5" />
+  <g transform={`translate(0 ${FORE}) scale(${side} 1)`}>
+    {finger ? (
+      <g>
+        <path d="M -3 16 L -3 44 Q 0 48 3 44 L 3 16 Z" fill={skin} {...ol(LF)} />
+        <path d="M -9 -2 Q -11 12 -8 21 Q 0 25 9 21 Q 11 10 9 -2 Z" fill={skin} {...ol(LW * 0.8)} />
+        <path d="M -6 18 Q 0 21 6 18" {...fold(1.4)} />
+      </g>
+    ) : (
+      <g>
+        <path d="M -9 -2 Q -11 14 -9 26 Q -6 36 0 36 Q 6 36 8 28 Q 10 14 9 -2 Z" fill={skin} {...ol(LW * 0.8)} />
+        <path d="M -3 21 L -3 33 M 2 21 L 2.5 34" {...fold(1.3, 0.5)} />
+      </g>
+    )}
+    <path d="M 7 2 Q 15 9 13 19 Q 11 23 8 19" fill={skin} {...ol(LF)} />
   </g>
 );
 
@@ -176,214 +231,297 @@ const Arm = ({side, shoulder, elbow, skin, sleeve, build, finger, armour}) => {
   const th2 = side < 0 ? elbow : -elbow;
   return (
     <g transform={`translate(${side * SHOULDER_X * build} ${SHOULDER_Y}) rotate(${th1})`}>
-      <line x1="0" y1="0" x2="0" y2={UPPER} stroke={C.ink} strokeWidth={36 + LINE * 2} strokeLinecap="round" />
+      <line x1="0" y1="0" x2="0" y2={UPPER} stroke={INK} strokeWidth={22 + LW * 2} strokeLinecap="round" />
       <g transform={`translate(0 ${UPPER}) rotate(${th2})`}>
-        <line x1="0" y1="0" x2="0" y2={FORE - 6} stroke={C.ink} strokeWidth={32 + LINE * 2} strokeLinecap="round" />
-        <line x1="0" y1="0" x2="0" y2={FORE - 6} stroke={skin} strokeWidth={32} strokeLinecap="round" />
-        {armour && <rect x="-20" y={FORE - 46} width="40" height="34" rx="8" fill="#8A5A3A" {...ol(5)} />}
+        <line x1="0" y1="0" x2="0" y2={FORE - 4} stroke={INK} strokeWidth={18 + LW * 2} strokeLinecap="round" />
+        <line x1="0" y1="0" x2="0" y2={FORE - 4} stroke={skin} strokeWidth={18} strokeLinecap="round" />
+        {armour && <rect x="-12" y={FORE - 44} width="24" height="34" rx="5" fill="#9C7446" {...ol(LF)} />}
         <Hand skin={skin} finger={finger} side={-side} />
       </g>
-      <line x1="0" y1="0" x2="0" y2={UPPER} stroke={skin} strokeWidth={36} strokeLinecap="round" />
-      {/* the short sleeve of the tunic over the shoulder */}
-      <path d="M -30 -14 Q 0 -30 30 -14 L 26 46 Q 0 56 -26 46 Z" fill={sleeve} {...ol(6)} />
+      <line x1="0" y1="0" x2="0" y2={UPPER} stroke={skin} strokeWidth={22} strokeLinecap="round" />
+      {/* the tunic's soft sleeve over the shoulder, with a fold */}
+      <path d="M -17 -12 Q 0 -20 17 -12 L 16 40 Q 6 46 0 42 Q -8 46 -16 40 Z" fill={sleeve} {...ol(LW * 0.9)} />
+      <path d="M -6 2 Q -4 20 -7 36 M 6 6 Q 8 22 6 34" {...fold(1.4, 0.4)} />
     </g>
   );
 };
 
-const Mouth = ({shape, rest = 'smile'}) => {
+// Mouths sit at y ~48 in head units: small and natural, a soft lower lip, a dark warm inside.
+const Mouth = ({shape, rest = 'smile', skin}) => {
   const m = typeof shape === 'number' ? LEGACY_MOUTH[shape] || 'X' : shape || 'X';
-  const ink = {fill: C.ink};
-  const tongue = (cx, cy, rx, ry) => <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={C.terracotta} />;
+  const lip = shade(skin, 0.82);
+  const line = {fill: 'none', stroke: INK, strokeWidth: 3, strokeLinecap: 'round'};
+  const tongue = (cx, cy, rx, ry) => <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={TONGUE} />;
+  const under = (y) => <path d={`M -7 ${y} Q 0 ${y + 3} 7 ${y}`} fill="none" stroke={lip} strokeWidth="3" strokeLinecap="round" />;
   switch (m) {
     case 'A':
-      return <path d="M -22 44 Q 0 40 22 44" fill="none" stroke={C.ink} strokeWidth="8" strokeLinecap="round" />;
+      return <g><path d="M -13 47 Q 0 49 13 47" {...line} />{under(53)}</g>;
     case 'B':
       return (
         <g>
-          <rect x="-26" y="34" width="52" height="18" rx="8" fill={C.white} stroke={C.ink} strokeWidth="5" />
-          <path d="M -26 43 L 26 43" stroke={C.ink} strokeWidth="3" />
+          <path d="M -14 44 Q 0 42 14 44 Q 12 53 0 54 Q -12 53 -14 44 Z" fill={TEETH} {...ol(2.4)} />
+          <path d="M -12 48.5 L 12 48.5" stroke={INK} strokeWidth="1.2" opacity="0.6" />
         </g>
       );
     case 'C':
-      return <g><ellipse cx="0" cy="45" rx="23" ry="16" {...ink} />{tongue(0, 54, 12, 5)}</g>;
+      return <g><path d="M -14 45 Q 0 41 14 45 Q 11 58 0 58 Q -11 58 -14 45 Z" fill={MOUTH_IN} {...ol(2.4)} />{tongue(0, 54, 7, 3)}</g>;
     case 'D':
-      return <g><ellipse cx="0" cy="48" rx="25" ry="31" {...ink} /><path d="M -18 26 Q 0 21 18 26 L 16 33 Q 0 30 -16 33 Z" fill={C.white} />{tongue(0, 66, 15, 9)}</g>;
+      return (
+        <g>
+          <path d="M -15 43 Q 0 39 15 43 Q 13 66 0 66 Q -13 66 -15 43 Z" fill={MOUTH_IN} {...ol(2.4)} />
+          <path d="M -11 43 Q 0 41 11 43 L 10 47 Q 0 45 -10 47 Z" fill={TEETH} />
+          {tongue(0, 60, 8, 4.5)}
+        </g>
+      );
     case 'E':
-      return <ellipse cx="0" cy="46" rx="15" ry="20" {...ink} />;
+      return <ellipse cx="0" cy="50" rx="9" ry="11" fill={MOUTH_IN} {...ol(2.4)} />;
     case 'F':
-      return <g><ellipse cx="0" cy="46" rx="10" ry="11" {...ink} /><ellipse cx="0" cy="46" rx="17" ry="17" fill="none" stroke={C.ink} strokeWidth="5" opacity="0.55" /></g>;
+      return <g><ellipse cx="0" cy="49" rx="7" ry="6.5" fill={lip} {...ol(2.2)} /><ellipse cx="0" cy="49" rx="3" ry="3" fill={MOUTH_IN} /></g>;
     case 'G':
       return (
         <g>
-          <path d="M -24 37 Q 0 33 24 37 L 22 47 Q 0 44 -22 47 Z" fill={C.white} stroke={C.ink} strokeWidth="4" strokeLinejoin="round" />
-          <path d="M -23 50 Q 0 59 23 50" fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />
+          <path d="M -13 45 Q 0 43 13 45 L 12 50 Q 0 48 -12 50 Z" fill={TEETH} {...ol(2)} />
+          <path d="M -12 52 Q 0 57 12 52" {...line} />
         </g>
       );
     case 'H':
-      return <g><ellipse cx="0" cy="45" rx="20" ry="14" {...ink} />{tongue(0, 39, 10, 5)}</g>;
+      return <g><path d="M -13 45 Q 0 42 13 45 Q 10 56 0 56 Q -10 56 -13 45 Z" fill={MOUTH_IN} {...ol(2.4)} />{tongue(0, 46, 6, 3)}</g>;
     default:
-      if (rest === 'big') return <path d="M -30 36 Q 0 66 30 36 Q 0 46 -30 36 Z" fill={C.white} stroke={C.ink} strokeWidth="5" strokeLinejoin="round" />;
-      if (rest === 'laugh') return <g><path d="M -32 32 Q 0 84 32 32 Q 0 40 -32 32 Z" fill={C.ink} stroke={C.ink} strokeWidth="5" strokeLinejoin="round" />{tongue(0, 58, 14, 8)}<path d="M -26 34 Q 0 40 26 34 L 24 40 Q 0 45 -24 40 Z" fill={C.white} /></g>;
-      if (rest === 'o') return <ellipse cx="0" cy="48" rx="12" ry="16" {...ink} />;
-      if (rest === 'frown') return <path d="M -22 54 Q 0 38 22 54" fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />;
-      if (rest === 'flat') return <path d="M -20 46 L 20 46" fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />;
-      if (rest === 'side') return <path d="M -18 48 Q 4 46 22 40" fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />;
-      if (rest === 'smirk') return <path d="M -20 46 Q 6 50 26 34" fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />;
-      if (rest === 'grit') return <g><rect x="-26" y="38" width="52" height="16" rx="6" fill={C.white} stroke={C.ink} strokeWidth="5" /><path d="M -13 38 L -13 54 M 0 38 L 0 54 M 13 38 L 13 54" stroke={C.ink} strokeWidth="3" /></g>;
-      if (rest === 'wobble') return <path d="M -22 48 Q -14 40 -6 48 Q 2 56 10 48 Q 18 40 24 48" fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />;
-      return <path d="M -24 40 Q 0 56 24 40" fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />;
+      if (rest === 'big') return <g><path d="M -16 44 Q 0 58 16 44 Q 0 48 -16 44 Z" fill={TEETH} {...ol(2.4)} />{under(57)}</g>;
+      if (rest === 'laugh') return <g><path d="M -17 43 Q 0 66 17 43 Q 0 46 -17 43 Z" fill={MOUTH_IN} {...ol(2.4)} /><path d="M -13 44 Q 0 47 13 44 L 12 48 Q 0 50 -12 48 Z" fill={TEETH} />{tongue(0, 57, 7, 3.5)}</g>;
+      if (rest === 'o') return <ellipse cx="0" cy="50" rx="6" ry="8" fill={MOUTH_IN} {...ol(2.2)} />;
+      if (rest === 'frown') return <g><path d="M -12 51 Q 0 45 12 51" {...line} />{under(56)}</g>;
+      if (rest === 'flat') return <g><path d="M -12 48 L 12 48" {...line} />{under(54)}</g>;
+      if (rest === 'side') return <g><path d="M -11 49 Q 2 49 12 45" {...line} />{under(54)}</g>;
+      if (rest === 'smirk') return <g><path d="M -11 48 Q 4 50 14 43" {...line} />{under(54)}</g>;
+      if (rest === 'grit') return <g><path d="M -14 45 L 14 45 L 13 52 L -13 52 Z" fill={TEETH} {...ol(2.2)} /><path d="M -13 48.5 L 13 48.5" stroke={INK} strokeWidth="1.2" opacity="0.6" /></g>;
+      if (rest === 'wobble') return <path d="M -12 49 Q -8 45 -4 49 Q 0 53 4 49 Q 8 45 12 49" {...line} />;
+      return <g><path d="M -14 46 Q 0 52 14 45" {...line} />{under(54)}</g>;
   }
 };
 
+// A small almond eye: white, a dark-brown iris, a firm upper lid line, a faint crease above and a faint lower lid.
 const Eye = ({cx, look, e, blink, skin}) => {
-  const ry = 15 * e.eyeH;
-  const rx = 16;
-  if (e.shut || blink) {   // closed: a happy arc when laughing, a line when blinking
+  const cy = -8;
+  const rx = 11;
+  const ry = 5.6 * e.eyeH;
+  if (e.shut || blink) {   // closed: a happy arc when laughing, a soft line when blinking
     return e.shut
-      ? <path d={`M ${cx - rx} ${-10} Q ${cx} ${-28} ${cx + rx} ${-10}`} fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />
-      : <path d={`M ${cx - rx} ${-12} Q ${cx} ${-6} ${cx + rx} ${-12}`} fill="none" stroke={C.ink} strokeWidth="6" strokeLinecap="round" />;
+      ? <path d={`M ${cx - rx} ${cy + 1} Q ${cx} ${cy - 8} ${cx + rx} ${cy + 1}`} fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+      : <path d={`M ${cx - rx} ${cy} Q ${cx} ${cy + 4} ${cx + rx} ${cy}`} fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />;
   }
-  const cy = -14;
-  const lidY = cy - ry + 2 * ry * e.lid;
+  const top = cy - 1.6 * ry;   // control point of the upper curve (its peak is halfway)
+  const lidPeak = cy - 0.8 * ry + e.lid * 1.5 * ry;
   const [lx, ly] = look;
-  const py = Math.max(cy + ly + (e.up ? -5 : 0), lidY + e.pupil * 0.6);
+  const ix = cx + Math.max(-5, Math.min(5, lx * 0.6));
+  const iy = cy + Math.max(-2, Math.min(2, ly * 0.4 + (e.up ? -2 : 0))) + 0.6;
+  const id = `eye${cx < 0 ? 'L' : 'R'}${Math.round(ry * 10)}`;   // same shape -> same id, so many faces in one picture can share it
   return (
     <g>
-      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={C.white} {...ol(5)} />
-      <circle cx={cx + lx * 0.8} cy={py} r={e.pupil} fill={C.ink} />
-      {e.lid > 0.02 && (
-        <g>
-          <path d={`M ${cx - rx - 3} ${cy - ry - 6} L ${cx + rx + 3} ${cy - ry - 6} L ${cx + rx + 3} ${lidY} Q ${cx} ${lidY + 3} ${cx - rx - 3} ${lidY} Z`} fill={skin} />
-          <path d={`M ${cx - rx + 1} ${lidY + 1} Q ${cx} ${lidY + 4} ${cx + rx - 1} ${lidY + 1}`} fill="none" stroke={C.ink} strokeWidth="5" strokeLinecap="round" />
-        </g>
-      )}
+      <defs><clipPath id={id}><path d={`M ${cx - rx} ${cy} Q ${cx} ${top} ${cx + rx} ${cy} Q ${cx} ${cy + 1.1 * ry} ${cx - rx} ${cy} Z`} /></clipPath></defs>
+      <path d={`M ${cx - rx} ${cy} Q ${cx} ${top} ${cx + rx} ${cy} Q ${cx} ${cy + 1.1 * ry} ${cx - rx} ${cy} Z`} fill={TEETH} />
+      <g clipPath={`url(#${id})`}>
+        <circle cx={ix} cy={iy} r="5" fill="#3E2A1E" />
+        <circle cx={ix + 1.6} cy={iy - 1.6} r="1.2" fill="#FFFFFF" opacity="0.85" />
+      </g>
+      {e.lid > 0.02 && <path d={`M ${cx - rx - 2} ${cy} L ${cx - rx - 2} ${cy - 2.4 * ry} L ${cx + rx + 2} ${cy - 2.4 * ry} L ${cx + rx + 2} ${cy} Q ${cx} ${2 * lidPeak - cy} ${cx - rx - 2} ${cy} Z`} fill={skin} />}
+      <path d={`M ${cx - rx - 1} ${cy + 0.5} Q ${cx} ${e.lid > 0.02 ? 2 * lidPeak - cy : top} ${cx + rx + 1} ${cy - 0.5}`} fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+      <path d={`M ${cx - rx + 3} ${cy + 0.8 * ry + 1} Q ${cx} ${cy + 1.2 * ry + 1} ${cx + rx - 3} ${cy + 0.8 * ry + 1}`} {...fold(1.3, e.squint ? 0.7 : 0.35)} />
+      <path d={`M ${cx - rx + 2} ${cy - 1.9 * ry} Q ${cx} ${cy - 2.6 * ry} ${cx + rx - 1} ${cy - 1.8 * ry}`} {...fold(1.2, 0.35)} />
     </g>
   );
 };
 
-// Curly hair as outlined clumps along an arc: the reference's look.
-const Curls = ({n, rx, ry, cy, r, from, to, color, w = 5}) => (
-  <g>
-    {Array.from({length: n}).map((_, i) => {
-      const a = ((from + ((to - from) * i) / (n - 1)) * Math.PI) / 180;
-      return <circle key={i} cx={rx * Math.cos(a)} cy={cy + ry * Math.sin(a)} r={r} fill={color} {...ol(w)} />;
-    })}
-  </g>
-);
-
+// Hair, in head units (face from y -82 to the chin at 76, half width ~52).
 const HairBack = ({c}) => {
   const h = c.hair;
-  if (c.hairStyle === 'curly') return <g><path d="M -74 10 Q -84 -96 0 -104 Q 84 -96 74 10 Z" fill={h} {...ol()} /><Curls n={11} rx={76} ry={92} cy={-10} r={26} from={170} to={370} color={h} /></g>;
-  if (c.hairStyle === 'bun') return <g><circle cx="0" cy="-104" r="40" fill={h} {...ol()} /><path d="M -74 30 Q -86 -98 0 -100 Q 86 -98 74 30 Q 60 60 52 20 L -52 20 Q -60 60 -74 30 Z" fill={h} {...ol()} /></g>;
-  if (c.hairStyle === 'fringe') return <g><Curls n={4} rx={72} ry={40} cy={-6} r={22} from={150} to={210} color={h} /><Curls n={4} rx={72} ry={40} cy={-6} r={22} from={-30} to={30} color={h} /></g>;
-  if (c.hairStyle === 'short') return <path d="M -70 0 Q -76 -94 0 -98 Q 76 -94 70 0 Q 60 -50 0 -54 Q -60 -50 -70 0 Z" fill={h} {...ol()} />;
+  if (c.hairStyle === 'curly') {
+    const pts = arcPts(0, -22, 72, 74, 150, 390, 15);
+    return (
+      <g>
+        <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -22, 11)} L 40 14 L -40 14 Z`} fill={h} {...ol()} />
+        {curlMarks(arcPts(0, -26, 56, 58, 160, 380, 9), shade(h, 0.7), 3)}
+      </g>
+    );
+  }
+  if (c.hairStyle === 'short') {
+    const pts = arcPts(0, -18, 58, 68, 165, 375, 16);
+    return <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -18, 4)} L 40 10 L -40 10 Z`} fill={h} {...ol()} />;
+  }
+  if (c.hairStyle === 'bun') {
+    const bun = arcPts(0, -94, 26, 22, 0, 360, 10);
+    const pts = arcPts(0, -16, 60, 72, 160, 380, 14);
+    return (
+      <g>
+        <path d={`M ${bun[0][0]} ${bun[0][1]} ${bumps(bun, 0, -94, 4)} Z`} fill={h} {...ol()} />
+        {curlMarks(arcPts(0, -94, 13, 10, 0, 300, 3), shade(h, 0.7), 11)}
+        <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -16, 4)} L 44 30 L -44 30 Z`} fill={h} {...ol()} />
+      </g>
+    );
+  }
+  if (c.hairStyle === 'receding' || c.hairStyle === 'fringe') {   // the back of the head, seen around the neck
+    const pts = arcPts(0, -6, 58, 50, 150, 390, 12);
+    return <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -6, 6)} L 40 30 L -40 30 Z`} fill={h} {...ol()} />;
+  }
+  if (c.hairStyle === 'bald') {
+    const pts = arcPts(0, 4, 56, 30, 160, 380, 10);
+    return <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, 4, 4)} L 40 30 L -40 30 Z`} fill={h} {...ol()} />;
+  }
   return null;
+};
+
+// A tuft of hair over one temple and ear, scalloped on the outside (mirrored for the right side).
+const SideTuft = ({h, flip, big}) => {
+  const pts = arcPts(-50, -12, big ? 18 : 13, big ? 34 : 26, 95, 265, 6);
+  return (
+    <g transform={flip ? 'scale(-1 1)' : undefined}>
+      <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, -50, -12, 5)} Q -40 -14 ${pts[0][0]} ${pts[0][1]} Z`} fill={h} {...ol(LW * 0.9)} />
+      {curlMarks([[-58, -24], [-58, -2]], shade(h, 0.72), 7, 1.5)}
+    </g>
+  );
 };
 
 const HairFront = ({c}) => {
   const h = c.hair;
-  if (c.hairStyle === 'curly') return <Curls n={6} rx={52} ry={18} cy={-76} r={17} from={190} to={350} color={h} />;
-  if (c.hairStyle === 'bun') return <path d="M -66 -40 Q -40 -92 0 -90 Q 40 -92 66 -40 Q 30 -70 0 -66 Q -30 -70 -66 -40 Z" fill={h} {...ol(6)} />;
-  if (c.hairStyle === 'short') return <path d="M -64 -50 Q -30 -96 0 -94 Q 30 -96 64 -50 Q 30 -72 0 -70 Q -30 -72 -64 -50 Z" fill={h} {...ol(6)} />;
-  return null;
-};
-
-const Beard = ({c}) => {
-  const b = c.beardColor || c.hair;
-  if (c.beard === 'none' || !c.beard) return null;
-  if (c.beard === 'stubble') return <path d="M -60 22 Q -50 86 0 96 Q 50 86 60 22 Q 40 66 0 70 Q -40 66 -60 22 Z" fill={b} opacity="0.32" />;
-  const hole = 'M -26 50 A 26 18 0 1 0 26 50 A 26 18 0 1 0 -26 50 Z';
-  if (c.beard === 'short') {
-    return <path d={`M -64 0 Q -66 84 0 108 Q 66 84 64 0 Q 50 40 30 34 Q 0 30 -30 34 Q -50 40 -64 0 Z ${hole}`} fill={b} fillRule="evenodd" {...ol(6)} />;
-  }
-  if (c.beard === 'long') {
+  if (c.hairStyle === 'curly') {
+    const pts = arcPts(0, -40, 50, 34, 192, 348, 9);
     return (
       <g>
-        <path d={`M -66 -4 Q -78 110 -40 190 Q -20 230 0 250 Q 20 230 40 190 Q 78 110 66 -4 Q 50 36 30 32 Q 0 28 -30 32 Q -50 36 -66 -4 Z ${hole}`} fill={b} fillRule="evenodd" {...ol(6)} />
-        <path d="M -30 120 Q -20 170 -10 210 M 10 130 Q 18 180 26 196 M -2 100 Q 0 150 2 230" fill="none" stroke={C.ink} strokeWidth="3" opacity="0.35" />
+        <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -120, 7)} L 54 -40 Q 56 -100 0 -102 Q -56 -100 -54 -40 Z`} fill={h} />
+        <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -120, 7)}`} fill="none" {...ol()} />
+        {curlMarks(arcPts(0, -50, 34, 24, 200, 340, 5), shade(h, 0.7), 5)}
       </g>
     );
   }
-  return (   // full and curly
+  if (c.hairStyle === 'short') {
+    const pts = arcPts(0, -36, 52, 40, 190, 350, 10);
+    return (
+      <g>
+        <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -120, 3)} L 56 -36 Q 58 -94 0 -96 Q -58 -94 -56 -36 Z`} fill={h} />
+        <path d={`M ${pts[0][0]} ${pts[0][1]} ${bumps(pts, 0, -120, 3)}`} fill="none" {...ol()} />
+        <path d="M -30 -74 q 10 -6 20 -2 M 6 -80 q 10 -4 20 2" {...fold(1.4, 0.4)} />
+      </g>
+    );
+  }
+  if (c.hairStyle === 'bun') {
+    return (
+      <g>
+        <path d="M 0 -84 Q -42 -84 -54 -30 Q -50 -10 -46 4 Q -40 -36 -22 -58 Q -8 -66 0 -62 Q 8 -66 22 -58 Q 40 -36 46 4 Q 50 -10 54 -30 Q 42 -84 0 -84 Z" fill={h} {...ol()} />
+        <path d="M -6 -78 Q -30 -70 -44 -32 M -14 -80 Q -38 -66 -50 -20 M 6 -78 Q 30 -70 44 -32 M 14 -80 Q 38 -66 50 -20" {...fold(1.4, 0.45)} />
+      </g>
+    );
+  }
+  if (c.hairStyle === 'receding' || c.hairStyle === 'fringe' || c.hairStyle === 'bald') {
+    const big = c.hairStyle !== 'bald';
+    return (
+      <g>
+        <SideTuft h={h} big={big} />
+        <SideTuft h={h} big={big} flip />
+        {big && <path d="M -16 -82 q 6 -9 15 -5 M 4 -84 q 7 -7 14 -1" fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" opacity="0.6" />}
+      </g>
+    );
+  }
+  return null;
+};
+
+// Beards fall in flowing curls: a scalloped lower edge, curl strokes inside, a hole for the mouth.
+const Beard = ({c}) => {
+  const b = c.beardColor || c.hair;
+  if (c.beard === 'none' || !c.beard) return null;
+  if (c.beard === 'stubble') return <path d="M -50 10 Q -46 70 0 80 Q 46 70 50 10 Q 36 46 0 50 Q -36 46 -50 10 Z" fill={b} opacity="0.22" />;
+  const ry = {short: 74, full: 96, long: 150}[c.beard] || 96;
+  const rx = c.beard === 'long' ? 50 : 54;
+  const pts = arcPts(0, 4, rx, ry, 4, 176, c.beard === 'long' ? 9 : 10);
+  const inner = 'Q -44 30 -22 34 Q 0 30 22 34 Q 44 30 53 -6 Z';
+  const hole = 'M -18 48 A 18 12 0 1 0 18 48 A 18 12 0 1 0 -18 48 Z';
+  const shape = `M 53 -6 L ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)} ${bumps(pts, 0, 4, c.beard === 'short' ? 4 : 7)} L -53 -6 ${inner} ${hole}`;
+  const marks = c.beard === 'long'
+    ? [[-30, 70], [-12, 92], [8, 80], [26, 70], [-20, 120], [4, 124], [-6, 148]]
+    : [[-36, 50], [-24, 74], [0, 82], [24, 74], [36, 50], [-10, 100], [12, 98]].slice(0, c.beard === 'short' ? 5 : 7);
+  return (
     <g>
-      <path d={`M -68 -6 Q -76 96 -30 132 Q 0 146 30 132 Q 76 96 68 -6 Q 52 36 30 32 Q 0 28 -30 32 Q -52 36 -68 -6 Z ${hole}`} fill={b} fillRule="evenodd" {...ol(6)} />
-      <Curls n={7} rx={60} ry={62} cy={62} r={16} from={20} to={160} color={b} w={4} />
+      <path d={shape} fill={b} fillRule="evenodd" {...ol(LW * 0.9)} />
+      {curlMarks(marks, shade(b, 0.72), 13, 1.8)}
+      {c.beard === 'long' && <path d="M -20 90 Q -16 130 -6 160 M 14 96 Q 16 130 8 150" {...fold(1.4, 0.4)} />}
     </g>
   );
 };
 
 const Moustache = ({c}) => {
   if (!c.beard || c.beard === 'none' || c.beard === 'stubble') return null;
-  return <path d="M 0 33 Q -24 26 -42 44 Q -20 42 0 38 Q 20 42 42 44 Q 24 26 0 33 Z" fill={c.beardColor || c.hair} {...ol(5)} />;
+  const b = c.beardColor || c.hair;
+  return <path d="M 0 37 Q -12 31 -22 37 Q -28 43 -24 51 Q -18 42 0 43 Q 18 42 24 51 Q 28 43 22 37 Q 12 31 0 37 Z" fill={b} {...ol(LF)} />;
 };
 
 const Headwear = ({c}) => {
-  if (c.headwear === 'diadem') {
+  if (c.headwear === 'diadem') {   // a thin gold band with small leaves
     return (
       <g>
-        <path d="M -70 -62 Q 0 -86 70 -62 L 66 -46 Q 0 -70 -66 -46 Z" fill={C.gold} {...ol(6)} />
-        {[-44, -22, 0, 22, 44].map((x, i) => <path key={i} d={`M ${x - 10} ${-72 - (x === 0 ? 4 : 0) + Math.abs(x) * 0.2} L ${x} ${-104 - (x === 0 ? 14 : 0) + Math.abs(x) * 0.3} L ${x + 10} ${-72 + Math.abs(x) * 0.2} Z`} fill={C.gold} {...ol(5)} />)}
-        <circle cx="0" cy="-68" r="8" fill={C.terracotta} {...ol(4)} />
+        <path d="M -56 -54 Q 0 -76 56 -54 L 55 -47 Q 0 -68 -55 -47 Z" fill="#C9A060" {...ol(LF)} />
+        {[-36, -18, 0, 18, 36].map((x) => <ellipse key={x} cx={x} cy={-68 + Math.abs(x) * 0.18} rx="3.5" ry="7" fill="#C9A060" {...ol(1.4)} />)}
       </g>
     );
   }
   if (c.headwear === 'laurel') {
-    return <g>{Array.from({length: 9}).map((_, i) => <ellipse key={i} cx={-64 + i * 16} cy={-64 - Math.sin((i / 8) * Math.PI) * 18} rx="9" ry="16" fill="#6F8A3A" {...ol(4)} transform={`rotate(${-50 + i * 12} ${-64 + i * 16} ${-64 - Math.sin((i / 8) * Math.PI) * 18})`} />)}</g>;
+    return <g>{Array.from({length: 9}).map((_, i) => <ellipse key={i} cx={-54 + i * 13.5} cy={-60 - Math.sin((i / 8) * Math.PI) * 14} rx="5" ry="10" fill="#7E8A5A" {...ol(1.4)} transform={`rotate(${-50 + i * 12} ${-54 + i * 13.5} ${-60 - Math.sin((i / 8) * Math.PI) * 14})`} />)}</g>;
   }
-  if (c.headwear === 'band') return <path d="M -70 -50 Q 0 -74 70 -50 L 68 -36 Q 0 -60 -68 -36 Z" fill={C.terracotta} {...ol(5)} />;
+  if (c.headwear === 'band') return <path d="M -54 -50 Q 0 -72 54 -50 L 53 -42 Q 0 -63 -53 -42 Z" fill="#A8664C" {...ol(LF)} />;
   if (c.headwear === 'helmet') {
     return (
       <g>
-        <path d="M -14 -120 Q 0 -230 110 -150 Q 60 -170 30 -120 Z" fill={C.terracotta} {...ol(6)} />
-        <path d="M 2 -118 Q 20 -190 92 -152" fill="none" stroke={C.ink} strokeWidth="3" opacity="0.4" />
-        <path d="M -78 -10 Q -86 -116 0 -120 Q 86 -116 78 -10 L 60 -14 L 58 -48 Q 0 -66 -58 -48 L -60 -14 Z" fill="#C9963E" {...ol()} />
-        <path d="M -70 -50 Q 0 -72 70 -50" fill="none" stroke={C.ink} strokeWidth="5" />
-        <rect x="-8" y="-118" width="16" height="22" rx="4" fill="#8A6A2A" {...ol(4)} />
+        <path d="M -10 -104 Q 0 -200 96 -134 Q 50 -150 26 -104 Z" fill="#A4513C" {...ol()} />
+        <path d="M 2 -108 Q 18 -170 80 -138" {...fold(1.6, 0.45)} />
+        <path d="M -62 -6 Q -70 -102 0 -106 Q 70 -102 62 -6 L 50 -10 L 48 -42 Q 0 -58 -48 -42 L -50 -10 Z" fill="#B8894A" {...ol()} />
+        <path d="M -56 -44 Q 0 -62 56 -44" {...fold(LF, 0.6)} />
+        <path d="M -40 -90 Q -10 -100 10 -98" fill="none" stroke="#E2C48C" strokeWidth="4" strokeLinecap="round" opacity="0.7" />
       </g>
     );
   }
   return null;
 };
 
+// A natural straight nose: one side line, the base with nostrils, a soft shade on one side.
 const Nose = ({skin}) => (
   <g>
-    <path d="M -6 -16 Q -12 12 -22 22 Q -24 40 -2 40 Q 20 42 22 24 Q 12 12 8 -14" fill={skin} {...ol(5)} />
-    <path d="M -10 32 Q -6 36 -2 32" fill="none" stroke={C.ink} strokeWidth="3" opacity="0.6" />
+    <path d="M 5 -14 Q 11 10 15 24 Q 10 31 3 30 Z" fill={shade(skin, 0.9)} />
+    <path d="M 5 -14 Q 10 8 15 24" fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
+    <path d="M 15 24 Q 12 31 4 30 Q -4 32 -10 27" fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
+    <path d="M -6 27 q 3 2 6 0 M 6 28 q 3 2 5 -1" {...fold(1.4, 0.55)} />
   </g>
 );
 
 const Face = ({c, mouth, blink, brow = 0, expression = 'neutral', look = [0, 0]}) => {
   const e = EXPR[expression] || EXPR.neutral;
-  const by = -42 - brow - e.lift;
+  const by = -26 - brow - e.lift;
   const t = e.tilt;
-  const browColor = c.brows || C.ink;
-  const bw = c.brows === HAIR.white || c.brows === HAIR.grey ? 12 : 9;
+  const browColor = c.brows === HAIR.white ? HAIR.grey : c.brows || INK;
+  const bw = c.brows === HAIR.white || c.brows === HAIR.grey ? 5.5 : 4.5;
   return (
     <g>
-      <ellipse cx="-66" cy="4" rx="13" ry="19" fill={c.skin} {...ol(6)} />
-      <ellipse cx="66" cy="4" rx="13" ry="19" fill={c.skin} {...ol(6)} />
-      {c.earrings && <g><circle cx="-68" cy="30" r="7" fill={C.gold} {...ol(3)} /><circle cx="68" cy="30" r="7" fill={C.gold} {...ol(3)} /></g>}
-      <path d="M -64 -20 Q -66 -88 0 -90 Q 66 -88 64 -20 Q 66 52 40 80 Q 0 100 -40 80 Q -66 52 -64 -20 Z" fill={c.skin} {...ol()} />
-      <circle cx="-44" cy="28" r="14" fill={C.terracotta} opacity={e.cheek} />
-      <circle cx="44" cy="28" r="14" fill={C.terracotta} opacity={e.cheek} />
-      {c.wrinkles && <path d="M -30 -66 Q 0 -72 30 -66 M -24 -56 Q 0 -61 24 -56" fill="none" stroke={C.ink} strokeWidth="3" opacity="0.4" />}
-      <Eye cx={-26} look={look} e={e} blink={blink} skin={c.skin} />
-      <Eye cx={26} look={look} e={e} blink={blink} skin={c.skin} />
-      {c.lashes && !blink && !e.shut && <path d="M -44 -26 L -50 -32 M 44 -26 L 50 -32" stroke={C.ink} strokeWidth="4" strokeLinecap="round" />}
-      <path d={`M -46 ${by + t * 0.5 - e.asym} Q -28 ${by - 9 - e.asym} -10 ${by - t * 0.5 - e.asym}`} fill="none" stroke={browColor === HAIR.white ? '#D8D2C6' : browColor} strokeWidth={bw + 4} strokeLinecap="round" />
-      <path d={`M -46 ${by + t * 0.5 - e.asym} Q -28 ${by - 9 - e.asym} -10 ${by - t * 0.5 - e.asym}`} fill="none" stroke={browColor} strokeWidth={bw} strokeLinecap="round" />
-      <path d={`M 10 ${by - t * 0.5} Q 28 ${by - 9} 46 ${by + t * 0.5}`} fill="none" stroke={browColor === HAIR.white ? '#D8D2C6' : browColor} strokeWidth={bw + 4} strokeLinecap="round" />
-      <path d={`M 10 ${by - t * 0.5} Q 28 ${by - 9} 46 ${by + t * 0.5}`} fill="none" stroke={browColor} strokeWidth={bw} strokeLinecap="round" />
+      <ellipse cx="-51" cy="2" rx="8" ry="15" fill={c.skin} {...ol(LW * 0.8)} />
+      <ellipse cx="51" cy="2" rx="8" ry="15" fill={c.skin} {...ol(LW * 0.8)} />
+      <path d="M -52 -4 q 3 -6 5 2 M 52 -4 q -3 -6 -5 2" {...fold(1.3, 0.5)} />
+      {c.earrings && <g><circle cx="-52" cy="22" r="4" fill="#C9A060" {...ol(1.4)} /><circle cx="52" cy="22" r="4" fill="#C9A060" {...ol(1.4)} /></g>}
+      <path d="M -50 -22 Q -52 -82 0 -84 Q 52 -82 50 -22 Q 50 30 36 56 Q 20 76 0 76 Q -20 76 -36 56 Q -50 30 -50 -22 Z" fill={c.skin} {...ol()} />
+      <path d="M 50 -22 Q 50 30 36 56 Q 26 68 14 73 Q 38 40 42 -20 Z" fill={shade(c.skin, 0.93)} />
+      <ellipse cx="-30" cy="22" rx="10" ry="6" fill="#C8573A" opacity={e.cheek} />
+      <ellipse cx="30" cy="22" rx="10" ry="6" fill="#C8573A" opacity={e.cheek} />
+      {c.wrinkles && <path d="M -24 -52 Q 0 -57 24 -52 M -18 -44 Q 0 -48 18 -44 M -42 -4 q -4 4 -2 8 M 42 -4 q 4 4 2 8" {...fold(1.4, 0.4)} />}
+      <Eye cx={-21} look={look} e={e} blink={blink} skin={c.skin} />
+      <Eye cx={21} look={look} e={e} blink={blink} skin={c.skin} />
+      {c.lashes && !blink && !e.shut && <path d="M -32 -10 L -36 -13 M 32 -10 L 36 -13" stroke={INK} strokeWidth="2" strokeLinecap="round" />}
+      <path d={`M -36 ${by + t * 0.5 - e.asym} Q -22 ${by - 5 - e.asym} -9 ${by - t * 0.5 - e.asym}`} fill="none" stroke={browColor} strokeWidth={bw} strokeLinecap="round" />
+      <path d={`M 9 ${by - t * 0.5} Q 22 ${by - 5} 36 ${by + t * 0.5}`} fill="none" stroke={browColor} strokeWidth={bw} strokeLinecap="round" />
       <Beard c={c} />
-      <g transform="translate(0 12)"><Mouth shape={mouth} rest={e.rest} /></g>
+      <Mouth shape={mouth} rest={e.rest} skin={c.skin} />
       <Moustache c={c} />
       <Nose skin={c.skin} />
-      {e.sweat && <path d="M 58 -60 Q 52 -46 58 -40 Q 64 -46 58 -60 Z" fill="#9ACFD6" {...ol(3)} />}
+      {e.sweat && <path d="M 44 -46 Q 40 -36 44 -32 Q 48 -36 44 -46 Z" fill="#B7CFCF" {...ol(1.4)} />}
     </g>
   );
 };
 
-/** The head alone (hair, face with mouth and expression, beard, hat): used by the reference sheets and close-ups. */
+/** The head alone (hair, face with mouth and expression, beard, hat), in head units: used by the reference sheets and close-ups. */
 export const Head = ({who = 'scholar', look: lookOverride = null, mouth = 'X', expression = 'neutral', look = [0, 0], blink = false}) => {
   const c = lookOverride || castOf(who);
   return (
@@ -396,50 +534,94 @@ export const Head = ({who = 'scholar', look: lookOverride = null, mouth = 'X', e
   );
 };
 
-const Leg = ({x, swing, lift, skin, sandal = '#6B4226'}) => (
-  <g transform={`translate(${x} ${HIP_Y}) rotate(${swing})`}>
-    <line x1="0" y1="0" x2="0" y2={-HIP_Y - 18 - lift} stroke={C.ink} strokeWidth={30 + LINE * 2} strokeLinecap="round" />
-    <line x1="0" y1="0" x2="0" y2={-HIP_Y - 18 - lift} stroke={skin} strokeWidth={30} strokeLinecap="round" />
-    <g transform={`translate(0 ${-HIP_Y - 10 - lift})`}>
-      <path d="M -18 -14 Q -22 4 -14 8 L 34 8 Q 42 0 30 -10 Q 10 -16 -18 -14 Z" fill={skin} {...ol(5)} />
-      <path d="M -20 6 L 40 6 L 40 14 L -20 14 Z" fill={sandal} {...ol(4)} />
-      <path d="M -10 -12 L 18 4 M 4 -14 L 30 2" stroke={sandal} strokeWidth="5" strokeLinecap="round" />
+// A slim bare leg with knee and calf, a small foot and a strapped sandal.
+const Leg = ({x, swing, lift, skin, sandal = '#7A4E36'}) => (
+  <g transform={`translate(${x} ${HIP_Y}) rotate(${swing}) scale(1 ${1 - lift / (LEG + 24)})`}>
+    <path d={`M -15 0 L 15 0 Q 16 90 10 168 Q 15 205 10 250 L 7 ${LEG} L -7 ${LEG} Q -10 250 -12 210 Q -15 182 -11 168 Q -17 90 -15 0 Z`} fill={skin} {...ol()} />
+    <path d="M -6 166 q 6 4 12 0" {...fold(1.4, 0.45)} />
+    <g transform={`translate(0 ${LEG})`}>
+      <path d="M -9 -4 Q -14 14 -10 20 L 12 20 Q 16 12 9 -4 Z" fill={skin} {...ol(LW * 0.8)} />
+      <path d="M -12 19 L 14 19 L 14 24 L -12 24 Z" fill={sandal} {...ol(LF)} />
+      <path d="M -8 -2 L 9 10 M 8 -2 L -7 10" stroke={sandal} strokeWidth="2.6" strokeLinecap="round" />
     </g>
   </g>
 );
 
 const Body = ({c, step = null}) => {
   const b = c.build || 1;
-  const sw = 78 * b;
-  const hemY = c.long ? -24 : -128;
-  const hemW = (c.long ? 100 : 92) * b;
-  const belly = b > 1.2 ? 26 * (b - 1) * 4 : 0;
-  const swing = step === null ? 0 : Math.sin(step) * 22;
-  const lift = (v) => (step === null ? 0 : Math.max(0, v) * 18);
+  const sw = 60 * b;
+  const belly = b > 1.15 ? 60 * (b - 1.15) : 0;
+  const waist = 50 * b + belly;
+  const hemY = c.long ? -36 : -176;
+  const hemW = (c.long ? 66 : 62) * b + belly * 0.5;
+  const swing = step === null ? 0 : Math.sin(step) * 18;
+  const lift = (v) => (step === null ? 0 : Math.max(0, v) * 16);
+  const tunic = `M ${-sw} -482 Q ${-sw * 0.55} -500 -16 -500 Q 0 -486 16 -500 Q ${sw * 0.55} -500 ${sw} -482
+    Q ${sw + 6 + belly} -420 ${waist} -372 Q ${hemW + 2} ${(-372 + hemY) / 2} ${hemW} ${hemY}
+    Q ${hemW * 0.5} ${hemY + 8} 0 ${hemY + 2} Q ${-hemW * 0.5} ${hemY + 8} ${-hemW} ${hemY}
+    Q ${-hemW - 2} ${(-372 + hemY) / 2} ${-waist} -372 Q ${-sw - 6 - belly} -420 ${-sw} -482 Z`;
+  const cloakHem = c.long ? -90 : -150;
+  const hemD = c.long ? -70 : -160;
+  const drape = `M ${-sw - 6} -480 Q ${-sw + 6} -504 ${-sw + 40} -496 Q ${sw * 0.1} -440 ${sw * 0.72} -392
+    Q ${sw + 10} -374 ${sw + 12} -350 Q ${hemW + 18} ${(-350 + hemD) / 2} ${hemW + 10} ${hemD}
+    Q ${hemW * 0.4} ${hemD + 18} ${-hemW * 0.1} ${hemD + 6} Q ${-hemW * 0.6} ${hemD - 4} ${-hemW - 12} ${hemD + 14}
+    Q ${-sw - 22} -300 ${-sw - 6} -480 Z`;
   return (
     <g>
-      {c.cloak && <path d={`M ${-sw} -350 Q ${-sw - 60} -150 ${-sw - 50} -30 L ${sw + 50} -30 Q ${sw + 60} -150 ${sw} -350 Z`} fill={c.cloak} {...ol()} />}
-      <Leg x={-30 * b} swing={swing} lift={lift(Math.sin(step ?? 0))} skin={c.skin} />
-      <Leg x={30 * b} swing={-swing} lift={lift(-Math.sin(step ?? 0))} skin={c.skin} />
-      {/* the tunic: an A-line from the shoulders, a plump belly bulges */}
-      <path d={`M ${-sw} -350 Q 0 -372 ${sw} -350 Q ${sw + belly} -240 ${hemW} ${hemY} Q 0 ${hemY + 14} ${-hemW} ${hemY} Q ${-sw - belly} -240 ${-sw} -350 Z`} fill={c.tunic} {...ol()} />
-      {c.armour && (
+      {c.cloak && (   // the chlamys hanging behind: its inside is in shade
         <g>
-          <path d={`M ${-sw + 6} -344 Q 0 -360 ${sw - 6} -344 L ${sw - 4} -200 Q 0 -186 ${-sw + 4} -200 Z`} fill="#C9963E" {...ol(6)} />
-          <path d="M -30 -300 Q 0 -280 30 -300 M -36 -250 Q 0 -232 36 -250" fill="none" stroke={C.ink} strokeWidth="4" opacity="0.5" />
-          {[-60, -30, 0, 30, 60].map((x) => <rect key={x} x={x * b - 13} y="-198" width="26" height="62" rx="5" fill="#8A6A2A" {...ol(4)} />)}
+          <path d={`M ${-sw} -486 Q ${-sw - 30} -300 ${-sw - 46} ${cloakHem} Q 0 ${cloakHem + 14} ${sw + 46} ${cloakHem} Q ${sw + 30} -300 ${sw} -486 Z`} fill={shade(c.cloak, 0.8)} {...ol()} />
+          <path d={`M ${-sw - 20} -300 Q ${-sw - 30} -220 ${-sw - 34} ${cloakHem + 4} M ${sw + 20} -300 Q ${sw + 30} -220 ${sw + 34} ${cloakHem + 4}`} {...fold()} />
         </g>
       )}
-      {!c.armour && <path d={`M ${-sw + 10} -206 Q 0 ${-194 + belly * 0.4} ${sw - 10} -206`} fill="none" stroke={C.ink} strokeWidth="7" />}
-      {!c.armour && <path d={`M -30 ${hemY - 8} L -24 -200 M 30 ${hemY - 8} L 24 -200 M 0 ${hemY - 2} L 0 -200`} fill="none" stroke={C.ink} strokeWidth="3" opacity="0.25" />}
-      {c.drape && (   // the himation: over the left shoulder, across the body to the right hip, its end hanging down the left side
+      <Leg x={-22 * b} swing={swing} lift={lift(Math.sin(step ?? 0))} skin={c.skin} />
+      <Leg x={22 * b} swing={-swing} lift={lift(-Math.sin(step ?? 0))} skin={c.skin} />
+      {/* the neck, with a soft shadow under the chin */}
+      <path d="M -13 -520 L -14 -488 Q 0 -480 14 -488 L 13 -520 Z" fill={c.skin} {...ol(LW * 0.8)} />
+      <path d="M -13 -518 Q 0 -506 13 -518 L 13 -508 Q 0 -500 -13 -508 Z" fill={shade(c.skin, 0.88)} />
+      {/* the tunic (chiton): a belt with a soft overhang, falling folds, flat soft shade down one side */}
+      <path d={tunic} fill={c.tunic} />
+      <path d={`M ${sw} -482 Q ${sw + 6 + belly} -420 ${waist} -372 Q ${hemW + 2} ${(-372 + hemY) / 2} ${hemW} ${hemY} L ${hemW * 0.62} ${hemY + 6} Q ${hemW * 0.5} -300 ${waist * 0.62} -372 Q ${sw * 0.7} -440 ${sw * 0.6} -488 Z`} fill={shade(c.tunic, 0.92)} />
+      <path d={tunic} fill="none" {...ol()} />
+      {c.armour ? (
         <g>
-          <path d={`M ${-sw - 6} -356 L ${-sw + 38} -372 Q ${sw * 0.4} -260 ${sw + 14} -150 L ${sw + 4} -90 Q ${sw * 0.1} -150 ${-sw + 6} -250 L ${-sw - 14} -60 L ${-sw - 40} -70 Q ${-sw - 30} -220 ${-sw - 6} -356 Z`} fill={c.drape} {...ol()} />
-          <path d={`M ${-sw + 20} -330 Q ${sw * 0.2} -240 ${sw - 2} -136 M ${-sw - 20} -300 L ${-sw - 30} -90`} fill="none" stroke={C.ink} strokeWidth="4" opacity="0.35" />
-          {c.trim && <path d={`M ${-sw + 38} -372 Q ${sw * 0.4} -260 ${sw + 14} -150`} fill="none" stroke={c.trim} strokeWidth="8" />}
+          <path d={`M ${-sw + 4} -486 Q 0 -496 ${sw - 4} -486 L ${waist - 2} -352 Q 0 -340 ${-waist + 2} -352 Z`} fill="#B8894A" {...ol()} />
+          <path d="M -28 -450 Q -14 -434 0 -446 Q 14 -434 28 -450 M -22 -400 Q 0 -390 22 -400 M 0 -446 L 0 -370" {...fold(LF, 0.5)} />
+          {[-0.75, -0.38, 0, 0.38, 0.75].map((k) => <rect key={k} x={k * waist - 9} y="-350" width="18" height="52" rx="3" fill="#9C7446" {...ol(LF)} />)}
+        </g>
+      ) : (
+        <g>
+          <path d={`M ${-waist} -378 Q 0 -360 ${waist} -378`} fill="none" stroke={INK} strokeWidth={LF + 0.6} strokeLinecap="round" />
+          <path d={`M ${-waist + 6} -372 Q 0 -356 ${waist - 6} -372`} {...fold(1.4, 0.35)} />
+          <path d={`M ${-hemW * 0.55} ${hemY - 4} Q ${-hemW * 0.5} -280 ${-waist * 0.5} -364 M ${-hemW * 0.15} ${hemY} Q ${-hemW * 0.18} -280 ${-waist * 0.12} -362
+            M ${hemW * 0.25} ${hemY} Q ${hemW * 0.2} -280 ${waist * 0.2} -362 M ${-hemW * 0.35} ${hemY + 2} Q ${-hemW * 0.32} ${hemY - 50} ${-hemW * 0.3} ${hemY - 90}`} {...fold(1.6, 0.42)} />
+          <path d={`M -10 -494 Q -18 -440 -26 -392 M 12 -494 Q 18 -450 24 -400 M -${sw * 0.6} -470 Q -${sw * 0.5} -430 -${sw * 0.55} -392`} {...fold(1.4, 0.35)} />
         </g>
       )}
-      <path d="M -28 -366 Q 0 -350 28 -366 L 24 -384 Q 0 -374 -24 -384 Z" fill={c.skin} {...ol(6)} />
+      {c.drape && (   // the himation: over the left shoulder, wrapped across the body to the right hip, falling to the calves
+        <g>
+          <path d={drape} fill={c.drape} />
+          <path d={`M ${-sw - 6} -470 Q ${-sw - 20} -300 ${-hemW - 12} ${hemD + 14} L ${-hemW + 10} ${hemD + 4} Q ${-sw + 4} -300 ${-sw + 10} -470 Z`} fill={shade(c.drape, 0.86)} />
+          <path d={`M ${-sw + 34} -490 Q ${sw * 0.12} -430 ${sw + 8} -362 L ${sw + 12} -350 Q ${sw * 0.7} -392 ${sw * 0.1} -440 Q ${-sw + 20} -480 ${-sw + 34} -490 Z`} fill={shade(c.drape, 0.84)} />
+          <path d={drape} fill="none" {...ol()} />
+          <path d={`M ${-sw + 30} -478 Q ${sw * 0.15} -422 ${sw + 6} -360`} {...fold(LF, 0.6)} />
+          {[0.15, 0.4, 0.68].map((k) => (
+            <path key={k} d={`M ${-sw + 10 + k * 30} ${-452 + k * 40} Q ${-sw * 0.3 + k * sw} -300 ${-hemW * 0.75 + k * hemW * 1.5} ${hemD - 2}`} {...fold(1.6, 0.45)} />
+          ))}
+          <path d={`M ${-hemW * 0.5} -330 Q ${hemW * 0.1} -290 ${hemW * 0.85} -340 M ${-hemW * 0.3} -270 Q ${hemW * 0.2} -236 ${hemW * 0.8} -280`} {...fold(1.5, 0.4)} />
+          {c.trim && <path d={`M ${hemW + 10} ${hemD} Q ${hemW * 0.4} ${hemD + 18} ${-hemW * 0.1} ${hemD + 6} Q ${-hemW * 0.6} ${hemD - 4} ${-hemW - 12} ${hemD + 14}`} fill="none" stroke={c.trim} strokeWidth="4" />}
+          {/* its end hanging down the front from the left shoulder, with a zigzag hem */}
+          <path d={`M ${-sw + 4} -492 Q ${-sw + 26} -440 ${-sw + 20} -378 L ${-sw + 28} -340 L ${-sw + 8} -352 L ${-sw - 6} -330 Q ${-sw - 12} -420 ${-sw + 4} -492 Z`} fill={c.drape} {...ol(LW * 0.9)} />
+          <path d={`M ${-sw + 6} -470 Q ${-sw + 12} -410 ${-sw + 8} -356`} {...fold(1.5, 0.45)} />
+        </g>
+      )}
+      {c.cloak && (   // the cloak's front over both shoulders, pinned with a round brooch
+        <g>
+          <path d={`M ${-sw - 4} -484 Q ${-sw + 16} -502 ${-sw + 34} -494 Q ${-sw + 12} -440 ${-sw - 8} -396 Z`} fill={c.cloak} {...ol(LW * 0.9)} />
+          <path d={`M ${sw + 4} -484 Q ${sw - 16} -502 ${sw - 34} -494 Q ${sw - 12} -440 ${sw + 8} -396 Z`} fill={c.cloak} {...ol(LW * 0.9)} />
+          <circle cx={sw - 26} cy={-486} r="6" fill="#C9A060" {...ol(LF)} />
+        </g>
+      )}
     </g>
   );
 };
@@ -450,46 +632,46 @@ const HeldProp = ({c, x, y, tilt}) => {
   if (p === 'scroll') {
     return (
       <g transform={at}>
-        <rect x="-30" y="-70" width="60" height="150" rx="12" fill={C.parchment} {...ol(7)} />
-        <ellipse cx="0" cy="-70" rx="30" ry="11" fill="#E3CC98" {...ol(5)} />
-        <ellipse cx="0" cy="80" rx="30" ry="11" fill="#E3CC98" {...ol(5)} />
-        <path d="M -14 -30 L 14 -30 M -14 -6 L 14 -6 M -14 18 L 8 18" stroke={C.ink} strokeWidth="4" strokeLinecap="round" />
+        <rect x="-16" y="-50" width="32" height="110" rx="6" fill="#EFE3C8" {...ol(LW * 0.9)} />
+        <ellipse cx="0" cy="-50" rx="16" ry="6" fill="#DCC8A0" {...ol(LF)} />
+        <ellipse cx="0" cy="60" rx="16" ry="6" fill="#DCC8A0" {...ol(LF)} />
+        <path d="M -8 -24 L 8 -24 M -8 -10 L 8 -10 M -8 4 L 4 4" {...fold(1.6, 0.5)} />
       </g>
     );
   }
   if (p === 'sceptre') {
     return (
       <g transform={at}>
-        <line x1="0" y1="60" x2="0" y2="-300" stroke={C.ink} strokeWidth="22" strokeLinecap="round" />
-        <line x1="0" y1="60" x2="0" y2="-300" stroke={C.gold} strokeWidth="10" strokeLinecap="round" />
-        <circle cx="0" cy="-320" r="30" fill="#6E2A4F" {...ol()} />
-        <circle cx="0" cy="-320" r="10" fill={C.gold} {...ol(4)} />
+        <line x1="0" y1="60" x2="0" y2="-300" stroke={INK} strokeWidth={7 + LW * 2} strokeLinecap="round" />
+        <line x1="0" y1="60" x2="0" y2="-300" stroke="#C9A060" strokeWidth="7" strokeLinecap="round" />
+        <circle cx="0" cy="-314" r="16" fill="#C9A060" {...ol()} />
+        <path d="M -8 -318 q 8 -8 16 0" {...fold(1.4, 0.5)} />
       </g>
     );
   }
   if (p === 'spear') {
     return (
       <g transform={at}>
-        <line x1="0" y1="170" x2="0" y2="-420" stroke={C.ink} strokeWidth="20" strokeLinecap="round" />
-        <line x1="0" y1="170" x2="0" y2="-420" stroke="#8A5A3A" strokeWidth="9" strokeLinecap="round" />
-        <path d="M 0 -470 Q 24 -430 14 -404 L -14 -404 Q -24 -430 0 -470 Z" fill="#C9C2B4" {...ol(6)} />
+        <line x1="0" y1="170" x2="0" y2="-420" stroke={INK} strokeWidth={7 + LW * 2} strokeLinecap="round" />
+        <line x1="0" y1="170" x2="0" y2="-420" stroke="#8A6248" strokeWidth="7" strokeLinecap="round" />
+        <path d="M 0 -470 Q 14 -436 9 -412 L -9 -412 Q -14 -436 0 -470 Z" fill="#BDB5A6" {...ol()} />
       </g>
     );
   }
   if (p === 'staff') {
     return (
       <g transform={at}>
-        <path d="M 0 250 L 0 -220 Q 0 -262 30 -256" fill="none" stroke={C.ink} strokeWidth="22" strokeLinecap="round" />
-        <path d="M 0 250 L 0 -220 Q 0 -262 30 -256" fill="none" stroke="#8A5A3A" strokeWidth="10" strokeLinecap="round" />
+        <path d="M 0 250 L 0 -216 Q 0 -250 22 -244" fill="none" stroke={INK} strokeWidth={9 + LW * 2} strokeLinecap="round" />
+        <path d="M 0 250 L 0 -216 Q 0 -250 22 -244" fill="none" stroke="#8A6248" strokeWidth="9" strokeLinecap="round" />
       </g>
     );
   }
   if (p === 'bag') {
     return (
       <g transform={at}>
-        <path d="M -10 10 Q -44 60 -30 96 Q 0 110 30 96 Q 44 60 10 10 Z" fill="#8C5A3C" {...ol(6)} />
-        <path d="M -14 14 L 14 14" stroke={C.gold} strokeWidth="7" strokeLinecap="round" />
-        <circle cx="0" cy="66" r="10" fill={C.gold} {...ol(3)} />
+        <path d="M -6 8 Q -30 44 -20 70 Q 0 80 20 70 Q 30 44 6 8 Z" fill="#8E6448" {...ol()} />
+        <path d="M -9 12 L 9 12" stroke="#C9A060" strokeWidth="4" strokeLinecap="round" />
+        <path d="M -12 40 Q -6 56 -10 66 M 8 38 Q 12 54 10 66" {...fold(1.4, 0.45)} />
       </g>
     );
   }
@@ -509,35 +691,36 @@ export const Character = ({who = 'scholar', pose = 'stand', poseTo = null, blend
   const B = POSES[poseTo] || A;
   const mix = (u, v) => u + (v - u) * Math.max(0, Math.min(1, blend));
   const P = {L: [mix(A.L[0], B.L[0]), mix(A.L[1], B.L[1])], R: [mix(A.R[0], B.R[0]), mix(A.R[1], B.R[1])], head: mix(A.head, B.head)};
-  const enter = spring({frame: frame - enterAt, fps, config: {damping: 11, stiffness: 120, mass: 0.7}});
+  const enter = spring({frame: frame - enterAt, fps, config: {damping: 14, stiffness: 110, mass: 0.8}});
   const t = frame + seed * 17;
-  const stride = walking ? frame / 3.2 : null;   // one full step cycle about every 20 frames
+  const stride = walking ? frame / 3.6 : null;   // one full step cycle about every 22 frames
   const talking = typeof mouth === 'string' ? !(mouth === 'X' || mouth === 'A') : mouth > 0;
-  const breathe = Math.sin(t / 9) * 0.012;
-  const sway = walking ? Math.sin(stride) * 3 : Math.sin(t / 21) * 2.2;
-  const bob = (walking ? -Math.abs(Math.sin(stride)) * 18 : 0) - Math.abs(Math.sin(t / 5)) * hop;
-  const nod = talking ? Math.sin(t / 3.1) * 3.5 : 0;   // a speaker's head moves with the words
+  const breathe = Math.sin(t / 9) * 0.006;
+  const sway = walking ? Math.sin(stride) * 2 : Math.sin(t / 23) * 1.4;
+  const bob = (walking ? -Math.abs(Math.sin(stride)) * 10 : 0) - Math.abs(Math.sin(t / 5)) * hop;
+  const nod = talking ? Math.sin(t / 3.4) * 2.2 : 0;   // a speaker's head moves gently with the words
   const blinkNow = frame > 20 && (t + seed * 29) % 104 < 4;
-  const gestureArm = talking ? Math.sin(t / 7) * 6 : 0;
-  const swayArm = walking ? Math.sin(stride) * 12 : pose === 'wave' && !poseTo ? Math.sin(t / 3) * 16 : Math.sin(t / 13) * 3;
-  const laughShake = expression === 'laughing' ? Math.sin(t * 1.3) * 3 : 0;
+  const gestureArm = talking ? Math.sin(t / 8) * 5 : 0;
+  const swayArm = walking ? Math.sin(stride) * 10 : pose === 'wave' && !poseTo ? Math.sin(t / 3) * 14 : Math.sin(t / 13) * 2;
+  const laughShake = expression === 'laughing' ? Math.sin(t * 1.3) * 1.6 : 0;
   const [lsh, lel] = P.L;
   const [rsh, rel] = P.R;
   const b = c.build || 1;
+  const tall = c.tall || 1;
   const [hx, hy, hth] = handAt(-1, lsh + swayArm, lel, b);
   const eff = Math.max(0, enter);
-  const k = scale * (0.82 + 0.18 * eff);
+  const k = scale * (0.9 + 0.1 * eff);
   const pointing = (pose === 'point' && (!poseTo || blend < 0.5)) || (poseTo === 'point' && blend >= 0.5);
   return (
-    <g transform={`translate(${x} ${y + bob + (1 - eff) * 160}) scale(${k * facing} ${k * (1 + breathe)}) rotate(${sway * 0.4 + laughShake * 0.3})`} opacity={Math.min(1, eff * 2)}>
-      <ellipse cx="0" cy="14" rx={130 * b} ry="20" fill={C.ink} opacity="0.18" />
+    <g transform={`translate(${x} ${y + bob + (1 - eff) * 80}) scale(${k * facing} ${k * tall * (1 + breathe)}) rotate(${sway * 0.4 + laughShake * 0.3})`} opacity={Math.min(1, eff * 2)}>
+      <ellipse cx="0" cy="22" rx={80 * b} ry="12" fill={INK} opacity="0.14" />
       <Body c={c} step={stride} />
       <Arm side={1} shoulder={rsh + (walking ? -swayArm : swayArm) + gestureArm} elbow={rel} skin={c.skin} sleeve={c.tunic} build={b} finger={pointing} armour={c.armour} />
-      <Arm side={-1} shoulder={lsh + swayArm} elbow={lel} skin={c.skin} sleeve={c.tunic} build={b} armour={c.armour} />
-      {!noProp && <HeldProp c={c} x={hx} y={hy + 4} tilt={-hth * 0.22} />}
-      <g transform={`translate(0 ${HEAD_Y}) rotate(${P.head + sway + nod + laughShake})`}>
+      <Arm side={-1} shoulder={lsh + swayArm} elbow={lel} skin={c.skin} sleeve={c.drape || c.tunic} build={b} armour={c.armour} />
+      {!noProp && <HeldProp c={c} x={hx} y={hy} tilt={-hth * 0.22} />}
+      <g transform={`translate(0 ${HEAD_Y}) rotate(${P.head + sway + nod + laughShake}) scale(${HEAD_K})`}>
         <HairBack c={c} />
-        <Face c={c} mouth={mouth} blink={blinkNow} brow={pose === 'amazed' ? 12 : talking ? Math.max(0, Math.sin(t / 11)) * 6 : 0}
+        <Face c={c} mouth={mouth} blink={blinkNow} brow={pose === 'amazed' ? 6 : talking ? Math.max(0, Math.sin(t / 11)) * 3 : 0}
           expression={pose === 'amazed' && expression === 'neutral' ? 'surprised' : expression} look={look} />
         <HairFront c={c} />
         <Headwear c={c} />
@@ -549,11 +732,11 @@ export const Character = ({who = 'scholar', pose = 'stand', poseTo = null, blend
 // Crowd reactions: pose, expression, hop height, whether mouths move.
 const REACT = {
   idle: ['stand', 'neutral', 0, false],
-  cheer: ['cheer', 'happy', 14, true],
+  cheer: ['cheer', 'happy', 8, true],
   gasp: ['amazed', 'surprised', 0, false],
-  laugh: ['stand', 'laughing', 4, true],
+  laugh: ['stand', 'laughing', 2, true],
   murmur: ['stand', 'thinking', 0, true],
-  angry: ['point', 'angry', 6, true],
+  angry: ['point', 'angry', 3, true],
   scared: ['shrug', 'scared', 0, false],
 };
 export const REACTIONS = Object.keys(REACT);

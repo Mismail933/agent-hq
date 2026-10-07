@@ -2,7 +2,7 @@ import React from 'react';
 import {AbsoluteFill, Audio, staticFile, useCurrentFrame} from 'remotion';
 import {C, W, H, HEAD, easeInOut, clamp01} from './theme';
 import {BACKDROPS} from './Backdrops';
-import {Character, CAST_INFO, reach} from './Character';
+import {Character, CAST_INFO, HEAD_Y, reach} from './Character';
 import {SAFE} from './Camera';
 
 /*
@@ -14,7 +14,7 @@ import {SAFE} from './Camera';
  * props: {who, mouth: [rhubarb letter per frame], audio, durationInFrames}
  */
 const SHOTS = [
-  {name: 'close-up', noProp: true, fit: 'head', scale: 3.0, headY: 760},   // head and shoulders: arms and feet fall outside the frame by design
+  {name: 'close-up', noProp: true, fit: 'head', scale: 4.4, headY: 760},   // head and shoulders: arms and feet fall outside the frame by design
   {name: 'walk', scale: 0.9, y: 1300},
   {name: 'gestures', scale: 1.3, y: 1500},   // the largest full-length framing in which hands and prop stay inside
 ];
@@ -47,9 +47,9 @@ export const CharacterTest = ({who = 'scholar', mouth = [], audio}) => {
   const poseFrom = prev ? prev[3] : pose;
   // the widest reach of the poses involved, so nothing is cropped while one pose melts into the next
   const rs = [reach(who, pose, shot.noProp), reach(who, poseFrom, shot.noProp)];
-  const r = shot.fit === 'head' ? {left: 130, right: 130, top: 640}
+  const r = shot.fit === 'head' ? {left: 100, right: 100, top: -HEAD_Y + 120}
     : {left: Math.max(rs[0].left, rs[1].left), right: Math.max(rs[0].right, rs[1].right), top: Math.max(rs[0].top, rs[1].top)};
-  const y = shot.headY ? shot.headY + 478 * shot.scale : shot.y;
+  const y = shot.headY ? shot.headY - HEAD_Y * shot.scale : shot.y;
   const scale = Math.min(shot.scale, (W - 2 * SAFE) / (r.left + r.right), (y - SAFE) / r.top);
   const lo = SAFE + r.left * scale;
   const hi = W - SAFE - r.right * scale;

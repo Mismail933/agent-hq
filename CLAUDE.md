@@ -157,7 +157,12 @@ Agents never spend money without the owner's explicit approval.
   - Cast (`Character.jsx`, his two reference images: flat "funny cartoon ancient Greece"): scholar, ruler, citizen, woman, elder,
     merchant, guard, worker + a seeded `Crowd` (reactions idle/cheer/gasp/laugh/murmur/angry/scared); 9 poses, 10 expressions.
     **No on-screen narrator, no POV sign** (old `narrator` on screen is refused by the checklist; `castOf` maps it to citizen).
-    The owner approves per kit: `characters_approved` holds `quality.KIT_VERSION` ("2"); `quality.characters_ok` is the gate.
+    The owner approves per kit: `characters_approved` holds `quality.KIT_VERSION`; `quality.characters_ok` is the gate.
+    **Kit v3** (2026-10-07, his reference `review/uploads/2026-10-07-istockphoto-1140556758-612x612.jpg`; "it is NOT funny"): the
+    same cast, ids, poses, expressions and mouths redrawn as natural adults (~6.8 heads, real hands), thin warm-brown lines
+    (`INK` #4A2C20, not black), calm small-eyed faces, beards/hair in flowing curls, himation and pinned cloaks with fold lines,
+    muted sepia palette with flat soft shading, per-person `build` and `tall`. The head is drawn in head units and scaled by
+    `HEAD_K` (0.56) at `HEAD_Y` (exported; CharacterTest's close-up uses it). Details in `animation/STYLE-GUIDE.md`.
   - Scene files carry `lines` [{who, text, tag, pose, expression, crowd}] (`quality.SPEAKERS`; the narrator is a voice only), plus
     optional `crowd` and `sfx` [{name, on_word}]. `quality.sync_voice_lines` keeps `voice_line` = everything said, so every old check
     still works; `split_long_lines` splits dialogue scenes between lines (`MAX_SCENE_WORDS` 60). Old one-line scene files still render.

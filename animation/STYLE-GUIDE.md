@@ -28,20 +28,23 @@ Skin tones: light `#F0C9A0`, mid `#D9A06F`, dark `#9C6240`.
 - **Lilita One**: captions, callouts, the POV stamp, map labels.
 - **Nunito ExtraBold**: small labels only.
 
-## Cast (kit v2, 2.20.0: SVG parts in `src/Character.jsx`)
-The owner's references: a flat-vector "funny cartoon ancient Greece" crowd and a warm storybook scene. So: long faces with big
-noses, heavy upper lids (a sleepy-funny look), thick brows, curly outlined hair and beards, a tunic with a himation draped over
-the left shoulder, bare legs and sandals, warm earth colours, Ink outlines. About 600 units tall, front view, a prop in the left
-hand, the right arm gestures (a pointing finger on `point`). There is **no on-screen narrator and no POV sign**: the narrator
-is a voice only.
-- **scholar**: bald crown, white fringe, long white beard, cream tunic, brown cloak, **scroll**. The genius of the story.
-- **ruler**: round and pompous, black curls and beard, gold diadem, purple cloak with gold trim, **sceptre**.
-- **citizen**: young everyman, brown curls, stubble, short ochre tunic, terracotta cloak.
-- **woman**: auburn bun with a band, long teal dress, cream shawl, earrings.
-- **elder**: grumpy old man, grey fringe and beard, brown cloak, **staff**.
-- **merchant**: plump, bald, black beard, olive tunic, ochre cloak, **coin purse**.
-- **guard**: bronze helmet with a red crest, bronze armour, red cloak, **spear**.
-- **worker**: short black hair, headband, plain short tunic.
+## Cast (kit v3: SVG parts in `src/Character.jsx`)
+The owner's reference (2026-10-07, five Greek men queuing by a voting urn) and his rule: **not a funny cartoon**. So: natural
+adults about 6.5-7 heads tall with normal hands and limbs; thin warm dark-brown outlines (`#4A2C20`, heavier on the silhouette,
+light fold lines inside), not Ink-black; calm natural faces (small almond eyes, gentle mouths, a real straight nose, beards and
+hair in flowing curls); flowing drapery with fold lines (a himation wrapped over the left shoulder and across the tunic, cloaks
+that hang behind and are pinned with a brooch); a muted sepia/terracotta palette (peach skin, cream and linen tunics, soft brown,
+grey and terracotta cloaks) with flat soft shading; different builds, heights, ages and hair. About 600 units tall, front view,
+the head drawn in its own units and scaled by `HEAD_K`, a prop in the left hand, the right arm gestures (a pointing finger on
+`point`). There is **no on-screen narrator and no POV sign**: the narrator is a voice only.
+- **scholar**: bald crown, white hair at the sides, long flowing white beard, cream tunic, grey himation, **scroll**.
+- **ruler**: tall, heavy-set, brown curls and full beard, thin gold diadem, plum himation with a gold edge, **sceptre**.
+- **citizen**: young man, thick brown curls, clean-shaven, short cream tunic.
+- **woman**: auburn bun with a band, long sage dress, linen shawl, small earrings.
+- **elder**: receding grey hair, full white beard, linen tunic, soft brown himation, **staff**.
+- **merchant**: heavy, bald, short black beard, linen tunic, ochre himation, **coin purse**.
+- **guard**: bronze helmet with a red crest, bronze cuirass, red cloak, **spear**.
+- **worker**: short brown hair and beard, plain short tunic, grey cloak pinned at the shoulder.
 - **crowd**: townspeople made from those looks with their own seeded colours and hair; they react together
   (`idle`, `cheer`, `gasp`, `laugh`, `murmur`, `angry`, `scared`).
 
