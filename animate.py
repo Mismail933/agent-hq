@@ -182,17 +182,65 @@ def ensure_toolchain():
                            capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=NOFLAGS)
         if p.returncode != 0:
             raise Blocked("Installing Remotion failed: " + (p.stderr or p.stdout).strip()[-300:])
+    local_fonts()
+
+
+# The kit's two fonts (SIL Open Font Licence), downloaded once and baked into the bundle, so a render never waits on Google Fonts.
+FONTS = {"head": ("LilitaOne-Regular.ttf", "https://raw.githubusercontent.com/google/fonts/main/ofl/lilitaone/LilitaOne-Regular.ttf"),
+         "body": ("Nunito-wght.ttf", "https://raw.githubusercontent.com/google/fonts/main/ofl/nunito/Nunito%5Bwght%5D.ttf")}
+
+
+def local_fonts():
+    """Writes src/fonts.js with the fonts as data URLs. If they can't be had, the shipped fonts.js (null) keeps Google Fonts."""
+    import base64
+    folder = HOME / "fonts"
+    folder.mkdir(exist_ok=True)
+    urls = {}
+    for key, (name, url) in FONTS.items():
+        f = folder / name
+        if not f.exists():
+            try:
+                download(url, f)
+            except Exception as e:  # noqa: BLE001
+                f.unlink(missing_ok=True)
+                say(f"  Couldn't download the font {name} ({str(e)[:100]}): this render loads it from Google Fonts.")
+                return
+        data = f.read_bytes()
+        if data[:4] not in (b"\x00\x01\x00\x00", b"true", b"OTTO"):
+            f.unlink(missing_ok=True)
+            say(f"  The font {name} wasn't a real font file, so it was thrown away: this render loads it from Google Fonts.")
+            return
+        urls[key] = "data:font/ttf;base64," + base64.b64encode(data).decode()
+    (APP / "src" / "fonts.js").write_text("// written by animate.py: the kit's fonts, local\nexport const LOCAL_FONTS = "
+                                          + json.dumps(urls) + ";\n", encoding="utf-8")
+
+
+BROWSER_TIMEOUT_MS = 120000   # Remotion's default is 30 s; the headless browser on his PC sometimes needs longer to start
+BROWSER_ERRORS = ("setting up the headless browser", "Session closed", "Target closed", "Protocol error",
+                  "browser has disconnected", "Failed to launch the browser", "Browser closed", "connect to the browser")
 
 
 def remotion(args, timeout=3000):
+    """Runs Remotion's CLI. A headless-browser start/close error gets one automatic retry, and says so."""
     cli = APP / "node_modules" / "@remotion" / "cli" / "remotion-cli.js"
-    p = subprocess.run([str(NODE_DIR / "node.exe"), str(cli), *args], cwd=APP, env=node_env(), capture_output=True,
-                       text=True, encoding="utf-8", errors="replace", timeout=timeout, creationflags=NOFLAGS)
-    if p.returncode != 0:
+    args = [*args, f"--timeout={BROWSER_TIMEOUT_MS}"]
+    for attempt in (1, 2):
+        p = subprocess.run([str(NODE_DIR / "node.exe"), str(cli), *args], cwd=APP, env=node_env(), capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=timeout, creationflags=NOFLAGS)
+        if p.returncode == 0:
+            return p.stdout
         text = re.sub(r"\x1b\[[0-9;]*m", "", (p.stderr or "") + (p.stdout or "")).strip()
         k = text.find("Error:")
-        raise Blocked("Remotion failed: " + (text[k:k + 900] if k >= 0 else text[-600:]))
-    return p.stdout
+        detail = text[k:k + 900] if k >= 0 else text[-600:]
+        browser = any(b.lower() in text.lower() for b in BROWSER_ERRORS)
+        if browser and attempt == 1:
+            say("  Remotion's headless browser failed to start or closed early; trying once more. (" + detail[:200] + ")")
+            time.sleep(5)
+            continue
+        if browser:
+            raise Blocked("Remotion failed twice because its headless browser didn't start or closed early (not a problem in the "
+                          "scene file): " + detail)
+        raise Blocked("Remotion failed: " + detail)
 
 
 # ---- 1. checklist ---------------------------------------------------------------------

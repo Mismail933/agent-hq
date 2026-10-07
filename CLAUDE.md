@@ -270,7 +270,11 @@ Agents never spend money without the owner's explicit approval.
   `animate.py render <episode>` (run in the shorts venv like shorts.py; `hq render <id>` / the office button): per-scene
   voice (Kokoro or Piper, slowed to ~130 wpm; or the owner's own `voice.mp3` aligned with faster-whisper) -> word timings
   -> mouth shapes from the audio loudness gated by the words -> `scene-props.json` -> Remotion render -> `short.mp4`
-  + title/description/sources (per-scene sources). Node 24 and Remotion are installed on first use into
+  + title/description/sources (per-scene sources). `animate.remotion` passes `--timeout=120000` (`BROWSER_TIMEOUT_MS`; Remotion's
+  default 30 s timed out "setting up the headless browser") and retries once on a browser start/close error (`BROWSER_ERRORS`),
+  saying so; a second failure is reported as a browser problem, not a scene-file one. The kit's fonts (Lilita One, Nunito, OFL) are
+  downloaded once into `~/.agent-hq-anim/fonts` and written into the render copy's `src/fonts.js` as data URLs (`local_fonts`), so
+  a render needs no network; the shipped `fonts.js` is null and `theme.js` then falls back to Google Fonts. Node 24 and Remotion are installed on first use into
   `~/.agent-hq-anim` (private Node copy, because his system Node is 14; source of `animation/src` is copied there each render so
   updates never touch node_modules). `animate.py samples` makes the same lines in 4 free voices (Kokoro George/Emma, Piper
   Alan/Ryan) for the owner to pick in Ideas -> Content (`/api/project/N/voice`, `hq voice-samples|voice`); the choice

@@ -1,9 +1,19 @@
 // The style kit's tokens. The same values are written out in ../STYLE-GUIDE.md: change both together.
 import {loadFont as loadHead} from '@remotion/google-fonts/LilitaOne';
 import {loadFont as loadBody} from '@remotion/google-fonts/Nunito';
+import {continueRender, delayRender} from 'remotion';
+import {LOCAL_FONTS} from './fonts';
 
-export const HEAD = loadHead().fontFamily; // headlines, captions, callouts
-export const BODY = loadBody('normal', {weights: ['800']}).fontFamily; // small labels
+// The fonts come from the bundle (animate.py writes fonts.js) so a render needs no network; Google Fonts only if that failed.
+const localFont = (family, url, weight) => {
+  const handle = delayRender(`Loading the ${family} font`);
+  const face = new FontFace(family, `url("${url}")`, {weight});
+  face.load().then(() => document.fonts.add(face)).catch(() => {}).finally(() => continueRender(handle));
+  return family;
+};
+
+export const HEAD = LOCAL_FONTS ? localFont('Lilita One', LOCAL_FONTS.head, '400') : loadHead().fontFamily; // headlines, captions, callouts
+export const BODY = LOCAL_FONTS ? localFont('Nunito', LOCAL_FONTS.body, '200 1000') : loadBody('normal', {weights: ['800']}).fontFamily; // small labels
 
 export const W = 1080;
 export const H = 1920;
