@@ -10,7 +10,7 @@ Atlas's controls for Agent HQ.
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
                  restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
                  resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
-                 design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-use <project> kit|v<K>     (Rana)
+                 design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
@@ -477,6 +477,9 @@ def main(argv):
         elif cmd == "cast":   # hq cast <project>: which cast the project uses and Rana's versions
             import cast
             show(cast.status(int(args[0])))
+        elif cmd == "cast-check":   # hq cast-check <project> v<K>: render that version again, Israa checks it once more (no redraw)
+            code, reply = office(f"/api/project/{int(args[0])}/cast-check", {"version": args[1]})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "cast-use":   # hq cast-use <project> kit|v<K>
             code, reply = office(f"/api/project/{int(args[0])}/cast-use", {"which": args[1]})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")

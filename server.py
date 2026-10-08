@@ -385,7 +385,8 @@ def job_label(kind, a):
             "cast_samples": "The cast's voice samples for project {0}", "samples": "The narrator samples for project {0}",
             "batch": "Calina's scripts for project {0}", "scout_refs": "The Scout's reference board for project {0}",
             "review": "Calina's learning note for project {0}", "plan": "Serge's plan for idea #{0}",
-            "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}",
+            "cast_check": "Israa's check of Rana's cast v{1} for project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -418,7 +419,7 @@ def journaled(kind, fn):
     return run
 
 
-JOBS = {"cast_draw": "run_cast_draw", "design": "run_design", "render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
+JOBS = {"cast_draw": "run_cast_draw", "cast_check": "run_cast_check","design": "run_design", "render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
         "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video"}
@@ -909,7 +910,7 @@ def allowance_short(agents):
     return out
 
 
-JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
+JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "cast_check": ("Israa",),"design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
              "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",)}   # the agents a long job can't finish without
 
 
@@ -954,6 +955,23 @@ def run_cast_draw(pid, images, notes="", resume=""):
     except Exception as ex:
         cp.log("Rana", "cast_failed", None, {"project": pid, "reason": str(ex)[:300]})
         atlas_says(f"Rana couldn't redraw the cast: {ex}")
+    finally:
+        CHARMAKING.update(pid=None, step="")
+
+
+def run_cast_check(pid, k):
+    """hq cast-check: render a version of Rana's cast as it is now and Israa checks it once more (cast.check), no redraw."""
+    CHARMAKING.update(pid=pid, step=f"Rendering Rana's cast v{k} and Israa checks it once more")
+    try:
+        r = cast.check(pid, k, _animate, say=lambda m: CHARMAKING.update(step=m))
+        weak = ("\n\nStill weak:\n" + "\n".join(f"- {w}" for w in r["weak"])) if r["weak"] else ""
+        atlas_says(f"**Israa checked Rana's cast v{k} for project {pid} again** (freshly rendered): {r['passed']} of {r['total']} characters "
+                   f"pass side by side with the owner's picture.{weak}\n\n"
+                   + ("The project uses this cast: its test clips on Voice & characters are the new ones; the owner approves them there."
+                      if r["in_use"] else f"The project doesn't use v{k}; to use it: hq cast-use {pid} v{k}."))
+    except Exception as ex:
+        cp.log("Israa", "cast_check_failed", None, {"project": pid, "version": k, "reason": str(ex)[:300]})
+        atlas_says(f"Israa's check of Rana's cast v{k} didn't finish: {ex}")
     finally:
         CHARMAKING.update(pid=None, step="")
 
@@ -1686,6 +1704,15 @@ class Handler(BaseHTTPRequestHandler):
                 cp.set_project_meta(pid, voice={"id": vid, "label": known[vid]["label"]})
                 cp.log("Owner", "voice_chosen", None, {"project": pid, "voice": vid})
                 return self._send(200, {"ok": True, "message": f"Voice chosen: {known[vid]['label']}. It's used from the next Short."})
+            if action == "cast-check":   # render a version of Rana's cast again and Israa checks it once more (no redraw)
+                k = str(self._json_body().get("version", "")).lstrip("vV")
+                if not k.isdigit() or not (cast._folder(pid, int(k)) / "Character.jsx").exists():
+                    return self._send(400, {"error": f"Project {pid} has no cast v{k} (see hq cast {pid})."})
+                if anim_busy() or quality.REVIEWING.locked():
+                    return self._send(409, {"error": f"Busy: {anim_busy() or 'Israa is reviewing'}. Try again when it's done."})
+                threading.Thread(target=run_cast_check, args=(pid, int(k)), daemon=True).start()
+                return self._send(202, {"ok": True, "message": f"Rendering v{k}'s sheets and test clips, then Israa checks every character "
+                                                               "side by side with the owner's picture (about an hour). No redraw."})
             if action in ("cast-draw", "cast-use"):   # Rana redraws the cast from the owner's picture(s) / which cast the project uses
                 body = self._json_body()
                 if action == "cast-use":

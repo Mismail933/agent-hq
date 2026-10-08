@@ -13,7 +13,9 @@ Before this, the cast was code inside the program (animation/src/Character.jsx),
 4. animate.py `cast-test` renders reference sheets + 30-second test clips of the candidate into v<K>/characters/ (the project's own
    characters are not touched). A render error goes back to her too.
 5. Israa compares each character with its sheet AND, side by side, with the owner's picture (`quality.review_characters(refs=...)`).
-   Characters she fails go back to Rana with her notes: 2 rounds (`ROUNDS`).
+   Characters she fails go back to Rana with her notes: 2 rounds (`ROUNDS`, rule `cast.review_rounds`). Rule `cast.final_check`
+   (on): if Character.jsx changed after Israa's last check (`_digest`), it is rendered and checked once more before installing.
+   `check` (hq cast-check <project> v<K>): render + Israa's check of a version once more, no redraw.
 6. Then it becomes the project's candidate: meta `cast` = {version, file}, the project's characters library points at v<K>, and
    the owner's approval is withdrawn until he approves this cast (Voice & characters, or his phone). Renders use the project's
    cast file (animate.cast_file) from then on; `cast-use <project> kit` goes back to the kit's characters.
@@ -40,7 +42,7 @@ import workers
 ROOT = Path(__file__).parent
 KIT = ROOT / "animation" / "src" / "Character.jsx"
 RANA = "Rana"
-ROUNDS = 2            # Israa may send characters back to Rana this many times
+ROUNDS = 2            # Israa may send characters back to Rana this many times (rule cast.review_rounds)
 MAX_BYTES = 200000
 ALLOWED_IMPORTS = {"react", "remotion", "./theme"}
 BANNED = [r"\brequire\s*\(", r"\bimport\s*\(", r"\bfetch\b", r"XMLHttpRequest", r"\beval\b", r"\bFunction\s*\(", r"\bwindow\b",
@@ -112,7 +114,7 @@ def status(pid):
         except (OSError, ValueError):
             st = {}
         out["versions"].append({"version": v.name, **{k: st.get(k) for k in ("status", "made", "note", "reviews_passed", "rounds", "step",
-                                                                              "why", "wait_for", "stopped", "resumes") if st.get(k) not in (None, "")}})
+                                                                              "why", "wait_for", "stopped", "resumes", "checked") if st.get(k) not in (None, "")}})
     return out
 
 
@@ -144,6 +146,15 @@ def _state(folder):
 
 def _save(folder, state):
     (folder / "cast.json").write_text(json.dumps(state, indent=1), encoding="utf-8")
+
+
+def _digest(folder):
+    """A fingerprint of the version's Character.jsx: tells whether what Israa checked is what the file holds now."""
+    import hashlib
+    try:
+        return hashlib.sha256((folder / "Character.jsx").read_bytes()).hexdigest()[:16]
+    except OSError:
+        return ""
 
 
 def unfinished(pid):
@@ -274,6 +285,7 @@ def draw(pid, images, notes, animate, say=print, resume=""):
 
 
 def _run(pid, k, folder, state, animate, say, continuing):
+    rules.apply_all()   # cast.review_rounds as Atlas set it
     kit_code = KIT.read_text(encoding="utf-8")
     local_refs = sorted(f for f in (folder / "refs").glob("*") if f.is_file())
     notes = state.get("note") or ""
@@ -312,15 +324,20 @@ def _run(pid, k, folder, state, animate, say, continuing):
                     raise RuntimeError(f"Rana's cast couldn't be used ({problem}). The project keeps its characters.")
                 say(f"Rana's file didn't pass ({problem[:160]}); she fixes it.")
                 _ask(folder, f"Your Character.jsx was refused: {problem}. Fix that, keep the drawing.")
-            state["step"] = "review"
+            state.update(step="review", rendered=_digest(folder))
             _save(folder, state)
         if state["step"] == "review":
             say("Israa is comparing each character with its sheet and with the owner's picture...")
             weak_ids = None if not reviews else [w for w, r in reviews.items() if r.get("verdict") != "pass"]
             reviews.update(quality.review_characters(pid, lib_dir=folder / "characters", refs=local_refs, only=weak_ids))
+            state["reviewed"] = state.get("rendered", "")
             weak = {w: r for w, r in reviews.items() if r.get("verdict") != "pass"}
             if not weak or rnd >= ROUNDS:
                 state["step"] = "install"
+                if rules.get("cast.final_check") and state["reviewed"] != _digest(folder):   # changed after her check: once more
+                    say("Rana's last fixes were never rendered or checked: rendering them and Israa checks once more...")
+                    state.update(step="check")
+                    reviews.clear()
             else:
                 state["feedback"] = "\n".join(f"- {quality.CAST_NAMES.get(w, w)}: {r.get('summary', '')} "
                                               + "; ".join(i for s in r.get("shots") or [] for i in (s.get("issues") or []))[:900]
@@ -334,6 +351,41 @@ def _run(pid, k, folder, state, animate, say, continuing):
     cp.log(RANA, "cast_ready", None, {"project": pid, "version": k, "passed": state["reviews_passed"]})
     return {"version": k, "passed": passed, "total": len(reviews), "rana_says": state.get("rana_says", ""),
             "weak": [quality.CAST_NAMES.get(w, w) for w, r in reviews.items() if r.get("verdict") != "pass"]}
+
+
+def check(pid, k, animate, say=print):
+    """hq cast-check <project> v<K> (the owner's "why can't Israa test?"): render the version's sheets + test clips from its
+    Character.jsx as it is now and run Israa's side-by-side check of every character once more. No redraw. If the project uses
+    this version, its characters library is refreshed (the owner approves again). Returns the summary dict; raises RuntimeError."""
+    pid, k = int(pid), int(str(k).lstrip("vV"))
+    folder = _folder(pid, k)
+    state = _state(folder)
+    if not (folder / "Character.jsx").exists():
+        raise RuntimeError(f"Project {pid} has no cast v{k}.")
+    if state.get("status") == "drawing":
+        raise RuntimeError(f"Rana is still working on v{k}; it is checked when she finishes.")
+    problem = validate((folder / "Character.jsx").read_text(encoding="utf-8"), KIT.read_text(encoding="utf-8"))
+    if problem:
+        raise RuntimeError(f"v{k}'s Character.jsx doesn't pass the safety check ({problem}); nothing rendered.")
+    say(f"Rendering v{k}'s reference sheets and test clips (about 40 minutes)...")
+    try:
+        animate("cast-test", pid, folder)
+    except RuntimeError as e:
+        raise RuntimeError(f"v{k}'s test render failed: {str(e)[:600]}") from e
+    state["rendered"] = _digest(folder)
+    say(f"Israa is comparing each character of v{k} with its sheet and with the owner's picture...")
+    refs = sorted(f for f in (folder / "refs").glob("*") if f.is_file()) if (folder / "refs").exists() else []
+    reviews = quality.review_characters(pid, lib_dir=folder / "characters", refs=refs)
+    passed = sum(1 for r in reviews.values() if r.get("verdict") == "pass")
+    state.update(reviews=reviews, reviewed=state["rendered"], reviews_passed=f"{passed} of {len(reviews)}",
+                 checked=time.strftime("%Y-%m-%d %H:%M"))
+    uses = ((cp.get_project(pid, with_text=False) or {}).get("meta") or {}).get("cast") or {}
+    if uses.get("version") == k:
+        install(pid, k)
+    _save(folder, state)
+    cp.log("Israa", "cast_checked", None, {"project": pid, "version": k, "passed": state["reviews_passed"]})
+    return {"version": k, "passed": passed, "total": len(reviews), "in_use": uses.get("version") == k, "status": state.get("status", ""),
+            "weak": [f"{quality.CAST_NAMES.get(w, w)}: {r.get('summary', '')}"[:200] for w, r in reviews.items() if r.get("verdict") != "pass"]}
 
 
 def install(pid, k):

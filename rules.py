@@ -65,6 +65,8 @@ RULES = {
     "review.video": _r("Review & quality", "bool", True, None, None, "Israa reviews every finished video before the owner sees it"),
     "review.design": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's design options before the owner sees them (off = straight to the owner)"),
     "review.voice_versions": _r("Review & quality", "bool", True, None, None, "Israa reviews voice versions before the owner compares them"),
+    "cast.review_rounds": _r("Review & quality", "int", 2, 0, 6, "Times Israa may send Rana's redrawn cast characters back to her", ("cast", "ROUNDS")),
+    "cast.final_check": _r("Review & quality", "bool", True, None, None, "Before a redrawn cast reaches the owner, its final drawing is always rendered and checked by Israa once more (if it changed after her last check)"),
     # TEAM & SCHEDULES
     "team.doulya_daily": _r("Team & schedules", "bool", True, None, None, "Doulya scouts once a day by herself", ("settings", "SCOUT_AUTOMATICALLY")),
     "team.doulya_picks": _r("Team & schedules", "int", 2, 1, 6, "Ideas Doulya puts in the inbox each round", ("settings", "DOULYA_PICKS")),

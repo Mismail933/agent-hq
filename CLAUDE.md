@@ -332,7 +332,12 @@ Agents never spend money without the owner's explicit approval.
   re-reviews the weak ones. A stop marks the version `stopped` with `why` (+ `wait_for` the agent when its allowance ran out);
   `mark_cut_off` (start of `resume_jobs`) marks versions still 'drawing'; a fresh start marks older unfinished ones "replaced by".
   `server.cast_watch` (in the scheduler, rule `cast.auto_resume`) resumes a `wait_for` version once the allowance is back.
-  `hq cast-draw <project> --resume [v<K>]` / `--new`. Allowance pre-check (`server.allowance_short`, `JOB_NEEDS` per job kind,
+  `hq cast-draw <project> --resume [v<K>]` / `--new`.
+  Israa can check again (Atlas's request 2026-10-08, the owner's "why can't Israa test?"): rule `cast.review_rounds` (target
+  `cast.ROUNDS`) and rule `cast.final_check` (on: cast.json keeps `rendered`/`reviewed` fingerprints of Character.jsx (`_digest`);
+  if the file changed after Israa's last check, it goes back to check -> review of every character before install). `hq
+  cast-check <project> v<K>` (`POST /api/project/<id>/cast-check`, journaled `cast_check` -> `run_cast_check` -> `cast.check`):
+  re-render + Israa's side-by-side check of all characters, no redraw; refreshes the project's library if it uses v<K>. Allowance pre-check (`server.allowance_short`, `JOB_NEEDS` per job kind,
   rules `jobs.allowance_check` wait|warn|off and `jobs.allowance_low_percent`; read only): the cast-draw route refuses (409) and
   run_cast_draw waits (marks the version for cast_watch) in wait mode; other journaled jobs in JOB_NEEDS get an Atlas heads-up.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
