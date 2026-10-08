@@ -81,6 +81,9 @@ Agents never spend money without the owner's explicit approval.
   `claude -p --no-session-persistence --system-prompt <agent prompt> --tools <only theirs> --allowedTools <same>
   [--json-schema <their submit tool's schema>]` in `~/Agent-HQ-workers/<agent>/`. Structured answers come back in
   `structured_output`. `settings.WORKER_ENGINE` per agent ("claude_code" | "api"), `WORKER_MODELS`,
+  2.28.1 (WinError 206): a system prompt over `PROMPT_FILE_OVER` (8,000) characters goes as `--system-prompt-file` (a temp file,
+  deleted after the run); the task always goes through stdin; a command line over `CMD_WARN` logs `prompt_near_limit`, over
+  `CMD_LIMIT` (32,000, Windows' limit) is refused with a clear reason, and an OSError when starting Claude Code becomes Unavailable.
   `SUBSCRIPTION_DAILY_VALUE_USD` (daily allowance measured in Claude Code's `total_cost_usd`, i.e. API-equivalent
   value). Every run → `usage` table (`cp.record_usage`, `cp.usage_today`). Any failure → `workers.Unavailable` →
   the agent's old API path runs (with the dollar caps) and `fallback_api` is logged. Practice mode forces "api"

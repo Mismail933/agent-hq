@@ -63,6 +63,7 @@ RULES = {
     "check.stranger_script": _r("Review & quality", "bool", True, None, None, "The stranger test on scripts (off = not run)"),
     "check.stranger_video": _r("Review & quality", "bool", True, None, None, "The stranger test on finished videos (off = not run)"),
     "review.video": _r("Review & quality", "bool", True, None, None, "Israa reviews every finished video before the owner sees it"),
+    "review.design": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's design options before the owner sees them (off = straight to the owner)"),
     "review.voice_versions": _r("Review & quality", "bool", True, None, None, "Israa reviews voice versions before the owner compares them"),
     # TEAM & SCHEDULES
     "team.doulya_daily": _r("Team & schedules", "bool", True, None, None, "Doulya scouts once a day by herself", ("settings", "SCOUT_AUTOMATICALLY")),

@@ -820,7 +820,7 @@ def run_design(what, brief=""):
         opts = design.ask_rana(what, brief)
         folder = design.save_options(what, opts)
         _animate("design-render", folder, timeout=3600)
-        rv = design.review(folder, what, brief)
+        rv = design.review(folder, what, brief) if rules.get("review.design") else {}   # live rule: off = straight to the owner
         weak = {k: r for k, r in rv.items() if r.get("verdict") == "weak"}
         if weak:
             notes = "\n".join(f"Option {k} ({opts[k - 1]['name'] if k <= len(opts) else ''}): {r.get('summary', '')} Fixes: {'; '.join(r.get('fixes') or [])}"
@@ -833,8 +833,9 @@ def run_design(what, brief=""):
         state = design.write_state(folder, what, brief, "ready", rv)
         good = sum(1 for o in state["options"] if (o.get("review") or {}).get("verdict") == "good")
         cp.log("Rana", "design_ready", None, {"what": what, "version": state["version"], "options": len(state["options"])})
-        atlas_says(f"**Rana's {what} options are ready: {len(state['options'])}** ({good} passed Israa's check at 64 px and on light and dark). "
-                   "Look at them on the Today page or on your phone, and pick one with **Use this**.")
+        atlas_says(f"**Rana's {what} options are ready: {len(state['options'])}** "
+                   + (f"({good} passed Israa's check at 64 px and on light and dark). " if rv else "(Israa's check is switched off.) ")
+                   + "Look at them on the Today page or on your phone, and pick one with **Use this**.")
     except Exception as ex:
         cp.log("Rana", "design_failed", None, {"what": what, "reason": str(ex)[:300]})
         atlas_says(f"Rana couldn't finish the {what}: {ex}")

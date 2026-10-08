@@ -36,6 +36,14 @@ def engine(agent):
     return getattr(settings, "WORKER_ENGINE", {}).get(agent, "api")
 
 
+def _forget(path):
+    if path:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
 def _extra(agent):
     """Standing instructions Atlas set for this agent (live rule prompt.<agent>.extra)."""
     try:
@@ -43,6 +51,11 @@ def _extra(agent):
         return rules.extra(agent)
     except Exception:
         return ""
+
+
+CMD_LIMIT = 32000        # Windows refuses a longer command line ("WinError 206: the filename or extension is too long")
+CMD_WARN = 24000         # logged as prompt_near_limit, so it is seen before it breaks
+PROMPT_FILE_OVER = 8000  # a system prompt longer than this goes to Claude Code as a file (--system-prompt-file), not on the line
 
 
 def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20, cwd=None, allowed=None, disallowed=(), timeout=None):
@@ -61,14 +74,31 @@ def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20, cwd
     folder = Path(cwd) if cwd else WORK / agent.lower()
     folder.mkdir(parents=True, exist_ok=True)
     model = getattr(settings, "WORKER_MODELS", {}).get(agent, "sonnet")
+    sys_text = system + _extra(agent) + (CC_NOTE if tools else "")
+    sys_file = None
+    if len(sys_text) > PROMPT_FILE_OVER:   # long instructions travel as a file (the task itself always goes through stdin)
+        import tempfile
+        fd, sys_file = tempfile.mkstemp(prefix=f"{agent.lower()}-system-", suffix=".md")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(sys_text)
+        sys_args = ["--system-prompt-file", sys_file]
+    else:
+        sys_args = ["--system-prompt", sys_text]
     cmd = [exe, "-p", "--output-format", "json", "--no-session-persistence", "--max-turns", str(max_turns),
-           "--model", model, "--system-prompt", system + _extra(agent) + (CC_NOTE if tools else ""), "--tools", ",".join(tools)]
+           "--model", model, *sys_args, "--tools", ",".join(tools)]
     if tools:
         cmd += ["--allowedTools", *(allowed or tools)]
     if disallowed:
         cmd += ["--disallowedTools", *disallowed]
     if schema:
         cmd += ["--json-schema", json.dumps(schema)]
+    n = len(subprocess.list2cmdline(cmd))
+    if n > CMD_WARN:
+        cp.log(agent, "prompt_near_limit", idea_id, {"chars": n, "limit": CMD_LIMIT})
+    if n > CMD_LIMIT:
+        _forget(sys_file)
+        raise Unavailable(f"{agent}'s run is too long for Windows' command line ({n:,} characters, limit {CMD_LIMIT:,}): "
+                          "the structured-answer schema or the tool list grew too big.")
     t0 = time.time()
     try:
         p = subprocess.run(cmd, input=prompt, cwd=folder, env=atlas_engine._env(), capture_output=True, text=True,
@@ -76,6 +106,12 @@ def run(agent, idea_id, system, prompt, tools=(), schema=None, max_turns=20, cwd
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except subprocess.TimeoutExpired:
         raise Unavailable("Claude Code took too long.")
+    except OSError as e:   # e.g. WinError 206 if a command line is still too long: say so, never crash the job
+        raise Unavailable(f"Claude Code couldn't start for {agent}: {e}")
+    finally:
+        _forget(sys_file)
+    if sys_file and "system-prompt-file" in (p.stderr or "") and "unknown" in (p.stderr or "").lower():
+        raise Unavailable("This Claude Code is too old for --system-prompt-file: update the Claude app.")
     try:
         out = json.loads(p.stdout.strip().splitlines()[-1])
     except (ValueError, IndexError):
