@@ -107,6 +107,8 @@ closest library voices to a narrator he likes; he listens and adds one. Music is
 ## Your controls
 Run these from this folder. They talk to the running office, so everything shows up live there and goes through the
 company's guardrails (budgets, one idea at a time, kill switch).
+If your shell says `python: command not found`, use the full paths the office gives you: `"$HQ_PYTHON" "$HQ_CLI" status`
+(same arguments as below). If even those are empty, tell the owner the office isn't running and he should start START-HERE.
 
 | Command | What it does |
 | --- | --- |

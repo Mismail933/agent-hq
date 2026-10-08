@@ -39,6 +39,49 @@ def load_env():
 
 
 load_env()
+
+
+def tool_dirs():
+    """Folders every agent's shell needs: this Python (+ Scripts), Git's bash tools, our Node, FFmpeg."""
+    import glob
+    import shutil
+    py = Path(sys.executable).parent
+    out = [py, py / "Scripts"]
+    git = shutil.which("git")
+    roots = [Path(git).parent.parent] if git else []
+    roots += [Path(os.environ.get(v, "")) / "Git" for v in ("ProgramFiles", "ProgramW6432", "LOCALAPPDATA") if os.environ.get(v)]
+    roots += [Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Git"]
+    for r in roots:
+        if (r / "usr" / "bin").is_dir():
+            out += [r / "cmd", r / "bin", r / "usr" / "bin"]
+            break
+    out.append(Path.home() / ".agent-hq-anim" / "node")
+    out += [Path(p).parent for p in sorted(glob.glob(str(Path.home() / "AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg*/ffmpeg-*/bin/ffmpeg.exe")))[-1:]]
+    return [str(d) for d in out if d.is_dir()]
+
+
+TOOL_DIRS = tool_dirs()
+
+
+def full_path(who=None):
+    """Put the tool folders on the office's PATH (every agent it launches inherits it), and say so if python still isn't
+    found (Atlas twice had a shell without python/grep right after a restart). Safe to call before every launch."""
+    import shutil
+    have = os.environ.get("PATH", "").split(os.pathsep)
+    low = {p.lower().rstrip("\\/") for p in have}
+    missing = [d for d in TOOL_DIRS if d.lower().rstrip("\\/") not in low]
+    if missing:
+        os.environ["PATH"] = os.pathsep.join(missing + [p for p in have if p])
+    os.environ["HQ_PYTHON"] = sys.executable   # `hq` by absolute path: "$HQ_PYTHON" "$HQ_CLI" status
+    os.environ["HQ_CLI"] = str(ROOT / "hq.py")
+    if not shutil.which("python"):
+        msg = f"python isn't on the PATH {who or 'the agents'} get, so `python hq.py` may fail; use \"$HQ_PYTHON\" \"$HQ_CLI\""
+        print("  Warning:", msg, flush=True)
+        return msg
+    return ""
+
+
+PATH_WARNING = full_path()
 import agents             # noqa: E402
 import atlas_engine       # noqa: E402
 import atlas_cloud        # noqa: E402
@@ -58,6 +101,8 @@ import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
 
 cp.init()
+if PATH_WARNING:
+    cp.log("Office", "path_warning", None, {"warning": PATH_WARNING, "path": os.environ.get("PATH", "")[:2000]})
 rules.apply_all()   # the team's live rules onto the settings they change (again before every job)
 agents.register_all()
 agents.setup_animated_projects()
@@ -629,6 +674,7 @@ def restart_office(why="the new version"):
     while not office_idle():
         time.sleep(20)
     print("Restarting the office to load the new version...", flush=True)
+    end_run(f"restarted for {why}")
     if os.environ.get("HQ_LAUNCHER_LOOP") != "1":
         bat = ROOT / "START-HERE.bat"
         if bat.exists():
@@ -1278,6 +1324,9 @@ def ask_atlas(text):
     if time.time() < LIMIT_UNTIL[0]:
         why = LIMIT_NOTE[0] or "Claude plan limit reached"
     else:
+        warn = full_path("Atlas")
+        if warn:
+            cp.log("Atlas", "path_warning", None, {"warning": warn, "path": os.environ.get("PATH", "")[:2000]})
         try:
             reply, info = atlas_engine.ask(prompt)
             cp.log("Atlas", "model_call", None, info)
@@ -2173,12 +2222,54 @@ def stop_old_office(port):
         print(f"  Closed {len(pids)} older copy(ies) of Agent HQ that were still running.", flush=True)
         print("  Their black windows now say they stopped; you can close them.\n", flush=True)
         time.sleep(1)
+    return bool(pids - {os.getpid()})
+
+
+# Why the office went down (Atlas's request 2026-10-08: it vanished mid-render and nobody knew why). Each run writes this file;
+# a clean end (restart, Ctrl+C, a crash Python could report) adds "ended". The next start logs `office_down` with the reason.
+RUN_FILE = Path.home() / ".agent-hq" / "office-run.json"
+
+
+def end_run(why):
+    if os.environ.get("HQ_SIMULATE") == "1":
+        return
+    try:
+        d = json.loads(RUN_FILE.read_text(encoding="utf-8"))
+        if d.get("pid") == os.getpid() and not d.get("ended"):
+            d.update(ended=why, ended_at=time.time())
+            RUN_FILE.write_text(json.dumps(d), encoding="utf-8")
+    except (OSError, ValueError):
+        pass
+
+
+def start_run(replaced):
+    """Log how the last run ended (from its run file), then start this run's file."""
+    if os.environ.get("HQ_SIMULATE") == "1":
+        return
+    try:
+        last = json.loads(RUN_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        last = None
+    if last and not last.get("ended"):
+        jobs = [f"{j['kind']} (job {j['id']})" for j in LEFTOVER_JOBS if j["state"] == "running"]
+        why = ("a new START-HERE closed the office that was still running" if replaced else
+               "it stopped without warning: the black window was closed, the PC slept, shut down or restarted, or Python was killed")
+        cp.log("Office", "office_down", None, {"why": why, "started": last.get("started"), "version": last.get("version"),
+                                               "pid": last.get("pid"), "running": jobs})
+        print(f"  The office last stopped because {why}." + (" It was running: " + ", ".join(jobs) + " (resumed below)." if jobs else ""),
+              flush=True)
+    try:
+        RUN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip() if (ROOT / "VERSION").exists() else ""
+        RUN_FILE.write_text(json.dumps({"pid": os.getpid(), "started": time.time(), "version": ver}), encoding="utf-8")
+    except OSError as e:
+        print("  Run file:", repr(e), flush=True)
 
 
 def main():
     prepare_atlas()
     port = int(os.environ.get("HQ_PORT", "8765"))
-    stop_old_office(port)
+    start_run(stop_old_office(port))
     for p in range(port, port + 10):
         try:
             srv = Server(("127.0.0.1", p), Handler)
@@ -2211,7 +2302,10 @@ def main():
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
-        pass
+        end_run("Ctrl+C in the black window")
+    except BaseException as e:
+        end_run(f"crashed: {e!r}"[:300])
+        raise
 
 
 if __name__ == "__main__":

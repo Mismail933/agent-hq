@@ -244,7 +244,15 @@ Agents never spend money without the owner's explicit approval.
   `restart_office(why)` when an imported program file's mtime changed (`changed_program_files`, `FILE_TIMES`) or GitHub's VERSION
   differs from the local one and isn't `.hold-version` (`newer_version`, uses `launch.remote_version`); logged `auto_restart`. Skipped
   while Ghassan builds or a Ship is installing (`SHIPPING`, after_ship decides that one). Off with rule `office.auto_restart`.
-  `hq restart ["why"]` = `POST /api/restart` (logged `office_restart`). `restart_office` runs once (`RESTART_LOCK`), waits for
+  `hq restart ["why"]` = `POST /api/restart` (logged `office_restart`).
+  Agents' PATH and why the office went down (Atlas's request 2026-10-08: twice Atlas's shell had no python/grep after a restart;
+  START-HERE runs `py`, so python.exe needn't be on PATH): at import `server.full_path()` puts `TOOL_DIRS` (this Python + Scripts,
+  Git cmd/bin/usr/bin, ~/.agent-hq-anim/node, WinGet FFmpeg) first on the office's PATH, which Atlas and every worker inherit
+  (atlas_engine/workers copy os.environ), and sets `HQ_PYTHON` + `HQ_CLI` (Atlas's fallback: `"$HQ_PYTHON" "$HQ_CLI" ...`);
+  it runs again before every local Atlas call; python still missing = `path_warning` event. Each run writes
+  `~/.agent-hq/office-run.json` (pid, start, version; not in practice mode); `end_run` adds the reason on restart / Ctrl+C / crash.
+  The next start (`start_run`) logs `office_down` when the last run had no reason: "a new START-HERE closed it" (stop_old_office
+  killed it) or "stopped without warning" (window closed, PC slept/shut down), with the jobs it was running. `restart_office` runs once (`RESTART_LOCK`), waits for
   `office_idle`, exits 75 so launch.py updates; saved jobs resume.
 - `rules.py` (2.24.0; the full list 2.25.0, Atlas's "Team rules are settings Atlas changes live"): every behaviour rule of the team.
   `RULES` (key: group, kind, default, range/choices, label, optional `target` (module, attribute) + `scale`). Stored in hq.db `rules`
