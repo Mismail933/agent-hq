@@ -33,6 +33,7 @@ const FEET = {court: 1430, library: 1460, street: 1440, desert: 1470, study: 140
 const BASE_SCALE = [1.3, 1.3, 1.15, 0.98, 0.86]; // by the number of people on screen
 const GAP = 70;       // px between two bodies
 const HEIGHT = 612;   // a figure's height at scale 1 (head top), before its own `tall`
+const ROD_K = 1.35;   // a rod stands about two thirds of a person's height, so its shadow reads at a glance
 
 // half the width of a body at scale 1 (shoulders, cloak) and how far its hands and prop reach to the back and the front
 const bodyOf = (who, poses, noProp) => {
@@ -186,8 +187,9 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const beats = scene.beats || [];
   const topLimit = index === 0 ? 410 : scene.callout && !['map', 'diagram'].includes(scene.backdrop) ? 340 : SAFE;
   // the staging (see `stage`): everyone on the floor, one scale, side by side with a gap, facing each other, inside the safe area
-  const feet = FEET[scene.backdrop] ?? 1440;
   const rodsIn = (scene.props || []).filter((p) => p.type === 'rod');
+  // a rod's shadow lies on the ground, so a rod scene stands a little further back: the shadow stays above the captions
+  const feet = rodsIn.length ? Math.min(FEET[scene.backdrop] ?? 1440, (FLOOR[scene.backdrop] ?? 1150) + 110) : FEET[scene.backdrop] ?? 1440;
   const noProp = rodsIn.length > 0;   // the scene is about the rod: nobody carries a staff that could be mistaken for it
   const items = [
     ...cast.map((c) => {
@@ -195,7 +197,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
       return {b: bodyOf(c.who, poses, noProp), want: c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'], facing0: c.facing || 0};
     }),
     ...rodsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
-      b: {half: 30, back: 60 + 360 * (p.shadow ?? 0.5), front: 40, top: 300}})),
+      b: {half: 30 * ROD_K, back: (60 + 360 * (p.shadow ?? 0.5)) * ROD_K, front: 120 * ROD_K, top: 320 * ROD_K}})),
   ];
   const {scale: sc, placed} = stage(items, feet, topLimit);
   const chars = cast.map((c, i) => {
@@ -216,10 +218,10 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const crowdBeat = [...beats].reverse().find((b) => b.who === 'crowd' && b.at <= frame);
   const crowdReaction = (crowdBeat && crowdBeat.reaction) || (scene.crowd && scene.crowd.reaction) || 'idle';
   // the props that matter (the rod and its shadow) count too; a rod is staged in the row like a person, at the cast's scale
-  const rodShadow = (p) => (60 + 360 * (p.shadow ?? 0.5)) * sc;
+  const rodShadow = (p) => (60 + 360 * (p.shadow ?? 0.5)) * sc * ROD_K;
   let rk = 0;
-  const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: rodX[rk++], y: feet, scale: sc} : p));
-  const xs = [...chars.flatMap((c) => [c.x - c.r.left * c.scale, c.x + c.r.right * c.scale]), ...props.filter((p) => p.type === 'rod').flatMap((p) => [p.x - rodShadow(p), p.x + 40 * sc]),
+  const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: rodX[rk++], y: feet, scale: sc * ROD_K} : p));
+  const xs = [...chars.flatMap((c) => [c.x - c.r.left * c.scale, c.x + c.r.right * c.scale]), ...props.filter((p) => p.type === 'rod').flatMap((p) => [p.x - rodShadow(p), p.x + 120 * sc * ROD_K]),
     ...props.filter((p) => p.type === 'globe').flatMap((p) => [(p.x ?? 540) - (p.r ?? 150), (p.x ?? 540) + (p.r ?? 150)])];
   const minX = xs.length ? Math.min(...xs) : W / 2;
   const maxX = xs.length ? Math.max(...xs) : W / 2;

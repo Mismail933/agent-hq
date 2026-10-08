@@ -320,6 +320,8 @@ Agents never spend money without the owner's explicit approval.
     fades, ducked hard under the voices; other effects at `SFX_LEVEL`/`SFX_STING_LEVEL`, ducked a little.
   - Calina's V3 prompt: HOW THEIR JOKES WORK + a SOUND EFFECTS rule (seen on screen or a punchline button, max 2 a scene);
     Israa's script review: criterion 11 checks the joke shapes, new 12 checks that sounds make sense.
+  2.29.1: a rod draws its sunbeam (dashed, from the shadow's tip past the rod's top) and the angle arc at the top; it stands
+  at `ROD_K` x the cast's scale; a rod scene stands further back (feet at FLOOR+110) so the shadow stays above the captions.
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits

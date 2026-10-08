@@ -16,6 +16,26 @@ export const Rod = ({x = 300, y = 1250, shadow = 0.5, frame, scale = 1}) => {
     <g transform={`translate(${x} ${y}) scale(${scale})`}>
       <path d={`M -14 2 L ${tip} 16 L ${tip + 6} 44 L 14 30 Z`} fill={C.ink} opacity="0.55" />
       {grow > 0.95 && <path d={`M ${tip + 3} 0 L ${tip + 3} 60`} stroke={C.ink} strokeWidth="6" strokeLinecap="round" />}
+      {/* the sunbeam that makes the shadow: from the shadow's tip past the top of the rod, and the angle it makes with the
+          rod (2.29.1, Israa on ep 23: "picture a line from the top of the stick to the tip of its shadow" must be on screen) */}
+      {shadow > 0 && (() => {
+        const b = clamp01((frame - 34) / 18);
+        if (b <= 0) return null;
+        const dx = -tip;   // the beam runs from the shadow tip (tip, 0) up through the rod top (0, -306)
+        const len = Math.hypot(dx, 306);
+        const ux = dx / len;
+        const uy = -306 / len;
+        const ext = (len + 90) * easeOut(b);
+        const r = 90;
+        const a1 = [-r * ux * 0, -306 + r];            // down the rod from its top
+        const a2 = [-r * ux, -306 - r * uy];           // back down the beam from the rod top
+        return (
+          <g opacity={b}>
+            <line x1={tip} y1="0" x2={tip + ux * ext} y2={uy * ext} stroke={C.gold} strokeWidth="12" strokeLinecap="round" strokeDasharray="34 18" />
+            <path d={`M ${a1[0]} ${a1[1]} A ${r} ${r} 0 0 1 ${a2[0]} ${a2[1]}`} fill="none" stroke={C.parchment} strokeWidth="8" strokeLinecap="round" />
+          </g>
+        );
+      })()}
       <rect x="-12" y="-300" width="24" height="300" fill="#8A5A3A" {...o} strokeWidth={6} />
       <circle cx="0" cy="-306" r="16" fill={C.gold} {...o} strokeWidth={6} />
       <ellipse cx="0" cy="8" rx="46" ry="16" fill="#BDA06A" {...o} strokeWidth={6} />
