@@ -227,6 +227,18 @@ Agents never spend money without the owner's explicit approval.
   (and run after the restart), Ghassan and the daily scout don't start, and it says what it waits for; `office_idle` covers every
   job, Doulya's scouting and Ghassan's build. `ghassan.reopen_stale()` (start of `ghassan_loop`) puts `[in progress]` requests back
   to `[open]`. A new long job: add it to `JOBS` + `job_label`.
+  Checkpoints (Atlas's "No agent ever starts from zero after a stop", 2026-10-08): `checkpoint.py`, table `job_steps` in hq.db (made
+  by the module). `journaled` sets the thread's job (`checkpoint.begin`); a job calls `checkpoint.done(step, data)` after each
+  finished step and `checkpoint.get(step)` (None = not done) to skip it when it runs again with the same job row. Wired in:
+  `calina_batch` (scripts saved -> topic checked -> structure checks -> Israa's review; resumed, Israa only reviews scripts without a
+  pass/rework verdict), `run_render` / `run_render_voices` (video / versions made: only Israa's review runs again), `run_design`
+  (options drawn -> rendered -> Israa's check), `run_characters` (characters made) and `animate.make_character_library` (each finished
+  character kept in `characters/_progress.json` while the cast file, kit and voice are the same). Already resumable before: Rana's
+  cast (`cast.py`), ideas (Sage's brief kept, only Vera runs again), ElevenLabs voices (`_voice-cache`). Rules `jobs.resume_steps`
+  (off = start over) and `jobs.resume_tries` (was `JOB_TRIES`). `hq resume <job id|kind>` (`server.resume_job`, `POST
+  /api/jobs/resume`) runs any saved job again; the job's note says "resumed from step N (name)"; `hq status` shows `saved_jobs`.
+  Not yet: Remotion renders a video in one piece (no per-scene resume), Ghassan's builds (ghassan.py is the Builder chat's).
+  A new long job: call `checkpoint.done/get` around each expensive step.
 - Restarting by itself (Atlas's request 2026-10-08: the office kept old code after a Builder-chat push): `server.restart_watch`
   (not in practice mode; first check 2 min after start, then every rule `office.update_check_minutes`) restarts the office via
   `restart_office(why)` when an imported program file's mtime changed (`changed_program_files`, `FILE_TIMES`) or GitHub's VERSION

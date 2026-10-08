@@ -1267,9 +1267,24 @@ def make_character_library(project_id=3, clips=True, root=None, cast=None):
         total = int(round(30 * FPS))
         mouth = mouth_for(root / "test-voice.wav", words, lines, root, total)
         voice = {"label": (voice_spec(vid)[2]), "seconds": round(secs, 1)}
+    # resume (rule jobs.resume_steps): characters finished by a run that was cut off, with the same cast file, kit and voice, are kept
+    cast_file = APP / "src" / "Character.jsx"
+    sig = hashlib.sha1((cast_file.read_bytes() if cast_file.exists() else b"")
+                       + f"|{quality.KIT_VERSION}|{clips}|{voice and voice['label']}".encode()).hexdigest()
+    progress = root / "_progress.json"
+    try:
+        kept = json.loads(progress.read_text(encoding="utf-8")) if rules.get("jobs.resume_steps") else {}
+    except (OSError, ValueError):
+        kept = {}
+    kept = kept.get("done", {}) if kept.get("sig") == sig else {}
     for who in list(quality.ON_SCREEN) + ["crowd"]:
         folder = root / who
         folder.mkdir(exist_ok=True)
+        old = kept.get(who)
+        if old and all((ROOT / old[k]).exists() for k in ("sheet", "clip") if k in old):
+            say(f"Kept from the run that was cut off: {who}")
+            lib["characters"].append(old)
+            continue
         say(f"Reference sheet: {who}")
         props = folder / "_props.json"
         props.write_text(json.dumps({"who": who}), encoding="utf-8")
@@ -1284,6 +1299,9 @@ def make_character_library(project_id=3, clips=True, root=None, cast=None):
             entry["clip"] = (folder / "test.mp4").relative_to(ROOT).as_posix()
         props.unlink(missing_ok=True)
         lib["characters"].append(entry)
+        kept[who] = entry
+        progress.write_text(json.dumps({"sig": sig, "done": kept}), encoding="utf-8")
+    progress.unlink(missing_ok=True)
     if voice:
         lib["voice"] = voice
     # keep earlier reviews and the owner's approval across remakes

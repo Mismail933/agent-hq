@@ -15,6 +15,7 @@ import time
 from datetime import date, datetime
 from pathlib import Path
 
+import checkpoint
 import control_plane as cp
 import llm
 import quality
@@ -912,8 +913,9 @@ def calina_batch(project_id, count=None, notes="", topic=""):
     try:
         PRODUCING_FOR[0] = p["id"]
         count = max(1, min(int(count or settings.CALINA_BATCH_SIZE), 10))
-        batch = cp.next_batch(p["id"])
-        cp.log("Calina", "batch_started", p["idea_id"], {"project": p["id"], "batch": batch, "count": count})
+        saved = checkpoint.get("scripts saved")   # resumed after a stop: the scripts were written; only what's left runs
+        batch = saved["batch"] if saved else cp.next_batch(p["id"])
+        cp.log("Calina", "batch_resumed" if saved else "batch_started", p["idea_id"], {"project": p["id"], "batch": batch, "count": count})
         # every earlier script for the same channel, including ones from a plan this one replaced, with the owner's notes
         channel = cp.channel_line(p)
         same = [q["id"] for q in cp.list_projects(50) if q["id"] == p["id"] or (channel and cp.channel_line(q) == channel)]
@@ -962,29 +964,35 @@ def calina_batch(project_id, count=None, notes="", topic=""):
                                         channel=_channel_sentence(p), searches=settings.CALINA_MAX_SEARCHES, finish="{finish}")
         system = build_system(count)
         tool = BATCH_TOOL_V3 if v3 else BATCH_TOOL_V2 if v2 else BATCH_TOOL
-        try:
-            got = _calina_write(p, system, task, tool)
-        except cp.Halt as e:
-            cp.log("Calina", "halted", p["idea_id"], {"reason": str(e)})
-            return f"Calina stopped: {e}"
-        except Exception as e:
-            cp.log("Calina", "halted", p["idea_id"], {"reason": f"{type(e).__name__}: {str(e)[:200]}"})
-            return f"Calina failed: {type(e).__name__}: {str(e)[:300]}"
-        if v2:   # the narrator and the look are set once and reused by every later batch
-            new = {k: got[k] for k in ("narrator", "style") if got.get(k) and not meta.get(k)}
-            if new:
-                cp.set_project_meta(p["id"], **new)
-        episodes = [e for e in (got.get("episodes") or []) if e.get("sources")][:count]   # no source, no episode
         folder = CONTENT / f"project-{p['id']}" / f"batch-{batch:02d}"
-        folder.mkdir(parents=True, exist_ok=True)
-        ids = []
-        for ep in episodes:
-            quality.sync_voice_lines(ep)   # scene files with dialogue: voice_line = everything said in the scene
-            ep["topic_lock"] = quality.make_lock(topic, ep)   # what this script is about is fixed from here on
-            eid = cp.add_episode(p["id"], batch, ep)
-            ids.append(eid)
-            (folder / f"ep-{eid:03d}.json").write_text(json.dumps(ep, indent=2, ensure_ascii=False), encoding="utf-8")
-        cp.log("Calina", "batch_ready", p["idea_id"], {"project": p["id"], "batch": batch, "count": len(ids), "ids": ids})
+        if saved:
+            ids = [i for i in saved["ids"] if cp.get_episode(i)]
+            no_source, batch_note = saved.get("dropped_without_source", 0), saved.get("batch_note", "")
+        else:
+            try:
+                got = _calina_write(p, system, task, tool)
+            except cp.Halt as e:
+                cp.log("Calina", "halted", p["idea_id"], {"reason": str(e)})
+                return f"Calina stopped: {e}"
+            except Exception as e:
+                cp.log("Calina", "halted", p["idea_id"], {"reason": f"{type(e).__name__}: {str(e)[:200]}"})
+                return f"Calina failed: {type(e).__name__}: {str(e)[:300]}"
+            if v2:   # the narrator and the look are set once and reused by every later batch
+                new = {k: got[k] for k in ("narrator", "style") if got.get(k) and not meta.get(k)}
+                if new:
+                    cp.set_project_meta(p["id"], **new)
+            episodes = [e for e in (got.get("episodes") or []) if e.get("sources")][:count]   # no source, no episode
+            folder.mkdir(parents=True, exist_ok=True)
+            ids = []
+            for ep in episodes:
+                quality.sync_voice_lines(ep)   # scene files with dialogue: voice_line = everything said in the scene
+                ep["topic_lock"] = quality.make_lock(topic, ep)   # what this script is about is fixed from here on
+                eid = cp.add_episode(p["id"], batch, ep)
+                ids.append(eid)
+                (folder / f"ep-{eid:03d}.json").write_text(json.dumps(ep, indent=2, ensure_ascii=False), encoding="utf-8")
+            no_source, batch_note = len(got.get("episodes") or []) - len(episodes), got.get("batch_note", "")
+            checkpoint.done("scripts saved", {"batch": batch, "ids": ids, "dropped_without_source": no_source, "batch_note": batch_note})
+            cp.log("Calina", "batch_ready", p["idea_id"], {"project": p["id"], "batch": batch, "count": len(ids), "ids": ids})
 
         def rewrite(eid, review):   # Israa sent this one back: Calina rewrites it with her notes
             old = cp.get_episode(eid)
@@ -1025,19 +1033,32 @@ def calina_batch(project_id, count=None, notes="", topic=""):
             cp.log("Calina", "script_rewritten", p["idea_id"], {"episode": eid})
             return True
 
-        dropped = quality.enforce_topic(ids, topic, rewrite) if (ids and topic) else []   # a script about another story never goes further
+        topic_done = checkpoint.get("topic checked")
+        if topic_done is None:
+            dropped = quality.enforce_topic(ids, topic, rewrite) if (ids and topic) else []   # a script about another story never goes further
+            checkpoint.done("topic checked", {"dropped": dropped})
+        else:
+            dropped = topic_done["dropped"]
         ids = [i for i in ids if i not in dropped]
-        if ids:
+        if ids and checkpoint.get("structure checks") is None:
             quality.pre_review(ids, rewrite)   # the free structure + ear checks come first
-        gate = quality.review_batch(p, ids, rewrite) if ids else {}
+            checkpoint.done("structure checks")
+        verdict = lambda i: (cp.get_episode(i)["data"].get("review") or {}).get("verdict")
+        todo = [i for i in ids if verdict(i) not in ("pass", "rework")] if saved else ids   # resumed: Israa's finished verdicts stay
+        gate = quality.review_batch(p, todo, rewrite) if todo else {}
+        if saved and ids:
+            got_v = [verdict(i) for i in ids]
+            gate = {**gate, "passed": got_v.count("pass"), "still_weak": got_v.count("rework"),
+                    "note": (gate.get("note", "") + f" Resumed after a stop: {len(ids) - len(todo)} verdict(s) Israa had already given were kept.").strip()}
+        checkpoint.done("Israa's review")
         final = [cp.get_episode(i) for i in ids]
         return json.dumps({"project_id": p["id"], "batch": batch, "review": gate, "dropped_off_topic": len(dropped), "topic": topic,
                            "episodes": [{"id": e["id"], "title": e["title"], "verdict": (e["data"].get("review") or {}).get("verdict", ""),
                                          "words": len(quality._narration(e["data"]).split()), "scenes": len(e["data"].get("scenes") or []),
                                          "split": e["data"].get("auto_split", 0)}
                                         for e in final],
-                           "dropped_without_source": len(got.get("episodes") or []) - len(episodes),
-                           "batch_note": got.get("batch_note", ""), "folder": str(folder)}, indent=2)
+                           "dropped_without_source": no_source, "resumed": bool(saved),
+                           "batch_note": batch_note, "folder": str(folder)}, indent=2)
     finally:
         PRODUCING_FOR[0] = None
         PRODUCING.release()

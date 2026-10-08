@@ -76,6 +76,8 @@ RULES = {
     "cast.auto_resume": _r("Team & schedules", "bool", True, None, None, "A cast redraw that stopped because an agent's daily allowance ran out picks up by itself where it stopped once the allowance is back"),
     "jobs.allowance_check": _r("Team & schedules", "choice", "wait", ("wait", "warn", "off"), None,
                                "Before a long job (Rana's cast or design, Israa's reviews, Calina's batch): if an agent it needs is out of today's allowance, wait = don't start it and tell Atlas, warn = start and tell Atlas, off = no check"),
+    "jobs.resume_steps": _r("Team & schedules", "bool", True, None, None, "Long jobs save each finished step (scripts written, Israa's verdicts, a made video, drawn options, finished characters) and after a restart, a crash or an allowance stop continue from the last one (off = start over)"),
+    "jobs.resume_tries": _r("Team & schedules", "int", 2, 0, 10, "A job cut off more than this many times in a row is given up instead of started again (so a job that crashes the office can't loop)"),
     "jobs.allowance_low_percent": _r("Team & schedules", "int", 10, 0, 90, "For that check, an agent with less than this % of today's allowance left counts as out (a check only; the allowance itself is the owner's)"),
     # PHONE
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,

@@ -9,6 +9,7 @@ Atlas's controls for Agent HQ.
                  prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
                  restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
+                 resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-use <project> kit|v<K>     (Rana)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
@@ -111,7 +112,22 @@ def status():
                            f"{models.get(member['name'])} on the API" if workers.engine(member["name"]) == "api" else
                            f"Claude Code ({settings.WORKER_MODELS.get(member['name'], 'sonnet')}) on the subscription, API fallback")
     s["spend_today_by_agent"] = _by_agent(date.today().isoformat())
+    s["saved_jobs"] = jobs()
     show(s)
+
+
+def jobs(n=10):
+    """The last saved long jobs: state, the last finished step, and a note like 'resumed from step N' (hq resume <id> runs one again)."""
+    import checkpoint
+    with cp._db() as con:
+        rows = con.execute("SELECT * FROM jobs ORDER BY id DESC LIMIT ?", (n,)).fetchall()
+    out = []
+    for r in rows:
+        last = checkpoint.last(r["id"])
+        out.append({"job": r["id"], "kind": r["kind"], "args": json.loads(r["args"] or "[]"), "state": r["state"],
+                    "started": datetime.fromtimestamp(r["ts"]).strftime("%m-%d %H:%M"), "attempts": r["attempts"],
+                    "last_finished_step": f"{last[0]}: {last[1]}" if last else None, "note": r["note"]})
+    return out
 
 
 def inbox():
@@ -481,6 +497,9 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "stop":
             office("/api/stop"); show("Kill switch ON. Every agent stops before its next step.")
+        elif cmd == "resume" and args:   # hq resume <job id | kind>: a saved job runs again from its last finished step
+            code, reply = office("/api/jobs/resume", {"job": args[0]})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "resume":
             office("/api/resume"); show("Kill switch OFF. The team can work again.")
         else:

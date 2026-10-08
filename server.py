@@ -52,6 +52,7 @@ import ghassan            # noqa: E402
 import phone              # noqa: E402
 import design             # noqa: E402
 import cast               # noqa: E402
+import checkpoint         # noqa: E402
 import rules              # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
@@ -372,7 +373,6 @@ def run_cast_samples(pid):
 # restart is coming (RESTARTING), new jobs are saved as "queued" instead and run right after it.
 RESTARTING = {"on": False}
 RUNNING_JOBS = {}   # job id -> kind, running in this run of the office
-JOB_TRIES = 2          # a job that was cut off this many times is given up (so a job that kills the office can't loop)
 
 
 def job_label(kind, a):
@@ -396,7 +396,10 @@ def journaled(kind, fn):
             return
         jid = _jid or cp.add_job(kind, list(args))
         RUNNING_JOBS[jid] = kind
+        checkpoint.begin(jid)   # the job's finished steps are saved under its row; a resumed job skips them
         rules.apply_all()   # live rules Atlas changed since the last job
+        if _jid and checkpoint.resumed_from(jid):
+            cp.set_job(jid, "running", checkpoint.resumed_from(jid))
         if kind != "cast_draw" and rules.get("jobs.allowance_check") != "off":   # (the cast checks its own, and can wait)
             short = allowance_short(JOB_NEEDS.get(kind, ()))
             if short:
@@ -410,6 +413,7 @@ def journaled(kind, fn):
             raise
         finally:
             RUNNING_JOBS.pop(jid, None)
+            checkpoint.end()
     run.__name__ = fn.__name__
     return run
 
@@ -440,6 +444,28 @@ def first_logo():
     run_design("logo", LOGO_BRIEF)
 
 
+def resume_job(which):
+    """Atlas's `hq resume <job id | kind>`: run a saved job again; it skips the steps it finished (checkpoint.py). (ok, message)."""
+    which = str(which).strip().lower()
+    with cp._db() as con:
+        j = (con.execute("SELECT * FROM jobs WHERE id=?", (int(which),)) if which.isdigit() else
+             con.execute("SELECT * FROM jobs WHERE kind=? ORDER BY id DESC LIMIT 1", (which.replace("-", "_"),))).fetchone()
+    if not j or j["kind"] not in JOBS:
+        return False, f"No saved job '{which}'. Give its number or its kind ({', '.join(JOBS)}); hq status lists the recent ones."
+    if j["id"] in RUNNING_JOBS:
+        return False, f"Job {j['id']} ({job_label(j['kind'], json.loads(j['args'] or '[]'))}) is running now."
+    if cp.STOP_FILE.exists():
+        return False, "The kill switch is on: the owner (or hq resume with no job) turns it off first."
+    a = json.loads(j["args"] or "[]")
+    if j["kind"] == "cast_draw" and len(a) > 3 and a[3] == "new":   # continue the version it made, don't start another
+        a[3] = ""
+    step = checkpoint.resumed_from(j["id"])
+    cp.set_job(j["id"], "running", step or "started again by Atlas")
+    cp.log("Atlas", "job_resumed", None, {"job": j["id"], "kind": j["kind"], "from": step})
+    threading.Thread(target=globals()[JOBS[j["kind"]]], args=a, kwargs={"_jid": j["id"]}, daemon=True).start()
+    return True, f"Job {j['id']} ({job_label(j['kind'], a)}) is running again" + (f", {step}." if step else " (no finished step was saved, so from the start).")
+
+
 def resume_jobs():
     """At start: run again what the last run of the office didn't finish, one after the other, and say so."""
     time.sleep(15)
@@ -459,15 +485,18 @@ def resume_jobs():
         if j["kind"] not in JOBS:
             cp.set_job(j["id"], "given_up", "unknown kind of job")
             continue
-        if j["state"] == "running" and j["attempts"] >= JOB_TRIES:
-            cp.set_job(j["id"], "given_up", f"cut off {JOB_TRIES + 1} times")
-            said.append(f"- {label}: stopped {JOB_TRIES + 1} times in a row, so I'm not starting it again. Ask Atlas to look.")
+        tries = rules.get("jobs.resume_tries")
+        if j["state"] == "running" and j["attempts"] >= tries:
+            cp.set_job(j["id"], "given_up", f"cut off {tries + 1} times")
+            said.append(f"- {label}: stopped {tries + 1} times in a row, so I'm not starting it again. Ask Atlas to look"
+                        f" (hq resume {j['id']} starts it again from its last finished step).")
             continue
         if j["kind"] == "voice_match" and (a + [0, 0])[1]:   # it was recording the speakers: needs the owner to play the video again
             cp.set_job(j["id"], "given_up", "recording needs the owner")
             said.append(f"- {label}: it was recording your speakers. Press Record again and play the video.")
             continue
-        if j["kind"] == "batch":   # only the scripts that weren't saved yet
+        step = checkpoint.resumed_from(j["id"])
+        if j["kind"] == "batch" and not step:   # (a job from before checkpoints) only the scripts that weren't saved yet
             made = sum(1 for e in cp.list_episodes(a[0], limit=100) if e["ts"] >= j["ts"])
             if made and not a[1]:
                 cp.set_job(j["id"], "done", f"{made} script(s) were saved before the restart")
@@ -482,8 +511,9 @@ def resume_jobs():
             a[3] = ""
         cp.set_job(j["id"], "running", attempt=True)   # a queued one counts too, so nothing can loop forever
         todo.append((j, a))
-        said.append(f"- {label}" + (" (it was waiting for the restart)" if j["state"] == "queued" else ""))
-    said += [f"- Research and judgment of idea #{i}" for i in ideas]
+        said.append(f"- {label}" + (" (it was waiting for the restart)" if j["state"] == "queued" else f" ({step})" if step else ""))
+    said += [f"- Research and judgment of idea #{i}" + (" (resumed from Sage's saved brief: only Vera's judgment runs again)"
+                                                          if (cp.get_idea(i) or {}).get("brief") else "") for i in ideas]
     if said:
         atlas_says("**The office restarted. Picking up where it stopped:**\n" + "\n".join(said))
     for j, a in todo:
@@ -794,12 +824,15 @@ def run_render_voices(eid, voices):
     with RENDERING["lock"]:
         RENDERING["episode"] = eid
         try:
-            r = _animate("render-voices", eid, ",".join(voices), timeout=7200)
-            e = cp.get_episode(eid)
-            d = e["data"]
-            d["voice_variants"] = r["variants"]
-            cp.update_episode(eid, data=d)
-            cp.log("Calina", "voice_variants_ready", None, {"episode": eid, "voices": [v["label"] for v in r["variants"]]})
+            r = checkpoint.get("versions made")   # resumed after the versions were made: only Israa's review is left
+            if r is None:
+                r = _animate("render-voices", eid, ",".join(voices), timeout=7200)
+                e = cp.get_episode(eid)
+                d = e["data"]
+                d["voice_variants"] = r["variants"]
+                cp.update_episode(eid, data=d)
+                cp.log("Calina", "voice_variants_ready", None, {"episode": eid, "voices": [v["label"] for v in r["variants"]]})
+                checkpoint.done("versions made", r)
             # review before the owner: the pictures are identical in every version, so Israa reviews version 1 (sheets, transcript,
             # stranger test) and her verdict covers all of them
             if not rules.get("review.voice_versions"):   # live rule: Israa doesn't review voice versions
@@ -929,11 +962,23 @@ def run_design(what, brief=""):
     """Rana draws options, the engine renders them, Israa checks them (weak ones go back to Rana once), the owner picks."""
     DESIGNING["what"] = what
     try:
-        cp.log("Rana", "design_started", None, {"what": what})
-        opts = design.ask_rana(what, brief)
-        folder = design.save_options(what, opts)
-        _animate("design-render", folder, timeout=3600)
-        rv = design.review(folder, what, brief) if rules.get("review.design") else {}   # live rule: off = straight to the owner
+        drawn = checkpoint.get("options drawn")   # resumed: what Rana drew, rendered and Israa checked before the stop is kept
+        if drawn is None:
+            cp.log("Rana", "design_started", None, {"what": what})
+            opts = design.ask_rana(what, brief)
+            folder = design.save_options(what, opts)
+            checkpoint.done("options drawn", {"opts": opts, "folder": str(folder)})
+        else:
+            opts, folder = drawn["opts"], Path(drawn["folder"])
+        if checkpoint.get("options rendered") is None:
+            _animate("design-render", folder, timeout=3600)
+            checkpoint.done("options rendered")
+        checked = checkpoint.get("Israa's check")
+        if checked is None:
+            rv = design.review(folder, what, brief) if rules.get("review.design") else {}   # live rule: off = straight to the owner
+            checkpoint.done("Israa's check", {"rv": rv})
+        else:
+            rv = {int(k): v for k, v in checked["rv"].items()}   # (JSON keys are text)
         weak = {k: r for k, r in rv.items() if r.get("verdict") == "weak"}
         if weak:
             notes = "\n".join(f"Option {k} ({opts[k - 1]['name'] if k <= len(opts) else ''}): {r.get('summary', '')} Fixes: {'; '.join(r.get('fixes') or [])}"
@@ -1003,13 +1048,15 @@ def run_characters(pid, clips=True):
         py = shorts_python()
         if not py:
             raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
-        p = subprocess.run([py, str(ROOT / "animate.py"), "characters" if clips else "sheets", str(pid)], cwd=ROOT, capture_output=True,
-                           text=True, encoding="utf-8", errors="replace", timeout=5400, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        lines = (p.stdout or "").splitlines()
-        if not any(l.startswith("RESULT ") for l in lines):
-            blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
-            raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
-        cp.log("Calina", "characters_made", None, {"project": pid, "clips": clips})
+        if checkpoint.get("characters made") is None:   # (animate.py itself keeps each finished character if it is cut off)
+            p = subprocess.run([py, str(ROOT / "animate.py"), "characters" if clips else "sheets", str(pid)], cwd=ROOT, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace", timeout=5400, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            lines = (p.stdout or "").splitlines()
+            if not any(l.startswith("RESULT ") for l in lines):
+                blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+                raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+            cp.log("Calina", "characters_made", None, {"project": pid, "clips": clips})
+            checkpoint.done("characters made")
         if clips:
             CHARMAKING["step"] = "Israa is checking each character against its reference sheet"
             try:
@@ -1075,16 +1122,19 @@ def run_render(eid):
             animated = bool(e and production.is_animated(e))
             mode = "assemble" if e and production.is_v2(e) else "render"
             script = "animate.py" if animated else "shorts.py"
-            p = subprocess.run([py, str(ROOT / script), "render" if animated else mode, str(eid)], cwd=ROOT, capture_output=True,
-                               text=True, encoding="utf-8", errors="replace", timeout=3600 if animated else 1800,
-                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            lines = (p.stdout or "").splitlines()
-            result = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
-            if not result:
-                blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
-                raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
-            r = json.loads(result)
-            cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
+            r = checkpoint.get("video made")   # resumed after the video was made: only Israa's review is left
+            if r is None:
+                p = subprocess.run([py, str(ROOT / script), "render" if animated else mode, str(eid)], cwd=ROOT, capture_output=True,
+                                   text=True, encoding="utf-8", errors="replace", timeout=3600 if animated else 1800,
+                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                lines = (p.stdout or "").splitlines()
+                result = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
+                if not result:
+                    blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+                    raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+                r = json.loads(result)
+                cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
+                checkpoint.done("video made", r)
             rv = quality.review_video(eid) if rules.get("review.video") else None   # Israa looks at it before the owner does (live rule)
             pace = (f" The voice still reads at {r['wpm']} words a minute even after slowing it: lower the speed in OpenArt's "
                     "text-to-speech next time." if r.get("wpm", 0) > 158 else "")
@@ -1961,6 +2011,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "message": f"{key}: {short(old)} → {short(new)}. Live now, no restart."})
         if u.path.startswith("/api/unblock/"):
             return self._send(200, {"ok": True, "message": "\n".join(unblock(u.path.rsplit("/", 1)[1]))})
+        if u.path == "/api/jobs/resume":   # Atlas: hq resume <job id | kind> (from its last finished step)
+            ok, msg = resume_job(self._json_body().get("job", ""))
+            return self._send(202 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
         if u.path == "/api/restart":   # Atlas: hq restart ["why"] (the same safe restart: waits for running work, jobs resume)
             body = self._json_body()
             by = "Owner" if body.get("by") == "owner" else "Atlas"
