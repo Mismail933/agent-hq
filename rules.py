@@ -71,6 +71,8 @@ RULES = {
     "team.doulya_searches": _r("Team & schedules", "int", 6, 1, 20, "Web searches per scouting round", ("settings", "DOULYA_MAX_SEARCHES")),
     "team.ghassan_on": _r("Team & schedules", "bool", True, None, None, "Ghassan builds Atlas's requests by himself", ("settings", "GHASSAN_ON")),
     "team.ghassan_every_minutes": _r("Team & schedules", "int", 10, 2, 240, "How often Ghassan looks for a new request", ("settings", "GHASSAN_EVERY_MINUTES")),
+    "office.auto_restart": _r("Team & schedules", "bool", True, None, None, "The office restarts by itself (once nothing is running) when its program files change or a new version is on GitHub"),
+    "office.update_check_minutes": _r("Team & schedules", "int", 10, 2, 240, "How often the office checks for changed program files and a new version"),
     # PHONE
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,
                      "What reaches the phone at once: decisions (things that need the owner + finished videos), everything, or nothing"),

@@ -164,6 +164,7 @@ company's guardrails (budgets, one idea at a time, kill switch).
 | `python hq.py phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices]` | Send the owner's waiting cards to his phone again (all, or the kind he asked for). |
 | `python hq.py send-phone <file> ["caption"]` | Send a file (video, image, audio, document) from content/, briefs/, plans/ or review/ to his phone. Big videos are compressed to fit. |
 | `python hq.py unblock <agent|all>` | Clears a block whose cause is gone (old video failure, stale flag, stopped idea, plan-limit pause). Never stops real work. |
+| `python hq.py restart ["why"]` | Restart the office into the newest version (e.g. after the Builder chat shipped a fix and it still runs old code). Waits until no job is running, then saved jobs resume. The office also does this by itself every `office.update_check_minutes` when its files change or GitHub has a new version (rule `office.auto_restart`). |
 | `python hq.py limit <key> <value>` | Only when the owner asks for that change: e.g. `limit allowance.Sage 10`, `limit engine.Vera api`, `limit model.Serge opus`, `limit daily_api 5`, `limit api_cap.Doulya none`. |
 | `python hq.py stop` / `resume` | Kill switch. Use `stop` at once if the owner says stop. `resume` only when he asks. |
 

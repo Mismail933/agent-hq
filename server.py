@@ -545,7 +545,10 @@ def loaded_files():
 def after_ship():
     """Ghassan's change is on GitHub. If it only touches files the office doesn't hold in memory, they're copied in place and
     nothing restarts; otherwise the office restarts once nothing is running (new jobs wait for it)."""
-    files = ghassan.install_hot(loaded_files())
+    try:
+        files = ghassan.install_hot(loaded_files())
+    finally:
+        SHIPPING["on"] = False
     if files is not None:
         if any(f.startswith("atlas/") for f in files):
             try:
@@ -558,14 +561,17 @@ def after_ship():
     restart_office()
 
 
-def restart_office():
+def restart_office(why="the new version"):
     """Restart into the new version once nothing is running. The launcher (launch.py, 2.21.0+) updates and starts the office
-    again when it exits with code 75; an older launcher gets a fresh START-HERE window instead."""
-    RESTARTING["on"] = True
+    again when it exits with code 75; an older launcher gets a fresh START-HERE window instead. Saved jobs resume after it."""
+    with RESTART_LOCK:
+        if RESTARTING["on"]:
+            return   # a restart is already waiting
+        RESTARTING["on"] = True
     time.sleep(3)
     if not office_idle():
         busy = working_now()
-        atlas_says("**The new version installs as soon as the running work is done**" + (": " + "; ".join(busy) if busy else "")
+        atlas_says(f"**The office restarts for {why} as soon as the running work is done**" + (": " + "; ".join(busy) if busy else "")
                    + ". Nothing is stopped; anything new you start meanwhile waits and runs right after the restart.")
     while not office_idle():
         time.sleep(20)
@@ -575,6 +581,55 @@ def restart_office():
         if bat.exists():
             subprocess.Popen(["cmd", "/c", "start", "Agent HQ", str(bat)], cwd=ROOT, env=dict(os.environ, HQ_NO_BROWSER="1"))
     os._exit(75)
+
+
+RESTART_LOCK = threading.Lock()
+SHIPPING = {"on": False}   # the owner's Ship click is being installed: after_ship decides about that restart itself
+FILE_TIMES = {}   # program file -> modified time, as first seen by restart_watch
+
+
+def changed_program_files():
+    """Imported program files that changed on disk since the office loaded them (the Builder chat or a hand copy)."""
+    out = []
+    for f in loaded_files():
+        try:
+            t = (ROOT / f).stat().st_mtime
+        except OSError:
+            continue
+        if FILE_TIMES.setdefault(f, t) != t:
+            out.append(f)
+    return out
+
+
+def newer_version():
+    """The VERSION on GitHub when it differs from this one (and isn't the one the launcher holds back), else ''."""
+    import launch   # its version check only; importing it starts nothing
+    try:
+        remote = launch.remote_version()
+    except Exception:
+        return ""   # offline: try again next time
+    hold = ROOT / ".hold-version"
+    if not remote or remote == launch.local_version() or (hold.exists() and hold.read_text().strip() == remote):
+        return ""
+    return remote
+
+
+def restart_watch():
+    """Every `office.update_check_minutes`: if the office's own program files changed, or GitHub has a new version (the Builder
+    chat pushed), restart once nothing is running (`restart_office`; saved jobs resume). Off with the rule `office.auto_restart`."""
+    time.sleep(120)   # let the office settle first
+    changed_program_files()   # remember how the files look now
+    while True:
+        try:
+            if rules.get("office.auto_restart") and not RESTARTING["on"] and not ghassan.LOCK.locked() and not SHIPPING["on"]:
+                files, remote = changed_program_files(), newer_version()
+                if files or remote:
+                    why = f"version {remote}" if remote else "changed program files (" + ", ".join(files[:4]) + ")"
+                    cp.log("Office", "auto_restart", None, {"version": remote, "files": files[:20]})
+                    restart_office(why)
+        except Exception as e:   # the loop must never die
+            print("Restart watch:", repr(e), flush=True)
+        time.sleep(60 * max(2, int(rules.get("office.update_check_minutes") or 10)))
 
 
 def ghassan_loop():
@@ -1418,9 +1473,12 @@ class Handler(BaseHTTPRequestHandler):
             if body.get("by") != "owner":
                 return self._send(403, {"error": "Only the owner ships or discards Ghassan's changes, from the office."})
             if u.path.endswith("ship"):
+                SHIPPING["on"] = True
                 ok, msg = ghassan.ship(anim_free=lambda: not anim_busy())
                 if ok:
                     threading.Thread(target=after_ship, daemon=True).start()
+                else:
+                    SHIPPING["on"] = False
             else:
                 ok, msg = ghassan.discard(str(body.get("reason", ""))[:300])
             return self._send(200 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
@@ -1828,6 +1886,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "message": f"{key}: {short(old)} → {short(new)}. Live now, no restart."})
         if u.path.startswith("/api/unblock/"):
             return self._send(200, {"ok": True, "message": "\n".join(unblock(u.path.rsplit("/", 1)[1]))})
+        if u.path == "/api/restart":   # Atlas: hq restart ["why"] (the same safe restart: waits for running work, jobs resume)
+            body = self._json_body()
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            if RESTARTING["on"]:
+                return self._send(200, {"ok": True, "message": "A restart is already waiting for the running work to finish."})
+            cp.log(by, "office_restart", None, {"why": str(body.get("why", ""))[:300]})
+            threading.Thread(target=restart_office, args=(f"{by}'s restart",), daemon=True).start()
+            busy = working_now()
+            return self._send(202, {"ok": True, "message": "The office restarts " + ("once this is done: " + "; ".join(busy) if busy else "now")
+                                    + ". It loads the newest version from GitHub; saved jobs resume after it (about 30 s)."})
         if u.path == "/api/design":   # Rana draws: {what, brief} (the owner, or Atlas: hq design)
             body = self._json_body()
             what = str(body.get("what", "")).strip()[:60]
@@ -1964,6 +2032,7 @@ def main():
     threading.Thread(target=first_logo, daemon=True).start()
     if os.environ.get("HQ_SIMULATE") != "1":
         threading.Thread(target=mark_healthy, daemon=True).start()
+        threading.Thread(target=restart_watch, daemon=True).start()
     if os.environ.get("HQ_NO_LND") != "1":
         threading.Thread(target=lnd_loop, daemon=True).start()
     if os.environ.get("HQ_NO_BROWSER") != "1":

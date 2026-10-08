@@ -8,6 +8,7 @@ Atlas's controls for Agent HQ.
                  rule list | rule changed | rule set <key> <value> ["why"] | rule reset <key> | rule undo <key> | rule history <key>
                  prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
+                 restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] | cast <project> | cast-use <project> kit|v<K>     (Rana)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
@@ -465,6 +466,9 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "unblock":   # clear what shows an agent as blocked when the cause is gone (never stops real work)
             code, reply = office(f"/api/unblock/{args[0] if args else 'all'}")
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "restart":   # the office restarts into the newest version once nothing is running (saved jobs resume)
+            code, reply = office("/api/restart", {"why": " ".join(args)})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "stop":
             office("/api/stop"); show("Kill switch ON. Every agent stops before its next step.")

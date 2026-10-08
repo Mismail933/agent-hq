@@ -227,6 +227,13 @@ Agents never spend money without the owner's explicit approval.
   (and run after the restart), Ghassan and the daily scout don't start, and it says what it waits for; `office_idle` covers every
   job, Doulya's scouting and Ghassan's build. `ghassan.reopen_stale()` (start of `ghassan_loop`) puts `[in progress]` requests back
   to `[open]`. A new long job: add it to `JOBS` + `job_label`.
+- Restarting by itself (Atlas's request 2026-10-08: the office kept old code after a Builder-chat push): `server.restart_watch`
+  (not in practice mode; first check 2 min after start, then every rule `office.update_check_minutes`) restarts the office via
+  `restart_office(why)` when an imported program file's mtime changed (`changed_program_files`, `FILE_TIMES`) or GitHub's VERSION
+  differs from the local one and isn't `.hold-version` (`newer_version`, uses `launch.remote_version`); logged `auto_restart`. Skipped
+  while Ghassan builds or a Ship is installing (`SHIPPING`, after_ship decides that one). Off with rule `office.auto_restart`.
+  `hq restart ["why"]` = `POST /api/restart` (logged `office_restart`). `restart_office` runs once (`RESTART_LOCK`), waits for
+  `office_idle`, exits 75 so launch.py updates; saved jobs resume.
 - `rules.py` (2.24.0; the full list 2.25.0, Atlas's "Team rules are settings Atlas changes live"): every behaviour rule of the team.
   `RULES` (key: group, kind, default, range/choices, label, optional `target` (module, attribute) + `scale`). Stored in hq.db `rules`
   (only values that differ from the default) + `rules_history` (every version, full texts). Targeted rules are written onto the
