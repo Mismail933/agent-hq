@@ -2,18 +2,23 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.292",
-   "checked": "2026-10-07"
+   "last_seen": "2.1.293",
+   "checked": "2026-10-08"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-05 Models API thinking capability field",
-   "checked": "2026-10-07"
+   "last_seen": "2026-10-08 Compliance API chats; 2026-10-07 Haiku 5.5 launch",
+   "checked": "2026-10-08"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-06 Expanding the Cyber Verification Program",
-   "checked": "2026-10-07"
+   "last_seen": "2026-10-07 Introducing Claude Haiku 5.5",
+   "checked": "2026-10-08"
+  },
+  "youtube-ypp-help": {
+   "url": "https://support.google.com/youtube/answer/72851",
+   "last_seen": "terms to be accepted by 2027-01-31; thresholds still 4,000 h / 10M",
+   "checked": "2026-10-08"
   }
  },
  "repos": {
@@ -23,6 +28,20 @@
    "verdict": "skip",
    "checked": "2026-10-06",
    "note": "Long-text writing tool; not scene files."
+  },
+  "matt1398/claude-devtools": {
+   "stars": 3968,
+   "last_commit": "2026-09-26",
+   "verdict": "watch",
+   "checked": "2026-10-08",
+   "note": "MIT log viewer; workers run without session logs."
+  },
+  "wshobson/agents": {
+   "stars": 40286,
+   "last_commit": "2026-10-05",
+   "verdict": "watch",
+   "checked": "2026-10-08",
+   "note": "MIT role-prompt library; reference only."
   }
  }
 }
