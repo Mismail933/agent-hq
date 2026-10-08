@@ -28,7 +28,7 @@ export const POSES = {
 };
 // Actions (2.22.1): short movements on top of the pose, timed by the scene's beats. walk_in / walk_out / turn are handled by the
 // scene (position and facing); facepalm / shrug / flinch also set a pose for a moment.
-export const ACTIONS = ['walk_in', 'walk_out', 'turn', 'jump', 'flinch', 'facepalm', 'shrug', 'double_take', 'nod'];
+export const ACTIONS = ['walk_in', 'walk_out', 'turn', 'jump', 'flinch', 'facepalm', 'shrug', 'double_take', 'nod', 'pace'];  // pace: Short.jsx walks him on the spot
 const actionMotion = (action, age) => {
   const m = {up: 0, squash: 1, lean: 0, nod: 0, away: false};
   if (age === null || age < 0) return m;

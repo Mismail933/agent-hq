@@ -653,8 +653,11 @@ MAKE IT FUN, CATCHY AND ALIVE (as important as the story)
   gasps, shouting, nervous, proud, deadpan, playful, mischievously, impressed, annoyed, awe). Vary it; never the same tag twice in
   a row for the narrator. CAPITALS on one word give it stress; "..." gives a pause. Use both sparingly.
 - Reactions are visible: each line can set the speaker's pose and expression; a crowd can gasp, laugh or cheer on cue.
-- Sound effects land the jokes and the reveals (a record scratch on a twist, a crowd gasp, a "dun dun" on the big number). Two or
-  three per scene at most, and only where they help; never under a line that must be understood clearly.
+- SOUND EFFECTS (the owner: "sounds that suddenly appear and don't make sense"): an effect is either something the viewer SEES
+  happen at that moment (a door, a splash, steps of someone walking, a crowd that reacts on screen) or the button on a punchline
+  (a record scratch on the twist, a gasp on the shock). Never an effect for a place or a mood that isn't on screen (no birds in a
+  courtyard nobody looks at, no "magic" on a fact). At most TWO per scene; many scenes need none. Background sounds (birds, wind,
+  crowd_murmur) only where that place is shown, and they play low.
 - HONESTY: the dialogue is a dramatisation. Characters may say in their own words what the sources say they did, thought or found,
   but no line may add a fact the sources don't support, and nothing is presented as a real historical quote unless it is one (then
   its source_note says where it comes from). The narrator's facts follow the same sourcing rules as always.
@@ -666,12 +669,23 @@ MOVE AND TIME IT LIKE OVERSIMPLIFIED (the owner's bar for the animation: its com
 - Something changes on screen every two to four seconds. The engine adds camera beats where nothing is planned, but plan the
   good ones yourself: a `camera` hit on a line (punch_in on the punchline or the reaction, whip into a surprise, shake on a
   shock, hold for a deadpan beat).
-- Comedy beats, where they help and never blurring a fact (about one every three or four scenes): a FREEZE-FRAME LABEL (the
-  picture stops on a word and a label names someone: "Eratosthenes, professional overachiever"), a CUTAWAY (a short scene that
-  jumps somewhere for a joke, tagged "MEANWHILE..." or similar), the narrator INTERRUPTED by a character (end the narrator's line
-  with a dash, the character cuts in), a DEADPAN pause before a punchline (the camera stops, the music stops, then the punch).
-- Every action gets its sound (footsteps, boing, gulp, slap, whoosh are added for you); add the ones only you know (a scroll
-  unrolling, coins, a splash) in `sfx`.
+- HOW THEIR JOKES WORK (the Builder studied two full OverSimplified episodes for the owner; animation/COMEDY-GUIDE.md):
+  * The loop is FACT, SKETCH, DEADPAN: the narrator states the true fact plainly; two to six quick character lines act it out,
+    exaggerating a PERSONALITY, never the fact; then the narrator comes back with one short dry line (tag deadpan) that lands it.
+  * THE DOUBTER PROVEN WRONG is the shape for every discovery: someone mocks the strange idea while the viewer can see it, it
+    works (one effect, one punch_in on his face: double_take), then the narrator explains HOW in two or three short visual steps.
+  * EXPECTATION, THEN THE FLIP: "You'd think... You'd think wrong." / a character asks "surely...?", the answer is "No."
+  * ONE RUNNING GAG: a catchphrase or reaction that happens two or three times early and comes back once at the end as the payoff.
+  * SIDE CHARACTERS TALK: while two people talk, a bystander gets one short aside (a whisper, a complaint, "what's wrong with him?").
+  * THE REVEAL BEHIND: someone brags or dismisses; the person or thing he dismissed walks in (action walk_in on that line).
+  * The narrator is a character: short asides to the viewer, a modern comparison in one sentence (once or twice a video).
+  * Character lines are SHORT and casual (two to ten words is normal); every character keeps one clear trait; a sketch ends on
+    its punch (a line or a reaction) and nothing comes after it in that scene.
+  * Other beats, rarely and never blurring a fact: a FREEZE-FRAME LABEL naming someone, a CUTAWAY ("MEANWHILE..."), the narrator
+    INTERRUPTED by a character (end his line with a dash), a DEADPAN pause before a punchline (camera and music stop).
+- Scenes CUT from one to the next (the default; the movement is inside the shot). Use transition "whip" only into a cutaway.
+- Every action gets its sound (footsteps, boing, gulp, slap, whoosh are added for you); add an effect yourself only under the
+  SOUND EFFECTS rule above.
 
 WRITE A STORY, IN FULL SENTENCES, FOR THE EAR
 - Every line is a complete spoken sentence, written to be heard, like a good storyteller talking to one friend. Read each
@@ -742,12 +756,14 @@ THE KIT (use only these names; the engine rejects anything else)
 - lines: [{{"who": "narrator" or a character in the scene, "text": "...", "tag": a delivery, "pose": optional new pose for the speaker
   on this line, "expression": optional new face, "crowd": optional crowd reaction on this line, "action": optional (the speaker's),
   "reacts": optional [{{"who": another character in the scene, "action": ..., "expression": ..., "on_word": optional}}],
-  "camera": optional hit as the line starts}}]. actions: walk_in, walk_out, turn, jump, flinch, facepalm, shrug, double_take, nod.
+  "camera": optional hit as the line starts}}].
+  actions: walk_in, walk_out, turn, jump, flinch, facepalm, shrug, double_take, nod, pace (walks on the spot: someone
+  walking, counting steps, marching).
   camera hits: punch_in (on the speaker), release, whip, shake, hold.
 - gag (optional, one per scene): {{"type": "freeze_label", "text": "Eratosthenes, overachiever", "on_word": "...", "who": "scholar"}},
   {{"type": "cutaway", "text": "MEANWHILE IN ROME"}}, {{"type": "interrupt", "who": the character who cuts in}}, or
   {{"type": "deadpan", "on_word": the first word of the punchline}}.
-- transition (optional, how this scene arrives): cut, whip, slide_left, slide_up, iris.
+- transition (optional, how this scene arrives): cut (the default) or whip (only into a cutaway).
 - crowd (optional): {{"size": 3-8, "reaction": idle | cheer | gasp | laugh | murmur | angry | scared}}: townspeople behind the cast.
 - sfx (optional): [{{"name": one of the menu, "on_word": the exact word it lands on (or leave it out to open the scene)}}]. Menu:
   {sfx_menu}.

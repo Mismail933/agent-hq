@@ -370,6 +370,12 @@ SCRIPTS_TASK = """Review these scripts from Calina. Each is a short YouTube vide
    shrug, double-take) instead of standing in poses? Are there comedy beats where they help (a freeze-frame label, a cutaway, a
    character interrupting the narrator, a deadpan pause before a punchline), with a camera hit (punch_in, whip) on the punchline?
    A scene that runs long with nothing planned to happen on screen is a pacing fault: name it. Gags must never blur a fact.
+   The jokes follow the shapes in animation/COMEDY-GUIDE.md (fact, sketch, deadpan; the doubter proven wrong; expectation then
+   the flip; one running gag paid off at the end; a bystander's aside): name the scenes where a sketch has no punch, where a
+   character line is long and stiff instead of short and casual, or where a discovery is told without anyone doubting it.
+12. Sound that makes sense: every sound effect is something seen on screen at that moment or the button on a punchline; fail
+   an effect for a place or mood that isn't shown (birds in a scene with no birds, "magic" on a fact), more than two in a scene,
+   or a background sound (birds, wind, murmur) where that place isn't on screen.
 A script passes only if it is genuinely good (score 7 or more out of 10) and has no blocking problem.
 
 Earlier episodes of this channel:
@@ -528,7 +534,7 @@ DELIVERY = ("excited", "curious", "dramatic", "whispers", "sarcastic", "laughs",
             "nervous", "proud", "deadpan", "playful", "mischievously", "impressed", "annoyed", "awe")
 # The OverSimplified layer (2.22.1): what a character does, camera hits on a line, comedy beats, scene changes. The schema,
 # the checklist and the renderer (Character.jsx ACTIONS, Camera.jsx HITS) use the same names.
-ACTIONS = ("walk_in", "walk_out", "turn", "jump", "flinch", "facepalm", "shrug", "double_take", "nod")
+ACTIONS = ("walk_in", "walk_out", "turn", "jump", "flinch", "facepalm", "shrug", "double_take", "nod", "pace")
 CAM_HITS = ("punch_in", "release", "whip", "shake", "hold")
 GAGS = ("freeze_label", "cutaway", "interrupt", "deadpan")
 TRANSITIONS = ("cut", "whip", "slide_left", "slide_up", "iris")

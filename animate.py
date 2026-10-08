@@ -564,11 +564,16 @@ def speaker_frames(segs, total_frames):
 
 ACTION_POSE = {"facepalm": "facepalm", "shrug": "shrug", "flinch": "flinch"}   # actions that are also a pose for a moment
 ACTION_FACE = {"flinch": "scared", "double_take": "surprised", "facepalm": "worried"}
-ACTION_SFX = {"walk_in": "footsteps", "walk_out": "footsteps", "jump": "boing", "flinch": "gulp", "facepalm": "slap", "double_take": "whoosh"}
+ACTION_SFX = {"walk_in": "footsteps", "walk_out": "footsteps", "pace": "footsteps", "jump": "boing", "flinch": "gulp", "facepalm": "slap", "double_take": "whoosh"}
 ACTION_HOLD = 30        # frames a pose-action is held before he goes back to his pose
 WALK_OUT_LEAD = 36      # a character who leaves the scene starts walking this many frames before it ends
 FREEZE_FRAMES = 48      # a freeze-frame label holds the picture this long (the voice carries on)
 MUSIC_VOLUME = 0.16     # music under the voices (live rule sound.music_volume)
+SFX_STING_LEVEL = 0.42  # a sound effect on a joke or a reveal (was 0.55 for everything, no fades)
+SFX_AMBIENT_LEVEL = 0.16  # a background sound under a whole moment
+SFX_AMBIENT = {"birds", "wind", "crowd_murmur"}
+SFX_LEVEL = {"footsteps": 0.3, "scroll": 0.3, "coins": 0.32, "pop": 0.28, "tick": 0.3, "thinking": 0.3, "magic": 0.3,
+             "crowd_cheer": 0.32, "crowd_laugh": 0.32, "crowd_gasp": 0.36, "crowd_boo": 0.32}
 REFRAME_EVERY = 2.8     # seconds: a stretch with nothing planned gets a camera beat this often
 
 
@@ -760,7 +765,7 @@ def mix_audio(ffmpeg, voice, cues, music, seconds, dst, quiet=()):
     speaks (sidechain compression), faded in and out, and stopped dead in the `quiet` windows [(from s, to s)] (a freeze-frame,
     a deadpan pause: the comic stop). Then normalised like the voice. Returns (dst, characters billed for new effects)."""
     inputs, filters, labels, billed = ["-i", str(voice)], [], ["[v]"], 0
-    filters.append("[0:a]aresample=48000,asplit=2[v][sc]")
+    filters.append("[0:a]aresample=48000,asplit=4[v][sc][sca][scs]")
     n = 1
     if music:
         inputs += ["-stream_loop", "-1", "-i", str(music)]
@@ -774,6 +779,10 @@ def mix_audio(ffmpeg, voice, cues, music, seconds, dst, quiet=()):
         n += 1
     else:
         filters.append("[sc]anullsink")
+    # Effects (2.29.0, the owner: "sounds suddenly appear and don't make sense, should be smoother"): every effect fades in and
+    # out instead of starting and stopping dead; background sounds (birds, wind, a murmuring crowd) play low, fade in slowly
+    # and duck hard under the voices; everything else (stings, steps, pops) has its own level and ducks a little under speech.
+    groups = {"amb": [], "fx": []}
     for at, name in cues:
         try:
             path, b = sfx.sfx_path(name)
@@ -783,9 +792,22 @@ def mix_audio(ffmpeg, voice, cues, music, seconds, dst, quiet=()):
         billed += b
         inputs += ["-i", str(path)]
         ms = max(0, int(at * 1000))
-        filters.append(f"[{n}:a]aresample=48000,volume=0.55,adelay={ms}|{ms}[s{n}]")
-        labels.append(f"[s{n}]")
+        secs = sfx.MENU.get(name, ("", 1.0))[1]
+        amb = name in SFX_AMBIENT
+        fin, fout = (0.7, 0.9) if amb else (0.02, min(0.3, secs * 0.3))
+        vol = SFX_LEVEL.get(name, SFX_AMBIENT_LEVEL if amb else SFX_STING_LEVEL)
+        filters.append(f"[{n}:a]aresample=48000,volume={vol:g},afade=t=in:d={fin:g},afade=t=out:st={max(0.0, secs - fout):.2f}:d={fout:.2f},"
+                       f"adelay={ms}|{ms}[s{n}]")
+        groups["amb" if amb else "fx"].append(f"[s{n}]")
         n += 1
+    for g, sc, duck in (("amb", "[sca]", "threshold=0.02:ratio=8:attack=40:release=700"), ("fx", "[scs]", "threshold=0.03:ratio=2.5:attack=10:release=300")):
+        if groups[g]:
+            mixed = "".join(groups[g]) + (f"amix=inputs={len(groups[g])}:duration=longest:normalize=0[{g}raw]" if len(groups[g]) > 1 else f"anull[{g}raw]")
+            filters.append(mixed)
+            filters.append(f"[{g}raw]{sc}sidechaincompress={duck}[{g}]")
+            labels.append(f"[{g}]")
+        else:
+            filters.append(f"{sc}anullsink")
     filters.append("".join(labels) + f"amix=inputs={len(labels)}:duration=first:normalize=0,alimiter=limit=0.89[out]")
     raw = dst.with_name("_mix_raw.wav")
     shorts.run([ffmpeg, "-y", "-loglevel", "error", *inputs, "-filter_complex", ";".join(filters), "-map", "[out]", "-ac", "1", str(raw)])

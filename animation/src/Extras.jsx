@@ -4,16 +4,21 @@ import {C, HEAD, LINE, W, H, easeOut, clamp01, lerp} from './theme';
 
 const o = {stroke: C.ink, strokeWidth: LINE, strokeLinejoin: 'round', strokeLinecap: 'round'};
 
-/** A rod standing in the ground with its shadow (sun on the right). shadow: 0 = none, 1 = long. */
-export const Rod = ({x = 300, y = 1250, shadow = 0.5, frame}) => {
+/**
+ * A rod standing in the ground with its shadow (sun on the right). shadow: 0 = none, 1 = long. Drawn at the cast's `scale`
+ * (2.29.0): the shadow is the point of the scene, so it is dark and its end is marked with a tick.
+ */
+export const Rod = ({x = 300, y = 1250, shadow = 0.5, frame, scale = 1}) => {
   const len = 360 * shadow;
-  const grow = easeOut(frame / 30);
+  const grow = easeOut(clamp01(frame / 30));
+  const tip = -len * grow - 46;
   return (
-    <g transform={`translate(${x} ${y})`}>
-      <path d={`M -22 4 L ${-len * grow - 50} 22 L ${-len * grow - 40} 56 L 22 40 Z`} fill={C.ink} opacity="0.35" />
-      <rect x="-12" y="-290" width="24" height="290" fill="#8A5A3A" {...o} strokeWidth={6} />
-      <circle cx="0" cy="-296" r="16" fill={C.gold} {...o} strokeWidth={6} />
-      <ellipse cx="0" cy="8" rx="52" ry="18" fill="#BDA06A" {...o} strokeWidth={6} />
+    <g transform={`translate(${x} ${y}) scale(${scale})`}>
+      <path d={`M -14 2 L ${tip} 16 L ${tip + 6} 44 L 14 30 Z`} fill={C.ink} opacity="0.55" />
+      {grow > 0.95 && <path d={`M ${tip + 3} 0 L ${tip + 3} 60`} stroke={C.ink} strokeWidth="6" strokeLinecap="round" />}
+      <rect x="-12" y="-300" width="24" height="300" fill="#8A5A3A" {...o} strokeWidth={6} />
+      <circle cx="0" cy="-306" r="16" fill={C.gold} {...o} strokeWidth={6} />
+      <ellipse cx="0" cy="8" rx="46" ry="16" fill="#BDA06A" {...o} strokeWidth={6} />
     </g>
   );
 };

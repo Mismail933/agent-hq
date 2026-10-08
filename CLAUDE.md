@@ -302,6 +302,26 @@ Agents never spend money without the owner's explicit approval.
   - Backdrops redrawn in the cast's style (thin brown lines, muted sepia `K`), new `street` and `desert`; maps: arrowheads, `map.arrows`
     drawn on one by one, city names pop. Still to do: Rana drawing missing backdrops waits for the "Animator as the company's
     character artist" request.
+- Staging, cuts and sound (2.29.0, the owner's review of ep 22: people overlapped "in almost every scene", sizes and perspective
+  wrong, sounds "suddenly appear and don't make sense"; then he asked the Builder to study OverSimplified first). The Builder read
+  the full captions of OverSimplified's *First Punic War (Part 1)* and *Pig War* (the player's own caption file, in the browser;
+  never download from YouTube) plus frames: `animation/COMEDY-GUIDE.md` (fact, sketch, deadpan; the doubter proven wrong; the
+  flip; one running gag; bystander asides; cuts not transitions; close framing; crowds in depth; sound only on what you see).
+  - `Short.jsx stage()`: one scale for everyone in a scene (`BASE_SCALE` by head count, shrunk only to fit), side by side with
+    `GAP` between bodies, facing each other (a hand towards the other stops short of his middle; the far hand may be cropped),
+    feet ON the floor in front of the back wall (`FEET` per backdrop, the floor starts at `FLOOR`), a crowd further back with
+    its heads near the cast's eye line. A rod is staged in the row like a person, at the cast's scale, with a dark shadow and
+    a tick at its end; nobody carries a prop in a rod scene (`noProp`). Diagram scenes put the people small in the bottom
+    corners (under the captions); the diagram sits higher (`CY` 800) so its fraction label clears the captions.
+  - Cuts by default; `whip` only into a cutaway or when the script asks. No more slide/iris on every scene.
+  - Title card: place and year only (no "POV"). Night skies draw a crescent moon (`Moon` in Backdrops), never a sun.
+  - New action `pace` (walks on the spot ~70 frames, footsteps): quality.ACTIONS, Character.ACTIONS, Short.jsx.
+  - `animate.mix_audio`: every effect fades in/out; `SFX_AMBIENT` (birds, wind, crowd_murmur) at `SFX_AMBIENT_LEVEL`, slow
+    fades, ducked hard under the voices; other effects at `SFX_LEVEL`/`SFX_STING_LEVEL`, ducked a little.
+  - Calina's V3 prompt: HOW THEIR JOKES WORK + a SOUND EFFECTS rule (seen on screen or a punchline button, max 2 a scene);
+    Israa's script review: criterion 11 checks the joke shapes, new 12 checks that sounds make sense.
+  Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
+  `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits
   at start). `design.py`: `hq design <what> ["brief"]` (`POST /api/design`, journaled job `design`, uses the animation tools so
   `anim_busy` says "Rana is drawing ..."): Rana (Opus, Read on the reference images the brief names, copied to her work folder

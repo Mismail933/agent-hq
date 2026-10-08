@@ -48,7 +48,7 @@ export const Captions = ({chunks, frame}) => {
   );
 };
 
-/** The opening stamp: POV, then place and year. Plays over the hook line. */
+/** The opening stamp: place and year on a ribbon (no "POV": nobody's point of view is used, 2.29.0). Plays over the hook line. */
 export const TitleCard = ({intro, frame, frames = 84}) => {
   const {fps} = useVideoConfig();
   if (frame > frames) return null;
@@ -62,12 +62,7 @@ export const TitleCard = ({intro, frame, frames = 84}) => {
   const ribbonW = Math.min(W - 140, shown.length * fs * 0.6 + 90);
   return (
     <g opacity={out} transform={`translate(${W / 2} 205) scale(${0.9 + 0.1 * out})`}>
-      <g transform={`rotate(-4) scale(${Math.max(0.01, pop)})`}>
-        <rect x="-250" y="-130" width="500" height="210" rx="34" fill={C.terracotta} stroke={C.ink} strokeWidth="12" />
-        <rect x="-232" y="-112" width="464" height="174" rx="24" fill="none" stroke={C.parchment} strokeWidth="5" />
-        <text textAnchor="middle" y="40" fontFamily={HEAD} fontSize="190" fill={C.parchment} stroke={C.ink} strokeWidth="9" paintOrder="stroke">POV</text>
-      </g>
-      <g transform={`translate(${(1 - ribbon) * 900} 128) rotate(2)`}>
+      <g transform={`translate(${(1 - ribbon) * 900} 0) rotate(-2) scale(${0.85 + 0.15 * Math.max(0, pop)})`}>
         <rect x={-ribbonW / 2} y="-52" width={ribbonW} height="104" rx="22" fill={C.parchment} stroke={C.ink} strokeWidth="10" />
         <text textAnchor="middle" y={fs * 0.33} fontFamily={HEAD} fontSize={fs} fill={C.ink}>{shown.toUpperCase()}</text>
       </g>

@@ -31,7 +31,15 @@ const SKY = {
   night: ['#2E3F44', '#4F6A68'],
 };
 
-const Sun = ({x, y, r, frame, color = K.gold}) => (
+// At night the sky gets a crescent moon, never a sun with rays (2.29.0: ep 22 had a sun in a night sky).
+const Moon = ({x, y, r}) => (
+  <g transform={`translate(${x} ${y})`}>
+    <circle r={r * 1.6} fill={K.parchment} opacity="0.08" />
+    <path d={`M ${r * 0.2} ${-r} A ${r} ${r} 0 1 0 ${r * 0.2} ${r} A ${r * 0.78} ${r * 0.78} 0 1 1 ${r * 0.2} ${-r} Z`} fill={K.parchment} {...o} />
+  </g>
+);
+
+const Sun = ({x, y, r, frame, color = K.gold, night = false}) => night ? <Moon x={x} y={y - 120} r={r * 0.7} /> : (
   <g transform={`translate(${x} ${y})`}>
     <g transform={`rotate(${frame * 0.35})`} opacity="0.55">
       {Array.from({length: 14}).map((_, i) => (
@@ -121,7 +129,7 @@ export const Court = ({frame, tone = 'noon'}) => (
   <g>
     <Layer depth={0.15}>
       <Sky tone={tone} id={`sky-${tone}`} />
-      <Sun x={tone === 'noon' ? 760 : 700} y={tone === 'noon' ? 300 : 640} r={tone === 'noon' ? 105 : 130} frame={frame} color={tone === 'night' ? K.parchment : K.gold} />
+      <Sun x={tone === 'noon' ? 760 : 700} y={tone === 'noon' ? 300 : 640} r={tone === 'noon' ? 105 : 130} frame={frame} night={tone === 'night'} />
       {tone !== 'night' && <Clouds frame={frame} />}
     </Layer>
     <Layer depth={0.35}>
@@ -351,7 +359,7 @@ export const Street = ({frame, tone = 'noon'}) => (
   <g>
     <Layer depth={0.12}>
       <Sky tone={tone} id={`sky-street-${tone}`} />
-      <Sun x={820} y={tone === 'noon' ? 260 : 620} r={90} frame={frame} color={tone === 'night' ? K.parchment : K.gold} />
+      <Sun x={820} y={tone === 'noon' ? 260 : 620} r={90} frame={frame} night={tone === 'night'} />
       {tone !== 'night' && <Clouds frame={frame + 90} y={260} />}
     </Layer>
     <Layer depth={0.3}>
@@ -397,7 +405,7 @@ export const Desert = ({frame, tone = 'noon'}) => {
     <g>
       <Layer depth={0.1}>
         <Sky tone={tone} id={`sky-desert-${tone}`} />
-        <Sun x={300} y={tone === 'noon' ? 300 : 700} r={110} frame={frame} color={tone === 'night' ? K.parchment : K.gold} />
+        <Sun x={300} y={tone === 'noon' ? 300 : 700} r={110} frame={frame} night={tone === 'night'} />
       </Layer>
       <Layer depth={0.3}>
         <path d="M -400 960 Q -100 820 220 920 Q 560 800 900 930 Q 1200 840 1480 940 L 1480 1100 L -400 1100 Z" fill="#E6CB95" {...o} />

@@ -8,7 +8,7 @@ import {C, HEAD, W, H, easeOut, clamp01, lerp} from './theme';
  * diagram: { angle_label: "7.2°", fraction: "1/50", a_label: "Alexandria", b_label: "Syene", gap: 22 (drawn angle, not to scale) }
  */
 const CX = 440;
-const CY = 1020;
+const CY = 800;   // high enough that the fraction label clears the captions (they start at 1310)
 const R = 300;
 
 export const Diagram = ({diagram, frame, frames}) => {
@@ -71,7 +71,7 @@ export const Diagram = ({diagram, frame, frames}) => {
       <g transform={`translate(${CX + 190} ${CY - 70}) scale(${Math.max(0.01, label)})`} opacity={clamp01(label * 3)}>
         <text textAnchor="middle" fontFamily={HEAD} fontSize="96" fill={C.parchment} stroke={C.ink} strokeWidth="9" paintOrder="stroke">{diagram.angle_label}</text>
       </g>
-      <g transform={`translate(${CX} ${CY + R + 190}) scale(${Math.max(0.01, label)})`} opacity={clamp01(label * 3)}>
+      <g transform={`translate(${CX} ${CY + R + 130}) scale(${Math.max(0.01, label)})`} opacity={clamp01(label * 3)}>
         <rect x="-300" y="-70" width="600" height="120" rx="26" fill={C.gold} stroke={C.ink} strokeWidth="9" />
         <text textAnchor="middle" y="24" fontFamily={HEAD} fontSize="72" fill={C.ink}>{diagram.fraction} of a circle</text>
       </g>

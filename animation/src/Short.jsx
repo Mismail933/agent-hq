@@ -21,6 +21,72 @@ const SLOTS3 = {left: 250, center: 540, right: 830};
 const TRANSITION = 9; // frames the next scene takes to arrive
 const WALK = 28;      // frames a walk in or out takes
 const OFF = 420;      // how far off the picture a character waits before walking in
+const PACE = 70;      // frames a 'pace' action walks on the spot (the bematist's "step, step, step")
+
+// Staging (2.29.0, the owner's "people overlap, the sizes and the perspective are wrong" after ep 22; studied on OverSimplified):
+// - the cast stands ON the floor, in front of the back wall: feet at FEET[backdrop] (each backdrop's floor starts at FLOOR);
+// - one scale for everybody in a scene (only a person's own `tall` differs), so nobody shrinks because his arm is out;
+// - side by side with a real gap, facing each other; an arm may reach towards the other, a body never covers another body;
+// - a crowd stands further back, smaller, with its heads near the cast's eye line (an eye-level camera), never in front.
+const FLOOR = {court: 1130, library: 1180, street: 1150, desert: 1200, study: 1100, nile: 1240, well: 1160};
+const FEET = {court: 1430, library: 1460, street: 1440, desert: 1470, study: 1400, nile: 1480, well: 1440};
+const BASE_SCALE = [1.3, 1.3, 1.15, 0.98, 0.86]; // by the number of people on screen
+const GAP = 70;       // px between two bodies
+const HEIGHT = 612;   // a figure's height at scale 1 (head top), before its own `tall`
+
+// half the width of a body at scale 1 (shoulders, cloak) and how far its hands and prop reach to the back and the front
+const bodyOf = (who, poses, noProp) => {
+  const rs = poses.map((p) => reach(who, p, noProp));
+  const st = reach(who, 'stand', true);
+  const half = Math.max(st.left, st.right);
+  // the hand away from the other person may be cut by the frame edge (as in any close shot), so only part of it counts
+  return {half, back: Math.max(half, 0.6 * Math.max(...rs.map((q) => q.left))), front: Math.max(half, ...rs.map((q) => q.right)),
+    top: Math.max(...rs.map((q) => q.top))};
+};
+
+// Lays the scene's people (and a rod, which is staged like a person) out in a row: returns [{x, facing}] and the shared scale.
+const stage = (items, feet, topLimit) => {
+  if (!items.length) return {scale: 1, placed: []};
+  const n = items.filter((it) => !it.prop).length;
+  let s = BASE_SCALE[Math.min(n, BASE_SCALE.length - 1)];
+  s = Math.min(s, ...items.filter((it) => !it.prop).map((it) => (feet - topLimit) / it.b.top));
+  // facing: the left half looks right, the right half looks left (towards each other); a lone person faces his `facing` or right
+  const order = items.map((it, i) => ({...it, i})).sort((a, b) => a.want - b.want);
+  const m = order.length;
+  order.forEach((it, k) => {
+    it.facing = it.facing0 || (m === 1 ? 1 : k < m / 2 ? 1 : -1);
+    if (m > 1 && m % 2 === 1 && k === (m - 1) / 2 && !it.facing0) it.facing = it.want < W / 2 ? 1 : -1;
+  });
+  const span = (sc) => {
+    // left and right extents of each item at this scale (front = the side it faces)
+    const ext = order.map((it) => (it.facing > 0 ? [it.b.back, it.b.front] : [it.b.front, it.b.back]).map((v) => v * sc));
+    const xs = [Math.max(order[0].want, SAFE + ext[0][0])];
+    for (let k = 1; k < order.length; k += 1) {
+      const a = order[k - 1];
+      const b = order[k];
+      // bodies apart by GAP; a hand reaching towards the other stops short of the other's middle
+      const bodies = (a.b.half + b.b.half) * sc + GAP;
+      const reachA = a.facing > 0 ? a.b.front * sc + b.b.half * sc * 0.35 : 0;
+      const reachB = b.facing < 0 ? b.b.front * sc + a.b.half * sc * 0.35 : 0;
+      xs.push(Math.max(b.want, xs[k - 1] + Math.max(bodies, reachA, reachB)));
+    }
+    const left = xs[0] - ext[0][0];
+    const right = xs[xs.length - 1] + ext[ext.length - 1][1];
+    return {xs, left, right};
+  };
+  let lay = span(s);
+  for (let k = 0; k < 12 && lay.right - lay.left > W - 2 * SAFE; k += 1) {
+    s *= 0.93;
+    lay = span(s);
+  }
+  // centre the group where it wanted to be, inside the safe area
+  const wantMid = order.reduce((a, it) => a + it.want, 0) / Math.max(1, order.length);
+  let shift = wantMid - (lay.left + lay.right) / 2;
+  shift = Math.max(SAFE - lay.left, Math.min(W - SAFE - lay.right, shift * 0.5 + (W / 2 - (lay.left + lay.right) / 2) * 0.5));
+  const out = [];
+  order.forEach((it, k) => { out[it.i] = {x: lay.xs[k] + shift, facing: it.facing}; });
+  return {scale: s, placed: out};
+};
 
 // Who is doing what at this frame of the scene: a character's pose and face change on its own lines (beats), blending in over 8
 // frames; actions (2.22.1) say how long ago the last one began, how often he has turned, and where a walk in or out has got to.
@@ -119,17 +185,26 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const n = cast.length;
   const beats = scene.beats || [];
   const topLimit = index === 0 ? 410 : scene.callout && !['map', 'diagram'].includes(scene.backdrop) ? 340 : SAFE;
-  // keep every character (and its prop, in every pose it takes in this scene) inside the safe area
-  const chars = cast.map((c) => {
-    const poses = [c.pose || 'stand', ...beats.filter((b) => b.who === c.who && b.pose).map((b) => b.pose)];
-    const rs = poses.map((p) => reach(c.who, p));
-    const r = {left: Math.max(...rs.map((q) => q.left)), right: Math.max(...rs.map((q) => q.right)), top: Math.max(...rs.map((q) => q.top))};
-    const y = c.y ?? (n > 1 ? 1190 : 1210);
-    // the top of the picture belongs to the title card (first scene) and to callouts: heads and props stay below them
-    const sc = Math.min(c.scale ?? (n > 2 ? 0.74 : n > 1 ? 0.9 : 1.15), (W - 2 * SAFE) / (r.left + r.right), (y - topLimit) / r.top);
-    const x0 = c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'];
-    return {...c, scale: sc, y, r, x: Math.min(W - SAFE - r.right * sc, Math.max(SAFE + r.left * sc, x0))};
+  // the staging (see `stage`): everyone on the floor, one scale, side by side with a gap, facing each other, inside the safe area
+  const feet = FEET[scene.backdrop] ?? 1440;
+  const rodsIn = (scene.props || []).filter((p) => p.type === 'rod');
+  const noProp = rodsIn.length > 0;   // the scene is about the rod: nobody carries a staff that could be mistaken for it
+  const items = [
+    ...cast.map((c) => {
+      const poses = [c.pose || 'stand', ...beats.filter((b) => b.who === c.who && b.pose).map((b) => b.pose)];
+      return {b: bodyOf(c.who, poses, noProp), want: c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'], facing0: c.facing || 0};
+    }),
+    ...rodsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
+      b: {half: 30, back: 60 + 360 * (p.shadow ?? 0.5), front: 40, top: 300}})),
+  ];
+  const {scale: sc, placed} = stage(items, feet, topLimit);
+  const chars = cast.map((c, i) => {
+    const {back, front, top} = items[i].b;
+    const facing = placed[i].facing;
+    // r: how far he reaches to the left and the right of x on screen (his front is the side he faces)
+    return {...c, scale: sc, y: c.y ?? feet, x: placed[i].x, facing, r: facing > 0 ? {left: back, right: front, top} : {left: front, right: back, top}};
   });
+  const rodX = rodsIn.map((_, k) => placed[cast.length + k].x);
   const who = speaker ? speaker[Math.min(g, speaker.length - 1)] || '' : null;
   const speakingChar = who ? chars.find((c) => c.who === who) : null;
   const mouthOf = (c) => {
@@ -140,10 +215,11 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const lookOf = (c) => (speakingChar && speakingChar !== c ? [Math.sign(speakingChar.x - c.x) * 7, 0] : [0, 0]);
   const crowdBeat = [...beats].reverse().find((b) => b.who === 'crowd' && b.at <= frame);
   const crowdReaction = (crowdBeat && crowdBeat.reaction) || (scene.crowd && scene.crowd.reaction) || 'idle';
-  // the props that matter (the rod and its shadow) count too
-  const rodShadow = (p) => 60 + 360 * (p.shadow ?? 0.5);
-  const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: Math.max(SAFE + rodShadow(p), Math.min(W - SAFE - 40, p.x ?? 300))} : p));
-  const xs = [...chars.flatMap((c) => [c.x - c.r.left * c.scale, c.x + c.r.right * c.scale]), ...props.filter((p) => p.type === 'rod').flatMap((p) => [p.x - rodShadow(p), p.x + 40]),
+  // the props that matter (the rod and its shadow) count too; a rod is staged in the row like a person, at the cast's scale
+  const rodShadow = (p) => (60 + 360 * (p.shadow ?? 0.5)) * sc;
+  let rk = 0;
+  const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: rodX[rk++], y: feet, scale: sc} : p));
+  const xs = [...chars.flatMap((c) => [c.x - c.r.left * c.scale, c.x + c.r.right * c.scale]), ...props.filter((p) => p.type === 'rod').flatMap((p) => [p.x - rodShadow(p), p.x + 40 * sc]),
     ...props.filter((p) => p.type === 'globe').flatMap((p) => [(p.x ?? 540) - (p.r ?? 150), (p.x ?? 540) + (p.r ?? 150)])];
   const minX = xs.length ? Math.min(...xs) : W / 2;
   const maxX = xs.length ? Math.max(...xs) : W / 2;
@@ -160,7 +236,9 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const hits = (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
   const Back = BACKDROPS[scene.backdrop];
   const t = easeOut(clamp01(frame / TRANSITION));
-  const kind = scene.transition || (gag && gag.type === 'cutaway' ? 'whip' : ['slide_left', 'iris', 'slide_up', 'iris'][index % 4]);
+  // OverSimplified cuts: a plain cut between scenes (the movement is inside the shot); a whip only into a cutaway or when the
+  // script asks for one. Slides and irises on every scene read as busy (2.29.0).
+  const kind = gag && gag.type === 'cutaway' ? 'whip' : scene.transition === 'whip' ? 'whip' : 'cut';
   let wrap = {};
   let clip = null;
   let blur = false;
@@ -187,39 +265,50 @@ const Scene = ({scene, mouth, speaker, index}) => {
         <Camera move={scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit} hits={hits}>
           {Back && <Back frame={frame} tone={scene.tone} />}
           {props.map((p, i) => {
-            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x ?? 300} y={p.y ?? 1250} shadow={p.shadow ?? 0.5} />;
+            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={p.shadow ?? 0.5} scale={p.scale} />;
             if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} />;
             return null;
           })}
-          {scene.crowd && (
-            <Crowd size={scene.crowd.size || 5} reaction={crowdReaction} frame={frame} seed={index + 1}
-              y={chars.length ? Math.min(...chars.map((c) => c.y)) - 120 : 1180} scale={chars.length ? 0.48 : 0.62} />
-          )}
+          {scene.crowd && (() => {
+            // further back, on the floor just in front of the wall; heads a little under the cast's eye line (perspective)
+            const floor = FLOOR[scene.backdrop] ?? feet - 280;
+            const cy = floor + 50;
+            const castHead = feet - HEIGHT * sc;
+            const cs = Math.max(0.35, Math.min(sc * 0.8, (cy - castHead - 40) / HEIGHT));
+            return <Crowd size={scene.crowd.size || 5} reaction={crowdReaction} frame={frame} seed={index + 1} y={cy} scale={cs} from={SAFE + 40} to={W - SAFE - 40} />;
+          })()}
           {chars.map((c, i) => {
             const st = stateAt(c, beats, frame);
-            const [x, walking, dir] = walkPos(c.x, st, frame);
+            let [x, walking, dir] = walkPos(c.x, st, frame);
+            // 'pace': walks on the spot for a moment, drifting forward a little (a surveyor counting his steps)
+            if (st.action === 'pace' && st.actionAge < PACE) {
+              walking = true;
+              x += (c.facing || 1) * lerp(-90, 90, st.actionAge / PACE) * sc;
+            }
             const facing = (dir || c.facing || 1) * (st.turns % 2 ? -1 : 1);
             return (
               <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} look={lookOf(c)}
                 x={x} y={c.y} scale={c.scale} mouth={mouthOf(c)} frame={frame} enterAt={st.walkIn !== null ? -1000 : 4 + i * 6} seed={i + index}
-                facing={facing} walking={walking} action={st.action} actionAge={st.actionAge} />
+                facing={facing} walking={walking} action={st.action} actionAge={st.actionAge} noProp={noProp} />
             );
           })}
         </Camera>
       )}
       {isDiagram && chars.length > 0 && (
         <g>
-          {chars.map((c, i) => {
+          {/* in a diagram the people step aside: small, in the bottom corners under the captions, never over the drawing */}
+          {chars.slice(0, 2).map((c, i) => {
             const st = stateAt(c, beats, frame);
+            const left = chars.length === 1 ? (c.at || 'left') !== 'right' : i === 0;
             return (
-              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} x={cast[i].x ?? 190} y={cast[i].y ?? 1500}
-                scale={cast[i].scale ?? 0.7} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} />
+              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} x={left ? 170 : W - 170} y={1890}
+                scale={0.46} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} facing={left ? 1 : -1} noProp />
             );
           })}
         </g>
       )}
       {scene.callout && frame >= (scene.callout_from ?? 0) && (
-        <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isMap || isDiagram ? scene.callout_y ?? 520 : 215} />
+        <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isDiagram ? 300 : isMap ? scene.callout_y ?? 520 : 215} />
       )}
       {gag && gag.type === 'cutaway' && <CutawayTag text={(gag.text || 'MEANWHILE...').toUpperCase()} frame={frame} />}
     </>
