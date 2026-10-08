@@ -209,7 +209,7 @@ def run_test(eid, index, bespoke=TEST_BRIEF):
     out = shorts.CONTENT / f"project-{ep['project_id']}" / "animator-test"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True, exist_ok=True)
-    animate.ensure_toolchain()
+    animate.ensure_toolchain(ep["project_id"])
     ffmpeg = shorts.find_ffmpeg()
     say("Cutting this scene's voice...")
     shorts.run([ffmpeg, "-y", "-loglevel", "error", "-ss", f"{a / animate.FPS:.3f}", "-t", f"{n / animate.FPS:.3f}", "-i", str(src / "voice.wav"),

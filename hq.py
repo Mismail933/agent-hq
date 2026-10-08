@@ -8,6 +8,7 @@ Atlas's controls for Agent HQ.
                  rule list | rule changed | rule set <key> <value> ["why"] | rule reset <key> | rule undo <key> | rule history <key>
                  prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
+                 design <what> ["brief"] | cast-draw <project> <image...> ["notes"] | cast <project> | cast-use <project> kit|v<K>     (Rana)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
@@ -442,6 +443,17 @@ def main(argv):
                 show({"instructions": rules.history(f"prompt.{agent}", 10), "standing": rules.history(f"prompt.{agent}.extra", 10)})
             else:
                 raise IndexError
+        elif cmd == "cast-draw":   # hq cast-draw <project> <image...> ["notes"]: Rana redraws the cast from the owner's picture(s)
+            imgs = [a for a in args[1:] if a.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif"))]
+            notes = " ".join(a for a in args[1:] if a not in imgs)
+            code, reply = office(f"/api/project/{int(args[0])}/cast-draw", {"images": imgs, "notes": notes})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "cast":   # hq cast <project>: which cast the project uses and Rana's versions
+            import cast
+            show(cast.status(int(args[0])))
+        elif cmd == "cast-use":   # hq cast-use <project> kit|v<K>
+            code, reply = office(f"/api/project/{int(args[0])}/cast-use", {"which": args[1]})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "design":   # Rana draws: hq design <what> ["brief"] (3 options, rendered, checked by Israa, sent to the owner)
             code, reply = office("/api/design", {"what": args[0], "brief": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")

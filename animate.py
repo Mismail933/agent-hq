@@ -148,7 +148,16 @@ def download(url, dest):
         shutil.copyfileobj(r, f)
 
 
-def ensure_toolchain():
+def cast_file(project_id):
+    """The project's own cast drawn by Rana (cast.py), if it has one: content/project-N/cast/v<K>/Character.jsx, else None (the kit's)."""
+    if project_id is None:
+        return None
+    p = cp.get_project(int(project_id), with_text=False) or {}
+    f = ((p.get("meta") or {}).get("cast") or {}).get("file")
+    return ROOT / f if f and (ROOT / f).exists() else None
+
+
+def ensure_toolchain(project_id=None, cast=None):
     """Node (a private copy, so the owner's own Node never matters) and Remotion's packages. Safe to call every time."""
     HOME.mkdir(exist_ok=True)
     if not (NODE_DIR / "node.exe").exists():
@@ -184,6 +193,10 @@ def ensure_toolchain():
         if p.returncode != 0:
             raise Blocked("Installing Remotion failed: " + (p.stderr or p.stdout).strip()[-300:])
     local_fonts()
+    own = Path(cast) if cast else cast_file(project_id)
+    if own:   # this project's cast, drawn by Rana, instead of the kit's characters (same exports, checked by cast.validate)
+        shutil.copy2(own, APP / "src" / "Character.jsx")
+        say(f"  Cast: {own.relative_to(ROOT).as_posix() if ROOT in own.parents else own.name}")
 
 
 # The kit's two fonts (SIL Open Font Licence), downloaded once and baked into the bundle, so a render never waits on Google Fonts.
@@ -1028,7 +1041,7 @@ def render_episode(eid, voice=None, suffix=""):
     ffmpeg = shorts.find_ffmpeg()
     t0 = time.time()
     say(f"Episode #{ep['id']}: {ep['title']}")
-    ensure_toolchain()
+    ensure_toolchain(ep["project_id"])
     d = quality.sync_voice_lines(d)
     items = utterances(d, project)
     lines = [shorts.fill_placeholders(l, project) for l in narration(d)]
@@ -1227,14 +1240,15 @@ def characters_folder(project_id):
     return shorts.CONTENT / f"project-{project_id}" / "characters"
 
 
-def make_character_library(project_id=3, clips=True):
+def make_character_library(project_id=3, clips=True, root=None, cast=None):
     """Reference sheet + 30-second test clip for every character, saved once under content/project-N/characters/.
-    The test clip uses the project's chosen voice, Rhubarb's mouth shapes and the whole rig (idle, blink, gestures, walk, expressions)."""
+    The test clip uses the project's chosen voice, Rhubarb's mouth shapes and the whole rig (idle, blink, gestures, walk, expressions).
+    root/cast (cast.py): test a candidate cast file of Rana's into its own folder, leaving the project's characters alone."""
     import numpy as np
     import soundfile as sf
-    root = characters_folder(project_id)
+    root = Path(root) if root else characters_folder(project_id)
     root.mkdir(parents=True, exist_ok=True)
-    ensure_toolchain()
+    ensure_toolchain(project_id, cast)
     ffmpeg = shorts.find_ffmpeg()
     project = cp.get_project(project_id, with_text=False)
     lib = {"project": project_id, "kit": quality.KIT_VERSION, "made": time.strftime("%Y-%m-%d %H:%M"), "characters": []}
@@ -1416,6 +1430,15 @@ def design_render(folder):
 
 
 def main():
+    if len(sys.argv) > 3 and sys.argv[1] == "cast-test":   # animate.py cast-test <project> <version folder>: Rana's candidate cast
+        cp.init()
+        try:
+            folder = Path(sys.argv[3]).resolve()
+            print("RESULT " + json.dumps(make_character_library(int(sys.argv[2]), clips=True, root=folder / "characters", cast=folder / "Character.jsx")))
+        except Blocked as e:
+            print("BLOCKED " + str(e))
+            sys.exit(2)
+        return
     if len(sys.argv) > 2 and sys.argv[1] == "design-render":   # animate.py design-render <folder> (Rana's design options)
         cp.init()
         try:

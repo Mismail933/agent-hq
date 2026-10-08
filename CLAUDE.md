@@ -291,6 +291,19 @@ Agents never spend money without the owner's explicit approval.
   `design.json` (status ready -> chosen). The owner picks on Today (`openDesign`, images via `/api/brand/...`) or on the phone
   (`design_cards`, `DZ:<slug>.<v>.<k>`); `design.choose` copies it to content/brand/<what>/chosen/. `first_logo()`: the Agent HQ
   logo the owner asked for starts by itself once (marker content/brand/.logo-requested).
+- `cast.py` (2.28.0, Atlas's "Make the Animator the company's character artist"): Rana redraws a project's cast from the owner's
+  picture(s). `hq cast-draw <project> <image...> ["notes"]` (`POST /api/project/<id>/cast-draw`, journaled `cast_draw`, holds
+  CHARMAKING so the animation tools are hers): content/project-N/cast/v<K>/ gets the project's current cast file (or the kit's
+  Character.jsx), theme.js, CharacterSheet/Test.jsx, STYLE-GUIDE.md and refs/; Rana (Opus, Read/Edit/Write/Glob/Grep in that
+  folder only, 120 turns, 90 min) edits Character.jsx in place. `cast.validate`: imports react/remotion/./theme only, no network/
+  disk/clock/eval/random/URLs, 200 KB, every kit export kept, balanced braces; a refusal or a failed render goes back to her once.
+  `animate.py cast-test <project> <folder>` = `make_character_library(root=folder/characters, cast=folder/Character.jsx)`.
+  `quality.review_characters(pid, lib_dir, refs, only)`: Israa also compares each character SIDE BY SIDE with the owner's
+  picture; failed characters go back to Rana (`ROUNDS` = 2). Then `cast.install`: the project's characters/library.json points at
+  v<K> (the old one kept as library-before-v<K>.json), meta `cast` = {version, file}, characters_approved=False. From then on
+  `animate.ensure_toolchain(project_id)` copies the project's cast file over app/src/Character.jsx for every render (render_episode,
+  characters, Rana's test scenes). `hq cast <project>` (status), `hq cast-use <project> kit|v<K>`. Any failure leaves the project
+  as it was. Not done from that request: Rana drawing missing BACKGROUNDS (same pattern, Backdrops.jsx; ask the owner).
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

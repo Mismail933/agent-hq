@@ -1061,11 +1061,16 @@ def _save_library(project_id, lib):
     (characters_dir(project_id) / "library.json").write_text(json.dumps(lib, indent=2), encoding="utf-8")
 
 
-def review_characters(project_id):
+def review_characters(project_id, lib_dir=None, refs=(), only=None):
     """Israa checks each character's test clip against its reference sheet in all three shots. Results go into library.json.
-    Returns {character id: review}. Raises workers.Unavailable if she can't run."""
+    lib_dir/refs/only (cast.py, Rana's candidate cast): the library in that folder, the owner's reference image(s) to compare the
+    style with side by side, only these character ids. Returns {character id: review}. Raises workers.Unavailable if she can't run."""
     import shutil
-    lib = load_library(project_id)
+    lib_file = Path(lib_dir) / "library.json" if lib_dir else characters_dir(project_id) / "library.json"
+    try:
+        lib = json.loads(lib_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        lib = None
     if not lib or not any(c.get("clip") for c in lib["characters"]):
         raise workers.Unavailable("there are no character test clips yet: make them first")
     root = Path(__file__).parent
@@ -1073,7 +1078,7 @@ def review_characters(project_id):
     out = {}
     with REVIEWING:
         for c in lib["characters"]:
-            if not c.get("clip"):
+            if not c.get("clip") or (only and c["id"] not in only):
                 continue
             who = c["id"]
             name = CAST_NAMES.get(who, who)
@@ -1106,6 +1111,15 @@ def review_characters(project_id):
                     dn.append(f"  - char-{who}/dense-{i:02d}.png")
                 task = CHARACTER_TASK.format(name=name, ref=f"char-{who}/reference-sheet.png", sheets="\n".join(f"  - {n}" for n in names),
                                              dense="\n".join(dn) or "  (none)")
+                if refs:   # Rana drew this cast from the owner's picture(s): compare the STYLE side by side, strictly
+                    own = []
+                    for i, r in enumerate(refs, 1):
+                        shutil.copy2(r, folder / f"owner-reference-{i}{Path(r).suffix}")
+                        own.append(f"char-{who}/owner-reference-{i}{Path(r).suffix}")
+                    task += ("\nTHE OWNER'S REFERENCE IMAGE(S), the style this cast must match: " + ", ".join(own) + ". Open them and compare "
+                             "SIDE BY SIDE with the reference sheet: proportions (head-to-body), line colour and weight, faces and eyes, hair and "
+                             "beards, clothes and folds, palette and shading. Any clear difference from his picture is a fault: name it and say "
+                             "exactly what to change in the drawing. Verdict pass only if it looks like it belongs in his picture.\n")
                 system = ISRAA_BASE.format(today=_today(), style="(Judge only the character's consistency and rig, not the topic.)")
                 got, _ = workers.run(ISRAA, p["idea_id"] if p else None, system, task, tools=("Read",), schema=CHARACTER_SCHEMA, max_turns=30)
             consistent = sum(1 for s in got.get("shots", []) if s.get("consistent"))
@@ -1114,9 +1128,12 @@ def review_characters(project_id):
                 got["verdict"] = "fix"
             out[who] = got
             cp.log(ISRAA, "character_reviewed", p["idea_id"] if p else None, {"character": who, "verdict": got["verdict"], "shots": got["consistent_shots"]})
-    lib = load_library(project_id) or lib
+    try:
+        lib = json.loads(lib_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
     lib["reviews"] = {**(lib.get("reviews") or {}), **out}
-    _save_library(project_id, lib)
+    lib_file.write_text(json.dumps(lib, indent=2), encoding="utf-8")
     return out
 
 

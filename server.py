@@ -51,6 +51,7 @@ import sfx                # noqa: E402
 import ghassan            # noqa: E402
 import phone              # noqa: E402
 import design             # noqa: E402
+import cast               # noqa: E402
 import rules              # noqa: E402
 import control_plane as cp  # noqa: E402
 import settings           # noqa: E402
@@ -60,6 +61,7 @@ rules.apply_all()   # the team's live rules onto the settings they change (again
 agents.register_all()
 agents.setup_animated_projects()
 CUT_IDEAS = cp.interrupted_ideas()   # picked up again after start (resume_jobs)
+LEFTOVER_JOBS = cp.unfinished_jobs()   # noted NOW, before the office takes requests: a job started after this is never a leftover
 _n = cp.mark_interrupted()
 if _n:
     cp.log("Atlas", "halted", None, {"reason": f"{_n} idea(s) were interrupted when the program last closed. They are picked up again by themselves."})
@@ -383,7 +385,7 @@ def job_label(kind, a):
             "cast_samples": "The cast's voice samples for project {0}", "samples": "The narrator samples for project {0}",
             "batch": "Calina's scripts for project {0}", "scout_refs": "The Scout's reference board for project {0}",
             "review": "Calina's learning note for project {0}", "plan": "Serge's plan for idea #{0}",
-            "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -407,7 +409,7 @@ def journaled(kind, fn):
     return run
 
 
-JOBS = {"design": "run_design", "render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
+JOBS = {"cast_draw": "run_cast_draw", "design": "run_design", "render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
         "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video"}
@@ -436,7 +438,7 @@ def first_logo():
 def resume_jobs():
     """At start: run again what the last run of the office didn't finish, one after the other, and say so."""
     time.sleep(15)
-    jobs, ideas = cp.unfinished_jobs(), list(CUT_IDEAS)
+    jobs, ideas = [j for j in LEFTOVER_JOBS if j["id"] not in RUNNING_JOBS], list(CUT_IDEAS)
     if not jobs and not ideas:
         return
     while cp.STOP_FILE.exists():   # the kill switch is on: wait for the owner's resume
@@ -791,6 +793,23 @@ def anim_busy():
 
 
 DESIGNING = {"what": ""}
+
+
+def run_cast_draw(pid, images, notes=""):
+    """Rana redraws the project's cast from the owner's picture(s) (cast.py); the owner approves it like any characters."""
+    CHARMAKING.update(pid=pid, step="Rana is redrawing the cast from your picture, then the test clips are made and Israa compares (1-2 hours)")
+    try:
+        r = cast.draw(pid, images, notes, _animate, say=lambda m: CHARMAKING.update(step=m))
+        weak = f" Israa still has doubts about: {', '.join(r['weak'])}." if r["weak"] else ""
+        atlas_says(f"**Rana redrew the cast from your picture (version {r['version']}).** Israa passed {r['passed']} of {r['total']} "
+                   f"characters side by side with your image.{weak}\n\n{r.get('rana_says', '')[:600]}\n\nWatch the test clips on the project's "
+                   "Voice & characters page (or your phone) and approve them; no new video is made before you do. "
+                   "To go back to the old characters: ask Atlas (hq cast-use <project> kit).")
+    except Exception as ex:
+        cp.log("Rana", "cast_failed", None, {"project": pid, "reason": str(ex)[:300]})
+        atlas_says(f"Rana couldn't redraw the cast: {ex}")
+    finally:
+        CHARMAKING.update(pid=None, step="")
 
 
 def run_design(what, brief=""):
@@ -1496,6 +1515,27 @@ class Handler(BaseHTTPRequestHandler):
                 cp.set_project_meta(pid, voice={"id": vid, "label": known[vid]["label"]})
                 cp.log("Owner", "voice_chosen", None, {"project": pid, "voice": vid})
                 return self._send(200, {"ok": True, "message": f"Voice chosen: {known[vid]['label']}. It's used from the next Short."})
+            if action in ("cast-draw", "cast-use"):   # Rana redraws the cast from the owner's picture(s) / which cast the project uses
+                body = self._json_body()
+                if action == "cast-use":
+                    try:
+                        return self._send(200, {"ok": True, "message": cast.use(pid, str(body.get("which", "")))})
+                    except (ValueError, OSError) as e:
+                        return self._send(400, {"error": str(e)})
+                found = []
+                for x in body.get("images") or []:
+                    x = str(x)
+                    for c in (Path(x), atlas_engine.HOME / x, ROOT / x):
+                        if c.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".gif") and c.exists():
+                            found.append(str(c.resolve()))
+                            break
+                if not found:
+                    return self._send(400, {"error": "Name the owner's reference image(s), e.g. review/uploads/<file>.jpg."})
+                if anim_busy() or quality.REVIEWING.locked():
+                    return self._send(409, {"error": f"Busy: {anim_busy() or 'Israa is reviewing'}. Try again when it's done."})
+                threading.Thread(target=run_cast_draw, args=(pid, found, clip(body.get("notes", ""), "notes")[0]), daemon=True).start()
+                return self._send(202, {"ok": True, "message": "Rana is redrawing the cast from the picture. Then the test clips are made and Israa compares "
+                                                               "each character with it (1-2 hours). The owner approves it at the end."})
             if action == "characters":   # make | sheets | review | approve
                 body = self._json_body()
                 what = body.get("action", "make")
