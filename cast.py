@@ -18,6 +18,13 @@ Before this, the cast was code inside the program (animation/src/Character.jsx),
    the owner's approval is withdrawn until he approves this cast (Voice & characters, or his phone). Renders use the project's
    cast file (animate.cast_file) from then on; `cast-use <project> kit` goes back to the kit's characters.
 Anything that fails leaves the project exactly as it was.
+
+Resuming (Atlas's request 2026-10-08, "Rana is restarting the work again?"): cast.json keeps the step (draw / check / review /
+install), the round, Israa's reviews and her feedback. A version that stops (an agent's allowance ran out, an error) is marked
+`stopped` with the reason; one cut off by a restart is marked at the next start (`mark_cut_off`). It resumes from there: the saved
+job after a restart (same pictures = same version), by itself when the allowance is back (`waiting`, server.cast_watch, rule
+`cast.auto_resume`), or `hq cast-draw <project> --resume [v<K>]`. `--new` starts a fresh version (older unfinished ones are marked
+stopped, "replaced by").
 """
 import json
 import re
@@ -27,6 +34,7 @@ from pathlib import Path
 
 import control_plane as cp
 import quality
+import rules
 import workers
 
 ROOT = Path(__file__).parent
@@ -103,7 +111,8 @@ def status(pid):
             st = json.loads((v / "cast.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             st = {}
-        out["versions"].append({"version": v.name, **{k: st.get(k) for k in ("status", "made", "note", "reviews_passed", "rounds")}})
+        out["versions"].append({"version": v.name, **{k: st.get(k) for k in ("status", "made", "note", "reviews_passed", "rounds", "step",
+                                                                              "why", "wait_for", "stopped", "resumes") if st.get(k) not in (None, "")}})
     return out
 
 
@@ -122,74 +131,206 @@ def _ask(folder, task):
     return str(text or "")[:2000]
 
 
-def draw(pid, images, notes, animate, say=print):
+def _folder(pid, k):
+    return ROOT / "content" / f"project-{int(pid)}" / "cast" / f"v{int(k)}"
+
+
+def _state(folder):
+    try:
+        return json.loads((folder / "cast.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save(folder, state):
+    (folder / "cast.json").write_text(json.dumps(state, indent=1), encoding="utf-8")
+
+
+def unfinished(pid):
+    """Rana's versions that never finished, newest first: [(k, state)] ('drawing' = cut off, or 'stopped')."""
+    return [(int(v.name[1:]), st) for v in reversed(versions(pid)) for st in [_state(v)] if st.get("status") in ("drawing", "stopped")]
+
+
+def _all_states():
+    for f in sorted((ROOT / "content").glob("project-*/cast/v*/cast.json")):
+        pid, v = f.parent.parent.parent.name[8:], f.parent.name[1:]
+        if pid.isdigit() and v.isdigit():
+            yield int(pid), int(v), f.parent
+
+
+def mark_stopped(pid, k, why, wait_for=""):
+    """An unfinished version is 'stopped' with the reason (wait_for: the agent whose allowance it waits for); it can be resumed."""
+    folder = _folder(pid, k)
+    st = _state(folder)
+    if not st or st.get("status") == "candidate":
+        return
+    st.update(status="stopped", why=str(why)[:400], wait_for=wait_for, stopped=time.strftime("%Y-%m-%d %H:%M"))
+    _save(folder, st)
+    cp.log(RANA, "cast_stopped", None, {"project": int(pid), "version": int(k), "step": st.get("step"), "why": str(why)[:300]})
+
+
+def mark_cut_off():
+    """At office start nothing is drawing yet: a version still 'drawing' was cut off. Returns ['project P vK', ...]."""
+    out = []
+    for pid, k, folder in _all_states():
+        if _state(folder).get("status") == "drawing":
+            mark_stopped(pid, k, "the office restarted (or closed) while Rana worked")
+            out.append(f"project {pid} v{k}")
+    return out
+
+
+def waiting():
+    """Stopped versions that wait for an agent's allowance: [(pid, k, state)] (server.cast_watch resumes them)."""
+    return [(pid, k, st) for pid, k, folder in _all_states() for st in [_state(folder)]
+            if st.get("status") == "stopped" and st.get("wait_for")]
+
+
+def pick(pid, resume="", images=()):
+    """Which version to continue, or None for a fresh one. resume: '' = an unfinished version made from the same pictures (else
+    fresh), 'new', 'latest', or 'v<K>'. Raises RuntimeError when there is nothing to resume."""
+    pid, r = int(pid), str(resume or "").strip().lower()
+    names = sorted(Path(i).name for i in images)
+    left = unfinished(pid)
+    if r == "new":
+        return None
+    if r in ("", "auto"):
+        return next((k for k, st in left if names and sorted(st.get("refs") or []) == names), None)
+    if r == "latest":
+        if not left:
+            raise RuntimeError(f"Rana has no unfinished cast for project {pid} (see hq cast {pid}).")
+        return left[0][0]
+    if not r.lstrip("v").isdigit():
+        raise RuntimeError("Say --resume, --resume v<K> or --new.")
+    k = int(r.lstrip("v"))
+    st = _state(_folder(pid, k))
+    if not st:
+        raise RuntimeError(f"Project {pid} has no cast v{k}.")
+    if st.get("status") == "candidate":
+        raise RuntimeError(f"v{k} is finished already (hq cast-use {pid} v{k} to use it).")
+    return k
+
+
+STEPS = {"draw": "Rana's drawing", "check": "the safety check and test clips", "review": "Israa's side-by-side review",
+         "install": "installing"}
+
+
+def draw(pid, images, notes, animate, say=print, resume=""):
     """The whole job. animate(*args) runs animate.py in the video tools' Python (server._animate). Returns the summary dict.
-    Raises RuntimeError with the reason when it fails; the project is then unchanged."""
+    Every step is saved in cast.json (step, round, Israa's reviews), so a stopped or cut-off version resumes where it was
+    (`pick`): what Rana drew and the characters Israa passed are kept, only the unfinished steps run.
+    Raises RuntimeError with the reason when it fails or stops; the project is then unchanged."""
     pid = int(pid)
     p = cp.get_project(pid, with_text=False)
     if not p:
         raise RuntimeError(f"No project {pid}.")
     refs = [Path(i) for i in images if Path(i).exists()]
-    if not refs:
-        raise RuntimeError("Name at least one reference image that exists (e.g. Atlas-HQ/review/uploads/<file>).")
-    k = 1 + max([int(v.name[1:]) for v in versions(pid)] or [0])
-    folder = ROOT / "content" / f"project-{pid}" / "cast" / f"v{k}"
-    folder.mkdir(parents=True, exist_ok=True)
-    base = current_cast(pid) or KIT
-    shutil.copy2(base, folder / "Character.jsx")
-    for f in ("theme.js", "CharacterSheet.jsx", "CharacterTest.jsx"):
-        shutil.copy2(ROOT / "animation" / "src" / f, folder / f)
-    shutil.copy2(ROOT / "animation" / "STYLE-GUIDE.md", folder / "STYLE-GUIDE.md")
-    (folder / "refs").mkdir(exist_ok=True)
-    local_refs = []
-    for r in refs:
-        shutil.copy2(r, folder / "refs" / r.name)
-        local_refs.append(folder / "refs" / r.name)
-    kit_code = KIT.read_text(encoding="utf-8")
-    state = {"status": "drawing", "made": time.strftime("%Y-%m-%d %H:%M"), "refs": [r.name for r in refs], "note": notes, "rounds": 0}
+    k = pick(pid, resume, refs)
+    resumed = k is not None
+    if not resumed:
+        if not refs:
+            raise RuntimeError("Name at least one reference image that exists (e.g. Atlas-HQ/review/uploads/<file>).")
+        k = 1 + max([int(v.name[1:]) for v in versions(pid)] or [0])
+        for old, _ in unfinished(pid):
+            mark_stopped(pid, old, f"replaced by v{k} (a fresh start)")
+        folder = _folder(pid, k)
+        folder.mkdir(parents=True, exist_ok=True)
+        base = current_cast(pid) or KIT
+        shutil.copy2(base, folder / "Character.jsx")
+        for f in ("theme.js", "CharacterSheet.jsx", "CharacterTest.jsx"):
+            shutil.copy2(ROOT / "animation" / "src" / f, folder / f)
+        shutil.copy2(ROOT / "animation" / "STYLE-GUIDE.md", folder / "STYLE-GUIDE.md")
+        (folder / "refs").mkdir(exist_ok=True)
+        for r in refs:
+            shutil.copy2(r, folder / "refs" / r.name)
+        state = {"status": "drawing", "made": time.strftime("%Y-%m-%d %H:%M"), "refs": [r.name for r in refs], "note": notes,
+                 "round": 0, "rounds": 0, "step": "draw", "reviews": {}, "feedback": ""}
+        cp.log(RANA, "cast_started", None, {"project": pid, "version": k, "refs": state["refs"]})
+    else:
+        folder = _folder(pid, k)
+        state = _state(folder)
+        state.setdefault("round", state.get("rounds", 0))   # versions from before 2.28.x: guess the step from what is on disk
+        state.setdefault("step", "review" if (folder / "characters" / "library.json").exists() else "draw")
+        state.setdefault("reviews", {})
+        state.setdefault("feedback", "")
+        if notes and notes not in (state.get("note") or ""):
+            state["note"] = ((state.get("note") or "") + " " + notes).strip()
+        state.update(status="drawing", why="", wait_for="", resumes=state.get("resumes", 0) + 1)
+        cp.log(RANA, "cast_resumed", None, {"project": pid, "version": k, "step": state["step"], "round": state["round"]})
+        say(f"Rana is picking up her cast v{k} at {STEPS.get(state['step'], state['step'])} (round {state['round'] + 1})...")
+    _save(folder, state)
+    try:
+        return _run(pid, k, folder, state, animate, say, resumed and state["step"] == "draw")
+    except Exception as e:
+        if state.get("status") == "failed":
+            raise
+        m = re.match(r"(\w+)'s daily subscription allowance", str(e))
+        step = STEPS.get(state.get("step"), state.get("step"))
+        state.update(status="stopped", why=str(e)[:400], wait_for=m.group(1) if m else "", stopped=time.strftime("%Y-%m-%d %H:%M"))
+        _save(folder, state)
+        cp.log(RANA, "cast_stopped", None, {"project": pid, "version": k, "step": state.get("step"), "why": str(e)[:300]})
+        then = (f"It picks up there by itself when {m.group(1)}'s allowance is back." if m and rules.get("cast.auto_resume")
+                else f"Pick it up with hq cast-draw {pid} --resume v{k}.")
+        raise RuntimeError(f"Rana's cast v{k} stopped at {step} (round {state.get('round', 0) + 1}): {e}. Nothing drawn is lost. {then}") from e
 
-    def save():
-        (folder / "cast.json").write_text(json.dumps(state, indent=1), encoding="utf-8")
-    save()
-    cp.log(RANA, "cast_started", None, {"project": pid, "version": k, "refs": state["refs"]})
-    task = ("Redraw the whole cast to match the owner's reference picture(s) in refs/: " + ", ".join(f"refs/{r.name}" for r in refs)
+
+def _run(pid, k, folder, state, animate, say, continuing):
+    kit_code = KIT.read_text(encoding="utf-8")
+    local_refs = sorted(f for f in (folder / "refs").glob("*") if f.is_file())
+    notes = state.get("note") or ""
+    task = ("Redraw the whole cast to match the owner's reference picture(s) in refs/: " + ", ".join(f"refs/{r.name}" for r in local_refs)
             + (f"\nNotes from the owner and Atlas: {notes}" if notes else "") + "\nChange Character.jsx in place.")
-    feedback, reviews = "", {}
-    for rnd in range(ROUNDS + 1):
+    reviews = state["reviews"]
+    while state["step"] != "install":
+        rnd = state["round"]
         state["rounds"] = rnd
-        save()
-        say(f"Rana is drawing (round {rnd + 1})...")
-        state["rana_says"] = _ask(folder, task if not feedback else
-                                  "Fix exactly these problems in Character.jsx, keep everything that passed:\n" + feedback)
-        for attempt in range(2):   # the safety scan and the test render: a failure goes back to her once
-            problem = validate((folder / "Character.jsx").read_text(encoding="utf-8"), kit_code)
-            if not problem:
-                try:
-                    say("Rendering the reference sheets and test clips (about 40 minutes)...")
-                    animate("cast-test", pid, folder)
-                except RuntimeError as e:
-                    problem = f"the test render failed: {str(e)[:600]}"
-            if not problem:
-                break
-            if attempt == 1:
-                state["status"] = "failed"
-                state["why"] = problem
-                save()
-                raise RuntimeError(f"Rana's cast couldn't be used ({problem}). The project keeps its characters.")
-            say(f"Rana's file didn't pass ({problem[:160]}); she fixes it.")
-            _ask(folder, f"Your Character.jsx was refused: {problem}. Fix that, keep the drawing.")
-        say("Israa is comparing each character with its sheet and with the owner's picture...")
-        weak_ids = None if rnd == 0 else [w for w, r in reviews.items() if r.get("verdict") != "pass"]
-        reviews.update(quality.review_characters(pid, lib_dir=folder / "characters", refs=local_refs, only=weak_ids))
-        weak = {w: r for w, r in reviews.items() if r.get("verdict") != "pass"}
-        if not weak or rnd == ROUNDS:
-            break
-        feedback = "\n".join(f"- {quality.CAST_NAMES.get(w, w)}: {r.get('summary', '')} "
-                             + "; ".join(i for s in r.get("shots") or [] for i in (s.get("issues") or []))[:900] for w, r in weak.items())
+        if state["step"] == "draw":
+            say(f"Rana is drawing (round {rnd + 1})...")
+            ask = task if not state["feedback"] else ("Fix exactly these problems in Character.jsx, keep everything that passed:\n"
+                                                      + state["feedback"])
+            if continuing:   # she was stopped halfway: her file holds the work so far
+                ask = ("You were interrupted in the middle of this job. Character.jsx already holds your work so far: read it, keep "
+                       "everything you already drew, and finish only what is left.\n\nThe job:\n" + ask)
+                continuing = False
+            state["rana_says"] = _ask(folder, ask)
+            state["step"] = "check"
+            _save(folder, state)
+        if state["step"] == "check":
+            for attempt in range(2):   # the safety scan and the test render: a failure goes back to her once
+                problem = validate((folder / "Character.jsx").read_text(encoding="utf-8"), kit_code)
+                if not problem:
+                    try:
+                        say("Rendering the reference sheets and test clips (about 40 minutes)...")
+                        animate("cast-test", pid, folder)
+                    except RuntimeError as e:
+                        problem = f"the test render failed: {str(e)[:600]}"
+                if not problem:
+                    break
+                if attempt == 1:
+                    state["status"] = "failed"
+                    state["why"] = problem
+                    _save(folder, state)
+                    raise RuntimeError(f"Rana's cast couldn't be used ({problem}). The project keeps its characters.")
+                say(f"Rana's file didn't pass ({problem[:160]}); she fixes it.")
+                _ask(folder, f"Your Character.jsx was refused: {problem}. Fix that, keep the drawing.")
+            state["step"] = "review"
+            _save(folder, state)
+        if state["step"] == "review":
+            say("Israa is comparing each character with its sheet and with the owner's picture...")
+            weak_ids = None if not reviews else [w for w, r in reviews.items() if r.get("verdict") != "pass"]
+            reviews.update(quality.review_characters(pid, lib_dir=folder / "characters", refs=local_refs, only=weak_ids))
+            weak = {w: r for w, r in reviews.items() if r.get("verdict") != "pass"}
+            if not weak or rnd >= ROUNDS:
+                state["step"] = "install"
+            else:
+                state["feedback"] = "\n".join(f"- {quality.CAST_NAMES.get(w, w)}: {r.get('summary', '')} "
+                                              + "; ".join(i for s in r.get("shots") or [] for i in (s.get("issues") or []))[:900]
+                                              for w, r in weak.items())
+                state.update(round=rnd + 1, step="draw")
+            _save(folder, state)
     passed = sum(1 for r in reviews.values() if r.get("verdict") == "pass")
     install(pid, k)
     state.update(status="candidate", reviews_passed=f"{passed} of {len(reviews)}")
-    save()
+    _save(folder, state)
     cp.log(RANA, "cast_ready", None, {"project": pid, "version": k, "passed": state["reviews_passed"]})
     return {"version": k, "passed": passed, "total": len(reviews), "rana_says": state.get("rana_says", ""),
             "weak": [quality.CAST_NAMES.get(w, w) for w, r in reviews.items() if r.get("verdict") != "pass"]}

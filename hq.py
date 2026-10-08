@@ -9,7 +9,7 @@ Atlas's controls for Agent HQ.
                  prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
                  restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
-                 design <what> ["brief"] | cast-draw <project> <image...> ["notes"] | cast <project> | cast-use <project> kit|v<K>     (Rana)
+                 design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-use <project> kit|v<K>     (Rana)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
@@ -29,6 +29,7 @@ same guardrails (budgets, one idea at a time, kill switch).
 """
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -444,10 +445,18 @@ def main(argv):
                 show({"instructions": rules.history(f"prompt.{agent}", 10), "standing": rules.history(f"prompt.{agent}.extra", 10)})
             else:
                 raise IndexError
-        elif cmd == "cast-draw":   # hq cast-draw <project> <image...> ["notes"]: Rana redraws the cast from the owner's picture(s)
-            imgs = [a for a in args[1:] if a.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif"))]
-            notes = " ".join(a for a in args[1:] if a not in imgs)
-            code, reply = office(f"/api/project/{int(args[0])}/cast-draw", {"images": imgs, "notes": notes})
+        elif cmd == "cast-draw":   # hq cast-draw <project> <image...> ["notes"] [--new] | --resume [v<K>]: Rana redraws the cast
+            rest, resume = list(args[1:]), ""
+            if "--new" in rest:
+                rest.remove("--new")
+                resume = "new"
+            if "--resume" in rest:
+                i = rest.index("--resume")
+                resume = rest[i + 1] if i + 1 < len(rest) and re.fullmatch(r"v?\d+", rest[i + 1]) else "latest"
+                del rest[i:i + (2 if resume != "latest" else 1)]
+            imgs = [a for a in rest if a.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif"))]
+            notes = " ".join(a for a in rest if a not in imgs)
+            code, reply = office(f"/api/project/{int(args[0])}/cast-draw", {"images": imgs, "notes": notes, "resume": resume})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "cast":   # hq cast <project>: which cast the project uses and Rana's versions
             import cast

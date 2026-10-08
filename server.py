@@ -397,6 +397,11 @@ def journaled(kind, fn):
         jid = _jid or cp.add_job(kind, list(args))
         RUNNING_JOBS[jid] = kind
         rules.apply_all()   # live rules Atlas changed since the last job
+        if kind != "cast_draw" and rules.get("jobs.allowance_check") != "off":   # (the cast checks its own, and can wait)
+            short = allowance_short(JOB_NEEDS.get(kind, ()))
+            if short:
+                atlas_says(f"Heads-up: {job_label(kind, args)} is starting although " + "; ".join(w for _, w in short)
+                           + ". It may stop halfway.")
         try:
             fn(*args)
             cp.set_job(jid, "done")
@@ -438,6 +443,11 @@ def first_logo():
 def resume_jobs():
     """At start: run again what the last run of the office didn't finish, one after the other, and say so."""
     time.sleep(15)
+    if CHARMAKING["pid"] is None:   # Rana's casts still "drawing" were cut off: marked stopped (the saved job below resumes its own)
+        cut = cast.mark_cut_off()
+        if cut:
+            atlas_says("**Rana's unfinished cast(s) marked stopped** (the office restarted while she worked): " + ", ".join(cut)
+                       + ". A saved cast job picks up its own version below; any other: hq cast-draw <project> --resume v<K>.")
     jobs, ideas = [j for j in LEFTOVER_JOBS if j["id"] not in RUNNING_JOBS], list(CUT_IDEAS)
     if not jobs and not ideas:
         return
@@ -468,6 +478,8 @@ def resume_jobs():
                 if a[1] <= 0:
                     cp.set_job(j["id"], "done", "every script was saved before the restart")
                     continue
+        if j["kind"] == "cast_draw" and len(a) > 3 and a[3] == "new":   # it made its version already: continue that one
+            a[3] = ""
         cp.set_job(j["id"], "running", attempt=True)   # a queued one counts too, so nothing can loop forever
         todo.append((j, a))
         said.append(f"- {label}" + (" (it was waiting for the restart)" if j["state"] == "queued" else ""))
@@ -850,11 +862,57 @@ def anim_busy():
 DESIGNING = {"what": ""}
 
 
-def run_cast_draw(pid, images, notes=""):
-    """Rana redraws the project's cast from the owner's picture(s) (cast.py); the owner approves it like any characters."""
+def allowance_short(agents):
+    """[(agent, why)] for the agents (of these) out of today's subscription allowance, or under rule jobs.allowance_low_percent
+    of it. Read only: the allowances are the owner's."""
+    caps, pct, out = getattr(settings, "SUBSCRIPTION_DAILY_VALUE_USD", {}) or {}, rules.get("jobs.allowance_low_percent"), []
+    for a in agents:
+        cap = caps.get(a)
+        # Rana, Israa and the Scout only run on the subscription; the others only count when their engine is Claude Code
+        if cap and os.environ.get("HQ_SIMULATE") != "1" and (getattr(settings, "WORKER_ENGINE", {}) or {}).get(a, "claude_code") == "claude_code":
+            used = cp.subscription_value_today(a)
+            if cap - used <= cap * pct / 100:
+                out.append((a, f"{a} has {max(0.0, 1 - used / cap):.0%} of today's allowance left (${used:.2f} of ${cap:.2f} used)"))
+    return out
+
+
+JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
+             "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",)}   # the agents a long job can't finish without
+
+
+def cast_watch():
+    """A cast redraw that stopped on an agent's allowance picks up by itself once it is back (rule cast.auto_resume)."""
+    if (not rules.get("cast.auto_resume") or RESTARTING["on"] or cp.STOP_FILE.exists() or anim_busy() or quality.REVIEWING.locked()
+            or allowance_short(JOB_NEEDS["cast_draw"])):
+        return
+    for pid, k, st in cast.waiting():
+        atlas_says(f"**Rana is picking up her cast v{k} for project {pid}** where it stopped ({cast.STEPS.get(st.get('step'), 'drawing')}): "
+                   f"{st['wait_for']}'s allowance is back. Nothing she drew is redone.")
+        threading.Thread(target=run_cast_draw, args=(pid, [], "", f"v{k}"), daemon=True).start()
+        return
+
+
+def run_cast_draw(pid, images, notes="", resume=""):
+    """Rana redraws the project's cast from the owner's picture(s) (cast.py); the owner approves it like any characters.
+    resume: '' (same pictures as an unfinished version = continue it), 'new', 'latest' or 'v<K>' (cast.pick)."""
+    short = allowance_short(JOB_NEEDS["cast_draw"])
+    if short and rules.get("jobs.allowance_check") == "wait":   # don't start what would stop halfway
+        try:
+            k = cast.pick(pid, resume, images)
+        except RuntimeError:
+            k = None
+        if k:
+            cast.mark_stopped(pid, k, short[0][1], wait_for=short[0][0])
+        atlas_says(f"Rana's cast for project {pid} didn't start, so it can't stop halfway: " + "; ".join(w for _, w in short) + ". "
+                   + (f"v{k} picks up where it was by itself when that's back." if k and rules.get("cast.auto_resume")
+                      else "Ask again when it resets (or change the rule jobs.allowance_check)."))
+        return
+    if short and rules.get("jobs.allowance_check") == "warn":
+        atlas_says(f"Heads-up: Rana's cast for project {pid} is starting although " + "; ".join(w for _, w in short)
+                   + ". If it stops, it picks up where it stopped.")
     CHARMAKING.update(pid=pid, step="Rana is redrawing the cast from your picture, then the test clips are made and Israa compares (1-2 hours)")
     try:
-        r = cast.draw(pid, images, notes, _animate, say=lambda m: CHARMAKING.update(step=m))
+        r = cast.draw(pid, images, notes, _animate, say=lambda m: CHARMAKING.update(step=m), resume=resume)
         weak = f" Israa still has doubts about: {', '.join(r['weak'])}." if r["weak"] else ""
         atlas_says(f"**Rana redrew the cast from your picture (version {r['version']}).** Israa passed {r['passed']} of {r['total']} "
                    f"characters side by side with your image.{weak}\n\n{r.get('rana_says', '')[:600]}\n\nWatch the test clips on the project's "
@@ -1114,6 +1172,10 @@ def scheduler():
                 run_scout("schedule")
         except Exception as e:
             print("scheduler:", repr(e), flush=True)
+        try:
+            cast_watch()   # Rana's cast that waits for an allowance
+        except Exception as e:
+            print("cast watch:", repr(e), flush=True)
         time.sleep(600)
 
 
@@ -1588,11 +1650,24 @@ class Handler(BaseHTTPRequestHandler):
                         if c.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".gif") and c.exists():
                             found.append(str(c.resolve()))
                             break
-                if not found:
+                resume = str(body.get("resume", "") or "")[:12]
+                if not found and resume in ("", "new"):
                     return self._send(400, {"error": "Name the owner's reference image(s), e.g. review/uploads/<file>.jpg."})
+                try:
+                    k = cast.pick(pid, resume, found)
+                except RuntimeError as e:
+                    return self._send(400, {"error": str(e)})
                 if anim_busy() or quality.REVIEWING.locked():
                     return self._send(409, {"error": f"Busy: {anim_busy() or 'Israa is reviewing'}. Try again when it's done."})
-                threading.Thread(target=run_cast_draw, args=(pid, found, clip(body.get("notes", ""), "notes")[0]), daemon=True).start()
+                short = allowance_short(JOB_NEEDS["cast_draw"])
+                if short and rules.get("jobs.allowance_check") == "wait":
+                    return self._send(409, {"error": "Not started, so it can't stop halfway: " + "; ".join(w for _, w in short)
+                                                     + ". Start it when that resets (rule jobs.allowance_check)."})
+                threading.Thread(target=run_cast_draw, args=(pid, found, clip(body.get("notes", ""), "notes")[0], resume), daemon=True).start()
+                if k:
+                    return self._send(202, {"ok": True, "message": f"Rana is picking up her cast v{k} where it stopped "
+                                                                   f"({cast.STEPS.get(cast._state(cast._folder(pid, k)).get('step'), 'drawing')}); "
+                                                                   "what she drew and what Israa passed are kept."})
                 return self._send(202, {"ok": True, "message": "Rana is redrawing the cast from the picture. Then the test clips are made and Israa compares "
                                                                "each character with it (1-2 hours). The owner approves it at the end."})
             if action == "characters":   # make | sheets | review | approve

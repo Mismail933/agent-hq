@@ -73,6 +73,10 @@ RULES = {
     "team.ghassan_every_minutes": _r("Team & schedules", "int", 10, 2, 240, "How often Ghassan looks for a new request", ("settings", "GHASSAN_EVERY_MINUTES")),
     "office.auto_restart": _r("Team & schedules", "bool", True, None, None, "The office restarts by itself (once nothing is running) when its program files change or a new version is on GitHub"),
     "office.update_check_minutes": _r("Team & schedules", "int", 10, 2, 240, "How often the office checks for changed program files and a new version"),
+    "cast.auto_resume": _r("Team & schedules", "bool", True, None, None, "A cast redraw that stopped because an agent's daily allowance ran out picks up by itself where it stopped once the allowance is back"),
+    "jobs.allowance_check": _r("Team & schedules", "choice", "wait", ("wait", "warn", "off"), None,
+                               "Before a long job (Rana's cast or design, Israa's reviews, Calina's batch): if an agent it needs is out of today's allowance, wait = don't start it and tell Atlas, warn = start and tell Atlas, off = no check"),
+    "jobs.allowance_low_percent": _r("Team & schedules", "int", 10, 0, 90, "For that check, an agent with less than this % of today's allowance left counts as out (a check only; the allowance itself is the owner's)"),
     # PHONE
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,
                      "What reaches the phone at once: decisions (things that need the owner + finished videos), everything, or nothing"),

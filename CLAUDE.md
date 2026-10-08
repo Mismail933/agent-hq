@@ -314,6 +314,15 @@ Agents never spend money without the owner's explicit approval.
   `animate.ensure_toolchain(project_id)` copies the project's cast file over app/src/Character.jsx for every render (render_episode,
   characters, Rana's test scenes). `hq cast <project>` (status), `hq cast-use <project> kit|v<K>`. Any failure leaves the project
   as it was. Not done from that request: Rana drawing missing BACKGROUNDS (same pattern, Backdrops.jsx; ask the owner).
+  Resume (Atlas's request 2026-10-08, every start made a fresh version): cast.json keeps `step` (draw/check/review/install), `round`,
+  Israa's `reviews` and `feedback`, saved after each step; `cast.draw(..., resume)` continues a version (`cast.pick`: '' = an
+  unfinished version from the same pictures, else fresh; 'new'; 'latest'; 'v<K>'), Rana told to keep what she drew, Israa only
+  re-reviews the weak ones. A stop marks the version `stopped` with `why` (+ `wait_for` the agent when its allowance ran out);
+  `mark_cut_off` (start of `resume_jobs`) marks versions still 'drawing'; a fresh start marks older unfinished ones "replaced by".
+  `server.cast_watch` (in the scheduler, rule `cast.auto_resume`) resumes a `wait_for` version once the allowance is back.
+  `hq cast-draw <project> --resume [v<K>]` / `--new`. Allowance pre-check (`server.allowance_short`, `JOB_NEEDS` per job kind,
+  rules `jobs.allowance_check` wait|warn|off and `jobs.allowance_low_percent`; read only): the cast-draw route refuses (409) and
+  run_cast_draw waits (marks the version for cast_watch) in wait mode; other journaled jobs in JOB_NEEDS get an Atlas heads-up.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2
