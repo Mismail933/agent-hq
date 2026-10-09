@@ -2,23 +2,28 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.293",
-   "checked": "2026-10-08"
+   "last_seen": "2.1.295",
+   "checked": "2026-10-09"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-10-08 Compliance API chats; 2026-10-07 Haiku 5.5 launch",
-   "checked": "2026-10-08"
+   "checked": "2026-10-09"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-07 Introducing Claude Haiku 5.5",
-   "checked": "2026-10-08"
+   "last_seen": "2026-10-08 Usage Policy update, Cyber Mission (not read)",
+   "checked": "2026-10-09"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
    "last_seen": "terms to be accepted by 2027-01-31; thresholds still 4,000 h / 10M",
    "checked": "2026-10-08"
+  },
+  "claude-code-prompt-caching-docs": {
+   "url": "https://code.claude.com/docs/en/prompt-caching",
+   "last_seen": "1h TTL for main conversation on subscription; boundary line v2.1.275+",
+   "checked": "2026-10-09"
   }
  },
  "repos": {
@@ -42,6 +47,20 @@
    "verdict": "watch",
    "checked": "2026-10-08",
    "note": "MIT role-prompt library; reference only."
+  },
+  "getagentseal/codeburn": {
+   "stars": 11360,
+   "last_commit": "2026-10-08",
+   "verdict": "skip",
+   "checked": "2026-10-09",
+   "note": "MIT usage tracker; hq.db already logs usage."
+  },
+  "edonadei/caliper": {
+   "stars": 208,
+   "last_commit": "unknown",
+   "verdict": "watch",
+   "checked": "2026-10-09",
+   "note": "MIT; tests whether skills/MCPs earn their tokens."
   }
  }
 }
