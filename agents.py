@@ -19,6 +19,7 @@ import checkpoint
 import control_plane as cp
 import llm
 import quality
+import rules
 import settings
 import sfx
 import workers
@@ -1128,9 +1129,16 @@ def _calina_write(p, system, task, tool=None):
     if workers.engine("Calina") == "claude_code":
         try:
             got, _ = workers.run("Calina", p["idea_id"], system.replace("{finish}", STRUCT_TO), task,
-                                 tools=("WebSearch", "WebFetch"), schema=tool["input_schema"], max_turns=45)
+                                 tools=("WebSearch", "WebFetch"), schema=tool["input_schema"], max_turns=45,
+                                 timeout=int(rules.get("jobs.calina_timeout_minutes")) * 60)
             return got
         except workers.Unavailable as e:
+            # 2.31.1: an animated scene file is too long for the API backup's answer (it stopped at max_tokens twice and cost
+            # money for nothing), so for those the batch stops here and says why instead
+            if tool is BATCH_TOOL_V3 and not rules.get("calina.api_fallback_scenes"):
+                cp.log("Calina", "halted", p["idea_id"], {"reason": f"Claude Code failed ({str(e)[:160]}); the API backup is off for scene files"})
+                raise cp.Halt(f"Calina couldn't finish on Claude Code ({str(e)[:160]}). The API backup is off for animated scene files "
+                              f"(they are too long for it); try again, or raise the rule jobs.calina_timeout_minutes.")
             workers.fallback("Calina", p["idea_id"], e)
     cp.check_tool("Calina", "submit_batch")
     sysmsg = system.replace("{finish}", "When you are done, call submit_batch.")

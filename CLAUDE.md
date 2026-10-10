@@ -369,6 +369,8 @@ Agents never spend money without the owner's explicit approval.
     endings per sketch (the best in the script, the others in `alt_punchlines`), and may brief Rana with `bespoke` (at most four a
     video). Israa's script criterion 13 checks the oddities and picks the punchline ("surprising AND makes sense").
   - Fable: `cp.LIMITS model.<agent>` accepts "fable" (Claude Code's alias for claude-fable-5-1, tested on his subscription).
+  2.31.1: Calina's Claude Code run may take rule jobs.calina_timeout_minutes (40; Fable timed out at the old 15); for animated scene files
+  the paid API backup is off (rule calina.api_fallback_scenes): it always stopped at max_tokens and cost money for nothing.
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits

@@ -64,6 +64,8 @@ RULES = {
     "check.spine": _r("Review & quality", "bool", True, None, None, "The story-spine check blocks a script (off = advice only)"),
     "check.ear": _r("Review & quality", "bool", True, None, None, "The ear check (hard-to-say lines) blocks a script (off = advice only)"),
     "check.length": _r("Review & quality", "bool", True, None, None, "The word/scene limits block a script (off = advice only)"),
+    "jobs.calina_timeout_minutes": _r("Team & schedules", "int", 40, 10, 120, "How long one of Calina's script runs may take on Claude Code (Fable writes slower)"),
+    "calina.api_fallback_scenes": _r("Team & schedules", "bool", False, None, None, "Let Calina fall back to the paid API for animated scene files (off: they are too long for it and fail)"),
     "rana.bespoke": _r("Review & quality", "bool", True, None, None, "Rana draws the scenes Calina marks 'bespoke' before a render (off = the kit draws them)"),
     "check.narration": _r("Review & quality", "bool", True, None, None, "A scene where the narrator talks at length while characters just stand there blocks a script (off = advice only)"),
     "check.stranger_script": _r("Review & quality", "bool", True, None, None, "The stranger test on scripts (off = not run)"),
