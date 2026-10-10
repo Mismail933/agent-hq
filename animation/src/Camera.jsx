@@ -12,16 +12,19 @@ export const HITS = ['punch_in', 'release', 'whip', 'shake', 'hold'];
 export const cameraAt = (move, p, frame) => {
   const e = easeInOut(p);
   switch (move) {
+    // 2.31.0: gentle drifts only; a change of framing is a cut (Israa: framing changing inside dialogue read as zooms)
+    case 'still':
+      return {s: 1.0, dx: 0, dy: 0};
     case 'pull_out':
-      return {s: lerp(1.28, 1.0, e), dx: 0, dy: lerp(-40, 0, e)};
+      return {s: lerp(1.1, 1.0, e), dx: 0, dy: lerp(-14, 0, e)};
     case 'pan_left': // camera travels left, the world slides right
-      return {s: 1.16, dx: lerp(-150, 150, e), dy: 0};
+      return {s: 1.08, dx: lerp(-60, 60, e), dy: 0};
     case 'pan_right':
-      return {s: 1.16, dx: lerp(150, -150, e), dy: 0};
+      return {s: 1.08, dx: lerp(60, -60, e), dy: 0};
     case 'pan_up':
-      return {s: 1.16, dx: 0, dy: lerp(-170, 120, e)};
+      return {s: 1.08, dx: 0, dy: lerp(-60, 40, e)};
     case 'pan_down':
-      return {s: 1.16, dx: 0, dy: lerp(120, -170, e)};
+      return {s: 1.08, dx: 0, dy: lerp(40, -60, e)};
     case 'drift':
       return {s: 1.1, dx: Math.sin(frame / 38) * 60, dy: Math.cos(frame / 51) * 30};
     case 'ending':   // the last scene: one slow push-in towards the end card (2.30.0)

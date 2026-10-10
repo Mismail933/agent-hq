@@ -8,13 +8,16 @@ const o = {stroke: C.ink, strokeWidth: LINE, strokeLinejoin: 'round', strokeLine
  * A rod standing in the ground with its shadow (sun on the right). shadow: 0 = none, 1 = long. Drawn at the cast's `scale`
  * (2.29.0): the shadow is the point of the scene, so it is dark and its end is marked with a tick.
  */
-export const Rod = ({x = 300, y = 1250, shadow = 0.5, frame, scale = 1, revealAt = 0, beamAt = 34, label = null}) => {
+export const Rod = ({x = 300, y = 1250, shadow = 0.5, frame, scale = 1, revealAt = 0, beamAt = 34, label = null, plantAt = null}) => {
+  // planted on its word ("he set up a stick"): it drops in and settles; until then the ground is bare
+  const plant = plantAt === null ? 1 : easeOut(clamp01((frame - plantAt) / 10));
+  if (plant <= 0) return null;
   const len = 360 * shadow;
   // 2.30.0: the shadow grows when the voice reveals it, the sunbeam when it is named (never given away early)
   const grow = easeOut(clamp01((frame - revealAt) / 24));
   const tip = -len * grow - 46;
   return (
-    <g transform={`translate(${x} ${y}) scale(${scale})`}>
+    <g transform={`translate(${x} ${y - (1 - plant) * 160}) scale(${scale})`} opacity={Math.min(1, plant * 2)}>
       <path d={`M -14 2 L ${tip} 16 L ${tip + 6} 44 L 14 30 Z`} fill={C.ink} opacity="0.55" />
       {grow > 0.95 && <path d={`M ${tip + 3} 0 L ${tip + 3} 60`} stroke={C.ink} strokeWidth="6" strokeLinecap="round" />}
       {/* the sunbeam that makes the shadow: from the shadow's tip past the top of the rod, and the angle it makes with the

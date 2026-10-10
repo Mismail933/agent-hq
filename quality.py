@@ -376,6 +376,10 @@ SCRIPTS_TASK = """Review these scripts from Calina. Each is a short YouTube vide
 12. Sound that makes sense: every sound effect is something seen on screen at that moment or the button on a punchline; fail
    an effect for a place or mood that isn't shown (birds in a scene with no birds, "magic" on a fact), more than two in a scene,
    or a background sound (birds, wind, murmur) where that place isn't on screen.
+13. The jokes' material and endings: are the sketches built on the TRUE oddities the script lists in `oddities` (fail any joke that
+   needs an invented fact)? For every sketch, compare its last line with its `alt_punchlines`: is the chosen one the most
+   SURPRISING that still MAKES SENSE a beat later? If an alternative is clearly better, say so as a fix: "scene N: use '<that
+   line>' as the punchline". A sketch with no real punch (a flat last line) is a problem.
 A script passes only if it is genuinely good (score 7 or more out of 10) and has no blocking problem.
 
 Earlier episodes of this channel:
@@ -700,7 +704,7 @@ def split_long_lines(scenes, spine=None):
 # 2.30.0, the owner: "there should never be a time where the narrator is talking and the background is just the people waiting".
 # OverSimplified illustrates every narrated sentence (a map, the event, a card) and keeps the characters for the sketches.
 ILLUSTRATIONS = ("map", "diagram", "card", "well_side", "well")
-NARRATION_IN_SKETCH = 25   # most narrator words in a scene where characters stand on screen (a lead-in or a deadpan button)
+NARRATION_IN_SKETCH = 15   # most words of the ONE narrator line allowed in a scene where characters stand on screen (2.31.0: was 25 in all)
 
 
 def narration_problems(d):
@@ -714,11 +718,11 @@ def narration_problems(d):
         n = sum(len((l.get("text") or "").split()) for l in narr)
         # narration the characters act out (a line with an action or a character action) is not "waiting"
         acted = any(l.get("action") or l.get("reacts") for l in narr) or any(c.get("action") == "pace" for c in s.get("characters") or [])
-        if n > NARRATION_IN_SKETCH and not acted:
+        if (len(narr) > 1 or n > NARRATION_IN_SKETCH) and not acted:
             out.append(f"Scene {i + 1}: the narrator speaks {n} words while the characters just stand there. Never do that: put the "
                        f"narration on an illustration scene (map, diagram, card with the numbers, well_side, the event itself) and keep this "
-                       f"scene for the characters' sketch, with at most one short narrator line (a lead-in or a deadpan button, "
-                       f"{NARRATION_IN_SKETCH} words at most).")
+                       f"scene for the characters' sketch, with at most ONE short narrator line (a lead-in or a deadpan button, "
+                       f"{NARRATION_IN_SKETCH} words at most). This scene has {len(narr)} narrator line(s), {n} words.")
     return out
 
 

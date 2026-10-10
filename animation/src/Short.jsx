@@ -239,7 +239,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
     const r = c.x + c.r.right * c.scale;
     subjects[c.who] = {focus: (l + r) / 2, spread: (r - l) / 2, topY: c.y - c.r.top * c.scale};
   });
-  const hits = scene.ending ? [] : (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
+  const hits = scene.ending || scene.backdrop === 'card' ? [] : (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
   const Back = BACKDROPS[scene.backdrop];
   const t = easeOut(clamp01(frame / TRANSITION));
   // OverSimplified cuts: a plain cut between scenes (the movement is inside the shot); a whip only into a cutaway or when the
@@ -260,18 +260,19 @@ const Scene = ({scene, mouth, speaker, index}) => {
   }
   const Bespoke = scene.generated ? GENERATED[scene.generated] : null; // a scene Rana wrote (animator.py)
   const isMap = scene.backdrop === 'map';
+  const off = scene.frame_offset || 0;   // a split part of one map / diagram: carry on, don't start the drawing again
   const isDiagram = scene.backdrop === 'diagram';
   const body = Bespoke ? (
     <Bespoke frame={frame} frames={scene.frames} words={scene.words || []} mouth={mouth.slice(scene.from, scene.from + scene.frames)} />
   ) : (
     <>
-      {isMap && <MapIntro map={scene.map || {focus: [30, 30], zoom: 20}} frame={frame} frames={scene.frames} />}
-      {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame} frames={scene.frames} />}
+      {isMap && <MapIntro map={{...(scene.map || {focus: [30, 30], zoom: 20}), ...(scene.callout ? {route_label: null} : {})}} frame={frame + off} frames={scene.frames + off} />}
+      {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame + off} frames={scene.frames + off} />}
       {!isMap && !isDiagram && (
-        <Camera move={scene.ending ? 'ending' : scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit} hits={hits}>
+        <Camera move={scene.ending ? 'ending' : scene.backdrop === 'card' ? 'still' : scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit} hits={hits}>
           {Back && <Back frame={frame} tone={scene.tone} scene={scene} />}
           {props.map((p, i) => {
-            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={p.shadow ?? 0.5} scale={p.scale} revealAt={p.reveal_at ?? 0} beamAt={p.beam_at ?? null} label={p.angle_label || null} />;
+            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={p.shadow ?? 0.5} scale={p.scale} revealAt={p.reveal_at ?? 0} beamAt={p.beam_at ?? null} label={p.angle_label || null} plantAt={p.plant_at ?? null} />;
             if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} slices={p.slices || 0} sliceAt={p.slice_at ?? null} />;
             return null;
           })}
@@ -315,12 +316,12 @@ const Scene = ({scene, mouth, speaker, index}) => {
         </g>
       )}
       {scene.callout && frame >= (scene.callout_from ?? 0) && (
-        <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isDiagram ? 300 : isMap ? scene.callout_y ?? 520 : 215} />
+        <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isDiagram ? 300 : 215} />
       )}
       {gag && gag.type === 'cutaway' && <CutawayTag text={(gag.text || 'MEANWHILE...').toUpperCase()} frame={frame} />}
     </>
   );
-  const pointAt = gag && gag.who && subjects[gag.who] ? subjects[gag.who].focus : null;
+  const pointAt = gag && gag.who && subjects[gag.who] ? W / 2 : null;
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0, ...wrap}}>
       <defs>

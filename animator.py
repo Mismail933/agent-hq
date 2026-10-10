@@ -10,6 +10,14 @@ any step fails the scene falls back to the kit version (the Short is never held 
     <video-tools python> animate.py animator-test <episode id> <scene index>
         writes content/project-N/animator-test/: kit.mp4 (the kit's scene), animator.mp4 (the bespoke scene), the code,
         the words and the audio of that scene, so the owner can watch them side by side.
+
+In production (2.31.0, the owner's plan after ep 24: "Rana draws what a joke or an explanation needs"): every scene Calina marks
+`bespoke` is drawn by Rana before the render (`draw_scenes`, called by animate.render_episode), cached per brief, and falls back to
+the kit if anything fails. Rana works in her kit folder (~/.agent-hq-anim/rana-kit, `ensure_kit`) with Read/Glob/Grep on:
+  remotion/  Remotion's official agent-skill notes on animation, timing and sequencing (remotion-dev/skills, pinned commit;
+             it has no licence file, so it is downloaded on this PC only and never copied into the program);
+  icons/     the game-icons.net library (~4,000 SVG icons, CC BY 3.0, credit to the artists): INDEX.txt lists them; she may copy an
+             icon's path data into her drawing and must mark it `// icon: author/name`, so the description credits the artist.
 """
 import json
 import re
@@ -75,6 +83,77 @@ HOW A GOOD SCENE LOOKS
 Answer with ONE ```jsx code block containing the complete file and nothing else."""
 
 
+SKILLS_SHA = "32b241b97f4e0e4ab61fe9a41b05e6e64503f8c5"   # remotion-dev/skills, checked 2026-10-10
+SKILL_FILES = ["REFERENCE.md", "timing.md", "sequencing.md", "text-highlights.md", "measuring-text.md", "effects.md", "transitions.md"]
+SKILLS_RAW = "https://raw.githubusercontent.com/remotion-dev/skills/" + SKILLS_SHA + "/skills/remotion-best-practices/remotion-markup/"
+ICONS_URL = "https://game-icons.net/archives/svg/zip/000000/transparent/game-icons.net.svg.zip"
+ICON_CREDIT = "Icons: game-icons.net by {authors} (CC BY 3.0)."
+KIT_NOTE = """
+YOUR WORK FOLDER (read it with Read / Glob / Grep before you draw):
+- remotion/*.md: Remotion's own notes on animating well (timing with interpolate/spring, sequencing, text, effects). Follow them
+  within THE KIT rules above (you still may import only the kit; no other packages).
+- icons/INDEX.txt: about 4,000 simple SVG icons as author/name (e.g. lorc/sun, delapouite/amphora). Glob or Grep INDEX.txt for
+  what you need, Read icons/<author>/<name>.svg, and copy its path data into your drawing, restyled in the kit's palette with
+  the house outline. For EVERY icon you use, put a comment `// icon: <author>/<name>` in your file (the video credits the artist).
+  Icons are a starting point: combine and animate them; never paste a whole icon sheet.
+"""
+
+
+def _get(url, timeout=60):
+    import urllib.request
+    import ssl
+    try:
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        ctx = ssl.create_default_context()
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "agent-hq"}), timeout=timeout, context=ctx) as r:
+        return r.read()
+
+
+def ensure_kit():
+    """Rana's kit folder: the Remotion notes and the icon library, fetched once. Returns the folder (or None if neither came)."""
+    import animate
+    import zipfile
+    import io
+    kit = animate.HOME / "rana-kit"
+    (kit / "remotion").mkdir(parents=True, exist_ok=True)
+    for name in SKILL_FILES:
+        f = kit / "remotion" / name
+        if not f.exists():
+            try:
+                f.write_bytes(_get(SKILLS_RAW + name))
+            except Exception as e:  # noqa: BLE001
+                say(f"  Couldn't fetch Remotion's note {name} ({str(e)[:80]}); Rana works without it.")
+    icons = kit / "icons"
+    icons.mkdir(exist_ok=True)
+    if not (icons / "INDEX.txt").exists():
+        try:
+            say("  Fetching the game-icons.net library for Rana (one time, about 4 MB)...")
+            data = _get(ICONS_URL, timeout=180)
+            names = []
+            with zipfile.ZipFile(io.BytesIO(data)) as z:
+                for n in z.namelist():
+                    if n.lower().endswith(".svg") and ".." not in n:
+                        parts = [p for p in n.split("/") if p]
+                        rel = "/".join(parts[-2:]) if len(parts) >= 2 else parts[-1]
+                        out = icons / rel
+                        out.parent.mkdir(parents=True, exist_ok=True)
+                        out.write_bytes(z.read(n))
+                        names.append(rel[:-4])
+                    elif n.lower().endswith("license.txt"):
+                        (icons / "license.txt").write_bytes(z.read(n))
+            (icons / "INDEX.txt").write_text("\n".join(sorted(names)) + "\n", encoding="utf-8")
+        except Exception as e:  # noqa: BLE001
+            say(f"  Couldn't fetch the icon library ({str(e)[:100]}); Rana draws everything herself.")
+    return kit
+
+
+def icon_authors(code):
+    """The icon artists a drawing used (from its `// icon: author/name` marks)."""
+    return sorted({m.group(1).strip().lower() for m in re.finditer(r"//\s*icon:\s*([\w.-]+)/", code)})
+
+
 def task_text(story, scene, frames, words, kit_note):
     ws = " ".join(f"{w['w']}@{w['from']}" for w in words)
     return (f"THE STORY: {story}\n\nTHIS SCENE ({frames} frames = {frames / 30:.1f} s)\n"
@@ -124,7 +203,7 @@ def install(folder, ids):
     (gen / "index.js").write_text("\n".join(lines) + "\nexport default {" + ", ".join(ids) + "};\n", encoding="utf-8")
 
 
-def write_scene(project_id, story, scene, frames, words, kit_note, folder, name, idea_id=None, repairs=2):
+def write_scene(project_id, story, scene, frames, words, kit_note, folder, name, idea_id=None, repairs=2, use_kit=True):
     """Ask the Animator for the scene's code, validate it, and test-render it. Returns the scene id, or raises Blocked."""
     problem, last = None, ""
     for attempt in range(repairs + 1):
@@ -133,7 +212,11 @@ def write_scene(project_id, story, scene, frames, words, kit_note, folder, name,
             task += (f"\n\nYour previous file was rejected: {problem}\nFix exactly that and answer with the complete corrected file.\n"
                      f"Your previous file was:\n```jsx\n{last}\n```")
         try:
-            text, _ = workers.run(AGENT, idea_id, SYSTEM, task, max_turns=3)
+            kit = ensure_kit() if use_kit else None
+            if kit:
+                text, _ = workers.run(AGENT, idea_id, SYSTEM + KIT_NOTE, task, tools=("Read", "Glob", "Grep"), max_turns=30, cwd=kit)
+            else:
+                text, _ = workers.run(AGENT, idea_id, SYSTEM, task, max_turns=3)
         except workers.Unavailable as e:
             raise Blocked(f"Rana couldn't run: {e}")
         last = extract_code(text)
@@ -170,6 +253,50 @@ def test_render(folder, name, scene, frames):
         pf.unlink(missing_ok=True)
         (folder / "_test.png").unlink(missing_ok=True)
     return ""
+
+
+# ---------------------------------------------------------------- production: the scenes Calina marked `bespoke`
+def draw_scenes(ep, d, scenes, words, folder):
+    """Rana draws every scene Calina marked `bespoke` (the props' `scenes` get `generated` = the drawing's name). A drawing is
+    kept in folder/_rana/ under a hash of its brief and lines, so a re-render reuses it. Anything that fails leaves that scene
+    to the kit. Returns (names installed, icon authors to credit)."""
+    import hashlib
+    import animate
+    out = folder / "_rana"
+    out.mkdir(exist_ok=True)
+    story = d.get("storyline") or ep["title"]
+    project = cp.get_project(ep["project_id"], with_text=False)
+    idea = project["idea_id"] if project else None
+    names, authors = [], set()
+    for i, s in enumerate(d["scenes"]):
+        brief = (s.get("bespoke") or "").strip()
+        if not brief or i >= len(scenes):
+            continue
+        sc = scenes[i]
+        a, n = sc["from"], sc["frames"]
+        sw = [{"w": w[0], "from": max(0, round(w[1] * animate.FPS) - a), "to": max(0, round(w[2] * animate.FPS) - a)}
+              for w in words if a <= round(w[1] * animate.FPS) < a + n]
+        key = hashlib.sha1(json.dumps([brief, s.get("voice_line") or "", s.get("backdrop") or ""]).encode("utf-8")).hexdigest()[:10]
+        name = f"rana_{ep['id']}_{i}_{key}"
+        code_file = out / f"{name}.jsx"
+        kit_note = f"a '{s.get('backdrop')}' scene" + ((", characters: " + ", ".join(c["who"] for c in s.get("characters") or [])) if s.get("characters") else "")
+        try:
+            if code_file.exists() and not validate(code_file.read_text(encoding="utf-8")):
+                say(f"  Scene {i + 1}: reusing Rana's drawing.")
+            else:
+                say(f"  Scene {i + 1}: Rana is drawing \"{brief[:70]}\"...")
+                write_scene(ep["project_id"], story, {**s, "bespoke": brief}, n, sw, kit_note, out, name, idea)
+            sc["generated"] = name
+            sc["words"] = sw
+            names.append(name)
+            authors |= set(icon_authors(code_file.read_text(encoding="utf-8")))
+        except (Blocked, OSError) as e:
+            say(f"  Scene {i + 1}: Rana's drawing didn't work out ({str(e)[:140]}); the kit draws it.")
+            cp.log(AGENT, "bespoke_failed", idea, {"episode": ep["id"], "scene": i + 1, "why": str(e)[:300]})
+    if names:
+        install(out, names)
+        cp.log(AGENT, "bespoke_drawn", idea, {"episode": ep["id"], "scenes": len(names), "icons_by": sorted(authors)})
+    return names, sorted(authors)
 
 
 # ---------------------------------------------------------------- the first test: one scene, kit next to bespoke

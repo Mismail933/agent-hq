@@ -64,6 +64,7 @@ RULES = {
     "check.spine": _r("Review & quality", "bool", True, None, None, "The story-spine check blocks a script (off = advice only)"),
     "check.ear": _r("Review & quality", "bool", True, None, None, "The ear check (hard-to-say lines) blocks a script (off = advice only)"),
     "check.length": _r("Review & quality", "bool", True, None, None, "The word/scene limits block a script (off = advice only)"),
+    "rana.bespoke": _r("Review & quality", "bool", True, None, None, "Rana draws the scenes Calina marks 'bespoke' before a render (off = the kit draws them)"),
     "check.narration": _r("Review & quality", "bool", True, None, None, "A scene where the narrator talks at length while characters just stand there blocks a script (off = advice only)"),
     "check.stranger_script": _r("Review & quality", "bool", True, None, None, "The stranger test on scripts (off = not run)"),
     "check.stranger_video": _r("Review & quality", "bool", True, None, None, "The stranger test on finished videos (off = not run)"),

@@ -349,6 +349,26 @@ Agents never spend money without the owner's explicit approval.
     `cold_open_scenes`. Israa's video review: criterion 8 (the owner's four rules); pacing is now MEASURED on the finished video
     (`quality._facts`: scene score > 0.08 on a small copy; the planned number is shown for comparison only).
   - Captions: columnGap 66, the spoken word pops 1.05 (44 + 1.1 ran words together: "INALEXANDRIA").
+  2.31.0 (Israa's ep 24 review, 6/10, the stranger passed; the owner: "I don't like that squishy sound when you stop the narration
+  and show a tag"; and the three steps agreed after ep 23):
+  - A diagram or map scene split in parts is ONE drawing: `render_episode` finds the group (same backdrop and same diagram/map spec
+    as the scene before), gives each later part `frame_offset`, and computes `diagram_steps` over the whole group; Short.jsx passes
+    `frame + off` to MapIntro and Diagram (ep 24 blanked mid-explanation at 139.5 s). Diagram R 350 (bigger).
+  - No record scratch on a freeze-frame label any more; instead the camera cuts to the person it names and the label points at the
+    middle (it pointed at the wrong man). Card scenes never zoom (`still`); map callouts sit at the top and hide the duplicate
+    route label; scene camera moves are gentle drifts (pans +/-60, pull_out 1.1).
+  - A rod is planted on screen on "set/planted/stood/upright" (`plant_at`).
+  - `quality.narration_problems`: a scene with characters may have ONE narrator line of at most 15 words (was 25 in all).
+  - Rana draws in production: Calina's scene field `bespoke` (a brief) -> `animator.draw_scenes` (called by render_episode before the
+    props are written; rule rana.bespoke; cached in ep-NNN/_rana/ by brief; any failure = the kit draws that scene, logged
+    `bespoke_failed`). She works in ~/.agent-hq-anim/rana-kit (`animator.ensure_kit`): remotion/ = 7 notes from Remotion's official
+    agent skills (remotion-dev/skills at SKILLS_SHA; no licence file, so fetched on his PC only, never committed) and icons/ = the
+    game-icons.net library (4,180 SVGs, CC BY 3.0; INDEX.txt). Tools Read/Glob/Grep, 30 turns. Every icon she uses is marked
+    `// icon: author/name`; the description then credits the artists (`ICON_CREDIT`).
+  - Writing (CARLIN article + ComedyForge idea): Calina lists the TRUE `oddities` from her sources before the scenes, writes three
+    endings per sketch (the best in the script, the others in `alt_punchlines`), and may brief Rana with `bespoke` (at most four a
+    video). Israa's script criterion 13 checks the oddities and picks the punchline ("surprising AND makes sense").
+  - Fable: `cp.LIMITS model.<agent>` accepts "fable" (Claude Code's alias for claude-fable-5-1, tested on his subscription).
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits

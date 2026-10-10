@@ -683,6 +683,16 @@ MOVE AND TIME IT LIKE OVERSIMPLIFIED (the owner's bar for the animation: its com
     its punch (a line or a reaction) and nothing comes after it in that scene.
   * Other beats, rarely and never blurring a fact: a FREEZE-FRAME LABEL naming someone, a CUTAWAY ("MEANWHILE..."), the narrator
     INTERRUPTED by a character (end his line with a dash), a DEADPAN pause before a punchline (camera and music stop).
+- FIND THE JOKE IN THE TRUE FACTS FIRST: before any scene, list in "oddities" the real details from your sources that are
+  surprising, absurd or contradictory (a nickname, a strange job, a king's odd habit, a number nobody can pin down). Build the
+  sketches on those, played straight; never invent a fact for a laugh.
+- THREE PUNCHLINES, KEEP THE BEST: for every sketch, write three different endings. A good one is SURPRISING and, a beat later,
+  MAKES SENSE (random is not funny; obvious is not funny). Put the best one in the script and the other two in "alt_punchlines";
+  Israa may swap them.
+- WHEN THE KIT CAN'T SHOW IT, ASK RANA: a scene may carry "bespoke": a short brief for a drawing Rana animates from scratch
+  (a running track that stretches, a pie cut into fifty slices with one glowing, a ship sinking under a bad idea, a visual gag).
+  Describe what appears and moves, in order, on which words. Use it for the explanation steps the kit draws poorly and for
+  visual jokes, at most four scenes a video; everything else uses the kit.
 - Scenes CUT from one to the next (the default; the movement is inside the shot). Use transition "whip" only into a cutaway.
 
 THE SHAPE OF THE VIDEO (the owner, after ep 23: "monotone and boring", "the narrator talks while the people just wait", "it starts
@@ -843,6 +853,8 @@ SCENE_SCHEMA = {"type": "object", "properties": {
     "callout_word": {"type": "string", "description": "The exact word in the scene's lines the callout should appear on"},
     "map": {"type": "object"}, "diagram": {"type": "object"},
     "card": {"type": "object", "description": "backdrop card only: {title, lines: [{text, on_word}]} (sums, numbers, labels written on their words)"},
+    "bespoke": {"type": "string", "description": "Only when the kit can't show it: what Rana must draw and animate for this scene, step by step, tied to the words (e.g. 'a running track that stretches from 157 m to 185 m while the Earth's size in km counts up beside it')"},
+    "alt_punchlines": {"type": "array", "maxItems": 2, "items": {"type": "string"}, "description": "Sketch scenes: the two other punchlines you considered for this scene's last line (the best one is in the script)"},
     "source_note": {"type": "string", "description": "Which source supports this scene's fact"}},
     "required": ["n", "lines", "shows", "link", "step_claim", "backdrop", "source_note"]}
 EPISODE_SCHEMA_V3 = {
@@ -862,6 +874,7 @@ EPISODE_SCHEMA_V3 = {
             "question_answered_in_scene": {"type": "integer", "description": "The scene number that answers the hook's question: one of the last three"}},
             "required": ["once", "every_day", "one_day", "because1", "because2", "finally", "question_answered_in_scene"]},
         "surprising_fact": {"type": "string"},
+        "oddities": {"type": "array", "minItems": 3, "maxItems": 8, "items": {"type": "string"}, "description": "Written BEFORE the scenes: the true, surprising or absurd details your sources give (a nickname, a strange job, a contradiction), each with its source; the sketches are built on these"},
         "cold_open_scenes": {"type": "integer", "description": "How many scenes the cold-open sketch takes (usually 1); the title card comes after them"},
         "scenes": {"type": "array", "items": SCENE_SCHEMA},
         "voice_direction": {"type": "string"},

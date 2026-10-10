@@ -84,7 +84,7 @@ LIMITS = {
 }
 for _a in WORKERS:
     LIMITS[f"engine.{_a}"] = ("choice", ("claude_code", "api"), None, f"{_a} runs on")
-    LIMITS[f"model.{_a}"] = ("choice", ("sonnet", "opus", "haiku"), None, f"{_a}'s model on the subscription")
+    LIMITS[f"model.{_a}"] = ("choice", ("sonnet", "opus", "haiku", "fable"), None, f"{_a}'s model on the subscription")   # fable = claude-fable-5-1 (2.31.0)
     LIMITS[f"allowance.{_a}"] = ("usd", 0, 100, f"{_a}'s daily plan allowance (API value)")
     LIMITS[f"api_cap.{_a}"] = ("usd_or_none", 0, 50, f"{_a}'s daily API cap")
 

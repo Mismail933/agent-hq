@@ -701,6 +701,10 @@ def rod_steps(p, s, words, start, end):
     p["reveal_at"] = (f - start) if f is not None else 0
     g = _first_word_frame(words, start, end, [p.get("beam_word")] if p.get("beam_word") else ["line", "sunbeam", "sunlight", "angle"])
     p["beam_at"] = max(p["reveal_at"] + 20, g - start) if g is not None else None
+    # planted on screen when the voice says he set it up (Israa ep 24: "the stick is already standing, nobody sets it up")
+    h = _first_word_frame(words, start, end, [p.get("plant_word")] if p.get("plant_word") else ["planted", "set", "stood", "upright", "pushed"])
+    if h is not None and h - start < p["reveal_at"]:
+        p["plant_at"] = h - start
     if not p.get("angle_label") and p["beam_at"] is not None:   # the angle the scene's callout names (e.g. "ABOUT 7.2°")
         m = re.search(r"\d+(?:\.\d+)?\s*°", s.get("callout") or "")
         if m:
@@ -836,7 +840,9 @@ def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cu
             if gag["type"] == "freeze_label":
                 out_gag = {"type": "freeze_label", "text": str(gag.get("text") or "")[:44], "at": at, "frames": FREEZE_FRAMES,
                            **({"who": gag["who"]} if gag.get("who") in here else {})}
-                auto.append((sec, "record_scratch"))
+                # no sound on the freeze (the owner disliked the record scratch); the camera frames the one the label names
+                if gag.get("who") in here:
+                    hits.append({"at": max(0, at - 1), "cam": "punch_in", "who": gag["who"]})
                 quiet.append((sec, sec + FREEZE_FRAMES / FPS))
             elif gag["type"] == "deadpan":   # the camera stops dead, the music stops, then a punch-in on the punchline
                 hits.append({"at": max(0, at - 30), "cam": "hold"})
@@ -1276,7 +1282,12 @@ def render_episode(eid, voice=None, suffix=""):
     if pacing["longest_still_s"] > quality.STILL_MAX:
         say(f"  Pacing: the longest still stretch is {pacing['longest_still_s']} s ({pacing['longest_still_at']}).")
     scenes = []
+    grp = 0   # where the drawing this scene continues began (a long diagram or map scene split in parts is ONE drawing)
     for i, s in enumerate(d["scenes"]):
+        prev = d["scenes"][i - 1] if i else None
+        same = bool(prev) and s.get("backdrop") in ("diagram", "map") and prev.get("backdrop") == s.get("backdrop") and \
+            (prev.get(s["backdrop"]) or {}) == (s.get(s["backdrop"]) or {})
+        grp = grp if same else bounds[i]
         sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n", "shows", "callout_word", "lines", "sfx", "link", "step_claim", "gag")}
         sc["from"] = bounds[i]
         sc["frames"] = max(12, bounds[i + 1] - bounds[i])
@@ -1288,8 +1299,12 @@ def render_episode(eid, voice=None, suffix=""):
             sc["callout_from"] = callout_frame(s, words, bounds[i], bounds[i + 1])
         # 2.30.0: the picture follows the words. A diagram draws each step on the word that explains it; a rod's shadow and its
         # sunbeam appear when they are named (Israa on ep 23: the 7.2 deg wedge showed 30 s before it was said).
+        if bounds[i] > grp:
+            sc["frame_offset"] = bounds[i] - grp   # the map / diagram goes on from where the previous part left it
         if s.get("backdrop") == "diagram":
-            sc["diagram"] = {**(s.get("diagram") or {}), "at": diagram_steps(s, words, bounds[i], bounds[i + 1])}
+            group = [x for j, x in enumerate(d["scenes"]) if grp <= bounds[j] < bounds[i + 1] and x.get("backdrop") == "diagram"]
+            merged = {**s, "lines": [l for x in group for l in x.get("lines") or []]}
+            sc["diagram"] = {**(s.get("diagram") or {}), "at": diagram_steps(merged, words, grp, bounds[i + 1])}
         if any((p or {}).get("type") == "rod" for p in s.get("props") or []):
             sc["props"] = [rod_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "rod" else p for p in s.get("props") or []]
         if s.get("backdrop") == "card" and (s.get("card") or {}).get("lines"):
@@ -1316,6 +1331,15 @@ def render_episode(eid, voice=None, suffix=""):
             cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": billed, "episode": ep["id"], "what": "sound effects"})
             say(f"  ElevenLabs: {billed} characters for new sound effects (made once, reused in every later video).")
         audio_name = f"mix{suffix}.wav"
+    # 2.31.0: Rana draws the scenes Calina marked `bespoke` (rule rana.bespoke); any failure leaves the scene to the kit
+    icon_by = []
+    if not suffix and rules.get("rana.bespoke") and any((s.get("bespoke") or "").strip() for s in d["scenes"]):
+        try:
+            import animator
+            say("Rana's drawings...")
+            _, icon_by = animator.draw_scenes(ep, d, scenes, words, folder)
+        except Exception as ex:  # noqa: BLE001  (never hold the video up for a drawing)
+            say(f"  Rana's drawings were skipped: {str(ex)[:160]}")
     ch = (project.get("meta") or {}).get("channel") or {}
     props = {
         "durationInFrames": total,
@@ -1350,6 +1374,11 @@ def render_episode(eid, voice=None, suffix=""):
         description += f"\n\n{DISCLOSURE_V3}"
     if music and "Kevin MacLeod" not in description:   # the licence asks for this credit wherever the video is shown
         description += "\n\n" + sfx.music_credit(music_id)
+    if icon_by:   # CC BY 3.0: the artists of every game-icons.net icon Rana used are credited where the video is shown
+        import animator
+        line = animator.ICON_CREDIT.format(authors=", ".join(a.title() for a in icon_by))
+        credits.append(line)
+        description += "\n\n" + line
     if d.get("hashtags"):
         tags = [t for t in d["hashtags"] if not (is_video(d) and t.lower() == "#shorts")]   # a regular video is not a Short
         description += "\n\n" + " ".join(tags)
