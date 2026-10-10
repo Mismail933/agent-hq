@@ -431,8 +431,15 @@ Judge honestly:
 6. Would a stranger scrolling past stay, and does it stand next to the owner's references? Say where it falls short.
 7. Pacing (the OverSimplified bar): something should change on screen every 2-4 seconds (a cut, a camera move or punch-in, a
    character walking, turning or reacting, a prop, a gag). Go through the sheets in order and name every stretch longer than
-   about 4 seconds where the frames look the same, with its start and end time (area "pace"). The measured longest still
-   stretch above is from the plan of the video; the sheets show what really happened.
+   about 4 seconds where the frames look the same, with its start and end time (area "pace"). The MEASURED longest still
+   stretch above is from the finished video; the planned one is only for comparison.
+8. The owner's four rules after ep 23 (each one a reason for "redo"; animation/COMEDY-GUIDE.md section 7):
+   a) Narration is illustrated: whenever the narrator talks, the picture shows what he says (a map, the diagram building, a card
+      with the numbers, the event). Name every stretch where the narrator talks over characters who just stand and wait.
+   b) It opens on a cold-open sketch, then a title card, and only then the narrator; it ends slowly (a calm last line, a slow
+      push-in, the end card holding with the music). Say if it starts or ends abruptly.
+   c) Dialogue changes framing with CUTS (both people / the one with the punchline / a close-up reaction), never a visible zoom.
+   d) Characters don't sway or shake while talking: one clear gesture per line, the listener reacts once.
 Verdict "release" only if it is genuinely good enough to publish; otherwise "redo" with the specific changes that would fix it.
 """
 
@@ -538,7 +545,7 @@ ACTIONS = ("walk_in", "walk_out", "turn", "jump", "flinch", "facepalm", "shrug",
 CAM_HITS = ("punch_in", "release", "whip", "shake", "hold")
 GAGS = ("freeze_label", "cutaway", "interrupt", "deadpan")
 TRANSITIONS = ("cut", "whip", "slide_left", "slide_up", "iris")
-BACKDROPS = ("court", "library", "nile", "well", "study", "street", "desert", "map", "diagram")
+BACKDROPS = ("court", "library", "nile", "well", "well_side", "card", "study", "street", "desert", "map", "diagram")
 STILL_MAX = 4.0   # seconds: no stretch of a finished video may go longer without something changing on screen
 
 
@@ -688,6 +695,31 @@ def split_long_lines(scenes, spine=None):
         except (TypeError, ValueError):
             pass
     return out, splits, new_spine
+
+
+# 2.30.0, the owner: "there should never be a time where the narrator is talking and the background is just the people waiting".
+# OverSimplified illustrates every narrated sentence (a map, the event, a card) and keeps the characters for the sketches.
+ILLUSTRATIONS = ("map", "diagram", "card", "well_side", "well")
+NARRATION_IN_SKETCH = 25   # most narrator words in a scene where characters stand on screen (a lead-in or a deadpan button)
+
+
+def narration_problems(d):
+    """Scenes where the narrator talks at length while characters stand on screen with nothing to do."""
+    out = []
+    for i, s in enumerate(d.get("scenes") or []):
+        if s.get("backdrop") in ILLUSTRATIONS or not s.get("characters"):
+            continue
+        lines = s.get("lines") or []
+        narr = [l for l in lines if (l.get("who") or "narrator") == "narrator"]
+        n = sum(len((l.get("text") or "").split()) for l in narr)
+        # narration the characters act out (a line with an action or a character action) is not "waiting"
+        acted = any(l.get("action") or l.get("reacts") for l in narr) or any(c.get("action") == "pace" for c in s.get("characters") or [])
+        if n > NARRATION_IN_SKETCH and not acted:
+            out.append(f"Scene {i + 1}: the narrator speaks {n} words while the characters just stand there. Never do that: put the "
+                       f"narration on an illustration scene (map, diagram, card with the numbers, well_side, the event itself) and keep this "
+                       f"scene for the characters' sketch, with at most one short narrator line (a lead-in or a deadpan button, "
+                       f"{NARRATION_IN_SKETCH} words at most).")
+    return out
 
 
 def length_problems(d):
@@ -861,10 +893,11 @@ def pre_review(eids, rewrite):
                 d["auto_split"] = (d.get("auto_split") or 0) + n_split
                 cp.update_episode(i, data=d)
                 cp.log("Calina", "lines_split", None, {"episode": i, "splits": n_split})
-            sp, ear, ln = spine_problems(d), ear_lint(d), length_problems(d)
+            sp, ear, ln, nr = spine_problems(d), ear_lint(d), length_problems(d), narration_problems(d)
             # live rules: a check switched off still runs, but only as advice
-            probs = (sp if rules.get("check.spine") else []) + (ear["blocking"] if rules.get("check.ear") else []) + (ln if rules.get("check.length") else [])
-            d["checks"] = {"spine": sp, "ear": ear["blocking"], "length": ln, "advisory": ear["advisory"], "rounds": rnd,
+            probs = ((sp if rules.get("check.spine") else []) + (ear["blocking"] if rules.get("check.ear") else []) + (ln if rules.get("check.length") else [])
+                     + (nr if rules.get("check.narration") else []))
+            d["checks"] = {"spine": sp, "ear": ear["blocking"], "length": ln, "narration": nr, "advisory": ear["advisory"], "rounds": rnd,
                            "words": len(_narration(d).split()), "scenes": len(d["scenes"])}
             cp.update_episode(i, data=d)
             if not probs or rnd == 2:
@@ -1164,6 +1197,14 @@ def _facts(ffmpeg, video, d):
     sc = subprocess.run([ffmpeg, "-hide_banner", "-i", str(video), "-vf", "select='gt(scene,0.25)',showinfo", "-an", "-f", "null", "-"],
                         capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=flags).stderr
     cuts = len(re.findall(r"pts_time:", sc))
+    # 2.30.0 (Israa on ep 23: "the pacing number reads the plan, not the render"): the longest stretch in the FINISHED video
+    # where the picture barely changes, measured on a small copy of the frames (any visible change counts: a cut, a pose, a pop)
+    mv = subprocess.run([ffmpeg, "-hide_banner", "-i", str(video), "-vf", "scale=270:-2,select='gt(scene,0.08)',showinfo", "-an", "-f", "null", "-"],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=flags).stderr
+    marks = [0.0] + [float(x) for x in re.findall(r"pts_time:([\d.]+)", mv)] + [secs]
+    gaps = sorted(((b - a, a) for a, b in zip(marks, marks[1:])), reverse=True)
+    measured = {"longest_still_s": round(gaps[0][0], 1), "at": round(gaps[0][1], 1),
+                "over_bar": [f"{a:.0f}-{a + g:.0f} s" for g, a in gaps if g > STILL_MAX][:12]} if gaps else {}
     pacing = {}
     try:   # what the renderer planned (animate.py writes it into the props file next to the video; short-1.mp4 -> scene-props-1.json)
         props = Path(video).parent / f"scene-props{Path(video).stem[len('short'):]}.json"
@@ -1171,13 +1212,16 @@ def _facts(ffmpeg, video, d):
     except (OSError, ValueError):
         pass
     f = [f"- length: {secs:.1f} s",
-         (f"- pacing (planned): {pacing.get('changes')} visual changes, the longest still stretch {pacing.get('longest_still_s')} s "
+         (f"- pacing (MEASURED on the finished video): the longest stretch with no visible change is {measured['longest_still_s']} s "
+          f"(from {measured['at']} s; the bar is {STILL_MAX:.0f} s); stretches over the bar: {', '.join(measured['over_bar']) or 'none'}") if measured else "",
+         (f"- pacing (planned, for comparison only): {pacing.get('changes')} visual changes, the longest still stretch {pacing.get('longest_still_s')} s "
           f"(at {pacing.get('longest_still_at')}; the bar is {STILL_MAX:.0f} s)") if pacing else "",
          f"- narration: {words} words = {words / secs * 60:.0f} words per minute over the whole video" if words and secs else "- narration: unknown",
          f"- hard visual changes (scene cuts): {cuts} in {secs:.0f} s = one every {secs / max(cuts, 1):.1f} s" if secs else "",
          f"- loudness: {lufs.group(1)} LUFS integrated, sample peak {peak.group(1)} dBFS (target about -14 to -16 LUFS, peak under -1)" if lufs and peak else ""]
     return secs, [x for x in f if x], {"seconds": round(secs, 1), "wpm": round(words / secs * 60) if words and secs else None, "cuts": cuts,
-                                         "lufs": float(lufs.group(1)) if lufs else None, "longest_still_s": pacing.get("longest_still_s")}
+                                         "lufs": float(lufs.group(1)) if lufs else None,
+                                         "longest_still_s": measured.get("longest_still_s", pacing.get("longest_still_s"))}
 
 
 def shorts_python():

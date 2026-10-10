@@ -322,6 +322,33 @@ Agents never spend money without the owner's explicit approval.
     Israa's script review: criterion 11 checks the joke shapes, new 12 checks that sounds make sense.
   2.29.1: a rod draws its sunbeam (dashed, from the shadow's tip past the rod's top) and the angle arc at the top; it stands
   at `ROD_K` x the cast's scale; a rod scene stands further back (feet at FLOOR+110) so the shadow stays above the captions.
+  2.30.0 (the owner after ep 23: "monotone and boring", "the narrator talks while the people just wait", "starts and ends
+  suddenly", "the camera zooms weirdly and they shake when they talk"; Israa's ep 23 review; study of OverSimplified's *Second
+  Punic War (Part 1)*, COMEDY-GUIDE.md section 7):
+  - Voice: project 3's narrator is now Ryan Dupree (ElevenLabs; it was the free Kokoro George, slowed) and music Sneaky Snitch
+    (the owner said "you pick"). `animate.shape_timeline`: the whole voice track at `NARR_TEMPO` (rule voice.tempo, 1.08, atempo)
+    and a silent gap of `TITLE_SECONDS` (rule video.title_seconds) after the cold open (`cold_open_scenes`: Calina's field, else 1
+    when scene 1 is a sketch, else 0 = the title opens the video); every time is shifted to match. `props.title` -> Short.jsx draws
+    `EpisodeTitle` (Overlays) full screen there, with a whoosh; the old POV ribbon only when there is no title. End card
+    `OUTRO_SECONDS` 4.5 (rule video.end_card_seconds); the last scene is `ending`: one slow push-in, no cuts, no filled beats.
+  - Pronunciation: rule voice.pronounce ("Syene=Sigh-EE-nee; ..."): `animate.respell` is what the voice says, the timings get the
+    real spelling back (captions unchanged); the voice cache key uses the respelled text.
+  - Camera: punch_in / release are CUTS (Camera.jsx, len 1), the base push is a slow drift (1.0 -> 1.1); REFRAME_EVERY 4.0.
+  - Talking motion: Character `speaking` prop (Short.jsx: the line's speaker) drives a slow small nod/gesture instead of the
+    per-mouth-shape `talking` (that flicker was the "shaking"). Patched in the kit AND in project 3's cast v4 file
+    (content/project-3/cast/v4/Character.jsx, backup `Character.before-calm-talk.jsx`); a cast Rana draws from them inherits it.
+  - Pictures follow the words: `animate.diagram_steps` (diagram.at: beams/rods/centre/wedge/label on their words, `on_words`
+    optional) and Diagram.jsx draws the sticks pushed down to the centre and the same angle at Alexandria's stick; `rod_steps`
+    (shadow on "shadow" / `reveal_word`, sunbeam + angle arc on `beam_word`, `angle_label` from the callout's "N°");
+    `globe_steps` (globe cut into `slices` on "slice(s)/pizza", one highlighted); new backdrops `card` (Card: up to 5 lines
+    written on their words, `card_steps`) and `well_side` (WellSide: the shaft cut away, sunlight to the water; people stand
+    beside it, the camera keeps the shaft in frame).
+  - `quality.narration_problems` (rule check.narration): more than `NARRATION_IN_SKETCH` (25) narrator words in a scene with
+    characters who don't act it out sends the script back. Calina's V3 prompt: THE SHAPE OF THE VIDEO (cold open, illustrated
+    narration, sketches, slow ending) + kit entries for card / well_side / props steps / diagram on_words; schema `card`,
+    `cold_open_scenes`. Israa's video review: criterion 8 (the owner's four rules); pacing is now MEASURED on the finished video
+    (`quality._facts`: scene score > 0.08 on a small copy; the planned number is shown for comparison only).
+  - Captions: columnGap 66, the spoken word pops 1.05 (44 + 1.1 ran words together: "INALEXANDRIA").
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits

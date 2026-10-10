@@ -31,14 +31,14 @@ export const Captions = ({chunks, frame}) => {
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          columnGap: 44, // a real gap between words, whatever colour or size a word has
+          columnGap: 66, // a real gap between words: the 16 px outline and the spoken word's pop eat into it (2.30.0: 44 ran words together)
         }}
       >
         {chunk.words.map((w, i) => {
           const active = frame >= w.from && frame < w.to;
           const done = frame >= w.to;
           return (
-            <span key={i} style={{display: 'inline-block', margin: 0, color: active ? C.gold : chunk.who && chunk.who !== 'narrator' ? C.sky : C.white, transform: active ? 'scale(1.1) rotate(-2deg)' : 'none', opacity: done || active ? 1 : 0.92, ...STROKE(16)}}>
+            <span key={i} style={{display: 'inline-block', margin: 0, color: active ? C.gold : chunk.who && chunk.who !== 'narrator' ? C.sky : C.white, transform: active ? 'scale(1.05) rotate(-2deg)' : 'none', transformOrigin: '50% 60%', opacity: done || active ? 1 : 0.92, ...STROKE(16)}}>
               {w.w}
             </span>
           );
@@ -70,7 +70,52 @@ export const TitleCard = ({intro, frame, frames = 84}) => {
   );
 };
 
-/** The last second and a half: follow card. */
+/**
+ * The title card after the cold open (2.30.0, OverSimplified's "sting into the title"): the whole picture for a couple of
+ * seconds while the music carries on. Channel line, the episode's title in big type, place and year on a ribbon.
+ * title: {text, place, year, frames}.
+ */
+export const EpisodeTitle = ({title, frame}) => {
+  const {fps} = useVideoConfig();
+  const n = title.frames || 78;
+  const pop = spring({frame: frame - 2, fps, config: {damping: 11, stiffness: 150, mass: 0.7}});
+  const rib = spring({frame: frame - 10, fps, config: {damping: 13, stiffness: 130}});
+  const fade = 1 - easeOut(clamp01((frame - (n - 6)) / 6));
+  const words = String(title.text || '').toUpperCase().split(/\s+/).filter(Boolean);
+  // wrap the title into lines of about 16 characters, then size the type to the longest line
+  const lines = [];
+  words.forEach((w) => {
+    const last = lines[lines.length - 1];
+    if (last && (last + ' ' + w).length <= 16) lines[lines.length - 1] = last + ' ' + w;
+    else lines.push(w);
+  });
+  const shown = lines.slice(0, 5);
+  const fs = Math.max(70, Math.min(132, 900 / (0.58 * Math.max(...shown.map((l) => l.length), 6))));
+  const place = [title.place, title.year].filter(Boolean).join(' · ');
+  const top = 960 - (shown.length * fs * 1.05) / 2;
+  return (
+    <g opacity={fade}>
+      <rect x="-200" y="-200" width={W + 400} height={H + 400} fill={C.parchment} />
+      <rect x="40" y="40" width={W - 80} height={H - 80} rx="36" fill="none" stroke={C.terracotta} strokeWidth="10" />
+      <text x={W / 2} y={top - 90} textAnchor="middle" fontFamily={BODY} fontWeight="800" fontSize="40" fill={C.teal} opacity={clamp01(frame / 6)}>
+        A STORY THAT REALLY HAPPENED
+      </text>
+      <g transform={`translate(${W / 2} 0) scale(${Math.max(0.01, 0.85 + 0.15 * pop)}) translate(${-W / 2} 0)`}>
+        {shown.map((l, i) => (
+          <text key={i} x={W / 2} y={top + fs * (i + 0.85) * 1.05} textAnchor="middle" fontFamily={HEAD} fontSize={fs} fill={C.ink}>{l}</text>
+        ))}
+      </g>
+      {place && (
+        <g transform={`translate(${W / 2 + (1 - rib) * W} ${top + shown.length * fs * 1.05 + 110}) rotate(-2)`}>
+          <rect x={-Math.min(W - 200, place.length * 30 + 90) / 2} y="-50" width={Math.min(W - 200, place.length * 30 + 90)} height="100" rx="22" fill={C.terracotta} stroke={C.ink} strokeWidth="8" />
+          <text textAnchor="middle" y="18" fontFamily={HEAD} fontSize="52" fill={C.parchment}>{place.toUpperCase()}</text>
+        </g>
+      )}
+    </g>
+  );
+};
+
+/** The last seconds: follow card. */
 export const Outro = ({outro, frame, frames}) => {
   const {fps} = useVideoConfig();
   const pop = spring({frame, fps, config: {damping: 10, stiffness: 120}});

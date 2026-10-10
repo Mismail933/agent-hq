@@ -1,5 +1,5 @@
 import React from 'react';
-import {rnd, W, H} from './theme';
+import {rnd, W, H, HEAD} from './theme';
 import {Layer} from './Camera';
 
 /*
@@ -293,6 +293,74 @@ export const Well = ({frame}) => {
   );
 };
 
+// ---- A well seen from the side (2.30.0, Israa on ep 23: "sunlight down the well" was never shown) ------------------------------
+// The ground is cut away: the stone shaft goes down to the water, and at noon a column of sunlight reaches the bottom.
+// People stand on the ground beside the mouth of the well (FEET in Short.jsx).
+export const WellSide = ({frame, tone = 'noon'}) => {
+  const beam = 0.75 + Math.sin(frame / 9) * 0.08;
+  const lit = tone !== 'night';
+  return (
+    <g>
+      <Layer depth={0.2}>
+        <Sky tone={tone} id={`sky-wellside-${tone}`} />
+        <Sun x={540} y={210} r={95} frame={frame} night={tone === 'night'} />
+      </Layer>
+      <Layer depth={0.6}>
+        <path d="M -400 760 Q 0 700 300 740 Q 700 690 1480 750 L 1480 900 L -400 900 Z" fill="#CDB07A" {...o} />
+        <rect x="-400" y="890" width="1880" height="1200" fill="#9C7A52" />
+        {Array.from({length: 26}).map((_, i) => (
+          <ellipse key={i} cx={rnd(i + 3) * 1800 - 300} cy={960 + rnd(i + 40) * 1000} rx={18 + rnd(i) * 30} ry={8 + rnd(i + 9) * 10} fill={INK} opacity="0.12" />
+        ))}
+        <rect x="-400" y="880" width="1880" height="22" fill="#B99567" {...o} />
+      </Layer>
+      <Layer depth={1}>
+        {/* the shaft: stone walls, dark inside, water at the bottom */}
+        <rect x="410" y="880" width="260" height="900" fill="#2E3B3A" />
+        {Array.from({length: 9}).map((_, i) => (
+          <g key={i}>
+            <rect x="372" y={900 + i * 98} width="44" height="90" rx="8" fill="#CBB48E" {...o} strokeWidth={L * 0.7} />
+            <rect x="664" y={900 + ((i + 0.5) % 9) * 98} width="44" height="90" rx="8" fill="#CBB48E" {...o} strokeWidth={L * 0.7} />
+          </g>
+        ))}
+        <rect x="410" y="1700" width="260" height="80" fill={lit ? K.gold : '#3E5B66'} />
+        <rect x="410" y="1700" width="260" height="12" fill={lit ? '#F6E2AE' : '#5D7B86'} />
+        {lit && <rect x="440" y="300" width="200" height="1400" fill="#F6E2AE" opacity={0.28 * beam} />}
+        {lit && <rect x="490" y="300" width="100" height="1400" fill="#FFF3CF" opacity={0.35 * beam} />}
+        {/* the rim of the well */}
+        <rect x="350" y="850" width="380" height="44" rx="10" fill="#D8C08A" {...o} />
+      </Layer>
+    </g>
+  );
+};
+
+// ---- A plain card (2.30.0, OverSimplified's white-card explanations): sums, numbers and labels write themselves on their words.
+// scene.card = {title, lines: [{text, on_word}], at: [frame of each line] (animate.card_steps)}. No people needed.
+export const Card = ({frame, scene}) => {
+  const card = (scene && scene.card) || {};
+  const lines = (card.lines || []).slice(0, 5);
+  const at = card.at || lines.map((_, i) => 10 + i * 40);
+  const fs = Math.max(64, Math.min(104, 880 / (0.56 * Math.max(8, ...lines.map((l) => String(l.text || '').length)))));
+  return (
+    <g>
+      <rect x="-400" y="-200" width="1880" height="2300" fill="#EFE3CC" />
+      <rect x="70" y="360" width="940" height="900" rx="40" fill="#FBF6EC" {...o} />
+      {card.title && <text x="540" y="470" textAnchor="middle" fontFamily={HEAD} fontSize="62" fill={K.terracotta}>{String(card.title).toUpperCase()}</text>}
+      {lines.map((l, i) => {
+        const age = frame - (at[i] ?? 0);
+        if (age < 0) return null;
+        const pop = Math.min(1, age / 8);
+        const y = 620 + i * (fs * 1.4);
+        return (
+          <g key={i} transform={`translate(540 ${y}) scale(${0.85 + 0.15 * pop})`} opacity={pop}>
+            <text textAnchor="middle" fontFamily={HEAD} fontSize={fs} fill={INK}>{l.text}</text>
+            {i === lines.length - 1 && lines.length > 1 && <line x1="-300" y1={-fs * 1.05} x2="300" y2={-fs * 1.05} stroke={INK} strokeWidth="7" strokeLinecap="round" opacity="0.7" />}
+          </g>
+        );
+      })}
+    </g>
+  );
+};
+
 // ---- Dusk study with a lamp -------------------------------------------------------------------
 export const Study = ({frame}) => {
   const flick = 1 + Math.sin(frame / 3) * 0.04 + Math.sin(frame / 7.3) * 0.03;
@@ -446,5 +514,5 @@ export const Desert = ({frame, tone = 'noon'}) => {
   );
 };
 
-export const BACKDROPS = {court: Court, library: Library, nile: Nile, well: Well, study: Study, street: Street, desert: Desert};
+export const BACKDROPS = {court: Court, library: Library, nile: Nile, well: Well, well_side: WellSide, card: Card, study: Study, street: Street, desert: Desert};
 export const BACKDROP_NAMES = Object.keys(BACKDROPS).concat(['map', 'diagram']);

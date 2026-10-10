@@ -24,9 +24,11 @@ export const cameraAt = (move, p, frame) => {
       return {s: 1.16, dx: 0, dy: lerp(120, -170, e)};
     case 'drift':
       return {s: 1.1, dx: Math.sin(frame / 38) * 60, dy: Math.cos(frame / 51) * 30};
+    case 'ending':   // the last scene: one slow push-in towards the end card (2.30.0)
+      return {s: lerp(1.0, 1.34, easeInOut(p)), dx: 0, dy: lerp(0, -40, easeInOut(p))};
     case 'push_in':
-    default:
-      return {s: lerp(1.0, 1.26, e), dx: 0, dy: lerp(0, -30, e)};
+    default:   // a slow drift in; the framing changes come as cuts (2.30.0: was 1.0 -> 1.26)
+      return {s: lerp(1.0, 1.1, e), dx: 0, dy: lerp(0, -14, e)};
   }
 };
 
@@ -49,8 +51,10 @@ const hitsAt = (hits, frame) => {
     if (h.cam === 'whip') whip = h;
     if (h.cam === 'shake') shake = h;
     const cur = val(seg, h.at);
-    if (h.cam === 'punch_in') seg = {at: h.at, from: h.subject && seg && seg.subject !== h.subject ? 1 : cur, to: 1, len: 5, subject: h.subject || null};
-    else if (h.cam === 'release' || h.cam === 'whip') seg = {at: h.at, from: cur, to: 0, len: h.cam === 'whip' ? 1 : 10, subject: seg ? seg.subject : null};
+    // OverSimplified changes the framing with a CUT, never a zoom you can watch (2.30.0, the owner: "it zooms in a weird way"):
+    // punch_in = cut to a single of the subject (or a tighter group shot), release = cut back to the wide shot.
+    if (h.cam === 'punch_in') seg = {at: h.at, from: 1, to: 1, len: 1, subject: h.subject || null};
+    else if (h.cam === 'release' || h.cam === 'whip') seg = {at: h.at, from: 0, to: 0, len: 1, subject: seg ? seg.subject : null};
   });
   const wAge = whip ? frame - whip.at : 99;
   const sAge = shake ? frame - shake.at : 99;
@@ -79,7 +83,7 @@ export const Camera = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0,
   const fc = sub ? [lerp(focus[0], sub.focus, z), focus[1]] : focus;
   const sp = sub ? lerp(spread, sub.spread, z) : spread;
   const ty = sub && topY !== null ? lerp(topY, sub.topY, z) : topY;
-  cam = {...cam, s: cam.s * (1 + (sub ? 0.45 : 0.16) * z)};
+  cam = {...cam, s: cam.s * (1 + (sub ? 0.5 : 0.22) * z)};
   if (sp > 0) {
     const room = W / 2 - SAFE;
     let s = Math.max(1, Math.min(cam.s, room / sp));

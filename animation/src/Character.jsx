@@ -711,7 +711,7 @@ const HeldProp = ({c, x, y, tilt}) => {
  * action + actionAge (frames since that action began: jump, flinch, double_take, nod, shrug add their movement on top)
  */
 export const Character = ({who = 'scholar', pose = 'stand', poseTo = null, blend = 0, mouth = 0, x = 540, y = 1180, scale = 1.3, frame,
-  enterAt = 0, seed = 0, expression = 'neutral', look = [0, 0], walking = false, noProp = false, look_ = null, facing = 1, hop = 0,
+  enterAt = 0, seed = 0, expression = 'neutral', look = [0, 0], walking = false, noProp = false, look_ = null, facing = 1, hop = 0, speaking = null,
   action = null, actionAge = null}) => {
   const {fps} = useVideoConfig();
   const c = look_ || castOf(who);
@@ -723,12 +723,13 @@ export const Character = ({who = 'scholar', pose = 'stand', poseTo = null, blend
   const t = frame + seed * 17;
   const stride = walking ? frame / 3.6 : null;   // one full step cycle about every 22 frames
   const talking = typeof mouth === 'string' ? !(mouth === 'X' || mouth === 'A') : mouth > 0;
+  const speakingNow = speaking === null ? talking : speaking;   // the whole line (Short.jsx): no jitter between mouth shapes
   const breathe = Math.sin(t / 9) * 0.006;
   const sway = walking ? Math.sin(stride) * 2 : Math.sin(t / 23) * 1.4;
   const bob = (walking ? -Math.abs(Math.sin(stride)) * 10 : 0) - Math.abs(Math.sin(t / 5)) * hop;
-  const nod = talking ? Math.sin(t / 3.4) * 2.2 : 0;   // a speaker's head moves gently with the words
+  const nod = speakingNow ? Math.sin(t / 12) * 1.1 : 0;   // a speaker's head moves gently with the words
   const blinkNow = frame > 20 && (t + seed * 29) % 104 < 4;
-  const gestureArm = talking ? Math.sin(t / 8) * 5 : 0;
+  const gestureArm = speakingNow ? Math.sin(t / 16) * 2.5 : 0;
   const swayArm = walking ? Math.sin(stride) * 10 : pose === 'wave' && !poseTo ? Math.sin(t / 3) * 14 : Math.sin(t / 13) * 2;
   const laughShake = expression === 'laughing' ? Math.sin(t * 1.3) * 1.6 : 0;
   const [lsh, lel] = P.L;
@@ -754,7 +755,7 @@ export const Character = ({who = 'scholar', pose = 'stand', poseTo = null, blend
       {!noProp && <HeldProp c={c} x={hx} y={hy} tilt={-hth * 0.22} />}
       <g transform={`translate(0 ${HEAD_Y}) rotate(${P.head + sway + nod + laughShake + act.nod}) scale(${HEAD_K})`}>
         <HairBack c={c} />
-        <Face c={c} mouth={mouth} blink={blinkNow} brow={pose === 'amazed' ? 6 : talking ? Math.max(0, Math.sin(t / 11)) * 3 : 0}
+        <Face c={c} mouth={mouth} blink={blinkNow} brow={pose === 'amazed' ? 6 : speakingNow ? Math.max(0, Math.sin(t / 15)) * 2 : 0}
           expression={pose === 'amazed' && expression === 'neutral' ? 'surprised' : expression} look={look} beardSway={c.beard === 'long' || c.beard === 'full' ? beardSway : 0} />
         <HairFront c={c} />
         <Headwear c={c} />

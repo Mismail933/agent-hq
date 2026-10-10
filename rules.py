@@ -51,7 +51,11 @@ RULES = {
     "voice.eleven_v3_stability": _r("Video & render", "choice", "0.5", ("0.0", "0.5", "1.0"), None, "ElevenLabs v3 stability: 0.0 creative, 0.5 natural, 1.0 robust", ("settings", "ELEVEN_V3_STABILITY")),
     # PACING & SOUND
     "pace.still_max_s": _r("Pacing & sound", "float", 4.0, 1, 20, "Longest stretch with nothing changing on screen before Israa flags it", ("quality", "STILL_MAX")),
-    "pace.reframe_every_s": _r("Pacing & sound", "float", 2.8, 1, 15, "A stretch with nothing planned gets a camera beat this often (seconds)", ("animate", "REFRAME_EVERY")),
+    "pace.reframe_every_s": _r("Pacing & sound", "float", 4.0, 1, 15, "A stretch with nothing planned gets a cut to another framing this often (seconds)", ("animate", "REFRAME_EVERY")),
+    "voice.tempo": _r("Video & render", "float", 1.08, 0.8, 1.4, "The whole voice track is played this much faster (pitch kept; 1.0 = as made)", ("animate", "NARR_TEMPO")),
+    "voice.pronounce": _r("Video & render", "text", "Syene=Sigh-EE-nee", None, None, "How the voices must say names they get wrong: Word=Respelling; Word2=Respelling2 (captions keep the real spelling)", ("animate", "PRONOUNCE")),
+    "video.title_seconds": _r("Video & render", "float", 2.6, 0, 8, "The title card after the cold open holds this long (0 = no title card)", ("animate", "TITLE_SECONDS")),
+    "video.end_card_seconds": _r("Video & render", "float", 4.5, 1, 20, "The end card holds this long while the music plays out", ("animate", "OUTRO_SECONDS")),
     "pace.freeze_frames": _r("Pacing & sound", "int", 48, 10, 240, "How long a freeze-frame label holds (frames, 30 a second)", ("animate", "FREEZE_FRAMES")),
     "pace.action_hold_frames": _r("Pacing & sound", "int", 30, 5, 180, "How long a pose-action (facepalm, shrug) is held (frames)", ("animate", "ACTION_HOLD")),
     "sound.music_volume": _r("Pacing & sound", "float", 0.16, 0, 1, "Music volume under the voices (0-1; it also ducks while anyone speaks)", ("animate", "MUSIC_VOLUME")),
@@ -60,6 +64,7 @@ RULES = {
     "check.spine": _r("Review & quality", "bool", True, None, None, "The story-spine check blocks a script (off = advice only)"),
     "check.ear": _r("Review & quality", "bool", True, None, None, "The ear check (hard-to-say lines) blocks a script (off = advice only)"),
     "check.length": _r("Review & quality", "bool", True, None, None, "The word/scene limits block a script (off = advice only)"),
+    "check.narration": _r("Review & quality", "bool", True, None, None, "A scene where the narrator talks at length while characters just stand there blocks a script (off = advice only)"),
     "check.stranger_script": _r("Review & quality", "bool", True, None, None, "The stranger test on scripts (off = not run)"),
     "check.stranger_video": _r("Review & quality", "bool", True, None, None, "The stranger test on finished videos (off = not run)"),
     "review.video": _r("Review & quality", "bool", True, None, None, "Israa reviews every finished video before the owner sees it"),
@@ -115,7 +120,7 @@ def parse(key, value):
         s = "" if value is None else str(value)
         if len(s) > 60000:
             raise ValueError(f"{key} is too long (60,000 characters at most).")
-        if r["target"] and s.strip():
+        if r["target"] and s.strip() and key.startswith("prompt.") and key.split(".")[1] in PROMPT_TARGET:
             _placeholders_ok(key, s)
         return s
     s = str(value).strip()

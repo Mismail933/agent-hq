@@ -62,3 +62,23 @@ The facts are never changed for a joke. The joke is in *how people react* to the
 | Reveal behind | a character with `action: walk_in` timed on the line (the engine walks him in) |
 | Cut | the default; `transition: whip` only into a cutaway |
 | Sound on what you see | `sfx` with `on_word` on the visible moment; at most 2 per scene |
+
+## 7. Second study (2026-10-10): *The Second Punic War (Part 1)*, for the owner's four complaints about ep 23
+The owner: "still monotone and boring"; "never a time where the narrator talks and the background is just the people waiting";
+"it starts and ends suddenly"; "the camera zooms in a weird way in dialogue and the characters shake when they talk".
+- **Narration is always illustrated.** While the narrator talks, the picture shows what each sentence says and changes every
+  4-5 seconds: a map with little figures on it, the event itself (a battle), a plain white card with a simple drawing (a money
+  bag handed over), the map exploding. Characters never stand and wait while the narrator speaks. A sketch (dialogue) is a
+  separate shot that starts when the characters start talking.
+- **The opening is a cold-open sketch** (about a minute: a place-and-date card on black, a wide establishing shot with a
+  banner, then a scene that escalates to a punchline), then a music sting and a fast cut into the title card, then the
+  narrator begins with the context. The video never starts on a cold line.
+- **The ending slows down**: the narrator's last lines are calm and ominous, the camera pushes in slowly on the hero, the
+  music swells, then a black end card holds while the music plays out (about 15 seconds). Never a sudden stop.
+- **Dialogue camera = cuts between still framings, never zooms.** Two-shot -> cut to a tighter two-shot as it heats up ->
+  cut to a single of whoever has the punchline -> cut back wide for the reaction -> cut to a close-up for the payoff line.
+  Each framing holds still or drifts very slowly.
+- **Characters don't sway while talking.** The speaker makes one clear gesture per line (arms up for a rant), the listener
+  turns his head or reacts once. Otherwise they are still, and the mouth carries the talking.
+- **Pace**: about 151 words a minute over the whole video, including the joke pauses (ours was 136, on a slowed Kokoro voice).
+- **Music** runs under everything, with stings on the cold open, the title and the ending.

@@ -43,7 +43,7 @@ NODE_DIR = HOME / "node"
 APP = HOME / "app"
 PIPER_DIR = HOME / "piper"
 PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/"
-LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 1.7
+LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 4.5   # the end card holds while the music plays out (2.30.0)
 SHORT_LIMIT = 178.0   # YouTube calls a vertical video of up to 3 minutes a Short: nothing is decided or refused here, the label just follows the length
 VIDEO_CAP = 960.0     # only an absurd length (16 minutes) is refused; the story decides, Israa judges whether it earns its length
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
@@ -55,6 +55,12 @@ EXPRESSIONS = {"neutral", "happy", "surprised", "worried", "determined", "thinki
 REACTIONS = {"idle", "cheer", "gasp", "laugh", "murmur", "angry", "scared"}
 NOFLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 GAP_LINE, GAP_SCENE = 0.16, 0.28   # breaths between two lines of one scene, and between scenes
+# 2.30.0 (the owner: "monotone and boring", "starts and ends suddenly"; OverSimplified runs at ~151 wpm with a cold open,
+# a title sting and a slow ending): the whole voice track is played a little faster (pitch kept), and after the cold-open
+# sketch the picture holds a full-screen title card for TITLE_SECONDS while the music carries on.
+NARR_TEMPO = 1.08
+TITLE_SECONDS = 2.6
+PRONOUNCE = "Syene=Sigh-EE-nee"   # live rule voice.pronounce: how the voices must say names they get wrong (captions keep the spelling)
 TALK_POSES = ("explain", "present", "point")   # a character who speaks without a stage direction gestures with one of these
 
 # voices the owner can pick from: id -> (engine, voice, label)
@@ -391,6 +397,24 @@ def piper_model(name):
     return onnx
 
 
+def respell(text):
+    """The text as the voice should say it: every word in PRONOUNCE ("Syene=Sigh-EE-nee; ...") replaced, punctuation kept."""
+    pairs = {}
+    for part in re.split(r"[;\n]", PRONOUNCE or ""):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            if k.strip() and v.strip():
+                pairs[k.strip().lower()] = v.strip()
+    if not pairs:
+        return text
+
+    def one(m):
+        w = m.group(0)
+        v = pairs.get(w.lower())
+        return v if v else w
+    return re.sub(r"[A-Za-zÀ-ɏ]+", one, text)   # "Syene's" -> "Sigh-EE-nee's"
+
+
 class Speaker:
     """One voice. line(text) -> (float32 audio at SR, [(word, start, end)] relative to the line)."""
     SR = 24000
@@ -409,6 +433,17 @@ class Speaker:
             self.model = PiperVoice.load(str(piper_model(self.voice)))
 
     def line(self, text, previous="", following="", tag=""):
+        said = respell(text)
+        if said == text:
+            return self._line(text, previous, following, tag)
+        a, words = self._line(said, previous, following, tag)
+        if words:   # the timings name the respelled words: give them back their real spelling, word by word
+            real = text.split()
+            if len(real) == len(words):
+                words = [[r, w[1], w[2]] for r, w in zip(real, words)]
+        return a, words
+
+    def _line(self, text, previous="", following="", tag=""):
         import numpy as np
         if self.engine == "eleven":
             a, words, n = elevenlabs.speak(self.voice, text, self.speed, previous, following, tag=tag)
@@ -536,7 +571,7 @@ def synth_dialogue(items, voices, folder):
 
 def dialogue_cached(items, voices, folder):
     """synth_dialogue, but the voices made once for these exact lines, voices and model are reused: a retry costs no characters."""
-    key = hashlib.sha1(json.dumps([[voices.get(x["who"]) or voices["narrator"], x["who"], x["text"], x.get("tag") or ""] for x in items]
+    key = hashlib.sha1(json.dumps([[voices.get(x["who"]) or voices["narrator"], x["who"], respell(x["text"]), x.get("tag") or ""] for x in items]
                                   + [elevenlabs.model()]).encode("utf-8")).hexdigest()[:16]
     cdir = folder / "_voice-cache"
     wav_c, js_c = cdir / f"d-{key}.wav", cdir / f"d-{key}.json"
@@ -551,6 +586,48 @@ def dialogue_cached(items, voices, folder):
     shutil.copy2(out[0], wav_c)
     js_c.write_text(json.dumps({"starts": out[1], "words": out[2], "t": out[3], "wpm": out[4], "segs": out[6]}), encoding="utf-8")
     return out
+
+
+def cold_open_scenes(d):
+    """How many scenes the cold open is: Calina's `cold_open_scenes`, else 1 when the first scene is a sketch (someone on screen
+    talks in it), else 0 (the title card then opens the video)."""
+    n = d.get("cold_open_scenes")
+    if isinstance(n, int) and 0 <= n < len(d["scenes"]):
+        return n
+    first = d["scenes"][0] if d["scenes"] else {}
+    return 1 if any((l.get("who") or "narrator") != "narrator" for l in first.get("lines") or []) else 0
+
+
+def shape_timeline(ffmpeg, raw, starts, words, end, segs, d, ep, folder):
+    """The voice track a little faster (NARR_TEMPO, pitch kept) and a silent gap of TITLE_SECONDS after the cold open, where the
+    picture shows the title card. Every time (scene starts, words, line segments) is moved to match.
+    Returns (raw, starts, words, end, segs, title {from_s, secs, text, place, year})."""
+    import numpy as np
+    import soundfile as sf
+    tempo = max(0.8, min(1.4, float(NARR_TEMPO or 1.0)))
+    out = folder / "_voice_shaped.wav"
+    if abs(tempo - 1.0) > 0.005:
+        shorts.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), "-af", f"atempo={tempo:.4f}", str(out)])
+    else:
+        shutil.copy2(raw, out)
+    a, sr = sf.read(str(out), dtype="float32")
+    k = cold_open_scenes(d)
+    gap = max(0.0, float(TITLE_SECONDS or 0))
+    sc = lambda t: t / tempo   # noqa: E731
+    at = sc(starts[k]) if 0 < k < len(starts) else LEAD
+    at = max(0.0, at - (GAP_SCENE / tempo) / 2) if k else 0.0
+    if gap > 0:
+        cut = int(at * sr)
+        a = np.concatenate([a[:cut], np.zeros(int(gap * sr), dtype="float32"), a[cut:]])
+    sf.write(str(out), a, sr)
+    raw.unlink(missing_ok=True)
+    mv = lambda t: sc(t) + (gap if sc(t) >= at - 1e-6 else 0.0)   # noqa: E731
+    starts = [mv(t) if i >= k else sc(t) for i, t in enumerate(starts)]
+    words = [[w[0], mv(w[1]), mv(w[2])] + list(w[3:]) for w in words]
+    segs = [(mv(x), mv(y), w) for x, y, w in segs]
+    end = mv(end)
+    title = {"from_s": at, "secs": gap, "text": ep.get("title") or "", "place": d.get("place") or "", "year": d.get("year") or ""} if gap > 0 else None
+    return out, starts, words, end, segs, title
 
 
 def speaker_frames(segs, total_frames):
@@ -574,7 +651,7 @@ SFX_AMBIENT_LEVEL = 0.16  # a background sound under a whole moment
 SFX_AMBIENT = {"birds", "wind", "crowd_murmur"}
 SFX_LEVEL = {"footsteps": 0.3, "scroll": 0.3, "coins": 0.32, "pop": 0.28, "tick": 0.3, "thinking": 0.3, "magic": 0.3,
              "crowd_cheer": 0.32, "crowd_laugh": 0.32, "crowd_gasp": 0.36, "crowd_boo": 0.32}
-REFRAME_EVERY = 2.8     # seconds: a stretch with nothing planned gets a camera beat this often
+REFRAME_EVERY = 4.0     # seconds: a stretch with nothing planned gets a cut to another framing this often (2.30.0: was 2.8)
 
 
 def _word_frame(words, start, end, target):
@@ -586,6 +663,77 @@ def _word_frame(words, start, end, target):
     hit = next((w for w in inside if _norm(w[0]) == t), None) or next(
         (w for w in inside if len(t) >= 4 and (_norm(w[0]).startswith(t[:4]) or t.startswith(_norm(w[0])[:4]))), None)
     return round(hit[1] * FPS) if hit else None
+
+
+# the words that name each step of the Earth diagram, when Calina doesn't say (diagram.on_words) which word draws it
+DIAGRAM_WORDS = {"beams": ("rays", "sunlight", "sunbeams", "parallel", "sun"), "rods": ("sticks", "stick", "rods"),
+                 "centre": ("centre", "center", "middle"), "wedge": ("angle", "slice", "degrees", "curve", "curves"),
+                 "label": ("fiftieth", "fifty", "1/50", "circle")}
+
+
+def _first_word_frame(words, start, end, candidates):
+    hits = [f for f in (_word_frame(words, start, end, c) for c in candidates if c) if f is not None]
+    return min(hits) if hits else None
+
+
+def diagram_steps(s, words, start, end):
+    """Frame (from the scene's start) of each step of the Earth diagram: its own `on_words`, else the first word that names
+    it; a step whose word is never said comes after the previous one (never before what it builds on)."""
+    want = (s.get("diagram") or {}).get("on_words") or {}
+    n = max(1, end - start)
+    at, prev = {}, 0
+    defaults = {"beams": 0.05, "rods": 0.25, "centre": 0.45, "wedge": 0.6, "label": 0.75}
+    for step in ("beams", "rods", "centre", "wedge", "label"):
+        own = want.get(step)
+        f = _first_word_frame(words, start, end, [own] if own else DIAGRAM_WORDS[step])
+        rel = (f - start) if f is not None else int(n * defaults[step])
+        rel = max(prev, min(n - 1, rel))
+        at[step] = rel
+        prev = rel
+    return at
+
+
+def rod_steps(p, s, words, start, end):
+    """A rod: its shadow grows on the word that reveals it (`reveal_word`, else the first "shadow" said in the scene), its sunbeam
+    on `beam_word` (else "line", "sunbeam", "sunlight" or "angle"). Unsaid words: the shadow from the start, no beam."""
+    p = dict(p)
+    f = _first_word_frame(words, start, end, [p.get("reveal_word")] if p.get("reveal_word") else ["shadow", "shadows"])
+    p["reveal_at"] = (f - start) if f is not None else 0
+    g = _first_word_frame(words, start, end, [p.get("beam_word")] if p.get("beam_word") else ["line", "sunbeam", "sunlight", "angle"])
+    p["beam_at"] = max(p["reveal_at"] + 20, g - start) if g is not None else None
+    if not p.get("angle_label") and p["beam_at"] is not None:   # the angle the scene's callout names (e.g. "ABOUT 7.2°")
+        m = re.search(r"\d+(?:\.\d+)?\s*°", s.get("callout") or "")
+        if m:
+            p["angle_label"] = m.group(0).replace(" ", "")
+    return p
+
+
+def card_steps(s, words, start, end):
+    """Frame (from the scene's start) at which each line of a card appears: on its `on_word`, else evenly through the scene;
+    never before the line above it."""
+    lines = (s.get("card") or {}).get("lines") or []
+    n = max(1, end - start)
+    out, prev = [], 0
+    for k, l in enumerate(lines):
+        f = _word_frame(words, start, end, (l or {}).get("on_word"))
+        rel = (f - start) if f is not None else int(n * (0.08 + 0.8 * k / max(1, len(lines))))
+        rel = max(prev, min(n - 1, rel))
+        out.append(rel)
+        prev = rel + 6
+    return out
+
+
+def globe_steps(p, s, words, start, end):
+    """A globe cut into slices when the scene talks about slices: `slices` (else 50 when "fifty" is said), on `slice_word`
+    (else the first "slice"/"slices"/"pizza")."""
+    p = dict(p)
+    text = " ".join(l.get("text") or "" for l in s.get("lines") or []) or s.get("voice_line") or ""
+    if not p.get("slices") and re.search(r"\bslices?\b|\bpizza\b", text, re.I):
+        p["slices"] = 50 if re.search(r"\bfift(y|ieth)\b|\b50\b", text, re.I) else 12
+    if p.get("slices"):
+        f = _first_word_frame(words, start, end, [p.get("slice_word")] if p.get("slice_word") else ["slices", "slice", "pizza"])
+        p["slice_at"] = (f - start) if f is not None else int((end - start) * 0.3)
+    return p
 
 
 def _action_beats(who, act, at, back, expression=None):
@@ -709,7 +857,7 @@ def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cu
             for k, _ in enumerate(((s.get("map") or {}).get("pins") or [])[:4]):
                 auto.append(((start + n * 0.5 + k * 7 + 4) / FPS, "pop"))
         # pacing: whatever is planned to change on screen; a long gap gets a camera beat (on whoever is speaking then)
-        moving = s.get("backdrop") in ("map", "diagram") or bool(s.get("generated"))
+        moving = s.get("backdrop") in ("map", "diagram") or bool(s.get("generated")) or i == len(d["scenes"]) - 1
         marks = sorted({0, n} | {h["at"] for h in hits} | {bt["at"] for bt in beats[i]} | ({out_gag["at"], out_gag["at"] + FREEZE_FRAMES} if out_gag and "at" in out_gag else set()))
         if not moving:
             fill = []
@@ -1098,6 +1246,10 @@ def render_episode(eid, voice=None, suffix=""):
         if chars:
             cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": chars, "episode": ep["id"], "what": "short"})
             say(f"  ElevenLabs: {chars} characters used for the voices.")
+    title = None
+    if not own:
+        raw, starts, words, voice_end, segs, title = shape_timeline(ffmpeg, raw, starts, words, voice_end, segs, d, ep, folder)
+        wpm = wpm * NARR_TEMPO
     normalise_voice(ffmpeg, raw, folder / f"voice{suffix}.wav")
     raw.unlink(missing_ok=True)
     voice_secs = shorts.probe_seconds(ffmpeg, folder / f"voice{suffix}.wav")
@@ -1134,6 +1286,18 @@ def render_episode(eid, voice=None, suffix=""):
             sc["gag"] = gags[i]
         if s.get("callout"):   # the callout appears on the word it belongs to, never before it is said
             sc["callout_from"] = callout_frame(s, words, bounds[i], bounds[i + 1])
+        # 2.30.0: the picture follows the words. A diagram draws each step on the word that explains it; a rod's shadow and its
+        # sunbeam appear when they are named (Israa on ep 23: the 7.2 deg wedge showed 30 s before it was said).
+        if s.get("backdrop") == "diagram":
+            sc["diagram"] = {**(s.get("diagram") or {}), "at": diagram_steps(s, words, bounds[i], bounds[i + 1])}
+        if any((p or {}).get("type") == "rod" for p in s.get("props") or []):
+            sc["props"] = [rod_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "rod" else p for p in s.get("props") or []]
+        if s.get("backdrop") == "card" and (s.get("card") or {}).get("lines"):
+            sc["card"] = {**s["card"], "at": card_steps(s, words, bounds[i], bounds[i + 1])}
+        if any((p or {}).get("type") == "globe" for p in s.get("props") or []):
+            sc["props"] = [globe_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "globe" else p for p in sc.get("props") or s.get("props") or []]
+        if i == len(d["scenes"]) - 1:
+            sc["ending"] = True   # the last scene: one slow push-in, no cuts, the music swells into the end card
         scenes.append(sc)
     # the soundtrack: voices + sound effects on their words + the project's music (if the owner picked one), ducked under speech
     music_id = (project.get("meta") or {}).get("music") or ""
@@ -1143,7 +1307,7 @@ def render_episode(eid, voice=None, suffix=""):
             music = sfx.music_path(music_id)
         except (OSError, ValueError) as ex:
             say(f"  The music couldn't be fetched ({str(ex)[:120]}): no music this time.")
-    cues = sorted(script_cues + auto_cues)
+    cues = sorted(script_cues + auto_cues + ([(title["from_s"] + 0.02, "whoosh")] if title else []))
     audio_name = f"voice{suffix}.wav"
     if music or cues:
         say(f"  Sound: {len(cues)} effect(s) ({len(auto_cues)} on actions and gags)" + (f", music: {sfx.MUSIC[music_id][0]}" if music else ", no music (none picked)"))
@@ -1161,6 +1325,8 @@ def render_episode(eid, voice=None, suffix=""):
         "intro": {"place": short_place(d.get("place") or ""), "year": (d.get("year") or "").upper()},
         "outro": {"channel": ch.get("name") or "POV Then History", "handle": ch.get("handle") or "@POVThenHistory"},
         "outro_from": round(end_t * FPS),
+        **({"title": {"from": round(title["from_s"] * FPS), "frames": round(title["secs"] * FPS), "text": title["text"],
+                      "place": short_place(title["place"]), "year": (title["year"] or "").upper()}} if title else {}),
         "caption_chunks": caption_chunks(words),
         "scenes": scenes,
         "pacing": pacing,

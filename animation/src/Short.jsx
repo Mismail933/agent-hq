@@ -7,7 +7,7 @@ import {Character, Crowd, reach} from './Character';
 import {MapIntro} from './MapIntro';
 import {Diagram} from './Diagram';
 import {Rod, Globe, Callout} from './Extras';
-import {Captions, TitleCard, Outro} from './Overlays';
+import {Captions, TitleCard, EpisodeTitle, Outro} from './Overlays';
 import GENERATED from './generated/index.js';
 
 /*
@@ -28,8 +28,8 @@ const PACE = 70;      // frames a 'pace' action walks on the spot (the bematist'
 // - one scale for everybody in a scene (only a person's own `tall` differs), so nobody shrinks because his arm is out;
 // - side by side with a real gap, facing each other; an arm may reach towards the other, a body never covers another body;
 // - a crowd stands further back, smaller, with its heads near the cast's eye line (an eye-level camera), never in front.
-const FLOOR = {court: 1130, library: 1180, street: 1150, desert: 1200, study: 1100, nile: 1240, well: 1160};
-const FEET = {court: 1430, library: 1460, street: 1440, desert: 1470, study: 1400, nile: 1480, well: 1440};
+const FLOOR = {court: 1130, library: 1180, street: 1150, desert: 1200, study: 1100, nile: 1240, well: 1160, well_side: 860, card: 1150};
+const FEET = {court: 1430, library: 1460, street: 1440, desert: 1470, study: 1400, nile: 1480, well: 1440, well_side: 900, card: 1440};
 const BASE_SCALE = [1.3, 1.3, 1.15, 0.98, 0.86]; // by the number of people on screen
 const GAP = 70;       // px between two bodies
 const HEIGHT = 612;   // a figure's height at scale 1 (head top), before its own `tall`
@@ -194,12 +194,15 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const items = [
     ...cast.map((c) => {
       const poses = [c.pose || 'stand', ...beats.filter((b) => b.who === c.who && b.pose).map((b) => b.pose)];
-      return {b: bodyOf(c.who, poses, noProp), want: c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'], facing0: c.facing || 0};
+      // beside the well's mouth, never on it (well_side): people stand left or right of the shaft
+      const want = scene.backdrop === 'well_side' && c.x == null ? (c.at === 'right' ? 880 : 210) : c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'];
+      return {b: bodyOf(c.who, poses, noProp), want, facing0: c.facing || 0};
     }),
     ...rodsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
       b: {half: 30 * ROD_K, back: (60 + 360 * (p.shadow ?? 0.5)) * ROD_K, front: 120 * ROD_K, top: 320 * ROD_K}})),
   ];
   const {scale: sc, placed} = stage(items, feet, topLimit);
+  if (scene.backdrop === 'well_side') items.forEach((it, i) => { if (!it.prop) placed[i].x = it.want; });   // keep them off the shaft
   const chars = cast.map((c, i) => {
     const {back, front, top} = items[i].b;
     const facing = placed[i].facing;
@@ -223,6 +226,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
   const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: rodX[rk++], y: feet, scale: sc * ROD_K} : p));
   const xs = [...chars.flatMap((c) => [c.x - c.r.left * c.scale, c.x + c.r.right * c.scale]), ...props.filter((p) => p.type === 'rod').flatMap((p) => [p.x - rodShadow(p), p.x + 120 * sc * ROD_K]),
     ...props.filter((p) => p.type === 'globe').flatMap((p) => [(p.x ?? 540) - (p.r ?? 150), (p.x ?? 540) + (p.r ?? 150)])];
+  if (scene.backdrop === 'well_side') xs.push(370, 710);   // the well itself is the subject too: keep the shaft in the shot
   const minX = xs.length ? Math.min(...xs) : W / 2;
   const maxX = xs.length ? Math.max(...xs) : W / 2;
   const focus = [(minX + maxX) / 2, H / 2];
@@ -235,7 +239,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
     const r = c.x + c.r.right * c.scale;
     subjects[c.who] = {focus: (l + r) / 2, spread: (r - l) / 2, topY: c.y - c.r.top * c.scale};
   });
-  const hits = (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
+  const hits = scene.ending ? [] : (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
   const Back = BACKDROPS[scene.backdrop];
   const t = easeOut(clamp01(frame / TRANSITION));
   // OverSimplified cuts: a plain cut between scenes (the movement is inside the shot); a whip only into a cutaway or when the
@@ -264,11 +268,11 @@ const Scene = ({scene, mouth, speaker, index}) => {
       {isMap && <MapIntro map={scene.map || {focus: [30, 30], zoom: 20}} frame={frame} frames={scene.frames} />}
       {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame} frames={scene.frames} />}
       {!isMap && !isDiagram && (
-        <Camera move={scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit} hits={hits}>
-          {Back && <Back frame={frame} tone={scene.tone} />}
+        <Camera move={scene.ending ? 'ending' : scene.camera || 'push_in'} frame={frame} frames={scene.frames} focus={focus} spread={spread} topY={topY} topLimit={topLimit} hits={hits}>
+          {Back && <Back frame={frame} tone={scene.tone} scene={scene} />}
           {props.map((p, i) => {
-            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={p.shadow ?? 0.5} scale={p.scale} />;
-            if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} />;
+            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={p.shadow ?? 0.5} scale={p.scale} revealAt={p.reveal_at ?? 0} beamAt={p.beam_at ?? null} label={p.angle_label || null} />;
+            if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} slices={p.slices || 0} sliceAt={p.slice_at ?? null} />;
             return null;
           })}
           {scene.crowd && (() => {
@@ -291,7 +295,8 @@ const Scene = ({scene, mouth, speaker, index}) => {
             return (
               <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} look={lookOf(c)}
                 x={x} y={c.y} scale={c.scale} mouth={mouthOf(c)} frame={frame} enterAt={st.walkIn !== null ? -1000 : 4 + i * 6} seed={i + index}
-                facing={facing} walking={walking} action={st.action} actionAge={st.actionAge} noProp={noProp} />
+                facing={facing} walking={walking} action={st.action} actionAge={st.actionAge} noProp={noProp}
+                speaking={who === null ? null : who === c.who} />
             );
           })}
         </Camera>
@@ -334,7 +339,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
 
 export const Short = (props) => {
   const frame = useCurrentFrame();
-  const {scenes, mouth = [], speaker = null, intro, outro, caption_chunks: chunks = [], outro_from: outroFrom, audio} = props;
+  const {scenes, mouth = [], speaker = null, intro, outro, caption_chunks: chunks = [], outro_from: outroFrom, audio, title = null} = props;
   return (
     <AbsoluteFill style={{backgroundColor: C.ink}}>
       {audio && <Audio src={staticFile(audio)} />}
@@ -343,10 +348,17 @@ export const Short = (props) => {
           <Scene scene={s} mouth={mouth} speaker={speaker} index={i} />
         </Sequence>
       ))}
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>
-        {intro && <TitleCard intro={intro} frame={frame} />}
-      </svg>
+      {!title && (
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>
+          {intro && <TitleCard intro={intro} frame={frame} />}
+        </svg>
+      )}
       <Captions chunks={chunks} frame={frame} />
+      {title && frame >= title.from && frame < title.from + title.frames && (
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>
+          <EpisodeTitle title={title} frame={frame - title.from} />
+        </svg>
+      )}
       {outro && frame >= outroFrom && (
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>
           <Outro outro={outro} frame={frame - outroFrom} />

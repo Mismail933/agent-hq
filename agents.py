@@ -684,6 +684,20 @@ MOVE AND TIME IT LIKE OVERSIMPLIFIED (the owner's bar for the animation: its com
   * Other beats, rarely and never blurring a fact: a FREEZE-FRAME LABEL naming someone, a CUTAWAY ("MEANWHILE..."), the narrator
     INTERRUPTED by a character (end his line with a dash), a DEADPAN pause before a punchline (camera and music stop).
 - Scenes CUT from one to the next (the default; the movement is inside the shot). Use transition "whip" only into a cutaway.
+
+THE SHAPE OF THE VIDEO (the owner, after ep 23: "monotone and boring", "the narrator talks while the people just wait", "it starts
+and ends suddenly"; the Builder checked OverSimplified's Second Punic War part 1, see animation/COMEDY-GUIDE.md section 7)
+- COLD OPEN: scene 1 (or scenes 1-2, set "cold_open_scenes") is a SKETCH that drops us into the story: characters talking, a
+  conflict, ending on a punchline. No narrator in it, or one short line at most. The engine then cuts to a full-screen title card
+  with a music sting, and only THEN does the narrator start ("Two hundred and forty years before Christ, in Alexandria...").
+- NARRATION IS ALWAYS ILLUSTRATED. Never write a narrator passage over characters who just stand there (checked in code: more than
+  25 narrator words in a scene with characters, and they don't act it out, sends the script back). Put each narrated step on a
+  picture that SHOWS it: a map (the place, a route), the diagram (the reasoning, step by step), a card (numbers and sums written on
+  their words), well_side (the sunlight at the bottom of the well), a globe cut into slices, or the characters DOING what is narrated
+  (a walker pacing, a man setting up a stick). Characters appear when they TALK: that is a sketch scene.
+- A SKETCH scene: the characters' lines, at most one short narrator line as a lead-in or a deadpan button at the end.
+- THE ENDING SLOWS DOWN: the last scene is calm. The narrator's last line lands the meaning slowly; a character may add one short
+  button line; nothing after it. The engine pushes in slowly and lets the music carry the end card. Never end on a rushed joke.
 - Every action gets its sound (footsteps, boing, gulp, slap, whoosh are added for you); add an effect yourself only under the
   SOUND EFFECTS rule above.
 
@@ -735,6 +749,7 @@ SOURCES AND SAFETY
 
 THE KIT (use only these names; the engine rejects anything else)
 - backdrop: court (sunlit colonnaded courtyard by the sea; tone noon|sunset|night), library (scroll shelves, indoors),
+  card (a plain card for numbers and sums, see below), well_side (the well cut away from the side, see below),
   nile (river, palms, dunes), well (looking down a well), study (lamplit desk at dusk), street (an Alexandria street: houses,
   a market stall, the lighthouse at the end; tone noon|sunset|night), desert (a desert road with a caravan on the dunes; tone),
   map (real map: the camera flies
@@ -767,7 +782,18 @@ THE KIT (use only these names; the engine rejects anything else)
 - crowd (optional): {{"size": 3-8, "reaction": idle | cheer | gasp | laugh | murmur | angry | scared}}: townspeople behind the cast.
 - sfx (optional): [{{"name": one of the menu, "on_word": the exact word it lands on (or leave it out to open the scene)}}]. Menu:
   {sfx_menu}.
-- props: {{"type": "rod", "x": 300, "shadow": 0-1}} on court scenes; {{"type": "globe", "x": 780, "y": 900, "r": 170}}.
+- props: {{"type": "rod", "x": 300, "shadow": 0-1, "reveal_word": the word on which its shadow appears (default "shadow"),
+  "beam_word": the word on which the sunbeam and the angle are drawn (default "line"/"sunbeam"/"angle"), "angle_label": "7.2°"}} on
+  court scenes; {{"type": "globe", "x": 540, "y": 900, "r": 260, "slices": 50, "slice_word": "slices"}} (the globe cut into equal
+  slices on that word, one highlighted).
+- card (backdrop "card"): {{"title": "THE MATHS", "lines": [{{"text": "5,000 stadia x 50", "on_word": "fifty"}},
+  {{"text": "= 250,000 stadia", "on_word": "two"}}]}}: up to five short lines (sums, numbers, a label) written on their words.
+  Use it whenever the narrator does arithmetic or gives numbers.
+- well_side (backdrop): the well cut away from the side, the stone shaft going down to the water and the noon sunlight reaching
+  the bottom; people stand on the ground beside it.
+- diagram "on_words" (optional): {{"beams": "parallel", "rods": "stick", "centre": "centre", "wedge": "angle", "label": "fiftieth"}}:
+  the word on which each step is drawn (beams, the two sticks, the sticks pushed down to the centre, the angle, the 1/50 label).
+  Without it the engine finds those words itself. Never let the picture run ahead of the words.
 - callout: a few big words popped on screen (a number, a name, the line to remember), at most 22 characters, with callout_word.
   Map scenes use map.focus; every other scene should use a different backdrop from the one before it.
 
@@ -816,6 +842,7 @@ SCENE_SCHEMA = {"type": "object", "properties": {
     "callout": {"type": "string"},
     "callout_word": {"type": "string", "description": "The exact word in the scene's lines the callout should appear on"},
     "map": {"type": "object"}, "diagram": {"type": "object"},
+    "card": {"type": "object", "description": "backdrop card only: {title, lines: [{text, on_word}]} (sums, numbers, labels written on their words)"},
     "source_note": {"type": "string", "description": "Which source supports this scene's fact"}},
     "required": ["n", "lines", "shows", "link", "step_claim", "backdrop", "source_note"]}
 EPISODE_SCHEMA_V3 = {
@@ -835,6 +862,7 @@ EPISODE_SCHEMA_V3 = {
             "question_answered_in_scene": {"type": "integer", "description": "The scene number that answers the hook's question: one of the last three"}},
             "required": ["once", "every_day", "one_day", "because1", "because2", "finally", "question_answered_in_scene"]},
         "surprising_fact": {"type": "string"},
+        "cold_open_scenes": {"type": "integer", "description": "How many scenes the cold-open sketch takes (usually 1); the title card comes after them"},
         "scenes": {"type": "array", "items": SCENE_SCHEMA},
         "voice_direction": {"type": "string"},
         "kit_requests": {"type": "array", "items": {"type": "string"}, "description": "Backdrops/props/poses this story needs that the kit lacks"},
