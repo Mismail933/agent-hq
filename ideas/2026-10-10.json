@@ -139,17 +139,6 @@
    "why": "One 0-star repo"
   }
  ],
- "repo_watch": [
-  {
-   "name": "buildwithclaude/buildwithclaude",
-   "url": "https://github.com/davepoon/buildwithclaude",
-   "licence": "MIT",
-   "stars": 3609,
-   "last_commit": "2026-10-09",
-   "verdict": "watch",
-   "fit": "Directory of skills/agents; reference when hiring, like agency-agents",
-   "why": "Active; a list, nothing to adopt now. Repo path not opened, so unverified."
-  }
- ],
+ "repo_watch": [],
  "ideas": []
 }

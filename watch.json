@@ -71,13 +71,6 @@
    "verdict": "watch",
    "checked": "2026-10-09",
    "note": "MIT; tests whether skills/MCPs earn their tokens."
-  },
-  "davepoon/buildwithclaude": {
-   "stars": 3609,
-   "last_commit": "2026-10-09",
-   "verdict": "watch",
-   "checked": "2026-10-10",
-   "note": "MIT directory of skills/agents; reference only (repo owner path unverified)."
   }
  }
 }
