@@ -371,11 +371,32 @@ def build(req, say_owner, anim_free=lambda: True):
         STATUS.update(state="idle", request="", since=time.time())
 
 
-def ship(anim_free=lambda: True):
-    """The owner clicked Ship: put the waiting change on GitHub (the updater brings it to his PC). Returns (ok, message)."""
+# 2.34.0: Atlas may ship (rule atlas.ships, the owner's own switch) unless the change touches one of these: money, keys, limits,
+# uploads, the updater, the guardrails, the phone, Atlas's own tools and the rules (those always wait for the owner's click)
+ATLAS_MAY_NOT_SHIP = {"server.py", "phone.py", "hq.py", "rules.py", "agents.py", "atlas/CLAUDE.md", "atlas/CLOUD.md"}
+
+
+def atlas_may_ship(p):
+    """'' when Atlas may ship the waiting change p, else why not."""
+    files = set(p.get("files") or [])
+    if not files:
+        try:
+            files = set(_git("diff", "--name-only", "origin/main", p["branch"]).split())
+        except Exception:
+            return "the changed files couldn't be read"
+    bad = sorted(f for f in files if f in PROTECTED or f in ATLAS_MAY_NOT_SHIP)
+    return ("it touches " + ", ".join(bad) + " (always the owner's click)") if bad else ""
+
+
+def ship(anim_free=lambda: True, by="owner"):
+    """Ship the waiting change: put it on GitHub (the updater brings it to his PC). by: "owner" or "atlas". Returns (ok, message)."""
     p = pending()
     if not p:
         return False, "There is no change waiting."
+    if by == "atlas":
+        why_not = atlas_may_ship(p)
+        if why_not:
+            return False, f"Atlas may not ship this one: {why_not}. It waits for the owner's Ship click."
     with LOCK:
         try:
             _git("checkout", "--quiet", "-f", p["branch"])
@@ -392,7 +413,7 @@ def ship(anim_free=lambda: True):
             base = _git("rev-parse", "origin/main").strip()
             version = bump_version()
             _git("add", "VERSION")
-            _git("commit", "-q", "-m", f"Version {version} (Ghassan: {p['title'][:60]}, shipped by the owner)")
+            _git("commit", "-q", "-m", f"Version {version} (Ghassan: {p['title'][:60]}, shipped by {'Atlas' if by == 'atlas' else 'the owner'})")
             _git("push", "--quiet", "origin", "HEAD:main", timeout=300)
             sha = _git("rev-parse", "HEAD").strip()
             LAST_SHIP.update(base=base, sha=sha, version=version)
@@ -403,10 +424,42 @@ def ship(anim_free=lambda: True):
         PENDING.unlink(missing_ok=True)
         req = _req_by_title(p["title"])
         if req:
-            set_status(req, "done", f"Ghassan: {p['summary']} (shipped by the owner as {version}, {time.strftime('%Y-%m-%d %H:%M')})"
+            set_status(req, "done", f"Ghassan: {p['summary']} (shipped by {'Atlas' if by == 'atlas' else 'the owner'} as {version}, {time.strftime('%Y-%m-%d %H:%M')})"
                        + (f" Note for Atlas: {p['notes'].strip()}" if p.get("notes") else ""))
-        cp.log("Owner", "ghassan_shipped", None, {"title": p["title"][:200], "version": version, "commit": sha})
+        cp.log("Atlas" if by == "atlas" else "Owner", "ghassan_shipped", None, {"title": p["title"][:200], "version": version, "commit": sha, "by": by})
+        UNDO.update(base=base, sha=sha, version=version, title=p["title"][:200])
         return True, f"Shipped {version}."
+
+
+UNDO = {}   # the last ship, for the owner's /undo
+
+
+def undo():
+    """The owner's /undo: put the code back as it was before the last ship (a new version that reverts it). Returns (ok, message)."""
+    u = dict(UNDO)
+    if not u:
+        return False, "There is no recent ship to undo (since the office started)."
+    with LOCK:
+        try:
+            _git("checkout", "--quiet", "-f", "main")
+            _git("fetch", "--quiet", "origin")
+            _git("reset", "--quiet", "--hard", "origin/main")
+            code, out = _run(["git", "revert", "--no-edit", f"{u['base']}..{u['sha']}"])
+            if code:
+                _run(["git", "revert", "--abort"])
+                return False, "Newer changes sit on top of it, so it can't be undone automatically. Ask the Builder chat."
+            base = _git("rev-parse", "origin/main").strip()
+            version = bump_version()
+            _git("add", "VERSION")
+            _git("commit", "-q", "-m", f"Version {version} (undo of {u['version']}: {u['title'][:60]}, by the owner)")
+            _git("push", "--quiet", "origin", "HEAD:main", timeout=300)
+            sha = _git("rev-parse", "HEAD").strip()
+            LAST_SHIP.update(base=base, sha=sha, version=version)
+        except Exception as e:
+            return False, f"The undo failed, nothing changed: {str(e)[:300]}"
+    UNDO.clear()
+    cp.log("Owner", "ghassan_undone", None, {"undid": u["version"], "version": version})
+    return True, f"Undone: {u['version']} is rolled back as {version}."
 
 
 # ---- installing a shipped change without a restart (2.23.0) --------------------------------------------------------------

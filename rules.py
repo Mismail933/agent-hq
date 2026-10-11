@@ -66,6 +66,10 @@ RULES = {
     "check.length": _r("Review & quality", "bool", True, None, None, "The word/scene limits block a script (off = advice only)"),
     "jobs.calina_timeout_minutes": _r("Team & schedules", "int", 40, 10, 120, "How long one of Calina's script runs may take on Claude Code (Fable writes slower)"),
     "calina.api_fallback_scenes": _r("Team & schedules", "bool", False, None, None, "Let Calina fall back to the paid API for animated scene files (off: they are too long for it and fail)"),
+    "atlas.autopilot": _r("Team & schedules", "bool", False, None, None, "Autopilot: the office wakes Atlas by itself (when work finishes, and every few minutes) so work keeps moving while the owner is away"),
+    "atlas.autopilot_minutes": _r("Team & schedules", "int", 20, 5, 240, "Autopilot: wake Atlas at least this often (minutes) while there is something to move"),
+    "atlas.autopilot_approve": _r("Team & schedules", "bool", False, None, None, "Autopilot may approve a script Israa PASSED and render it (OWNER ONLY; nothing is ever uploaded without the owner)"),
+    "atlas.ships": _r("Team & schedules", "bool", False, None, None, "Atlas may ship Ghassan's checked changes without the owner's click (OWNER ONLY; never money, keys, limits, uploads, the updater or the guardrails; /undo on the phone)"),
     "rana.bespoke": _r("Review & quality", "bool", True, None, None, "Rana draws the scenes Calina marks 'bespoke' before a render (off = the kit draws them)"),
     "check.narration": _r("Review & quality", "bool", True, None, None, "A scene where the narrator talks at length while characters just stand there blocks a script (off = advice only)"),
     "check.stranger_script": _r("Review & quality", "bool", True, None, None, "The stranger test on scripts (off = not run)"),
@@ -223,8 +227,13 @@ def _short(v):
     return s if len(s) <= 300 else s[:300] + f"... ({len(s):,} characters)"
 
 
+OWNER_ONLY = {"atlas.autopilot_approve", "atlas.ships"}   # 2.34.0: delegations only the owner grants or takes back
+
+
 def set(key, value, by="Atlas", why=""):   # noqa: A001 (rules.set reads well at the call sites)
     """Returns (old, new). Logged with who and why; applied at once in this process."""
+    if key in OWNER_ONLY and by != "Owner":
+        raise ValueError(f"Only the owner can change {key} (a delegation he grants himself).")
     v = parse(key, value)
     old = get(key)
     _write(key, v, by, why)

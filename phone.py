@@ -539,6 +539,7 @@ HELP = ("I'm your Agent HQ on the phone.\n\n"
         "• Write anything and Atlas answers (photos too).\n"
         "• /today: everything that waits for you, with buttons; or one kind: /today ghassan, videos, characters, scripts, ideas, plans, voices\n"
         "• /status: who is working and today's spend\n"
+        "• /undo: roll back the last code change that was shipped (by Atlas or by you)\n"
         "• /stop: stop every agent (the kill switch), /resume to start again\n"
         "• /quiet: only what needs you and finished videos, grouped, with quiet hours at night and a morning digest (the default)\n"
         "• /all: every office update, as it happens\n"
@@ -575,6 +576,9 @@ def on_message(m):
         return
     if cmd == "/status":
         return _send_html(status_text(), None, chat)
+    if cmd == "/undo":   # 2.34.0: roll back the last change Atlas (or the owner) shipped
+        ok, msg = office("/api/ghassan/undo", {"by": "owner"})
+        return send(msg, chat=chat, plain=True)
     if cmd == "/stop":
         return _send_html("<b>Stop every agent?</b> Nothing runs until you resume.", [[("🛑 Yes, stop them", "STOP!:"), ("Cancel", "NO")]], chat)
     if cmd == "/resume":

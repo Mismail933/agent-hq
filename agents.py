@@ -1163,7 +1163,7 @@ def _calina_write(p, system, task, tool=None):
     return got
 
 
-def decide_episode(eid, action, note=""):
+def decide_episode(eid, action, note="", by="Owner"):
     e = cp.get_episode(int(eid))
     if not e:
         return f"No episode {eid}."
@@ -1176,7 +1176,7 @@ def decide_episode(eid, action, note=""):
         return f"Unknown decision '{action}'."
     status = "approved" if action == "approve" else "rejected"
     cp.update_episode(e["id"], status=status, owner_note=(note or "")[:1000])
-    cp.log("Owner", f"episode_{status}", None, {"episode": e["id"], "title": e["title"], "note": note or ""})
+    cp.log(by, f"episode_{status}", None, {"episode": e["id"], "title": e["title"], "note": note or "", "by": by})
     return f"Episode {e['id']} {status}: {e['title']}"
 
 

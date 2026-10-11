@@ -1381,6 +1381,65 @@ def save_uploads(items):
     return names
 
 
+# ---- Atlas autopilot (2.34.0, the owner's yes in the Builder chat, 2026-10-11) -----------------------------------------------
+# The office wakes Atlas by itself: when work finishes or fails (WAKE_KINDS) and at least every atlas.autopilot_minutes while
+# something waits. He acts within the owner's standing orders (atlas-journal.md). Quiet: his autopilot replies go to the office
+# chat, never to the phone (he sends the owner something himself only when it matters). Rules in atlas/CLAUDE.md.
+WAKE_KINDS = ("video_ready", "video_reviewed", "video_failed", "batch_ready", "script_reviewed", "halted", "bespoke_failed",
+              "ready_to_ship", "ghassan_shipped", "job_given_up")
+AUTOPILOT = {"last_wake": 0.0, "last_event": 0, "wakes": 0}
+
+
+def autopilot_brief(new_events):
+    lines = [f"- {time.strftime('%H:%M', time.localtime(e['ts']))} {e['agent']} {e['kind']} {json.dumps(e.get('detail') or {})[:220]}"
+             for e in new_events[-25:]]
+    approve = ("You MAY approve a script whose Israa verdict is 'pass' and render it (`hq autopilot-approve <id>`, then `hq render <id>`)."
+               if rules.get("atlas.autopilot_approve") else "You may NOT approve scripts: they wait for the owner.")
+    return ("[AUTOPILOT: the office woke you by itself; the owner is not reading this. Act within his standing orders in your "
+            "journal. Take the NEXT step only (start, retry, review, render, report); one thing at a time; never upload, never "
+            "spend money, never change limits or the owner-only rules. " + approve + " If a video is finished AND Israa checked "
+            "it, send it to the owner's phone with her verdict in one line. If nothing needs doing, answer only 'Nothing to do.']\n"
+            "What happened since your last wake:\n" + ("\n".join(lines) if lines else "- nothing new"))
+
+
+def autopilot_loop():
+    time.sleep(90)
+    while True:
+        try:
+            rules.apply_all()
+            if rules.get("atlas.autopilot") and not RESTARTING["on"] and not cp.STOP_FILE.exists():
+                with cp._db() as con:
+                    rows = con.execute("SELECT id, ts, agent, kind, detail FROM events WHERE id > ? ORDER BY id",
+                                       (AUTOPILOT["last_event"],)).fetchall()
+                new = [{"id": r[0], "ts": r[1], "agent": r[2], "kind": r[3], "detail": json.loads(r[4] or "{}")} for r in rows]
+                if not AUTOPILOT["last_event"]:   # first pass after a start: only what happens from now on
+                    AUTOPILOT["last_event"] = new[-1]["id"] if new else 0
+                    new = []
+                wake = any(e["kind"] in WAKE_KINDS for e in new) or \
+                    (time.time() - AUTOPILOT["last_wake"] > rules.get("atlas.autopilot_minutes") * 60 and (bool(new) or not office_idle()))
+                with LOCK:
+                    busy = STATE["busy"]
+                if wake and not busy:
+                    with LOCK:
+                        STATE["busy"] = True
+                    AUTOPILOT.update(last_wake=time.time(), last_event=new[-1]["id"] if new else AUTOPILOT["last_event"])
+                    AUTOPILOT["wakes"] += 1
+                    cp.log("Atlas", "autopilot_wake", None, {"events": len(new)})
+                    try:
+                        reply = ask_atlas(autopilot_brief([e for e in new if e["kind"] not in ("model_call", "autopilot_wake")]))
+                    except Exception as e:  # noqa: BLE001
+                        reply = f"(autopilot wake failed: {e})"
+                    with LOCK:
+                        if reply and reply.strip().rstrip(".").lower() != "nothing to do":
+                            CHAT.append({"from": "atlas", "ts": time.time(), "text": "(Autopilot) " + reply})
+                        STATE["busy"] = False
+        except Exception as e:  # noqa: BLE001
+            print("autopilot:", repr(e), flush=True)
+            with LOCK:
+                STATE["busy"] = False
+        time.sleep(60)
+
+
 def run_chat(text):
     cp.log("Atlas", "chat_received", None, {"text": text[:200]})
     try:
@@ -1657,15 +1716,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(409, {"error": f"Ghassan is already building: {ghassan.STATUS.get('request')}."})
             threading.Thread(target=ghassan.turn, args=(atlas_says,), kwargs={"anim_free": lambda: not anim_busy()}, daemon=True).start()
             return self._send(202, {"ok": True, "message": "Ghassan is checking Atlas's requests."})
-        if u.path in ("/api/ghassan/ship", "/api/ghassan/discard"):   # only the owner's click ships Ghassan's change
+        if u.path == "/api/ghassan/undo":   # the owner's /undo on the phone: roll the last ship back
+            if self._json_body().get("by") != "owner":
+                return self._send(403, {"error": "Only the owner undoes a ship."})
+            SHIPPING["on"] = True
+            ok, msg = ghassan.undo()
+            if ok:
+                threading.Thread(target=after_ship, daemon=True).start()
+            else:
+                SHIPPING["on"] = False
+            return self._send(200 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
+        if u.path in ("/api/ghassan/ship", "/api/ghassan/discard"):   # the owner's click ships; Atlas too when the owner allowed it
             body = self._json_body()
-            if body.get("by") != "owner":
-                return self._send(403, {"error": "Only the owner ships or discards Ghassan's changes, from the office."})
+            by = "owner" if body.get("by") == "owner" else "atlas"
+            if by == "atlas" and not rules.get("atlas.ships"):
+                return self._send(403, {"error": "Only the owner ships or discards Ghassan's changes (rule atlas.ships is off)."})
             if u.path.endswith("ship"):
                 SHIPPING["on"] = True
-                ok, msg = ghassan.ship(anim_free=lambda: not anim_busy())
+                ok, msg = ghassan.ship(anim_free=lambda: not anim_busy(), by=by)
                 if ok:
                     threading.Thread(target=after_ship, daemon=True).start()
+                    if by == "atlas":
+                        phone.notify(f"🚢 Atlas shipped a change by Ghassan: {msg} Reply /undo to roll it back.")
                 else:
                     SHIPPING["on"] = False
             else:
@@ -2040,7 +2112,16 @@ class Handler(BaseHTTPRequestHandler):
                 msg = agents.mark_published(eid)
                 ok = msg.startswith(f"Episode {eid} marked")
                 return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
-            msg = agents.decide_episode(eid, action, clip(self._json_body().get("note", ""), "note")[0])
+            body = self._json_body()
+            if body.get("by") == "autopilot":   # 2.34.0: Atlas on autopilot may approve ONLY a script Israa passed (owner's rule)
+                e0 = cp.get_episode(eid)
+                if action != "approve" or not rules.get("atlas.autopilot_approve"):
+                    return self._send(403, {"error": "The autopilot may only approve, and only while the owner allows it (rule atlas.autopilot_approve)."})
+                if not e0 or ((e0["data"].get("review") or {}).get("verdict") != "pass"):
+                    return self._send(409, {"error": "Not approved: Israa hasn't passed this script. It waits for the owner."})
+                msg = agents.decide_episode(eid, "approve", "Approved by Atlas on autopilot (Israa passed it)", by="Atlas")
+            else:
+                msg = agents.decide_episode(eid, action, clip(body.get("note", ""), "note")[0])
             e = cp.get_episode(eid)
             ok = e is not None and e["status"] in ("approved", "rejected") and msg.startswith(f"Episode {eid} ")
             return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
@@ -2286,6 +2367,8 @@ def main():
     print("  Close this window to stop everything.\n", flush=True)
     threading.Thread(target=scheduler, daemon=True).start()
     threading.Thread(target=ghassan_loop, daemon=True).start()
+    if os.environ.get("HQ_SIMULATE") != "1":
+        threading.Thread(target=autopilot_loop, daemon=True).start()
     phone.STATUS_FN[0] = working_now
     phone.PROVIDERS.append(phone_cards)
     phone.PROVIDERS.append(design_cards)

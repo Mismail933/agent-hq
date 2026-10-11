@@ -361,9 +361,29 @@ def main(argv):
         elif cmd in ("do-not-upload", "allow-upload"):   # hq do-not-upload <episode> "why": a duplicate or superseded Short must not go live
             code, reply = office(f"/api/episode/{int(args[0])}/{cmd}", {"reason": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
-        elif cmd == "ghassan":   # hq ghassan [status | now]: the in-house Builder (only the owner ships his changes, in the office)
-            if (args[0] if args else "status") == "now":
+        elif cmd == "autopilot-approve":   # hq autopilot-approve <id>: on autopilot, approve a script ISRAA PASSED (owner's rule)
+            code, reply = office(f"/api/episode/{int(args[0])}/approve", {"by": "autopilot"})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "autopilot":   # hq autopilot [on | off | status]: the office wakes you by itself while the owner is away
+            sub = args[0] if args else "status"
+            if sub in ("on", "off"):
+                code, reply = office("/api/rules", {"key": "atlas.autopilot", "action": "set", "value": sub == "on", "why": "hq autopilot"})
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+            else:
+                import rules
+                show({k: rules.get(k) for k in ("atlas.autopilot", "atlas.autopilot_minutes", "atlas.autopilot_approve", "atlas.ships")})
+        elif cmd == "ghassan":   # hq ghassan [status | now | diff | ship | discard "why"]: the in-house Builder
+            sub = args[0] if args else "status"
+            if sub == "now":
                 code, reply = office("/api/ghassan/now", {})
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+            elif sub == "diff":   # read this BEFORE shipping: what the waiting change touches
+                import ghassan
+                p = ghassan.pending()
+                show({"title": p.get("title"), "summary": p.get("summary"), "files": p.get("files"), "stat": p.get("stat"),
+                      "atlas_may_ship": ghassan.atlas_may_ship(p) or "yes"} if p else "No change is waiting.")
+            elif sub in ("ship", "discard"):   # only while the owner allows it (rule atlas.ships); never money/keys/limits/uploads/guardrails
+                code, reply = office(f"/api/ghassan/{sub}", {"reason": " ".join(args[1:])})
                 show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
             else:
                 port = (ROOT / ".port").read_text().strip() if (ROOT / ".port").exists() else os.environ.get("HQ_PORT", "8765")

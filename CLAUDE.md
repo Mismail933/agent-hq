@@ -395,6 +395,21 @@ Agents never spend money without the owner's explicit approval.
   half a second; the freeze label never runs off the screen; the title card's kicker clears the title; diagram people at x 200.
   2.33.1: `phone.send_file` refuses an episode's video while a render of that episode is running or queued (`_rerendering`): Atlas
   sent the owner ep 28's old cut while the corrected one was rendering (and ep 24 twice). The reason goes back to Atlas.
+  2.34.0 Atlas autopilot + Atlas shipping (the owner's explicit yes in the Builder chat, 2026-10-11: shipping on, and the
+  autopilot may "also approve and render"):
+  - Rules `atlas.autopilot` (on/off, Atlas may flip it: `hq autopilot on|off|status`), `atlas.autopilot_minutes` (20),
+    `atlas.autopilot_approve` and `atlas.ships` (both in `rules.OWNER_ONLY`: `rules.set` refuses anyone but "Owner").
+  - `server.autopilot_loop` (not in practice mode): every minute; wakes Atlas (`ask_atlas(autopilot_brief(...))`, STATE busy) on
+    any WAKE_KINDS event (video_ready/reviewed/failed, batch_ready, script_reviewed, halted, bespoke_failed, ready_to_ship,
+    ghassan_shipped, job_given_up) or every N minutes while something happened or a job runs; logged `autopilot_wake`; replies go
+    to the office chat as "(Autopilot) ...", never the phone ("Nothing to do." is dropped).
+  - `POST /api/episode/<id>/approve {by: autopilot}` (`hq autopilot-approve <id>`): only with atlas.autopilot_approve on and
+    Israa's verdict "pass"; logged as Atlas. `agents.decide_episode(..., by=)`.
+  - Shipping: `/api/ghassan/ship|discard` accept Atlas when atlas.ships is on; `ghassan.atlas_may_ship` refuses changes touching
+    PROTECTED or ATLAS_MAY_NOT_SHIP (server.py, phone.py, hq.py, rules.py, agents.py, atlas/*); `hq ghassan diff|ship|discard`;
+    each Atlas ship -> phone "Reply /undo"; `/undo` (phone) -> `POST /api/ghassan/undo {by: owner}` -> `ghassan.undo()` (git revert
+    of the last ship as a new version, then after_ship).
+  - atlas/CLAUDE.md "Autopilot and shipping" tells Atlas the limits.
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits
