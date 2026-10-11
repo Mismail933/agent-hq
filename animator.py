@@ -32,7 +32,7 @@ import workers
 from shorts import Blocked, say
 
 AGENT = "Rana"   # the Designer & Animator (the owner named her, 2026-10-08)
-ALLOWED_IMPORTS = {"react", "remotion", "./theme", "./Character", "./Backdrops", "./Extras"}
+ALLOWED_IMPORTS = {"react", "remotion", "./theme", "./Character", "./Backdrops", "./Extras", "./assets"}   # ./assets: the story's own art
 BANNED = [r"\brequire\s*\(", r"\bimport\s*\(", r"\bfetch\b", r"XMLHttpRequest", r"\beval\b", r"\bFunction\s*\(", r"\bwindow\b", r"\bdocument\b",
           r"\bprocess\b", r"\bglobalThis\b", r"\blocalStorage\b", r"\bsessionStorage\b", r"\bindexedDB\b", r"WebSocket", r"\bsetTimeout\b",
           r"\bsetInterval\b", r"requestAnimationFrame", r"Math\.random", r"Date\.now", r"new Date", r"\bperformance\b", r"<foreignObject",
@@ -256,10 +256,11 @@ def test_render(folder, name, scene, frames):
 
 
 # ---------------------------------------------------------------- production: the scenes Calina marked `bespoke`
-def draw_scenes(ep, d, scenes, words, folder):
+def draw_scenes(ep, d, scenes, words, folder, art=""):
     """Rana draws every scene Calina marked `bespoke` (the props' `scenes` get `generated` = the drawing's name). A drawing is
     kept in folder/_rana/ under a hash of its brief and lines, so a re-render reuses it. Anything that fails leaves that scene
-    to the kit. Returns (names installed, icon authors to credit)."""
+    to the kit. art (2.36.0, assets.render_art's note): the story's own backdrops, props and costumes, which she must reuse (one
+    jar in every shot); a drawing made before that art existed is drawn again. Returns (names installed, icon authors to credit)."""
     import hashlib
     import animate
     out = folder / "_rana"
@@ -276,10 +277,11 @@ def draw_scenes(ep, d, scenes, words, folder):
         a, n = sc["from"], sc["frames"]
         sw = [{"w": w[0], "from": max(0, round(w[1] * animate.FPS) - a), "to": max(0, round(w[2] * animate.FPS) - a)}
               for w in words if a <= round(w[1] * animate.FPS) < a + n]
-        key = hashlib.sha1(json.dumps([brief, s.get("voice_line") or "", s.get("backdrop") or ""]).encode("utf-8")).hexdigest()[:10]
+        key = hashlib.sha1(json.dumps([brief, s.get("voice_line") or "", s.get("backdrop") or ""] + ([art] if art else [])).encode("utf-8")).hexdigest()[:10]
         name = f"rana_{ep['id']}_{i}_{key}"
         code_file = out / f"{name}.jsx"
         kit_note = f"a '{s.get('backdrop')}' scene" + ((", characters: " + ", ".join(c["who"] for c in s.get("characters") or [])) if s.get("characters") else "")
+        kit_note += art
         try:
             if code_file.exists() and not validate(code_file.read_text(encoding="utf-8")):
                 say(f"  Scene {i + 1}: reusing Rana's drawing.")

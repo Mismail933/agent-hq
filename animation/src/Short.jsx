@@ -9,6 +9,7 @@ import {Diagram} from './Diagram';
 import {Rod, Globe, Callout} from './Extras';
 import {Captions, TitleCard, EpisodeTitle, Outro} from './Overlays';
 import GENERATED from './generated/index.js';
+import {ASSETS, Asset} from './assets';   // 2.36.0: the story's own places and props (assets.py)
 
 /*
  * One episode = one props file (see ../STYLE-GUIDE.md, "scene file"):
@@ -207,6 +208,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   // a rod's shadow lies on the ground, so a rod scene stands a little further back: the shadow stays above the captions
   const feet = rodsIn.length ? Math.min(FEET[scene.backdrop] ?? 1440, (FLOOR[scene.backdrop] ?? 1150) + 110) : FEET[scene.backdrop] ?? 1440;
   const noProp = rodsIn.length > 0;   // the scene is about the rod: nobody carries a staff that could be mistaken for it
+  const propsIn = (scene.props || []).filter((p) => p.type === 'asset' && ASSETS.props[p.id]);
   const items = [
     ...cast.map((c) => {
       const poses = [c.pose || 'stand', ...beats.filter((b) => b.who === c.who && b.pose).map((b) => b.pose)];
@@ -216,6 +218,9 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
     }),
     ...rodsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
       b: {half: 30 * ROD_K, back: (60 + 360 * (p.shadow ?? 0.5)) * ROD_K, front: 120 * ROD_K, top: 320 * ROD_K}})),
+    // a story's own prop (one design, assets.py) stands in the row like a person: about 400 units tall, never on top of anyone
+    ...propsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
+      b: {half: 180 * (p.size ?? 1), back: 200 * (p.size ?? 1), front: 200 * (p.size ?? 1), top: 400 * (p.size ?? 1)}})),
   ];
   const {scale: sc, placed} = stage(items, feet, topLimit, margin);
   if (scene.backdrop === 'well_side') items.forEach((it, i) => { if (!it.prop) placed[i].x = it.want; });   // keep them off the shaft
@@ -226,6 +231,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
     return {...c, scale: sc, y: c.y ?? feet, x: placed[i].x, facing, r: facing > 0 ? {left: back, right: front, top} : {left: front, right: back, top}};
   });
   const rodX = rodsIn.map((_, k) => placed[cast.length + k].x);
+  const propX = propsIn.map((_, k) => placed[cast.length + rodsIn.length + k].x);
   const who = speaker ? speaker[Math.min(g, speaker.length - 1)] || '' : null;
   const speakingChar = who ? chars.find((c) => c.who === who) : null;
   const mouthOf = (c) => {
@@ -239,8 +245,11 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   // the props that matter (the rod and its shadow) count too; a rod is staged in the row like a person, at the cast's scale
   const rodShadow = (p) => (60 + 360 * (p.shadow ?? 0.5)) * sc * ROD_K;
   let rk = 0;
-  const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: rodX[rk++], y: feet, scale: sc * ROD_K} : p));
+  let pk = 0;
+  const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: rodX[rk++], y: feet, scale: sc * ROD_K}
+    : p.type === 'asset' && ASSETS.props[p.id] ? {...p, x: propX[pk++], y: feet, scale: sc * (p.size ?? 1)} : p));
   const xs = [...chars.flatMap((c) => [c.x - c.r.left * c.scale, c.x + c.r.right * c.scale]), ...props.filter((p) => p.type === 'rod').flatMap((p) => [p.x - rodShadow(p), p.x + 120 * sc * ROD_K]),
+    ...props.filter((p) => p.type === 'asset' && p.scale).flatMap((p) => [p.x - 200 * p.scale, p.x + 200 * p.scale]),
     ...props.filter((p) => p.type === 'globe').flatMap((p) => [(p.x ?? 540) - (p.r ?? 150), (p.x ?? 540) + (p.r ?? 150)])];
   if (scene.backdrop === 'well_side') xs.push(370, 710);   // the well itself is the subject too: keep the shaft in the shot
   const minX = xs.length ? Math.min(...xs) : W / 2;
@@ -283,7 +292,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   const onScreen = (x) => W / 2 + view.dx0 + view.s * (x - view.fx);
   const hidden = chars.map((c, i) => i !== si && !live[i].walking &&
     (onScreen(live[i].x - items[i].b.half * sc) < 0 || onScreen(live[i].x + items[i].b.half * sc) > W));
-  const Back = BACKDROPS[scene.backdrop];
+  const Back = (scene.set && ASSETS.backdrops[scene.set]) || BACKDROPS[scene.backdrop];   // the story's own place, else the kit's
   const t = easeOut(clamp01(frame / TRANSITION));
   // OverSimplified cuts: a plain cut between scenes (the movement is inside the shot); a whip only into a cutaway or when the
   // script asks for one. Slides and irises on every scene read as busy (2.29.0).
@@ -317,6 +326,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
           {props.map((p, i) => {
             if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={p.shadow ?? 0.5} scale={p.scale} revealAt={p.reveal_at ?? 0} beamAt={p.beam_at ?? null} label={p.angle_label || null} plantAt={p.plant_at ?? null} />;
             if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} slices={p.slices || 0} sliceAt={p.slice_at ?? null} />;
+            if (p.type === 'asset' && p.scale) return <Asset key={i} id={p.id} x={p.x} y={p.y} scale={p.scale} frame={frame} at={p.at ?? null} />;
             return null;
           })}
           {scene.crowd && (() => {
@@ -325,7 +335,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
             const cy = floor + 50;
             const castHead = feet - HEIGHT * sc;
             const cs = Math.max(0.35, Math.min(sc * 0.8, (cy - castHead - 40) / HEIGHT));
-            return <Crowd size={scene.crowd.size || 5} reaction={crowdReaction} frame={frame} seed={index + 1} y={cy} scale={cs} from={SAFE + 40} to={W - SAFE - 40} />;
+            return <Crowd size={scene.crowd.size || 5} reaction={crowdReaction} frame={frame} seed={index + 1} y={cy} scale={cs} from={SAFE + 40} to={W - SAFE - 40} costume={scene.crowd.costume} />;
           })()}
           {chars.map((c, i) => {
             if (hidden[i]) return null;
@@ -335,7 +345,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
               <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} look={lookOf(c)}
                 x={x} y={c.y} scale={c.scale} mouth={mouthOf(c)} frame={frame} enterAt={st.walkIn !== null ? -1000 : 4 + i * 6} seed={i + index}
                 facing={facing} walking={walking} action={st.action} actionAge={st.actionAge} noProp={noProp}
-                speaking={who === null ? null : who === c.who} />
+                speaking={who === null ? null : who === c.who} costume={c.costume} />
             );
           })}
         </Camera>
@@ -348,7 +358,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
             const left = chars.length === 1 ? (c.at || 'left') !== 'right' : i === 0;
             return (
               <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} x={left ? 200 : W - 200} y={1890}
-                scale={0.46} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} facing={left ? 1 : -1} noProp />
+                scale={0.46} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} facing={left ? 1 : -1} noProp costume={c.costume} />
             );
           })}
         </g>

@@ -92,6 +92,9 @@ export const EpisodeTitle = ({title, frame}) => {
   const shown = lines.slice(0, 5);
   const fs = Math.max(70, Math.min(132, 900 / (0.58 * Math.max(...shown.map((l) => l.length), 6))));
   const place = [title.place, title.year].filter(Boolean).join(' · ');
+  // 2.36.0 (ep 29: "...LT IN 132; THE DETECTION IS USUALLY..." ran off both sides): the ribbon's type shrinks until it fits
+  const pfs = Math.max(30, Math.min(52, (W - 290) / (0.6 * Math.max(1, place.length))));
+  const pw = Math.min(W - 200, place.length * pfs * 0.6 + 90);
   const top = 960 - (shown.length * fs * 1.05) / 2;
   const mid = top + (shown.length * fs * 1.05) / 2;
   // 2.35.0 (Israa on ep 28: the first frame overlapped): the card fades in, the title grows from its own middle (it used to scale
@@ -111,8 +114,8 @@ export const EpisodeTitle = ({title, frame}) => {
       </g>
       {place && (
         <g transform={`translate(${W / 2 + (1 - rib) * W} ${top + shown.length * fs * 1.05 + 110}) rotate(-2)`}>
-          <rect x={-Math.min(W - 200, place.length * 30 + 90) / 2} y="-50" width={Math.min(W - 200, place.length * 30 + 90)} height="100" rx="22" fill={C.terracotta} stroke={C.ink} strokeWidth="8" />
-          <text textAnchor="middle" y="18" fontFamily={HEAD} fontSize="52" fill={C.parchment}>{place.toUpperCase()}</text>
+          <rect x={-pw / 2} y="-50" width={pw} height="100" rx="22" fill={C.terracotta} stroke={C.ink} strokeWidth="8" />
+          <text textAnchor="middle" y={pfs * 0.35} fontFamily={HEAD} fontSize={pfs} fill={C.parchment}>{place.toUpperCase()}</text>
         </g>
       )}
     </g>

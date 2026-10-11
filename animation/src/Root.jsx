@@ -5,6 +5,7 @@ import {Sheet} from './Sheet';
 import {CharacterSheet} from './CharacterSheet';
 import {CharacterTest} from './CharacterTest';
 import {SvgStill} from './SvgStill';
+import {AssetStill} from './AssetStill';
 import {FPS, W, H} from './theme';
 import sample from './sample-props.json';
 
@@ -26,5 +27,7 @@ export const Root = () => (
       defaultProps={{who: 'scholar', mouth: []}} calculateMetadata={({props}) => ({durationInFrames: props.durationInFrames || 900})} />
     <Still id="SvgStill" component={SvgStill} width={1024} height={1024} defaultProps={{src: '', bg: '#F5F5F2', w: 1024, h: 1024}}
       calculateMetadata={({props}) => ({width: props.w || 1024, height: props.h || 1024})} />
+    <Composition id="AssetStill" component={AssetStill} width={W} height={H} fps={FPS} durationInFrames={120}
+      defaultProps={{kind: 'backdrop', id: '', tone: 'noon', at: 15}} />
   </>
 );

@@ -466,6 +466,28 @@ Agents never spend money without the owner's explicit approval.
   re-render + Israa's side-by-side check of all characters, no redraw; refreshes the project's library if it uses v<K>. Allowance pre-check (`server.allowance_short`, `JOB_NEEDS` per job kind,
   rules `jobs.allowance_check` wait|warn|off and `jobs.allowance_low_percent`; read only): the cast-draw route refuses (409) and
   run_cast_draw waits (marks the version for cast_watch) in wait mode; other journaled jobs in JOB_NEEDS get an Atlas heads-up.
+- `assets.py` (2.36.0, Atlas's "Every story gets its own world": ep 29, Han China, came out with Greek columns, a beach, togas, a
+  European crown and five different jars): Calina's scene files list `assets` [{id, kind backdrop|prop|costume, brief, for, act}]
+  (schema + prompt section EVERY STORY GETS ITS OWN WORLD; her task lists the channel's drawn art, `library_note`, so ids are reused);
+  scenes may name a drawn place in `set` (else a backdrop asset's `for` = the kit backdrop it replaces in that story) and place a prop
+  with props [{type: "asset", id, act_word, size}]. Rana draws each piece ONCE per project into content/project-N/assets/<id>/
+  (`library.json` = state + Israa's review; it is also the checkpoint): backdrops/props as one component (`PIECE_SYSTEM` + `CONTRACT`,
+  her rana-kit folder with house/ copies of Backdrops/Extras/theme/STYLE-GUIDE/the project's cast; `validate_piece` = animator.validate
+  + only react/remotion/theme), costumes all in ONE wardrobe file assets/_wardrobe/Character.jsx (the project's cast + every costume,
+  picked by `<Character|Head|Crowd costume="id">`; `COSTUME_SYSTEM` keeps face/identity; cast.validate + every costume id kept; a
+  new project cast makes them `stale` and they are redrawn on it). `animate.py asset-still <project> <id>` renders stills (AssetStill
+  composition: backdrop + a person for scale; prop at rest and after its animation; costume = CharacterSheet before/after from the
+  wardrobe) and Israa judges them (`REVIEW_SCHEMA`; rules `assets.review_rounds` 1, `review.assets`). Render: `render_block` refuses
+  while a listed piece (or an old script's free-text `kit_requests`, shown as `unlisted`, rule `render.kit_requests_block`) isn't made (rule `render.require_assets`;
+  per episode `data.assets_override` via `hq assets <id> skip`); `render_art` -> wardrobe as the render's cast, `install_app` writes
+  src/asset_<id>.jsx + src/generated_assets.js (shipped empty), scenes get `set`, asset props get `at` (frame of act_word) and are
+  staged in the row like a rod (Short.jsx), characters/crowd get `costume`; Rana's bespoke scenes get the art note and may
+  `import {Asset, Backdrop} from './assets'` (one design in every shot; a drawing cached before the art existed is redrawn).
+  Office: journaled job `assets` (`run_assets`, `ASSETWORK` in anim_busy), started by itself on approval or a refused render (rule
+  `assets.auto_make`), `POST /api/episode/<id>/assets {action make|add|skip|unskip}`, `hq assets <episode> [make|add|skip|unskip]`;
+  events `assets_ready`/`assets_failed` wake the autopilot. Same release: `animate.drop_repeats` (rule voice.drop_repeats) cuts a word
+  Eleven v3 said twice inside a line (faster-whisper on the voice track; v3 gets no previous/next text, so not the joins) and moves
+  every later time up; the title card's year is `short_year` ("138 CE", not a sentence) and its ribbon type shrinks to fit.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

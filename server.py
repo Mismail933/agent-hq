@@ -95,6 +95,7 @@ import ghassan            # noqa: E402
 import phone              # noqa: E402
 import design             # noqa: E402
 import cast               # noqa: E402
+import assets             # noqa: E402
 import checkpoint         # noqa: E402
 import rules              # noqa: E402
 import control_plane as cp  # noqa: E402
@@ -441,7 +442,7 @@ def job_label(kind, a):
             "batch": "Calina's scripts for project {0}", "scout_refs": "The Scout's reference board for project {0}",
             "review": "Calina's learning note for project {0}", "plan": "Serge's plan for idea #{0}",
             "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}",
-            "cast_check": "Israa's check of Rana's cast v{1} for project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -477,7 +478,7 @@ def journaled(kind, fn):
 JOBS = {"cast_draw": "run_cast_draw", "cast_check": "run_cast_check","design": "run_design", "render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
-        "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video"}
+        "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video", "assets": "run_assets"}
 
 
 LOGO_BRIEF = ("The logo of Agent HQ: the owner's AI company, a small team of AI agents (each with a name and a job) run by a manager, "
@@ -946,10 +947,47 @@ def anim_busy():
         return "the cast's voice samples are being made"
     if DESIGNING["what"]:
         return f"Rana is drawing {DESIGNING['what']}"
+    if ASSETWORK["eid"] is not None:
+        return f"Rana is drawing the art for video #{ASSETWORK['eid']} ({ASSETWORK['step']})"
     return ""
 
 
 DESIGNING = {"what": ""}
+ASSETWORK = {"eid": None, "step": ""}
+
+
+def run_assets(eid):
+    """Rana draws the backdrops, props and costumes a script needs before its render (assets.py); Israa checks each piece."""
+    ASSETWORK.update(eid=eid, step="starting")
+    try:
+        r = assets.make(eid, _animate, say=lambda m: ASSETWORK.update(step=str(m)[:160]))
+        made = "; ".join(f"{x['kind']} '{x['id']}' ({x['status']}{': ' + x['israa'][:120] if x.get('israa') else ''})" for x in r.get("made") or [])
+        left = r.get("still_missing") or []
+        atlas_says((f"**Rana drew the art for video #{eid}:** {made}." if made else f"Video #{eid}: {r.get('note', 'nothing to draw.')}")
+                   + (f"\n\nStill missing: {'; '.join((x['id'] or x['brief'][:60]) for x in left)}. See hq assets {eid}." if left else
+                      f"\n\nEverything it needs exists now: it can be rendered (hq render {eid}).")
+                   + (f"\n\nFailed: {'; '.join(r['failed'])[:500]}" if r.get("failed") else ""))
+    except Exception as ex:
+        cp.log("Rana", "assets_failed", None, {"episode": eid, "reason": str(ex)[:300]})
+        atlas_says(f"Rana couldn't draw the art for video #{eid}: {ex}")
+    finally:
+        ASSETWORK.update(eid=None, step="")
+
+
+def start_assets(eid):
+    """Start Rana's drawing for an episode whose script needs art that isn't made (rule assets.auto_make). Returns what was done."""
+    e = cp.get_episode(eid)
+    if not e or not production.is_animated(e):
+        return ""
+    v = assets.view(eid)
+    if not any(r["state"] in ("missing", "stale") for r in v["missing"]):
+        return ""
+    if ASSETWORK["eid"] == eid:
+        return "Rana is already drawing it."
+    if anim_busy():
+        return f"Rana starts when the animation tools are free ({anim_busy()}): hq assets {eid} make."
+    threading.Thread(target=run_assets, args=(eid,), daemon=True).start()
+    return "Rana has started drawing what's missing; Israa checks each piece (about 10-20 minutes a piece)."
 
 
 def allowance_short(agents):
@@ -967,7 +1005,7 @@ def allowance_short(agents):
 
 
 JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "cast_check": ("Israa",),"design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
-             "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",)}   # the agents a long job can't finish without
+             "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",), "assets": ("Rana", "Israa")}   # the agents a long job can't finish without
 
 
 def cast_watch():
@@ -1386,7 +1424,7 @@ def save_uploads(items):
 # something waits. He acts within the owner's standing orders (atlas-journal.md). Quiet: his autopilot replies go to the office
 # chat, never to the phone (he sends the owner something himself only when it matters). Rules in atlas/CLAUDE.md.
 WAKE_KINDS = ("video_ready", "video_reviewed", "video_failed", "batch_ready", "script_reviewed", "halted", "bespoke_failed",
-              "ready_to_ship", "ghassan_shipped", "job_given_up")
+              "ready_to_ship", "ghassan_shipped", "job_given_up", "assets_ready", "assets_failed")
 AUTOPILOT = {"last_wake": 0.0, "last_event": 0, "wakes": 0}
 
 
@@ -2109,6 +2147,36 @@ class Handler(BaseHTTPRequestHandler):
                 cp.update_episode(eid, data=d)
                 cp.log("Owner" if body.get("by") == "owner" else "Atlas", action.replace("-", "_"), None, {"episode": eid, "reason": d.get("do_not_upload", "")})
                 return self._send(200, {"ok": True, "message": f"Episode {eid}: " + (f"do not upload ({d['do_not_upload']})" if action == "do-not-upload" else "upload allowed again.")})
+            if action == "assets":   # hq assets <episode> make | add | skip | unskip (the story's own art, assets.py)
+                body = self._json_body()
+                sub, by = str(body.get("action", "")), ("Owner" if body.get("by") == "owner" else "Atlas")
+                try:
+                    if sub == "make":
+                        e = cp.get_episode(eid)
+                        if not e:
+                            return self._send(404, {"error": "No such episode."})
+                        if ASSETWORK["eid"] is not None:
+                            return self._send(409, {"error": f"Rana is already drawing the art for video #{ASSETWORK['eid']}."})
+                        if anim_busy():
+                            return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+                        if assets.script_problems(e["data"]):
+                            return self._send(409, {"error": "Fix the script's asset list first: " + " ".join(assets.script_problems(e["data"]))})
+                        todo = [r for r in assets.view(eid)["missing"] if r["state"] != "unlisted"]
+                        if not todo:
+                            return self._send(409, {"error": assets.render_block(e) or "Everything this script needs is already drawn."})
+                        threading.Thread(target=run_assets, args=(eid,), daemon=True).start()
+                        return self._send(202, {"ok": True, "message": f"Rana is drawing {len(todo)} piece(s) for video #{eid}: "
+                                                + ", ".join(f"{r['kind']} '{r['id']}'" for r in todo) + ". Israa checks each one; the result comes in the office chat."})
+                    if sub == "add":
+                        msg = assets.add(eid, str(body.get("kind", "")), str(body.get("id", "")), clip(body.get("brief", ""), "note")[0],
+                                         body.get("for") or [], clip(body.get("act", ""), "note")[0], by=by)
+                    elif sub in ("skip", "unskip"):
+                        msg = assets.override(eid, clip(body.get("why", ""), "note")[0], on=sub == "skip", by=by)
+                    else:
+                        return self._send(400, {"error": "action must be make, add, skip or unskip"})
+                except ValueError as ex:
+                    return self._send(400, {"error": str(ex)})
+                return self._send(200, {"ok": True, "message": msg})
             if action == "israa":   # ask Israa to review the video again
                 e = cp.get_episode(eid)
                 if not e or not e["video_path"]:
@@ -2134,6 +2202,10 @@ class Handler(BaseHTTPRequestHandler):
                     pr = cp.get_project(e["project_id"], with_text=False) or {}
                     if not quality.characters_ready(pr):
                         return self._send(409, {"error": "You haven't approved the characters yet. Open the project's Voice & characters page, watch the test clips, then approve. No new Short is made before that."})
+                    block = assets.render_block(e)   # 2.36.0: the story's own art first (rule render.require_assets)
+                    if block:
+                        started = start_assets(eid) if rules.get("assets.auto_make") else ""
+                        return self._send(409, {"error": block + (f" {started}" if started else "")})
                 if production.is_v2(e):
                     st = production.clip_status(e)
                     if not st["ready"]:
@@ -2165,6 +2237,9 @@ class Handler(BaseHTTPRequestHandler):
                 msg = agents.decide_episode(eid, action, clip(body.get("note", ""), "note")[0])
             e = cp.get_episode(eid)
             ok = e is not None and e["status"] in ("approved", "rejected") and msg.startswith(f"Episode {eid} ")
+            if ok and action == "approve" and rules.get("assets.auto_make"):   # its own art is drawn before anyone asks for the render
+                started = start_assets(eid)
+                msg += f" It needs its own art: {started}" if started else ""
             return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
         if u.path == "/api/lnd/sync":
             try:

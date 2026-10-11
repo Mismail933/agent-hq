@@ -12,6 +12,7 @@ Atlas's controls for Agent HQ.
                  atlas-new ["why"]     (a fresh Atlas chat after your current reply; write the handoff in atlas-journal.md first)
                  resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
+                 assets <episode> [make | add <backdrop|prop|costume> <id> "brief" [--for court|ruler] [--act "animation"] | skip ["why"] | unskip]     (a story's own art, drawn by Rana before the render)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
@@ -509,6 +510,26 @@ def main(argv):
             notes = " ".join(a for a in rest if a not in imgs)
             code, reply = office(f"/api/project/{int(args[0])}/cast-draw", {"images": imgs, "notes": notes, "resume": resume})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "assets":   # hq assets <episode> [make | add <kind> <id> "brief" [--for x] [--act "..."] | skip ["why"] | unskip]
+            eid, sub = int(args[0]), (args[1].lower() if len(args) > 1 else "show")
+            if sub == "show":
+                import assets
+                show(assets.view(eid))
+            else:
+                body, rest = {"action": sub}, list(args[2:])
+                for flag in ("--for", "--act"):
+                    if flag in rest:
+                        i = rest.index(flag)
+                        body[flag[2:]] = rest[i + 1] if i + 1 < len(rest) else ""
+                        del rest[i:i + 2]
+                if sub == "add":
+                    if len(rest) < 3:
+                        raise IndexError
+                    body.update(kind=rest[0].lower(), id=rest[1], brief=" ".join(rest[2:]))
+                elif sub in ("skip", "unskip"):
+                    body["why"] = " ".join(rest)
+                code, reply = office(f"/api/episode/{eid}/assets", body)
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "cast":   # hq cast <project>: which cast the project uses and Rana's versions
             import cast
             show(cast.status(int(args[0])))

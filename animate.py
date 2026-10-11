@@ -349,6 +349,8 @@ def checklist(ep):
             problems.append(f"Scene {n}: a map scene needs map.focus [lat, lon].")
         if not (s.get("source_note") or "").strip():
             problems.append(f"Scene {n} has no source note.")
+    import assets
+    problems += assets.script_problems(d)   # 2.36.0: a scene naming its own set or prop must find it in the script's `assets`
     if len({s.get("backdrop") for s in scenes}) < 4:
         problems.append("Fewer than 4 different backdrops: it would look like one repeated scene.")
     if not [x for x in d.get("sources") or [] if str(x.get("url", "")).startswith("http") and x.get("quote")]:
@@ -591,6 +593,49 @@ def dialogue_cached(items, voices, folder):
     shutil.copy2(out[0], wav_c)
     js_c.write_text(json.dumps({"starts": out[1], "words": out[2], "t": out[3], "wpm": out[4], "segs": out[6]}), encoding="utf-8")
     return out
+
+
+def drop_repeats(raw, starts, words, end, segs):
+    """Eleven v3 now and then says a word twice inside a line ("my feet are are", "heads. heads."; Israa on ep 29). Not the joins:
+    each line is its own request and v3 gets no previous/next text. faster-whisper listens to the voice track; a word heard twice in
+    a row where the script has it once is cut out (with the pause before it) and every later time moves up. Nothing is made again,
+    so it costs no characters. Rule voice.drop_repeats. Returns (raw, starts, words, end, segs)."""
+    import difflib
+    import numpy as np
+    import soundfile as sf
+    if not rules.get("voice.drop_repeats") or not words:
+        return raw, starts, words, end, segs
+    try:
+        from faster_whisper import WhisperModel
+        model = WhisperModel("base.en", device="cpu", compute_type="int8")
+        got, _ = model.transcribe(str(raw), word_timestamps=True, language="en", condition_on_previous_text=False)
+        heard = [(_norm(w.word), w.start, w.end) for s in got for w in (s.words or [])]
+    except Exception as ex:  # noqa: BLE001  (never hold the video up for this check)
+        say(f"  Repeated words: couldn't listen to the voice ({str(ex)[:100]}); not checked.")
+        return raw, starts, words, end, segs
+    a, b = [_norm(w[0]) for w in words], [h[0] for h in heard]
+    cuts = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op != "insert":
+            continue
+        for j in range(max(1, j1), j2):
+            if b[j] and b[j] == b[j - 1] and 0 < heard[j][2] - heard[j - 1][2] < 1.5:
+                cuts.append((heard[j - 1][2], heard[j][2], b[j]))
+    if not cuts:
+        return raw, starts, words, end, segs
+    au, sr = sf.read(str(raw), dtype="float32")
+    parts, last = [], 0.0
+    for s0, s1, _ in cuts:
+        parts.append(au[int(last * sr):int(s0 * sr)])
+        last = s1
+    parts.append(au[int(last * sr):])
+    sf.write(str(raw), np.concatenate(parts), sr)
+
+    def mv(t):
+        return t - sum(min(max(0.0, t - s0), s1 - s0) for s0, s1, _ in cuts)
+    say(f"  Voice: cut {len(cuts)} word(s) the voice said twice by mistake ({', '.join(c[2] for c in cuts[:6])}).")
+    return (raw, [mv(t) for t in starts], [[w[0], mv(w[1]), mv(w[2])] + list(w[3:]) for w in words], mv(end),
+            [(mv(x), mv(y), w) for x, y, w in segs])
 
 
 def cold_open_scenes(d):
@@ -1029,6 +1074,15 @@ def short_place(place):
     return (first[:26].rstrip() if first else (place or "")[:26]).upper()
 
 
+def short_year(year):
+    """The title card's year: "138 CE", never a sentence (ep 29's card ran off the screen: "...LT IN 132; THE DETECTION IS USUALLY...")."""
+    y = re.sub(r"\s+", " ", str(year or "")).strip()
+    if len(y) <= 16:
+        return y.upper()
+    m = re.search(r"\b(?:c\.\s*|circa\s+|about\s+)?\d{1,4}(?:\s*[–-]\s*\d{1,4})?\s*(?:BCE|BC|CE|AD)\b", y, re.I) or re.search(r"\b\d{1,4}\b", y)
+    return (m.group(0) if m else y[:16]).upper()
+
+
 RHUBARB_VERSION = "1.14.0"   # Rhubarb Lip Sync, MIT licence (commercial use allowed), https://github.com/DanielSWolf/rhubarb-lip-sync
 RHUBARB_URL = f"https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v{RHUBARB_VERSION}/Rhubarb-Lip-Sync-{RHUBARB_VERSION}-Windows.zip"
 RHUBARB_SHA256 = "62fa416a8d5e382a3828ee4bef358ce520d0b4cabdeaea75a7ac266d098d1fe3"
@@ -1322,6 +1376,11 @@ def render_episode(eid, voice=None, suffix=""):
     problems = checklist(ep)
     if problems:
         raise Blocked("The checklist blocked this script: " + " ".join(problems))
+    import assets   # 2.36.0: every story gets its own world; no render while the art its script needs isn't drawn (rule render.require_assets)
+    missing = assets.render_block(ep)
+    if missing:
+        raise Blocked(missing)
+    art = assets.render_art(ep)
     d = ep["data"]
     project = cp.get_project(ep["project_id"], with_text=False)
     folder = production.episode_folder(ep)
@@ -1329,7 +1388,8 @@ def render_episode(eid, voice=None, suffix=""):
     ffmpeg = shorts.find_ffmpeg()
     t0 = time.time()
     say(f"Episode #{ep['id']}: {ep['title']}")
-    ensure_toolchain(ep["project_id"])
+    ensure_toolchain(ep["project_id"], cast=art["wardrobe"])   # the wardrobe = the project's cast + this story's costumes
+    assets.install_app(APP / "src", ep["project_id"], art["ready"])
     d = quality.sync_voice_lines(d)
     d = stage_speakers(d)   # whoever speaks is on screen; no empty rooms (render only)
     items = utterances(d, project)
@@ -1367,6 +1427,7 @@ def render_episode(eid, voice=None, suffix=""):
             say(f"  ElevenLabs: {chars} characters used for the voices.")
     title = None
     if not own:
+        raw, starts, words, voice_end, segs = drop_repeats(raw, starts, words, voice_end, segs)
         raw, starts, words, voice_end, segs, title = shape_timeline(ffmpeg, raw, starts, words, voice_end, segs, d, ep, folder)
         wpm = wpm * NARR_TEMPO
     normalise_voice(ffmpeg, raw, folder / f"voice{suffix}.wav")
@@ -1432,6 +1493,24 @@ def render_episode(eid, voice=None, suffix=""):
             sc["card"] = {**s["card"], "at": card_steps(s, words, bounds[i], bounds[i + 1])}
         if any((p or {}).get("type") == "globe" for p in s.get("props") or []):
             sc["props"] = [globe_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "globe" else p for p in sc.get("props") or s.get("props") or []]
+        # 2.36.0: this story's own art. Its place (the scene's `set`, else the asset standing in for this kit backdrop), its props (one
+        # design; the animation plays on act_word) and how everyone is dressed (the wardrobe's costume per character)
+        own_set = assets.slug(s.get("set")) if s.get("set") else ""
+        own_set = own_set if own_set in art["ready"] else art["sets"].get(s.get("backdrop"), "")
+        if own_set and s.get("backdrop") not in ("map", "diagram", "card"):
+            sc["set"] = own_set
+        else:
+            sc.pop("set", None)
+        if any((p or {}).get("type") == "asset" for p in sc.get("props") or []):
+            sc["props"] = [p if (p or {}).get("type") != "asset" else
+                           {**p, "id": assets.slug(p.get("id")),
+                            "at": (lambda f: None if f is None else f - bounds[i])(_word_frame(words, bounds[i], bounds[i + 1], p.get("act_word")))}
+                           for p in sc["props"] if (p or {}).get("type") != "asset" or assets.slug(p.get("id")) in art["ready"]]
+        if art["costumes"]:
+            sc["characters"] = [{**c, "costume": art["costumes"][c.get("who")]} if c.get("who") in art["costumes"] else c
+                                for c in sc.get("characters") or []]
+            if sc.get("crowd") and "crowd" in art["costumes"]:
+                sc["crowd"] = {**sc["crowd"], "costume": art["costumes"]["crowd"]}
         if i == len(d["scenes"]) - 1:
             sc["ending"] = True   # the last scene: one slow push-in, no cuts, the music swells into the end card
             sc["hold_frames"] = min(sc["frames"] - 1, round((END_HOLD if not own else 0) * FPS))   # pushed in by the last word, then holds
@@ -1459,7 +1538,7 @@ def render_episode(eid, voice=None, suffix=""):
         try:
             import animator
             say("Rana's drawings...")
-            _, icon_by = animator.draw_scenes(ep, d, scenes, words, folder)
+            _, icon_by = animator.draw_scenes(ep, d, scenes, words, folder, art=art["note"])
         except Exception as ex:  # noqa: BLE001  (never hold the video up for a drawing)
             say(f"  Rana's drawings were skipped: {str(ex)[:160]}")
     ch = (project.get("meta") or {}).get("channel") or {}
@@ -1468,11 +1547,11 @@ def render_episode(eid, voice=None, suffix=""):
         "audio": audio_name,
         "mouth": mouth_for(folder / f"voice{suffix}.wav", words, [x["text"] for x in items] or lines, folder, total),
         "speaker": speaker_frames(segs, total),
-        "intro": {"place": short_place(d.get("place") or ""), "year": (d.get("year") or "").upper()},
+        "intro": {"place": short_place(d.get("place") or ""), "year": short_year(d.get("year"))},
         "outro": {"channel": ch.get("name") or "POV Then History", "handle": ch.get("handle") or "@POVThenHistory"},
         "outro_from": round(end_t * FPS),
         **({"title": {"from": round(title["from_s"] * FPS), "frames": round(title["secs"] * FPS), "text": title["text"],
-                      "place": short_place(title["place"]), "year": (title["year"] or "").upper()}} if title else {}),
+                      "place": short_place(title["place"]), "year": short_year(title["year"])}} if title else {}),
         "caption_chunks": caption_chunks(heard_captions(folder / f"voice{suffix}.wav", words)),
         "framing": {"margin": int(FRAME_MARGIN), "speaker_min": float(SPEAKER_MIN_H)},
         "outro_fade": max(1, round(END_FADE * FPS)),
@@ -1788,7 +1867,47 @@ def design_render(folder):
     return {"options": made}
 
 
+def asset_still(project_id, aid):
+    """Stills of one piece of a story's own art (assets.py) for Israa: a backdrop with a person standing in it (still.png), a prop at
+    rest and after its animation beside a person (rest.png, acted.png), a costume as the character's sheet before and after
+    (base.png, costume.png; both from the wardrobe file, so only the clothes may differ)."""
+    import assets
+    e = assets.library(project_id).get(aid) or {}
+    kind = e.get("kind")
+    folder = (assets.base(project_id) / aid).resolve()   # Remotion runs in its own folder
+    folder.mkdir(parents=True, exist_ok=True)
+    pf = folder / "_props.json"
+    shots = []
+    if kind == "costume":
+        ensure_toolchain(project_id, cast=assets.wardrobe_dir(project_id) / "Character.jsx")
+        who = (e.get("for") or ["citizen"])[0]
+        for name, props in (("base.png", {"who": who}), ("costume.png", {"who": who, "costume": aid})):
+            pf.write_text(json.dumps(props), encoding="utf-8")
+            remotion(["still", "src/index.jsx", "CharacterSheet", str(folder / name), f"--props={pf}", "--log=error", "--overwrite"], timeout=900)
+            shots.append(name)
+    elif kind in assets.FILE:
+        ensure_toolchain(project_id)
+        assets.install_app(APP / "src", project_id, [aid])
+        pf.write_text(json.dumps({"kind": kind, "id": aid, "tone": "noon", "at": 15}), encoding="utf-8")
+        for name, frame in ((("still.png", 30),) if kind == "backdrop" else (("rest.png", 0), ("acted.png", 100))):
+            remotion(["still", "src/index.jsx", "AssetStill", str(folder / name), f"--props={pf}", f"--frame={frame}", "--log=error", "--overwrite"],
+                     timeout=900)
+            shots.append(name)
+    else:
+        raise Blocked(f"No drawing '{aid}' in project {project_id}'s assets.")
+    pf.unlink(missing_ok=True)
+    return {"files": [(folder / n).relative_to(ROOT.resolve()).as_posix() for n in shots]}
+
+
 def main():
+    if len(sys.argv) > 3 and sys.argv[1] == "asset-still":   # animate.py asset-still <project> <asset id> (assets.py, for Israa)
+        cp.init()
+        try:
+            print("RESULT " + json.dumps(asset_still(int(sys.argv[2]), sys.argv[3])))
+        except Blocked as e:
+            print("BLOCKED " + str(e))
+            sys.exit(2)
+        return
     if len(sys.argv) > 3 and sys.argv[1] == "cast-test":   # animate.py cast-test <project> <version folder>: Rana's candidate cast
         cp.init()
         try:
