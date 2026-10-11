@@ -7,6 +7,7 @@ Atlas's controls for Agent HQ.
                  limits | limit <key> <value>     (money: only on the owner's explicit word)
                  rule list | rule changed | rule set <key> <value> ["why"] | rule reset <key> | rule undo <key> | rule history <key>
                  prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
+                 say [project] "Name" "re-spell-ing" | say "Name" --remove | say     (how the voices say a name; rule voice.pronounce)
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
                  restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
                  atlas-new ["why"]     (a fresh Atlas chat after your current reply; write the handoff in atlas-journal.md first)
@@ -470,6 +471,29 @@ def main(argv):
                 show(rule_change(args[1], sub, args[2] if sub == "set" else None, args[3] if len(args) > 3 else ""))
             else:
                 show("Use: rule list | rule changed | rule set <key> <value> [\"why\"] | rule reset <key> | rule undo <key> | rule history <key>")
+        elif cmd == "say":   # how the voices say a name: hq say [project] "Syene" "sigh-ee-nee" | hq say "Syene" --remove | hq say
+            import rules
+            if args and args[0].isdigit():
+                args = args[1:]   # the dictionary is shared by every project (a name sounds the same in every story)
+            pairs = {}
+            for part in re.split(r"[;\n]", rules.get("voice.pronounce") or ""):
+                if "=" in part and part.split("=", 1)[0].strip():
+                    pairs[part.split("=", 1)[0].strip()] = part.split("=", 1)[1].strip()
+            if not args:
+                show(pairs or "No pronunciations set.")
+            else:
+                word = args[0].strip()
+                if " " in word or "=" in word or ";" in word:
+                    raise IndexError
+                for k in [k for k in pairs if k.lower() == word.lower()]:
+                    del pairs[k]
+                if len(args) > 1 and args[1] != "--remove":
+                    pairs[word] = re.sub(r"\s+", "-", args[1].strip().replace("=", "").replace(";", ""))   # one word, or the captions lose their spelling
+                elif len(args) < 2:
+                    raise IndexError
+                text = "; ".join(f"{k}={v}" for k, v in pairs.items())
+                show(rule_change("voice.pronounce", "set", text, f"hq say {word}") +
+                     " Lines with that name are voiced again on the next render; the others are reused.")
         elif cmd == "prompt":   # an agent's instructions, live: hq prompt <agent> show | extra "text" | append "text" | set --file <path> | reset | undo | history
             import rules
             agent, sub = args[0].capitalize(), (args[1] if len(args) > 1 else "show")

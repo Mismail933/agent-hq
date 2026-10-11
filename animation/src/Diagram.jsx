@@ -78,15 +78,27 @@ export const Diagram = ({diagram, frame, frames}) => {
       ))}
       <Rod pt={pts.b} shadowLen={0} name="b" />
       <Rod pt={pts.a} shadowLen={1} name="a" />
-      {/* the same angle at the top of Alexandria's stick (between the stick and the sunbeam), drawn with the one at the centre */}
+      {/* the same angle at the top of Alexandria's stick (between the stick and the sunbeam), drawn with the one at the centre.
+          2.36.1 (ep 28: only the centre's angle could be seen): its own sunbeam, parallel to the others, runs to the stick's top and
+          on past it, and the angle there is as big as the centre's, in the same colour, with the same label */}
       {wedge > 0 && (() => {
         const [nx, ny] = n(pts.a);
         const tip = [pts.a[0] + nx * 170, pts.a[1] + ny * 170];
-        const r = 70;
+        const r = 105;
         // the sunbeam reaches the tip going left (angle pi); the stick points back down at pi - a: the arc between them is a
         const end = Math.PI - a * wedge;
+        const mid = Math.PI - a / 2;
         return (
-          <path d={`M ${tip[0] - r} ${tip[1]} A ${r} ${r} 0 0 0 ${tip[0] + r * Math.cos(end)} ${tip[1] + r * Math.sin(end)}`} fill="none" stroke={C.terracotta} strokeWidth="11" strokeLinecap="round" />
+          <g>
+            <line x1={W + 40} y1={tip[1]} x2={tip[0]} y2={tip[1]} stroke={C.ink} strokeWidth="17" strokeLinecap="round" opacity={wedge} />
+            <line x1={W + 40} y1={tip[1]} x2={tip[0]} y2={tip[1]} stroke={C.gold} strokeWidth="9" strokeLinecap="round" opacity={wedge} />
+            <line x1={tip[0]} y1={tip[1]} x2={tip[0] - 190 * wedge} y2={tip[1]} stroke={C.gold} strokeWidth="8" strokeLinecap="round" strokeDasharray="20 14" />
+            <path d={`M ${tip[0] - r} ${tip[1]} A ${r} ${r} 0 0 0 ${tip[0] + r * Math.cos(end)} ${tip[1] + r * Math.sin(end)}`} fill="none" stroke={C.terracotta} strokeWidth="13" strokeLinecap="round" />
+            {diagram.angle_label && (
+              <text x={tip[0] + (r + 120) * Math.cos(mid)} y={tip[1] + (r + 120) * Math.sin(mid) + 24} textAnchor="middle" fontFamily={HEAD} fontSize="64"
+                fill={C.parchment} stroke={C.ink} strokeWidth="8" paintOrder="stroke" opacity={clamp01(wedge * 3)}>{diagram.angle_label}</text>
+            )}
+          </g>
         );
       })()}
       {/* angle arc at the centre */}
@@ -102,7 +114,7 @@ export const Diagram = ({diagram, frame, frames}) => {
         const pt = pts[k];
         const [nx, ny] = n(pt);
         return (
-          <g key={k} transform={`translate(${pt[0] + nx * 40 + (k === 'a' ? 20 : 0)} ${pt[1] + ny * 40 + (k === 'a' ? -105 : 90)}) scale(${Math.max(0.01, rods)})`} opacity={clamp01(rods * 3)}>
+          <g key={k} transform={`translate(${pt[0] + nx * 40 + (k === 'a' ? 20 : 0)} ${pt[1] + ny * 40 + (k === 'a' ? -175 : 90)}) scale(${Math.max(0.01, rods)})`} opacity={clamp01(rods * 3)}>
             <text textAnchor="middle" fontFamily={HEAD} fontSize="54" fill={C.parchment} stroke={C.ink} strokeWidth="8" paintOrder="stroke">{name}</text>
             <text textAnchor="middle" y="58" fontFamily={HEAD} fontSize="44" fill={C.gold} stroke={C.ink} strokeWidth="7" paintOrder="stroke">{note}</text>
           </g>

@@ -65,7 +65,9 @@ GAP_LINE, GAP_SCENE = 0.16, 0.28   # breaths between two lines of one scene, and
 # sketch the picture holds a full-screen title card for TITLE_SECONDS while the music carries on.
 NARR_TEMPO = 1.08
 TITLE_SECONDS = 2.6
-PRONOUNCE = "Syene=Sigh-EE-nee"   # live rule voice.pronounce: how the voices must say names they get wrong (captions keep the spelling)
+# live rule voice.pronounce: how the voices must say names they get wrong (captions keep the spelling); `hq say` edits it word by word.
+# 2.36.1 (ep 28: "Sayini", "Aratosthenes", Beta heard as "Peter"): plain lower-case syllables read better in Eleven v3 than "EE" capitals
+PRONOUNCE = "Syene=sigh-ee-nee; Eratosthenes=erra-toss-thuh-neez; Beta=bay-tuh"
 TALK_POSES = ("explain", "present", "point")   # a character who speaks without a stage direction gestures with one of these
 
 # voices the owner can pick from: id -> (engine, voice, label)
@@ -539,23 +541,38 @@ def synth_dialogue(items, voices, folder):
     per-scene starts, words [[word, start, end, who]], end time, words per minute, billed characters, segments [(start, end, who)])."""
     import numpy as np
     import soundfile as sf
-    speakers, chars = {}, 0
+    speakers, chars, reused = {}, 0, 0
     audio, words, segs, starts = [np.zeros(int(LEAD * Speaker.SR), dtype="float32")], [], [], {}
     t = LEAD
+    cdir = folder / "_voice-cache"
     for k, it in enumerate(items):
         vid = voices.get(it["who"]) or voices["narrator"]
         eleven = voice_spec(vid)[0] == "eleven"
-        if vid not in speakers:
-            speakers[vid] = Speaker(vid, 1.0 if eleven else 0.92)
-        sp = speakers[vid]
-        same = [x["text"] for x in items if x["who"] == it["who"]]
-        idx = sum(1 for x in items[:k] if x["who"] == it["who"])
-        a, w = sp.line(it["text"], " ".join(same[max(0, idx - 2):idx]), " ".join(same[idx + 1:idx + 3]), tag=it.get("tag") or "")
-        if w is None:   # no timings came back: faster-whisper times the words
-            tmp = folder / "_line.wav"
-            sf.write(str(tmp), a, Speaker.SR)
-            w = whisper_words(tmp, it["text"].split(), len(a) / Speaker.SR)
-            tmp.unlink(missing_ok=True)
+        # 2.36.1: each ElevenLabs line is kept on its own, so changing one line (or one name's pronunciation) re-voices only the
+        # lines whose words changed; every other line is reused for free
+        lkey = hashlib.sha1(json.dumps([vid, it["who"], respell(it["text"]), it.get("tag") or "", elevenlabs.model(), ELEVEN_START_SPEED,
+                                        str(getattr(settings, "ELEVEN_V3_STABILITY", ""))]).encode("utf-8")).hexdigest()[:16]
+        lw, lj = cdir / f"l-{lkey}.wav", cdir / f"l-{lkey}.json"
+        if eleven and lw.exists() and lj.exists():
+            a = sf.read(str(lw), dtype="float32")[0]
+            w = json.loads(lj.read_text(encoding="utf-8"))["words"]
+            reused += 1
+        else:
+            if vid not in speakers:
+                speakers[vid] = Speaker(vid, 1.0 if eleven else 0.92)
+            sp = speakers[vid]
+            same = [x["text"] for x in items if x["who"] == it["who"]]
+            idx = sum(1 for x in items[:k] if x["who"] == it["who"])
+            a, w = sp.line(it["text"], " ".join(same[max(0, idx - 2):idx]), " ".join(same[idx + 1:idx + 3]), tag=it.get("tag") or "")
+            if w is None:   # no timings came back: faster-whisper times the words
+                tmp = folder / "_line.wav"
+                sf.write(str(tmp), a, Speaker.SR)
+                w = whisper_words(tmp, it["text"].split(), len(a) / Speaker.SR)
+                tmp.unlink(missing_ok=True)
+            if eleven:
+                cdir.mkdir(exist_ok=True)
+                sf.write(str(lw), a, Speaker.SR)
+                lj.write_text(json.dumps({"words": [list(x) for x in w]}), encoding="utf-8")
         starts.setdefault(it["scene"], t)
         dur = len(a) / Speaker.SR
         words += [[x[0], t + x[1], t + x[2], it["who"]] for x in w]
@@ -566,6 +583,8 @@ def synth_dialogue(items, voices, folder):
         audio.append(np.zeros(int(pad * Speaker.SR), dtype="float32"))
         t += dur + pad
     chars = sum(s.chars for s in speakers.values())
+    if reused:
+        say(f"  Reused {reused} of {len(items)} line(s) already voiced (no ElevenLabs characters for those).")
     wpm = sum(len(x["text"].split()) for x in items) / max(1e-6, (t - LEAD) / 60)
     wav = folder / "_voice_raw.wav"
     sf.write(str(wav), np.concatenate(audio), Speaker.SR)
@@ -899,6 +918,11 @@ def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cu
         if gag.get("type") in quality.GAGS:
             wf = _word_frame(words, start, end, gag.get("on_word"))
             at = (wf - start) if wf is not None else n // 2
+            if gag["type"] == "freeze_label" and gag.get("who") in here:
+                # 2.36.1 (ep 28: the assistant's name tag came after his first line): a name tag is up by the time he first speaks
+                first = next((max(0, round(a * FPS) - start) for _x, (a, b, w) in lines_of[i] if w == gag["who"]), None)
+                if first is not None and first < at:
+                    at = first
             sec = (start + at) / FPS
             who_at = next((w for (x, y, w) in segs if x <= sec < y + 0.05), None) if not own else None
             if gag["type"] == "freeze_label":
@@ -1291,10 +1315,22 @@ def stage_speakers(d):
     shelves while "250,000 stadia" was said). For the render only; the episode isn't changed.
     - a character with a line in a scene but not in its cast is added to it (at a free spot);
     - a scene with nobody and nothing in it: its callout becomes a number card (written on its word), else the cast of the scene
-      before stays on (same backdrop), listening."""
+      before stays on (same backdrop), listening.
+    2.36.1 (ep 28: blank cards on screen while the voice explained): a card with nothing to write gets its callout, else (no title
+    either) becomes the last scene with people in it; a scene Rana is to draw is staged too, because if her drawing fails the kit
+    draws it."""
     scenes = [dict(s) for s in d.get("scenes") or []]
     for i, s in enumerate(scenes):
-        if s.get("backdrop") in ("map", "diagram", "card") or s.get("generated") or (s.get("bespoke") or "").strip():
+        if s.get("backdrop") == "card" and not any(str((l or {}).get("text") or "").strip() for l in (s.get("card") or {}).get("lines") or []):
+            if s.get("callout"):
+                s["card"] = {**(s.get("card") or {}), "lines": [{"text": s.pop("callout"), "on_word": s.pop("callout_word", None)}]}
+            elif not str((s.get("card") or {}).get("title") or "").strip():
+                prev = next((x for x in reversed(scenes[:i]) if x.get("characters") and x.get("backdrop") not in ("map", "diagram", "card")), None)
+                if prev:
+                    s["backdrop"] = prev["backdrop"]
+                    s["characters"] = [{k: v for k, v in c.items() if k != "action"} for c in prev["characters"]]
+                    s.pop("card", None)
+        if s.get("backdrop") in ("map", "diagram", "card") or s.get("generated"):
             continue
         cast = [dict(c) for c in s.get("characters") or []]
         have = {c.get("who") for c in cast}
@@ -1485,7 +1521,21 @@ def render_episode(eid, voice=None, suffix=""):
             drawn |= {k for k, v in at.items() if v is not None}
         if any((p or {}).get("type") == "rod" for p in s.get("props") or []):
             sc["props"] = [rod_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "rod" else p for p in s.get("props") or []]
-            beam = next((p.get("beam_at") for p in sc["props"] if p.get("type") == "rod" and p.get("beam_at") is not None), None)
+            # 2.36.1 (ep 28: the wrong man seemed to plant the stick): the stick stands beside the one who plants it (`by`, else whoever
+            # speaks when it is planted, else the scholar, else the first person in the scene) and he reaches out as it goes in
+            here = [c.get("who") for c in sc.get("characters") or []]
+            for p in sc["props"]:
+                if p.get("type") != "rod" or not here:
+                    continue
+                pa = p.get("plant_at")
+                talker = next((w for (x, y, w) in segs if pa is not None and x <= (bounds[i] + pa) / FPS < y + 0.05), None) if not own else None
+                by = next((w for w in (p.get("by"), talker, "scholar") if w in here), here[0])
+                p["by"] = by
+                if pa is not None:
+                    base = next((c.get("pose") or "stand" for c in sc["characters"] if c.get("who") == by), "stand")
+                    sc["beats"] = sorted(sc["beats"] + [{"at": max(0, pa - 6), "who": by, "pose": "present"},
+                                                        {"at": pa + ACTION_HOLD, "who": by, "pose": base}], key=lambda b: b["at"])
+            beam =next((p.get("beam_at") for p in sc["props"] if p.get("type") == "rod" and p.get("beam_at") is not None), None)
             if beam is not None:   # Israa on ep 26: "a tiny 7.2 label beside the stick in a wide shot": cut in to the stick
                 sc["hits"] = sorted(sc.get("hits", []) + [{"at": beam, "cam": "punch_in", "who": "rod"},
                                                           {"at": min(sc["frames"] - 1, beam + 150), "cam": "release"}], key=lambda h: h["at"])

@@ -488,6 +488,26 @@ Agents never spend money without the owner's explicit approval.
   events `assets_ready`/`assets_failed` wake the autopilot. Same release: `animate.drop_repeats` (rule voice.drop_repeats) cuts a word
   Eleven v3 said twice inside a line (faster-whisper on the voice track; v3 gets no previous/next text, so not the joins) and moves
   every later time up; the title card's year is `short_year` ("138 CE", not a sentence) and its ribbon type shrinks to fit.
+- Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
+  - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
+    (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`
+    (25) it goes back to her as "nearly empty", then the kit draws the scene (her file is deleted so no later render reuses it).
+    Her words carry `k` (lower case, no punctuation) so her code finds "shadow" in "shadow,"; her task lists who speaks on screen;
+    her prompt: never an empty picture, text fits its box, a counting number lands on the spoken value and holds, speakers on
+    screen, no faces in the captions' band. `animator.DRAW_RULES` is in the drawing's cache key: raise it when her rules change.
+    `stage_speakers` stages bespoke scenes too (for the kit fallback); a card with no lines gets its callout, else (no title)
+    becomes the last scene with people. Card (Backdrops.jsx) wraps lines (~18 characters a row, type sized to fit the box) and a
+    title-only card shows the title big in the middle.
+  - Diagram: Alexandria's stick gets its own parallel sunbeam through its top, a bigger arc and the same angle label as the
+    centre (the a_label moved up to make room).
+  - Staging: a rod stands just left of whoever plants it (`by` on the rod prop, else the speaker at the plant word, else the
+    scholar, else the first person; Short.jsx `rodWant`), who takes the `present` pose as it goes in; a prop's whole back (the
+    shadow) is kept clear of the person beside it; a freeze-frame name tag is up by its person's first line in the scene;
+    captions never take a third row (smaller type instead), so they stay off faces in the bottom corners.
+  - Voices: each ElevenLabs line is cached on its own (`_voice-cache/l-<key>`, key = voice, speaker, respelled text, tag,
+    model, speed, stability), so a pronunciation change re-voices only the lines it touches. Rule `voice.pronounce` default is
+    lower-case respellings for Syene, Eratosthenes and Beta; `hq say [project] "Name" "re-spell"` edits it word by word.
+  - Not done (no episode data in the Builder's copy to find the cause): the 236-242 s waist crop.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

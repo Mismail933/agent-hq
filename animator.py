@@ -38,6 +38,7 @@ BANNED = [r"\brequire\s*\(", r"\bimport\s*\(", r"\bfetch\b", r"XMLHttpRequest", 
           r"\bsetInterval\b", r"requestAnimationFrame", r"Math\.random", r"Date\.now", r"new Date", r"\bperformance\b", r"<foreignObject",
           r"<script", r"<iframe", r"dangerouslySetInnerHTML", r"https?://", r"\bchild_process\b", r"\bfs\b", r"<image", r"<img"]
 MAX_BYTES = 40000
+DRAW_RULES = 2   # part of a drawing's cache key: raised when her rules change, so drawings made under the old rules are drawn again
 
 API = """THE KIT YOU MAY IMPORT (nothing else, no other packages, no other files):
   import React from 'react';
@@ -48,7 +49,7 @@ API = """THE KIT YOU MAY IMPORT (nothing else, no other packages, no other files
      LINE = 8 (outline thickness); ink = {stroke, strokeWidth, strokeLinejoin, strokeLinecap} spread on shapes for the house outline;
      easeOut/easeInOut/clamp01 take 0..1; lerp(a, b, t); rnd(i) = a repeatable "random" number 0..1 (never use Math.random).
   import {Character} from './Character';
-     <Character who="narrator|scholar|ruler" pose="stand|point|explain|amazed|wave|think|present" poseTo="..." blend={0..1}
+     <Character who="scholar|ruler|citizen|woman|elder|merchant|guard|worker" pose="stand|point|explain|amazed|wave|think|present" poseTo="..." blend={0..1}
         expression="neutral|happy|surprised|worried|determined|thinking" look={[dx, dy]} mouth={letter A-H or X} noProp
         x={feet x} y={feet y} scale={0.6-1.3} frame={frame} enterAt={0} seed={0} walking />
      The figure is about 560 units tall at scale 1 (feet at y); use mouth={mouth[frame]} for the speaking character.
@@ -56,8 +57,11 @@ API = """THE KIT YOU MAY IMPORT (nothing else, no other packages, no other files
   import {Rod, Globe, Callout} from './Extras';  // <Rod x y shadow={0..1} frame /> <Globe x y r frame /> <Callout text frame y />
 
 YOUR FILE MUST: export default function Scene({frame, frames, words, mouth}) { return <g>...</g>; }
-  frame = the frame inside THIS scene (0 .. frames-1, 30 per second); frames = this scene's length; words = [{w, from, to}] frame
-  offsets inside the scene of each spoken word (sync to them); mouth = an array with one Rhubarb mouth letter per scene frame.
+  frame = the frame inside THIS scene (0 .. frames-1, 30 per second); frames = this scene's length; words = [{w, k, from, to}] frame
+  offsets inside the scene of each spoken word (sync to them); w is the word as written ("Syene's," "39,250"), k the same word in
+  lower case without punctuation ("syenes", "39250"): find words by k, e.g. words.find((x) => x.k === 'shadow'), and give
+  everything a fallback time (a share of `frames`) in case the word isn't there; mouth = an array with one Rhubarb mouth letter
+  per scene frame.
   Return SVG elements for a 1080 x 1920 canvas (a <g>, not an <svg>). The caller adds captions and the title card.
 """
 
@@ -80,6 +84,12 @@ HOW A GOOD SCENE LOOKS
 - Deterministic: everything derives from `frame`. No Math.random (use rnd), no Date, timers, fetch, window, document. Do not import
   anything outside the kit. No images or external assets; draw everything as SVG. Keep it under about 400 SVG elements.
 - Make clip ids unique (include 'scene' in the id) if you use clipPath/gradients.
+- Never an empty picture: from the first frame the scene shows its place (a backdrop or a full drawing of the scene), never a
+  blank card or a white box with one word on it. Every text fits inside its box (wrap it or make it smaller).
+- Numbers: show exactly the number the voice says. If a number counts up or down, it reaches the spoken value by the time that
+  word starts and then holds it; never show a different number while one is being said.
+- Whoever speaks in this scene (the task lists them) is on screen, as <Character>, while he speaks: nobody talks from an empty room.
+- No face and nothing important in y 1300-1650 (the captions).
 Answer with ONE ```jsx code block containing the complete file and nothing else."""
 
 
@@ -156,8 +166,14 @@ def icon_authors(code):
 
 def task_text(story, scene, frames, words, kit_note):
     ws = " ".join(f"{w['w']}@{w['from']}" for w in words)
+    who = []
+    for l in scene.get("lines") or []:
+        if l.get("who") and l["who"] != "narrator" and l["who"] not in who:
+            who.append(l["who"])
     return (f"THE STORY: {story}\n\nTHIS SCENE ({frames} frames = {frames / 30:.1f} s)\n"
-            f"Voice line: \"{scene.get('voice_line', '')}\"\nWhat it must show: {scene.get('shows', '') or '(show the step the voice explains)'}\n"
+            f"Voice line: \"{scene.get('voice_line', '')}\"\n"
+            f"Who speaks on screen (draw each with <Character who=...> while he talks): {', '.join(who) or 'nobody (the narrator is a voice only)'}\n"
+            f"What it must show: {scene.get('shows', '') or '(show the step the voice explains)'}\n"
             f"Bespoke idea from the writer: {scene.get('bespoke', '') or '(none: use your own judgment)'}\n"
             f"The stock version would be: {kit_note}\n\n"
             f"Word timings (word@frame inside the scene): {ws}\n\n"
@@ -226,20 +242,51 @@ def write_scene(project_id, story, scene, frames, words, kit_note, folder, name,
             say(f"  Rana's file rejected ({problem[:140]}); asking again ({attempt + 1}/{repairs})")
             continue
         (folder / f"{name}.jsx").write_text(last, encoding="utf-8")
-        err = test_render(folder, name, scene, frames)
+        err = test_render(folder, name, scene, frames, words)
         if not err:
             return name
+        if err.startswith(EMPTY):
+            problem = err
+            say(f"  Rana's drawing is nearly empty ({err[len(EMPTY):][:100]}); asking again ({attempt + 1}/{repairs})")
+            continue
         problem = f"it failed to render: {err[:600]}"
         say(f"  Rana's file didn't render ({err[:140]}); asking again ({attempt + 1}/{repairs})")
+    (folder / f"{name}.jsx").unlink(missing_ok=True)   # never reused by a later render: the kit draws this scene
     raise Blocked(f"Rana couldn't produce a scene that renders: {problem[:300]}")
 
 
-def test_render(folder, name, scene, frames):
-    """Render three frames of the scene in the sandbox. Returns '' if all three work, else the error text."""
+EMPTY = "the picture is nearly empty: "
+
+
+def drawn_share(png):
+    """How much of a frame has something drawn in it (0-100): the share of small squares (the caption band left out) that hold any
+    line or edge. A blank card with one word scores low; a drawn scene high. None if Pillow isn't there."""
+    try:
+        from PIL import Image, ImageFilter
+    except ImportError:
+        return None
+    im = Image.open(png).convert("L").resize((270, 480))
+    edges = im.filter(ImageFilter.FIND_EDGES).load()
+    cells = busy = 0
+    for cy in range(0, 480, 15):
+        if 325 <= cy < 400:   # y 1300-1600: the captions' band
+            continue
+        for cx in range(0, 270, 15):
+            cells += 1
+            if any(edges[x, y] > 40 for x in range(cx + 1, cx + 14) for y in range(cy + 1, min(480, cy + 14))):
+                busy += 1
+    return round(100 * busy / max(1, cells))
+
+
+def test_render(folder, name, scene, frames, words=()):
+    """Render three frames of the scene in the sandbox, with the scene's real word timings. Returns '' if all three work, else the
+    error text; EMPTY + why when the last frame (where the whole explanation should be on screen) is nearly blank (2.36.1, ep 28:
+    blank cards played while the voice explained the well; rule rana.min_drawn_percent)."""
     import animate
+    import rules
     install(folder, [name])
     props = {"durationInFrames": frames, "mouth": ["X"] * frames, "caption_chunks": [], "intro": None, "outro": None,
-             "scenes": [{"from": 0, "frames": frames, "backdrop": "court", "generated": name, "words": []}]}
+             "scenes": [{"from": 0, "frames": frames, "backdrop": "court", "generated": name, "words": list(words)}]}
     pf = folder / "_test-props.json"
     pf.write_text(json.dumps(props), encoding="utf-8")
     try:
@@ -249,6 +296,11 @@ def test_render(folder, name, scene, frames):
                                   "--overwrite"], timeout=300)
             except Blocked as e:
                 return str(e)
+        need = rules.get("rana.min_drawn_percent") or 0
+        share = drawn_share(folder / "_test.png") if need else None
+        if share is not None and share < need:
+            return (EMPTY + f"at the scene's last frame only {share}% of the picture has anything drawn (at least {need}% needed). "
+                    "Draw the whole place and every step the voice explains, so the picture is full by the end.")
     finally:
         pf.unlink(missing_ok=True)
         (folder / "_test.png").unlink(missing_ok=True)
@@ -275,9 +327,9 @@ def draw_scenes(ep, d, scenes, words, folder, art=""):
             continue
         sc = scenes[i]
         a, n = sc["from"], sc["frames"]
-        sw = [{"w": w[0], "from": max(0, round(w[1] * animate.FPS) - a), "to": max(0, round(w[2] * animate.FPS) - a)}
-              for w in words if a <= round(w[1] * animate.FPS) < a + n]
-        key = hashlib.sha1(json.dumps([brief, s.get("voice_line") or "", s.get("backdrop") or ""] + ([art] if art else [])).encode("utf-8")).hexdigest()[:10]
+        sw = [{"w": w[0], "k": re.sub(r"[^a-z0-9]", "", str(w[0]).lower()), "from": max(0, round(w[1] * animate.FPS) - a),
+               "to": max(0, round(w[2] * animate.FPS) - a)} for w in words if a <= round(w[1] * animate.FPS) < a + n]
+        key = hashlib.sha1(json.dumps([brief, s.get("voice_line") or "", s.get("backdrop") or "", DRAW_RULES] + ([art] if art else [])).encode("utf-8")).hexdigest()[:10]
         name = f"rana_{ep['id']}_{i}_{key}"
         code_file = out / f"{name}.jsx"
         kit_note = f"a '{s.get('backdrop')}' scene" + ((", characters: " + ", ".join(c["who"] for c in s.get("characters") or [])) if s.get("characters") else "")
@@ -309,7 +361,7 @@ def scene_words(props, scene):
     for c in props.get("caption_chunks", []):
         for w in c["words"]:
             if a <= w["from"] < b:
-                out.append({"w": w["w"], "from": w["from"] - a, "to": min(w["to"], b) - a})
+                out.append({"w": w["w"], "k": re.sub(r"[^a-z0-9]", "", str(w["w"]).lower()), "from": w["from"] - a, "to": min(w["to"], b) - a})
     return out
 
 

@@ -67,7 +67,8 @@ const stage = (items, feet, topLimit, margin = SAFE) => {
       const a = order[k - 1];
       const b = order[k];
       // bodies apart by GAP; a hand reaching towards the other stops short of the other's middle
-      const bodies = (a.b.half + b.b.half) * sc + GAP;
+      // a prop's back counts whole (a rod's shadow lies on the ground behind it: nobody stands on it, 2.36.1)
+      const bodies = (a.b.half + (b.prop ? b.b.back : b.b.half)) * sc + GAP;
       const reachA = a.facing > 0 ? a.b.front * sc + b.b.half * sc * 0.35 : 0;
       const reachB = b.facing < 0 ? b.b.front * sc + a.b.half * sc * 0.35 : 0;
       xs.push(Math.max(b.want, xs[k - 1] + Math.max(bodies, reachA, reachB)));
@@ -209,14 +210,21 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   const feet = rodsIn.length ? Math.min(FEET[scene.backdrop] ?? 1440, (FLOOR[scene.backdrop] ?? 1150) + 110) : FEET[scene.backdrop] ?? 1440;
   const noProp = rodsIn.length > 0;   // the scene is about the rod: nobody carries a staff that could be mistaken for it
   const propsIn = (scene.props || []).filter((p) => p.type === 'asset' && ASSETS.props[p.id]);
+  const castItems = cast.map((c) => {
+    const poses = [c.pose || 'stand', ...beats.filter((b) => b.who === c.who && b.pose).map((b) => b.pose)];
+    // beside the well's mouth, never on it (well_side): people stand left or right of the shaft
+    const want = scene.backdrop === 'well_side' && c.x == null ? (c.at === 'right' ? 880 : 210) : c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'];
+    return {b: bodyOf(c.who, poses, noProp), want, facing0: c.facing || 0};
+  });
+  // 2.36.1: a rod stands just left of the one who plants it (`by`, animate.py), its shadow pointing away from him
+  const rodWant = (p) => {
+    if (p.x != null) return p.x;
+    const k = cast.findIndex((c) => c.who === p.by);
+    return k >= 0 ? castItems[k].want - 1 : 540;
+  };
   const items = [
-    ...cast.map((c) => {
-      const poses = [c.pose || 'stand', ...beats.filter((b) => b.who === c.who && b.pose).map((b) => b.pose)];
-      // beside the well's mouth, never on it (well_side): people stand left or right of the shaft
-      const want = scene.backdrop === 'well_side' && c.x == null ? (c.at === 'right' ? 880 : 210) : c.x ?? (n > 2 ? SLOTS3 : SLOTS)[c.at || 'center'];
-      return {b: bodyOf(c.who, poses, noProp), want, facing0: c.facing || 0};
-    }),
-    ...rodsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
+    ...castItems,
+    ...rodsIn.map((p) => ({prop: true, facing0: 1, want: rodWant(p),
       b: {half: 30 * ROD_K, back: (60 + 360 * (p.shadow ?? 0.5)) * ROD_K, front: 120 * ROD_K, top: 320 * ROD_K}})),
     // a story's own prop (one design, assets.py) stands in the row like a person: about 400 units tall, never on top of anyone
     ...propsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,

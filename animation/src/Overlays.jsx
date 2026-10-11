@@ -14,6 +14,12 @@ export const Captions = ({chunks, frame}) => {
   const {fps} = useVideoConfig();
   const age = frame - chunk.from;
   const pop = spring({frame: age, fps, config: {damping: 12, stiffness: 220, mass: 0.5}});
+  // 2.36.1 (ep 28: captions over faces): never more than two rows (y 1310-1570); a chunk of long words gets smaller type instead of a
+  // third row running down over the people standing in the bottom of the picture
+  const lens = chunk.words.map((w) => String(w.w).length);
+  const widthAt = (f) => lens.reduce((s, n) => s + n * f * 0.62, 0) + 66 * Math.max(0, lens.length - 1);
+  let fs = Math.min(124, (W - 140) / (0.62 * Math.max(1, ...lens)));
+  while (fs > 64 && widthAt(fs) > 1.75 * (W - 120)) fs -= 4;
   return (
     <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center'}}>
       <div
@@ -23,7 +29,7 @@ export const Captions = ({chunks, frame}) => {
           width: W - 120,
           textAlign: 'center',
           fontFamily: HEAD,
-          fontSize: 124,
+          fontSize: fs,
           lineHeight: 1.04,
           textTransform: 'uppercase',
           transform: `scale(${0.9 + 0.1 * pop})`,

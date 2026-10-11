@@ -340,20 +340,39 @@ export const Card = ({frame, scene}) => {
   const lines = (card.lines || []).slice(0, 5);
   const at0 = card.at || lines.map((_, i) => 10 + i * 40);
   const at = at0.map((a, i) => (i === 0 ? Math.min(a, 15) : a));   // 2.33.0: never an empty card while the narrator talks
-  const fs = Math.max(64, Math.min(104, 880 / (0.56 * Math.max(8, ...lines.map((l) => String(l.text || '').length)))));
+  // 2.36.1 (ep 28: one line ran past the card's border, small): each line wraps into rows of about 18 characters and the type is
+  // sized so the longest row fits the card's width and every row fits its height
+  const wrap = (t) => {
+    const rows = [];
+    String(t || '').split(/\s+/).filter(Boolean).forEach((wd) => {
+      const last = rows[rows.length - 1];
+      if (last && (last + ' ' + wd).length <= 18) rows[rows.length - 1] = last + ' ' + wd;
+      else rows.push(wd);
+    });
+    return rows;
+  };
+  const rowsOf = lines.map((l) => wrap(l.text));
+  const nRows = rowsOf.reduce((s, r) => s + r.length, 0);
+  const longest = Math.max(6, ...rowsOf.flat().map((r) => r.length));
+  const fs = Math.max(48, Math.min(110, 840 / (0.6 * longest), 640 / (1.3 * Math.max(1, nRows) + 0.2 * lines.length)));
+  const title = String(card.title || '').toUpperCase();
+  // a card with only a title (nothing written on it) shows the title big in the middle, never a near-empty box
+  const tfs = lines.length ? 62 : Math.max(60, Math.min(130, 840 / (0.6 * Math.max(4, title.length))));
+  let y = 560 + fs * 0.8;
   return (
     <g>
       <rect x="-400" y="-200" width="1880" height="2300" fill="#EFE3CC" />
       <rect x="70" y="360" width="940" height="900" rx="40" fill="#FBF6EC" {...o} />
-      {card.title && <text x="540" y="470" textAnchor="middle" fontFamily={HEAD} fontSize="62" fill={K.terracotta}>{String(card.title).toUpperCase()}</text>}
+      {title && <text x="540" y={lines.length ? 470 : 810 + tfs * 0.35} textAnchor="middle" fontFamily={HEAD} fontSize={tfs} fill={K.terracotta}>{title}</text>}
       {lines.map((l, i) => {
+        const y0 = y;
+        y += fs * 1.3 * rowsOf[i].length + fs * 0.2;
         const age = frame - (at[i] ?? 0);
         if (age < 0) return null;
         const pop = Math.min(1, age / 8);
-        const y = 620 + i * (fs * 1.4);
         return (
-          <g key={i} transform={`translate(540 ${y}) scale(${0.85 + 0.15 * pop})`} opacity={pop}>
-            <text textAnchor="middle" fontFamily={HEAD} fontSize={fs} fill={INK}>{l.text}</text>
+          <g key={i} transform={`translate(540 ${y0}) scale(${0.85 + 0.15 * pop})`} opacity={pop}>
+            {rowsOf[i].map((r, k) => <text key={k} y={k * fs * 1.3} textAnchor="middle" fontFamily={HEAD} fontSize={fs} fill={INK}>{r}</text>)}
             {i === lines.length - 1 && lines.length > 1 && <line x1="-300" y1={-fs * 1.05} x2="300" y2={-fs * 1.05} stroke={INK} strokeWidth="7" strokeLinecap="round" opacity="0.7" />}
           </g>
         );
