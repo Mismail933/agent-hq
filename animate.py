@@ -44,7 +44,11 @@ APP = HOME / "app"
 PIPER_DIR = HOME / "piper"
 PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/"
 LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 4.5   # the end card holds while the music plays out (2.30.0)
-END_HOLD = 1.3   # seconds the last shot stays after the last word, before the end card (2.33.0: the payoff was cut off)
+END_HOLD = 2.0   # seconds the last shot stays after the last word, before the end card (live rule video.end_hold_seconds)
+END_FADE = 1.0   # seconds the end card takes to fade in over the last shot (live rule video.end_fade_seconds; the owner: end slowly)
+# 2.35.0 framing (Israa on ep 28: speakers cut off at the edges, tiny people in wide library shots), live rules Atlas controls:
+FRAME_MARGIN = 60      # px nothing a speaker needs may cross at the picture's edges (video.frame_margin_px)
+SPEAKER_MIN_H = 0.40   # whoever talks fills at least this share of the picture's height (video.speaker_min_height; 0 = off)
 SHORT_LIMIT = 178.0   # YouTube calls a vertical video of up to 3 minutes a Short: nothing is decided or refused here, the label just follows the length
 VIDEO_CAP = 960.0     # only an absurd length (16 minutes) is refused; the story decides, Israa judges whether it earns its length
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
@@ -853,7 +857,8 @@ def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cu
             sec = (start + at) / FPS
             who_at = next((w for (x, y, w) in segs if x <= sec < y + 0.05), None) if not own else None
             if gag["type"] == "freeze_label":
-                out_gag = {"type": "freeze_label", "text": str(gag.get("text") or "")[:44], "at": at, "frames": FREEZE_FRAMES,
+                # 2.35.0: up to 90 characters; the renderer wraps it (the old 44-character cut left "meaning Num…" on screen)
+                out_gag = {"type": "freeze_label", "text": str(gag.get("text") or "")[:90], "at": at, "frames": FREEZE_FRAMES,
                            **({"who": gag["who"]} if gag.get("who") in here else {})}
                 # no sound on the freeze (the owner disliked the record scratch); the camera frames the one the label names
                 if gag.get("who") in here:
@@ -1164,6 +1169,98 @@ def caption_chunks(words):
     return out
 
 
+def heard_captions(wav, words):
+    """The words the captions show, as the voice really says them (2.35.0, Israa on ep 28: "PACERS" on screen where the voice said
+    "paces"; "SIX / SEVEN" captioned over four seconds of silence). Only the captions use this; every other timing keeps `words`.
+    - rule captions.heard_words: faster-whisper listens to the voice track; a word it clearly heard as a close look-alike (pacers /
+      paces) is captioned as heard, and a word whose timing sits far from where it was heard takes the heard timing. Names and
+      words it heard as something quite different are left alone (it mishears names);
+    - always: a word is captioned only while there is voice (its time trimmed to the sound inside it); a word with no sound at all
+      (the voice skipped it, or its timing landed in a pause) is not captioned."""
+    import difflib
+    import numpy as np
+    import soundfile as sf
+    out = [list(w) for w in words]
+    if rules.get("captions.heard_words") and out:
+        try:
+            from faster_whisper import WhisperModel
+            model = WhisperModel("base.en", device="cpu", compute_type="int8")
+            segs, _ = model.transcribe(str(wav), word_timestamps=True, language="en", vad_filter=True,
+                                       vad_parameters={"min_silence_duration_ms": 300}, condition_on_previous_text=False)
+            heard = [(w.word.strip(), w.start, w.end, w.probability or 0) for s in segs for w in (s.words or [])]
+            a, b = [_norm(w[0]) for w in out], [_norm(h[0]) for h in heard]
+            swapped = 0
+            for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+                if op not in ("equal", "replace") or (op == "replace" and i2 - i1 != j2 - j1):
+                    continue
+                for k in range(i2 - i1):
+                    w, h = out[i1 + k], heard[j1 + k]
+                    if op == "replace":
+                        mid = i1 + k > 0 and not re.search(r"[.!?]$", out[i1 + k - 1][0])
+                        if (mid and w[0][:1].isupper()) or re.search(r"\d", w[0]) or h[3] < 0.8 or len(b[j1 + k]) < 3 \
+                                or difflib.SequenceMatcher(None, a[i1 + k], b[j1 + k]).ratio() < 0.75:
+                            continue
+                        core = re.sub(r"[^A-Za-z']", "", h[0]).lower()
+                        lead = re.match(r"^\W*", w[0]).group(0)
+                        tail = re.search(r"\W*$", w[0]).group(0)
+                        core = core.capitalize() if re.sub(r"^\W*", "", w[0])[:1].isupper() else core
+                        w[0] = lead + core + tail
+                        swapped += 1
+                    if abs(w[1] - h[1]) > 0.4:
+                        w[1], w[2] = h[1], max(h[2], h[1] + 0.1)
+            if swapped:
+                say(f"  Captions: {swapped} word(s) written as the voice really says them.")
+        except Exception as ex:  # noqa: BLE001  (never hold the video up: the captions keep the script's words)
+            say(f"  Captions: couldn't listen to the voice ({str(ex)[:100]}); using the script's words.")
+    a, sr = sf.read(str(wav), dtype="float32")
+    if a.ndim > 1:
+        a = a.mean(axis=1)
+    hop = max(1, sr // 100)   # 10 ms
+    n = len(a) // hop
+    env = np.sqrt((a[:n * hop].reshape(n, hop) ** 2).mean(axis=1)) if n else np.zeros(1, dtype="float32")
+    thr = max(0.004, 0.06 * float(np.percentile(env[env > 0], 90))) if (env > 0).any() else 0.004
+    kept, dropped = [], 0
+    for w in out:
+        i, j = int(w[1] * 100), max(int(w[1] * 100) + 1, int(np.ceil(w[2] * 100)))
+        on = np.nonzero(env[i:j] > thr)[0]
+        if not len(on):
+            dropped += 1
+            continue
+        kept.append([w[0], max(w[1], (i + on[0]) / 100 - 0.02), min(w[2], (i + on[-1]) / 100 + 0.06)] + w[3:])
+    if dropped:
+        say(f"  Captions: {dropped} word(s) left out where the voice is silent.")
+    return kept
+
+
+def stage_speakers(d):
+    """Whoever speaks is on screen, and no scene is an empty room (2.35.0, Israa on ep 28: an empty room while someone spoke, empty
+    shelves while "250,000 stadia" was said). For the render only; the episode isn't changed.
+    - a character with a line in a scene but not in its cast is added to it (at a free spot);
+    - a scene with nobody and nothing in it: its callout becomes a number card (written on its word), else the cast of the scene
+      before stays on (same backdrop), listening."""
+    scenes = [dict(s) for s in d.get("scenes") or []]
+    for i, s in enumerate(scenes):
+        if s.get("backdrop") in ("map", "diagram", "card") or s.get("generated") or (s.get("bespoke") or "").strip():
+            continue
+        cast = [dict(c) for c in s.get("characters") or []]
+        have = {c.get("who") for c in cast}
+        for l in s.get("lines") or []:
+            if l.get("who") in CAST and l["who"] not in have and len(cast) < 4:
+                used = {c.get("at") for c in cast}
+                cast.append({"who": l["who"], "at": next((p for p in ("left", "right", "center") if p not in used), "center")})
+                have.add(l["who"])
+        if not cast and not s.get("props") and not s.get("crowd"):
+            prev = scenes[i - 1] if i else {}
+            if s.get("callout"):
+                s["backdrop"] = "card"
+                s["card"] = {"lines": [{"text": s.pop("callout"), "on_word": s.pop("callout_word", None)}]}
+                s["camera"] = "still"
+            elif prev.get("backdrop") == s.get("backdrop") and prev.get("characters"):
+                cast = [{k: v for k, v in c.items() if k != "action"} for c in prev["characters"]]
+        s["characters"] = cast
+    return {**d, "scenes": scenes}
+
+
 # ---- 3. the whole job -------------------------------------------------------------------
 def voice_choice(project):
     meta = (project or {}).get("meta") or {}
@@ -1234,6 +1331,7 @@ def render_episode(eid, voice=None, suffix=""):
     say(f"Episode #{ep['id']}: {ep['title']}")
     ensure_toolchain(ep["project_id"])
     d = quality.sync_voice_lines(d)
+    d = stage_speakers(d)   # whoever speaks is on screen; no empty rooms (render only)
     items = utterances(d, project)
     lines = [shorts.fill_placeholders(l, project) for l in narration(d)]
     # the owner's own voice file (e.g. voice.mp3 from ElevenLabs); never our own generated voice.wav / voice-N.wav
@@ -1336,6 +1434,7 @@ def render_episode(eid, voice=None, suffix=""):
             sc["props"] = [globe_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "globe" else p for p in sc.get("props") or s.get("props") or []]
         if i == len(d["scenes"]) - 1:
             sc["ending"] = True   # the last scene: one slow push-in, no cuts, the music swells into the end card
+            sc["hold_frames"] = min(sc["frames"] - 1, round((END_HOLD if not own else 0) * FPS))   # pushed in by the last word, then holds
         scenes.append(sc)
     # the soundtrack: voices + sound effects on their words + the project's music (if the owner picked one), ducked under speech
     music_id = (project.get("meta") or {}).get("music") or ""
@@ -1374,7 +1473,9 @@ def render_episode(eid, voice=None, suffix=""):
         "outro_from": round(end_t * FPS),
         **({"title": {"from": round(title["from_s"] * FPS), "frames": round(title["secs"] * FPS), "text": title["text"],
                       "place": short_place(title["place"]), "year": (title["year"] or "").upper()}} if title else {}),
-        "caption_chunks": caption_chunks(words),
+        "caption_chunks": caption_chunks(heard_captions(folder / f"voice{suffix}.wav", words)),
+        "framing": {"margin": int(FRAME_MARGIN), "speaker_min": float(SPEAKER_MIN_H)},
+        "outro_fade": max(1, round(END_FADE * FPS)),
         "scenes": scenes,
         "pacing": pacing,
     }

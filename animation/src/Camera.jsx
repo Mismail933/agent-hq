@@ -77,25 +77,62 @@ const hitsAt = (hits, frame) => {
 // px either side of the focus); the camera never zooms or pans far enough to push that content past the margin. A punch-in on
 // one speaker frames that speaker the same way (so it can zoom further, never cropping him).
 export const SAFE = 60;
-export const Camera = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0, topY = null, topLimit = SAFE, hits = [], children}) => {
+
+/**
+ * Where the camera is at this frame: {s, dx, dy, fx, fy, blur}. A world point x is on screen at W/2 + dx + s * (x - fx).
+ * 2.35.0 (Israa on ep 28: speakers cut off or tiny in wide shots), worked out here so the scene can use the same framing:
+ * - margin: the safe margin (live rule video.frame_margin_px);
+ * - keep: whoever is speaking ({left, right, topY, h} in the world): if the shot shows him smaller than minH of the picture's height
+ *   (rule video.speaker_min_height) it cuts in on him, and he is always kept fully inside the margin (moved, or the shot widened);
+ * - hold: the last `hold` frames of the move stand still (the ending pushes in by the last word, then holds).
+ */
+export const cameraFrame = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0, topY = null, topLimit = SAFE, hits = [],
+  margin = SAFE, keep = null, minH = 0, hold = 0}) => {
   const hs = hitsAt(hits, frame);
   const f = frame - hs.held;
-  let cam = cameraAt(move, f / Math.max(1, frames), f);
-  const sub = hs.subject;
-  const z = hs.z;
-  const fc = sub ? [lerp(focus[0], sub.focus, z), focus[1]] : focus;
-  const sp = sub ? lerp(spread, sub.spread, z) : spread;
-  const ty = sub && topY !== null ? lerp(topY, sub.topY, z) : topY;
-  cam = {...cam, s: cam.s * (1 + (sub ? 0.5 : 0.22) * z)};
-  if (sp > 0) {
-    const room = W / 2 - SAFE;
-    let s = Math.max(1, Math.min(cam.s, room / sp));
-    if (ty !== null) s = Math.max(1, Math.min(s, (H / 2 - topLimit) / Math.max(1, H / 2 - ty))); // the top of the tallest thing too
-    const slack = Math.max(0, room - sp * s);
-    cam = {s, dx: Math.max(-slack, Math.min(slack, cam.dx)), dy: Math.max(0, cam.dy)};
+  const base = cameraAt(move, Math.min(1, f / Math.max(1, frames - hold)), f);
+  const fit = (sub, z) => {
+    const fc = sub ? [lerp(focus[0], sub.focus, z), focus[1]] : focus;
+    const sp = sub ? lerp(spread, sub.spread, z) : spread;
+    const ty = sub && topY !== null ? lerp(topY, sub.topY, z) : topY;
+    let cam = {...base, s: base.s * (1 + (sub ? 0.5 : 0.22) * z)};
+    if (sub && sub.minS) cam.s = Math.max(cam.s, sub.minS);
+    if (sp > 0) {
+      const room = W / 2 - margin;
+      let s = Math.max(1, Math.min(cam.s, room / sp));
+      if (ty !== null) s = Math.max(1, Math.min(s, (H / 2 - topLimit) / Math.max(1, H / 2 - ty))); // the top of the tallest thing too
+      const slack = Math.max(0, room - sp * s);
+      cam = {s, dx: Math.max(-slack, Math.min(slack, cam.dx)), dy: Math.max(0, cam.dy)};
+    }
+    return {...cam, fx: fc[0], fy: fc[1]};
+  };
+  let cam = fit(hs.subject, hs.z);
+  if (keep && minH > 0 && cam.s * keep.h < minH * H) {
+    // too small to read while he talks: a single of him, big enough (as far as the margin and the top band allow)
+    const w = (keep.right - keep.left) / 2;
+    cam = fit({focus: (keep.left + keep.right) / 2, spread: w, topY: keep.topY, minS: (minH * H) / Math.max(1, keep.h)}, 1);
   }
-  cam = {...cam, dx: cam.dx + hs.whipDx + hs.shakeDx, dy: cam.dy + hs.shakeDy};
-  const [fx, fy] = fc;
+  if (keep) {
+    // the speaker stays fully inside the margin: move the camera if that is enough, else widen the shot
+    const lo = margin - W / 2 - cam.s * (keep.left - cam.fx);
+    const hi = W / 2 - margin - cam.s * (keep.right - cam.fx);
+    if (lo <= hi) cam.dx = Math.max(lo, Math.min(hi, cam.dx));
+    else {
+      cam.s = Math.max(0.85, (W - 2 * margin) / Math.max(1, keep.right - keep.left));
+      cam.dx = -cam.s * ((keep.left + keep.right) / 2 - cam.fx);
+    }
+    const top = H / 2 + cam.dy + cam.s * (keep.topY - cam.fy);
+    if (top < margin && keep.topY < cam.fy) cam.s = Math.max(0.85, Math.min(cam.s, (H / 2 + cam.dy - margin) / (cam.fy - keep.topY)));
+  }
+  return {...cam, dx0: cam.dx, dx: cam.dx + hs.whipDx + hs.shakeDx, dy: cam.dy + hs.shakeDy, blur: hs.blur};
+};
+
+export const Camera = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0, topY = null, topLimit = SAFE, hits = [], view = null, children}) => {
+  const v = view || cameraFrame({move, frame, frames, focus, spread, topY, topLimit, hits});
+  const cam = {s: v.s, dx: v.dx, dy: v.dy};
+  const hs = {blur: v.blur};
+  const fx = v.fx;
+  const fy = v.fy;
   const t = `translate(${W / 2 + cam.dx} ${H / 2 + cam.dy}) scale(${cam.s}) translate(${-fx} ${-fy})`;
   return (
     <CamCtx.Provider value={cam}>

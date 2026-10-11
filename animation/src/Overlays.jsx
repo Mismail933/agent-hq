@@ -93,14 +93,18 @@ export const EpisodeTitle = ({title, frame}) => {
   const fs = Math.max(70, Math.min(132, 900 / (0.58 * Math.max(...shown.map((l) => l.length), 6))));
   const place = [title.place, title.year].filter(Boolean).join(' · ');
   const top = 960 - (shown.length * fs * 1.05) / 2;
+  const mid = top + (shown.length * fs * 1.05) / 2;
+  // 2.35.0 (Israa on ep 28: the first frame overlapped): the card fades in, the title grows from its own middle (it used to scale
+  // towards the top edge, onto the kicker line), and the kicker comes in once the title has settled
+  const fadeIn = easeOut(clamp01(frame / 8));
   return (
-    <g opacity={fade}>
+    <g opacity={Math.min(fade, fadeIn)}>
       <rect x="-200" y="-200" width={W + 400} height={H + 400} fill={C.parchment} />
       <rect x="40" y="40" width={W - 80} height={H - 80} rx="36" fill="none" stroke={C.terracotta} strokeWidth="10" />
-      <text x={W / 2} y={top - 40 - fs * 0.35} textAnchor="middle" fontFamily={BODY} fontWeight="800" fontSize="40" fill={C.teal} opacity={clamp01(frame / 6)}>
+      <text x={W / 2} y={top - 40 - fs * 0.35} textAnchor="middle" fontFamily={BODY} fontWeight="800" fontSize="40" fill={C.teal} opacity={clamp01((frame - 10) / 6)}>
         A STORY THAT REALLY HAPPENED
       </text>
-      <g transform={`translate(${W / 2} 0) scale(${Math.max(0.01, 0.85 + 0.15 * pop)}) translate(${-W / 2} 0)`}>
+      <g transform={`translate(${W / 2} ${mid}) scale(${Math.max(0.01, 0.85 + 0.15 * pop)}) translate(${-W / 2} ${-mid})`}>
         {shown.map((l, i) => (
           <text key={i} x={W / 2} y={top + fs * (i + 0.85) * 1.05} textAnchor="middle" fontFamily={HEAD} fontSize={fs} fill={C.ink}>{l}</text>
         ))}
@@ -115,14 +119,14 @@ export const EpisodeTitle = ({title, frame}) => {
   );
 };
 
-/** The last seconds: follow card. */
-export const Outro = ({outro, frame, frames}) => {
-  const {fps} = useVideoConfig();
-  const pop = spring({frame, fps, config: {damping: 10, stiffness: 120}});
+/** The last seconds: follow card. It fades in slowly over the held last shot (`fade` frames, rule video.end_fade_seconds; 2.35.0,
+ * the owner's rule "end slowly": it used to pop in). */
+export const Outro = ({outro, frame, frames, fade = 8}) => {
+  const e = easeOut(clamp01(frame / Math.max(1, fade)));
   return (
     <g>
-      <rect x="-400" y="-200" width="1880" height="2300" fill={C.ink} opacity={0.55 * clamp01(frame / 8)} />
-      <g transform={`translate(${W / 2} 900) scale(${Math.max(0.01, pop)})`}>
+      <rect x="-400" y="-200" width="1880" height="2300" fill={C.ink} opacity={0.55 * e} />
+      <g opacity={e} transform={`translate(${W / 2} 900) scale(${0.94 + 0.06 * e})`}>
         <rect x="-420" y="-190" width="840" height="380" rx="40" fill={C.parchment} stroke={C.ink} strokeWidth="12" />
         <rect x="-398" y="-168" width="796" height="336" rx="28" fill="none" stroke={C.terracotta} strokeWidth="6" />
         <text textAnchor="middle" y="-70" fontFamily={BODY} fontSize="44" fill={C.teal} fontWeight="800">FOLLOW FOR MORE HISTORY</text>

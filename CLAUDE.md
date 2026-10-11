@@ -395,6 +395,15 @@ Agents never spend money without the owner's explicit approval.
   half a second; the freeze label never runs off the screen; the title card's kicker clears the title; diagram people at x 200.
   2.33.1: `phone.send_file` refuses an episode's video while a render of that episode is running or queued (`_rerendering`): Atlas
   sent the owner ep 28's old cut while the corrected one was rendering (and ep 24 twice). The reason goes back to Atlas.
+  2.35.x framing (Israa on ep 28's redo, 6.5; Ghassan): `Camera.cameraFrame` (shared by Camera and Scene) takes `margin`, `keep` (the
+  speaker's box) and `minH`: a speaker smaller than rule video.speaker_min_height (0.40 of the picture) gets a cut-in single, and is
+  always kept fully inside rule video.frame_margin_px (moved, else the shot widens); a bystander the shot cuts in half (lone arm, half
+  body) isn't drawn (walkers excepted). `animate.stage_speakers` (render only): a character with a line but not in the scene's cast is
+  added; an empty scene's callout becomes a card, else the previous scene's cast (same backdrop) stays on. Freeze labels up to 90
+  characters, wrapped in 3 lines. The title card fades in and grows from its middle. Ending: the push-in finishes by the last word
+  (`hold_frames`) and holds rule video.end_hold_seconds (2.0), then the end card fades in over rule video.end_fade_seconds (no pop).
+  Captions: `animate.heard_captions` (rule captions.heard_words: faster-whisper on the voice track swaps close look-alikes, e.g.
+  pacers/paces, and fixes far-off timings; names and numbers kept) and no word is captioned over silence. Props: `framing`, `outro_fade`.
   2.34.0 Atlas autopilot + Atlas shipping (the owner's explicit yes in the Builder chat, 2026-10-11: shipping on, and the
   autopilot may "also approve and render"):
   - Rules `atlas.autopilot` (on/off, Atlas may flip it: `hq autopilot on|off|status`), `atlas.autopilot_minutes` (20),
