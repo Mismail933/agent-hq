@@ -707,6 +707,12 @@ and ends suddenly"; the Builder checked OverSimplified's Second Punic War part 1
   their words), well_side (the sunlight at the bottom of the well), a globe cut into slices, or the characters DOING what is narrated
   (a walker pacing, a man setting up a stick). Characters appear when they TALK: that is a sketch scene.
 - A SKETCH scene: the characters' lines, at most one short narrator line as a lead-in or a deadpan button at the end.
+- ALTERNATE, NEVER STACK (ep 25 overcorrected into long narrated diagram and card stretches, "monotonous" again): never put more
+  than TWO illustrated narration scenes in a row; then a character cuts in (a sketch, or a short reaction scene: the doubter's
+  question, the rival's sneer, the king's confusion). At least HALF the scenes have a character speaking. The hardest step of the
+  explanation gets a DOUBTER who questions it out loud, and the answer comes in the picture.
+- CLAIM ONLY WHAT THE SOURCES SAY: "nearly overhead" if they say nearly; "his range contains the real value" rather than "he
+  agreed with modern instruments". Never reuse an earlier episode's title.
 - THE ENDING SLOWS DOWN: the last scene is calm. The narrator's last line lands the meaning slowly; a character may add one short
   button line; nothing after it. The engine pushes in slowly and lets the music carry the end card. Never end on a rushed joke.
 - Every action gets its sound (footsteps, boing, gulp, slap, whoosh are added for you); add an effect yourself only under the
