@@ -508,6 +508,18 @@ Agents never spend money without the owner's explicit approval.
     model, speed, stability), so a pronunciation change re-voices only the lines it touches. Rule `voice.pronounce` default is
     lower-case respellings for Syene, Eratosthenes and Beta; `hq say [project] "Name" "re-spell"` edits it word by word.
   - Not done (no episode data in the Builder's copy to find the cause): the 236-242 s waist crop.
+- Ep 28's 17:54 render (2.36.2, Atlas's request; Israa 5.5, stranger passed; no words changed, nothing re-voiced):
+  - Captions follow the voice (`heard_captions`, rule captions.heard_words): where the script and faster-whisper disagree, script
+    words never said are left out (one or two short words inside speech kept), a stretch said differently is captioned as heard at
+    the heard times (names and close spellings keep the script's spelling over the heard time), confidently heard extra words are
+    added, a matched word ends where the voice stops. Under half the script heard = script words as before. `caption_chunks` keeps a
+    number said in words in one chunk (`NUMBER_WORDS`, up to 6 words: no "TWO THOUSAND AND" on its own).
+  - `stage_speakers`: a lone card title is not content. A card with nothing written whose words name a well becomes `well_side`
+    (sun overhead, light to the water) with a no-shadow stick (`shadow: 0`, x 215, left of the shaft; Short.jsx keeps a rod with
+    its own x there, no sunbeam cut-in) when a stick/shadow is named; else the last scene with people, the title as its callout. A rod planted on
+    screen (`PLANT_WORDS`) gets `by` = its own, else the character whose line plants it, else the story's lead (scholar if in the
+    story, else most lines), and he is added to the scene.
+  - Not found from the code (no episode data here): the fade to white at 207.5 s.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

@@ -224,14 +224,14 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   };
   const items = [
     ...castItems,
-    ...rodsIn.map((p) => ({prop: true, facing0: 1, want: rodWant(p),
+    ...rodsIn.map((p) => ({prop: true, fixed: p.x != null, facing0: 1, want: rodWant(p),
       b: {half: 30 * ROD_K, back: (60 + 360 * (p.shadow ?? 0.5)) * ROD_K, front: 120 * ROD_K, top: 320 * ROD_K}})),
     // a story's own prop (one design, assets.py) stands in the row like a person: about 400 units tall, never on top of anyone
     ...propsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
       b: {half: 180 * (p.size ?? 1), back: 200 * (p.size ?? 1), front: 200 * (p.size ?? 1), top: 400 * (p.size ?? 1)}})),
   ];
   const {scale: sc, placed} = stage(items, feet, topLimit, margin);
-  if (scene.backdrop === 'well_side') items.forEach((it, i) => { if (!it.prop) placed[i].x = it.want; });   // keep them off the shaft
+  if (scene.backdrop === 'well_side') items.forEach((it, i) => { if (!it.prop || it.fixed) placed[i].x = it.want; });   // keep them (and a placed stick) off the shaft
   const chars = cast.map((c, i) => {
     const {back, front, top} = items[i].b;
     const facing = placed[i].facing;

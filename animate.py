@@ -11,6 +11,7 @@ Remotion project in animation/ (style guide: animation/STYLE-GUIDE.md). Node and
 updates never touch them. Output goes to content/project-N/videos/ep-NNN/ as before.
 """
 import argparse
+import collections
 import hashlib
 import json
 import os
@@ -771,6 +772,9 @@ def diagram_steps(s, words, start, end, shown_before=()):
     return at
 
 
+PLANT_WORDS = ("planted", "set", "stood", "upright", "pushed")   # the words that plant a rod on screen
+
+
 def rod_steps(p, s, words, start, end):
     """A rod: its shadow grows on the word that reveals it (`reveal_word`, else the first "shadow" said in the scene), its sunbeam
     on `beam_word` (else "line", "sunbeam", "sunlight" or "angle"). Unsaid words: the shadow from the start, no beam."""
@@ -780,7 +784,7 @@ def rod_steps(p, s, words, start, end):
     g = _first_word_frame(words, start, end, [p.get("beam_word")] if p.get("beam_word") else ["line", "sunbeam", "sunlight", "angle"])
     p["beam_at"] = max(p["reveal_at"] + 20, g - start) if g is not None else None
     # planted on screen when the voice says he set it up (Israa ep 24: "the stick is already standing, nobody sets it up")
-    h = _first_word_frame(words, start, end, [p.get("plant_word")] if p.get("plant_word") else ["planted", "set", "stood", "upright", "pushed"])
+    h = _first_word_frame(words, start, end, [p.get("plant_word")] if p.get("plant_word") else list(PLANT_WORDS))
     if h is not None and h - start < p["reveal_at"]:
         p["plant_at"] = h - start
     if not p.get("angle_label") and p["beam_at"] is not None:   # the angle the scene's callout names (e.g. "ABOUT 7.2°")
@@ -1224,17 +1228,26 @@ def mouth_cues(wav, words, total_frames):
     return out
 
 
+NUMBER_WORDS = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+                "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty",
+                "seventy", "eighty", "ninety", "hundred", "thousand", "million", "and"}
+
+
 def caption_chunks(words):
     """Up to 3 words at a time; a sentence, a comma or a new speaker ends a chunk. Frames. words: [word, start, end(, who)]."""
     chunks, cur, who = [], [], None
-    for w in words:
+    for k, w in enumerate(words):
         speaker = w[3] if len(w) > 3 else "narrator"
         if cur and speaker != who:
             chunks.append((who, cur))
             cur = []
         who = speaker
         cur.append({"w": w[0], "from": round(w[1] * FPS), "to": max(round(w[2] * FPS), round(w[1] * FPS) + 3)})
-        if len(cur) == 3 or re.search(r"[.,!?;:]$", w[0]):
+        # 2.36.2 (ep 28: "TWO THOUSAND AND" read as a number of its own): a number said in words stays in one chunk (up to 6 words)
+        nxt = [_norm(x[0]) for x in words[k + 1:k + 3]]
+        in_number = _norm(w[0]) in NUMBER_WORDS and not re.search(r"[.,!?;:]$", w[0]) and nxt and len(cur) < 6 and \
+            (nxt[0] in NUMBER_WORDS - {"and"} or (nxt[0] == "and" and len(nxt) > 1 and nxt[1] in NUMBER_WORDS))
+        if (len(cur) >= 3 and not in_number) or re.search(r"[.,!?;:]$", w[0]):
             chunks.append((who, cur))
             cur = []
     if cur:
@@ -1254,7 +1267,15 @@ def heard_captions(wav, words):
       paces) is captioned as heard, and a word whose timing sits far from where it was heard takes the heard timing. Names and
       words it heard as something quite different are left alone (it mishears names);
     - always: a word is captioned only while there is voice (its time trimmed to the sound inside it); a word with no sound at all
-      (the voice skipped it, or its timing landed in a pause) is not captioned."""
+      (the voice skipped it, or its timing landed in a pause) is not captioned.
+    2.36.2 (Israa on ep 28's 17:54 render: a whole line captioned over silence, "TWO THOUSAND AND" after "2007", "EIGHT..." on
+    "Excuse me"; Eleven v3 now and then skips or rewords part of a line while its timings still cover the script's words): where the
+    script and what was heard disagree, the captions follow the voice:
+    - script words the voice never said are not captioned (one or two short words inside speech are kept: whisper drops those);
+    - a stretch said differently is captioned as heard, at the heard times (a name or close spelling keeps the script's spelling,
+      spread over the heard time); words heard but not in the script are captioned when whisper is sure of them;
+    - a matched word's end is cut where the voice stopped saying it (no "SIX..." held over the pause after it).
+    Only when whisper heard less than half the script (something went wrong) do the captions keep the script's words."""
     import difflib
     import numpy as np
     import soundfile as sf
@@ -1267,27 +1288,69 @@ def heard_captions(wav, words):
                                        vad_parameters={"min_silence_duration_ms": 300}, condition_on_previous_text=False)
             heard = [(w.word.strip(), w.start, w.end, w.probability or 0) for s in segs for w in (s.words or [])]
             a, b = [_norm(w[0]) for w in out], [_norm(h[0]) for h in heard]
-            swapped = 0
-            for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
-                if op not in ("equal", "replace") or (op == "replace" and i2 - i1 != j2 - j1):
-                    continue
-                for k in range(i2 - i1):
-                    w, h = out[i1 + k], heard[j1 + k]
-                    if op == "replace":
-                        mid = i1 + k > 0 and not re.search(r"[.!?]$", out[i1 + k - 1][0])
-                        if (mid and w[0][:1].isupper()) or re.search(r"\d", w[0]) or h[3] < 0.8 or len(b[j1 + k]) < 3 \
-                                or difflib.SequenceMatcher(None, a[i1 + k], b[j1 + k]).ratio() < 0.75:
-                            continue
-                        core = re.sub(r"[^A-Za-z']", "", h[0]).lower()
-                        lead = re.match(r"^\W*", w[0]).group(0)
-                        tail = re.search(r"\W*$", w[0]).group(0)
-                        core = core.capitalize() if re.sub(r"^\W*", "", w[0])[:1].isupper() else core
-                        w[0] = lead + core + tail
-                        swapped += 1
-                    if abs(w[1] - h[1]) > 0.4:
-                        w[1], w[2] = h[1], max(h[2], h[1] + 0.1)
-            if swapped:
-                say(f"  Captions: {swapped} word(s) written as the voice really says them.")
+            ops = difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes()
+            if sum(i2 - i1 for op, i1, i2, _, _ in ops if op == "equal") < 0.5 * len(out):
+                say("  Captions: the voice and the script are too far apart to compare; using the script's words.")
+            else:
+                new, swapped, dropped, added = [], 0, 0, 0
+
+                def who_at(i):
+                    return out[min(max(0, i), len(out) - 1)][3:]
+
+                def is_name(i):
+                    return i > 0 and not re.search(r"[.!?]$", out[i - 1][0]) and re.sub(r"^\W*", "", out[i][0])[:1].isupper()
+
+                def spread(ws, h0, h1):   # script words over a heard stretch, in proportion to their length
+                    tot = sum(max(1, len(w[0])) for w in ws)
+                    t = h0
+                    for w in ws:
+                        d = (h1 - h0) * max(1, len(w[0])) / tot
+                        new.append([w[0], t, t + d] + w[3:])
+                        t += d
+                for op, i1, i2, j1, j2 in ops:
+                    if op == "equal":
+                        for k in range(i2 - i1):
+                            w, h = list(out[i1 + k]), heard[j1 + k]
+                            if abs(w[1] - h[1]) > 0.4:
+                                w[1], w[2] = h[1], max(h[2], h[1] + 0.1)
+                            w[2] = max(w[1] + 0.1, min(w[2], h[2] + 0.15))
+                            new.append(w)
+                    elif op == "delete":
+                        run = out[i1:i2]
+                        inside = any(h[1] - 0.05 < run[-1][2] and run[0][1] < h[2] + 0.05 for h in heard)
+                        if len(run) <= 2 and inside and all(len(_norm(w[0])) <= 4 for w in run):
+                            new += [list(w) for w in run]
+                        else:
+                            dropped += len(run)
+                    elif op == "insert":
+                        for k in range(j1, j2):
+                            h = heard[k]
+                            if h[3] >= 0.6 and b[k]:
+                                new.append([h[0], h[1], max(h[2], h[1] + 0.1)] + who_at(i1 - 1))
+                                added += 1
+                    else:   # replace
+                        run, hs = out[i1:i2], heard[j1:j2]
+                        close = difflib.SequenceMatcher(None, "".join(a[i1:i2]), "".join(b[j1:j2])).ratio() >= 0.6
+                        if close or (any(is_name(i) for i in range(i1, i2)) and len(run) <= 2 * len(hs)):   # whisper mishears names
+                            if len(run) == len(hs):
+                                for k, w in enumerate(run):
+                                    h = hs[k]
+                                    w = list(w)
+                                    if not is_name(i1 + k) and not re.search(r"\d", w[0]) and h[3] >= 0.8 and len(b[j1 + k]) >= 3 \
+                                            and difflib.SequenceMatcher(None, a[i1 + k], b[j1 + k]).ratio() >= 0.75:
+                                        core = re.sub(r"[^A-Za-z']", "", h[0]).lower()
+                                        core = core.capitalize() if re.sub(r"^\W*", "", w[0])[:1].isupper() else core
+                                        w[0] = re.match(r"^\W*", w[0]).group(0) + core + re.search(r"\W*$", w[0]).group(0)
+                                        swapped += 1
+                                    new.append([w[0], h[1], max(h[2], h[1] + 0.1)] + w[3:])
+                            else:
+                                spread(run, hs[0][1], max(hs[-1][2], hs[0][1] + 0.1 * len(run)))
+                        else:
+                            new += [[h[0], h[1], max(h[2], h[1] + 0.1)] + who_at(i1) for h in hs]
+                            swapped += len(hs)
+                out = sorted(new, key=lambda w: w[1])
+                if swapped or dropped or added:
+                    say(f"  Captions follow the voice: {swapped} word(s) written as said, {dropped} never said left out, {added} said but not in the script added.")
         except Exception as ex:  # noqa: BLE001  (never hold the video up: the captions keep the script's words)
             say(f"  Captions: couldn't listen to the voice ({str(ex)[:100]}); using the script's words.")
     a, sr = sf.read(str(wav), dtype="float32")
@@ -1318,28 +1381,59 @@ def stage_speakers(d):
       before stays on (same backdrop), listening.
     2.36.1 (ep 28: blank cards on screen while the voice explained): a card with nothing to write gets its callout, else (no title
     either) becomes the last scene with people in it; a scene Rana is to draw is staged too, because if her drawing fails the kit
-    draws it."""
+    draws it.
+    2.36.2 (ep 28: 18 s of an empty card titled SYENE while the voice told the well clue; the assistant planting the stick the
+    narrator said "he" stood up): a lone title is not content. A card with nothing written on it whose words are about a well becomes
+    the well cut-away (`well_side`: sun overhead, light down the shaft), with a stick casting no shadow when a stick or shadow is
+    named (no callout: it would cover the sun); otherwise the last scene with people stays on, the title as its callout. A rod planted on screen (PLANT_WORDS) is
+    planted by its `by`, else by the character whose line plants it, else by the story's lead (the scholar if he is in the story,
+    else whoever has the most lines), and he is added to the scene if he isn't in it."""
     scenes = [dict(s) for s in d.get("scenes") or []]
+    said = lambda s: " ".join(str((l or {}).get("text") or "") for l in s.get("lines") or []) or str(s.get("voice_line") or "")   # noqa: E731
+    plants = re.compile(r"\b(" + "|".join(PLANT_WORDS) + r")\b", re.I)
+    counts = collections.Counter(l.get("who") for s in scenes for l in s.get("lines") or [] if l.get("who") in CAST)
+    seen = set(counts) | {c.get("who") for s in scenes for c in s.get("characters") or []}
+    lead = "scholar" if "scholar" in seen else (counts.most_common(1)[0][0] if counts else "scholar")
     for i, s in enumerate(scenes):
         if s.get("backdrop") == "card" and not any(str((l or {}).get("text") or "").strip() for l in (s.get("card") or {}).get("lines") or []):
+            title = str((s.get("card") or {}).get("title") or "").strip()
             if s.get("callout"):
                 s["card"] = {**(s.get("card") or {}), "lines": [{"text": s.pop("callout"), "on_word": s.pop("callout_word", None)}]}
-            elif not str((s.get("card") or {}).get("title") or "").strip():
+            elif re.search(r"(?<!as )\bwells?\b", said(s), re.I):
+                s["backdrop"] = "well_side"
+                s.pop("card", None)
+                s["camera"] = "push_in"
+                if re.search(r"\b(sticks?|rods?|poles?|shadows?)\b", said(s), re.I) and not any((p or {}).get("type") == "rod" for p in s.get("props") or []):
+                    # left of the shaft, no shadow at noon; no sunbeam cut-in ("-" names no word), the well stays the subject
+                    s["props"] = list(s.get("props") or []) + [{"type": "rod", "shadow": 0, "x": 215, "beam_word": "-"}]
+                # no title callout here: it would cover the sun overhead, which is the point of the picture
+            else:
                 prev = next((x for x in reversed(scenes[:i]) if x.get("characters") and x.get("backdrop") not in ("map", "diagram", "card")), None)
                 if prev:
                     s["backdrop"] = prev["backdrop"]
                     s["characters"] = [{k: v for k, v in c.items() if k != "action"} for c in prev["characters"]]
                     s.pop("card", None)
+                    if title:
+                        s["callout"], s["callout_word"] = title, title.split()[0]
         if s.get("backdrop") in ("map", "diagram", "card") or s.get("generated"):
             continue
         cast = [dict(c) for c in s.get("characters") or []]
         have = {c.get("who") for c in cast}
-        for l in s.get("lines") or []:
-            if l.get("who") in CAST and l["who"] not in have and len(cast) < 4:
+        need = [l.get("who") for l in s.get("lines") or []]
+        if any((p or {}).get("type") == "rod" for p in s.get("props") or []) and plants.search(said(s)):
+            s["props"] = [dict(p or {}) for p in s.get("props") or []]
+            line = next((l for l in s.get("lines") or [] if plants.search(str(l.get("text") or ""))), {})
+            for p in s["props"]:
+                if p.get("type") == "rod":
+                    if p.get("by") not in CAST:
+                        p["by"] = line.get("who") if line.get("who") in CAST else lead
+                    need.append(p["by"])
+        for who in need:
+            if who in CAST and who not in have and len(cast) < 4:
                 used = {c.get("at") for c in cast}
-                cast.append({"who": l["who"], "at": next((p for p in ("left", "right", "center") if p not in used), "center")})
-                have.add(l["who"])
-        if not cast and not s.get("props") and not s.get("crowd"):
+                cast.append({"who": who, "at": next((p for p in ("left", "right", "center") if p not in used), "center")})
+                have.add(who)
+        if not cast and not s.get("props") and not s.get("crowd") and s.get("backdrop") != "well_side":
             prev = scenes[i - 1] if i else {}
             if s.get("callout"):
                 s["backdrop"] = "card"
