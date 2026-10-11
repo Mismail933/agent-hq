@@ -143,7 +143,7 @@ const FreezeLabel = ({text, age, frames, pointX}) => {
   const {fps} = useVideoConfig();
   const pop = spring({frame: age - 2, fps, config: {damping: 12, stiffness: 170, mass: 0.6}});
   const out = 1 - easeOut(clamp01((age - frames + 6) / 6));
-  const fs = Math.max(44, Math.min(76, 900 / Math.max(1, text.length * 0.56)));
+  const fs = Math.max(40, Math.min(76, (W - 220) / Math.max(1, text.length * 0.56)));   // 2.33.0: never wider than the screen
   const w = Math.min(W - 160, text.length * fs * 0.56 + 100);
   const px = Math.max(W / 2 - w / 2 + 60, Math.min(W / 2 + w / 2 - 60, pointX ?? W / 2));
   return (
@@ -315,7 +315,7 @@ const Scene = ({scene, mouth, speaker, index}) => {
             const st = stateAt(c, beats, frame);
             const left = chars.length === 1 ? (c.at || 'left') !== 'right' : i === 0;
             return (
-              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} x={left ? 170 : W - 170} y={1890}
+              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} x={left ? 200 : W - 200} y={1890}
                 scale={0.46} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} facing={left ? 1 : -1} noProp />
             );
           })}

@@ -338,7 +338,8 @@ export const WellSide = ({frame, tone = 'noon'}) => {
 export const Card = ({frame, scene}) => {
   const card = (scene && scene.card) || {};
   const lines = (card.lines || []).slice(0, 5);
-  const at = card.at || lines.map((_, i) => 10 + i * 40);
+  const at0 = card.at || lines.map((_, i) => 10 + i * 40);
+  const at = at0.map((a, i) => (i === 0 ? Math.min(a, 15) : a));   // 2.33.0: never an empty card while the narrator talks
   const fs = Math.max(64, Math.min(104, 880 / (0.56 * Math.max(8, ...lines.map((l) => String(l.text || '').length)))));
   return (
     <g>

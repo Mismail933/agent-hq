@@ -97,7 +97,7 @@ export const EpisodeTitle = ({title, frame}) => {
     <g opacity={fade}>
       <rect x="-200" y="-200" width={W + 400} height={H + 400} fill={C.parchment} />
       <rect x="40" y="40" width={W - 80} height={H - 80} rx="36" fill="none" stroke={C.terracotta} strokeWidth="10" />
-      <text x={W / 2} y={top - 90} textAnchor="middle" fontFamily={BODY} fontWeight="800" fontSize="40" fill={C.teal} opacity={clamp01(frame / 6)}>
+      <text x={W / 2} y={top - 40 - fs * 0.35} textAnchor="middle" fontFamily={BODY} fontWeight="800" fontSize="40" fill={C.teal} opacity={clamp01(frame / 6)}>
         A STORY THAT REALLY HAPPENED
       </text>
       <g transform={`translate(${W / 2} 0) scale(${Math.max(0.01, 0.85 + 0.15 * pop)}) translate(${-W / 2} 0)`}>

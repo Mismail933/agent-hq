@@ -47,8 +47,19 @@ def frame_times(secs, cuts):
     return out
 
 
+def voice_of(video):
+    """The clean voice track rendered with this video (voice.wav beside short.mp4, voice-1.wav beside short-1.mp4), if there."""
+    v = Path(video)
+    suffix = v.stem[len("short"):] if v.stem.startswith("short") else ""
+    f = v.parent / f"voice{suffix}.wav"
+    return f if f.exists() else None
+
+
 def transcribe(video, folder):
     from faster_whisper import WhisperModel
+    # 2.33.0: transcribe the clean voice when it exists; under the music Whisper lost a whole exchange in ep 28 ("4. The. The.
+    # clue") and Israa reported an audio break that wasn't there. Same timeline, so the sheets still line up.
+    video = voice_of(video) or video
     model = WhisperModel("base.en", device="cpu", compute_type="int8")
     # 2.32.0: voice activity filter on, no carry-over between windows: Whisper otherwise "hears" words in silence or music (it
     # wrote "Thank you" over ep 26's end card) and drops a quiet sighed word ("Alpha"); Israa then reported both as faults

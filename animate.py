@@ -44,6 +44,7 @@ APP = HOME / "app"
 PIPER_DIR = HOME / "piper"
 PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/"
 LEAD, PAD, PAD_HOOK, OUTRO_SECONDS = 0.15, 0.2, 0.35, 4.5   # the end card holds while the music plays out (2.30.0)
+END_HOLD = 1.3   # seconds the last shot stays after the last word, before the end card (2.33.0: the payoff was cut off)
 SHORT_LIMIT = 178.0   # YouTube calls a vertical video of up to 3 minutes a Short: nothing is decided or refused here, the label just follows the length
 VIDEO_CAP = 960.0     # only an absurd length (16 minutes) is refused; the story decides, Israa judges whether it earns its length
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
@@ -1274,6 +1275,7 @@ def render_episode(eid, voice=None, suffix=""):
     raw.unlink(missing_ok=True)
     voice_secs = shorts.probe_seconds(ffmpeg, folder / f"voice{suffix}.wav")
     end_t = max(voice_secs, voice_end)
+    end_t = end_t + (END_HOLD if not own else 0)
     total_secs = end_t + OUTRO_SECONDS
     if total_secs > VIDEO_CAP:
         raise Blocked(f"This would be {total_secs:.0f} s (over 16 minutes): that is a mistake, not a story. The voice is kept, so a retry costs nothing.")

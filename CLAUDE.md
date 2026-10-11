@@ -381,6 +381,10 @@ Agents never spend money without the owner's explicit approval.
   angle is named (hit who "rod": Short.jsx `subjects.rod`); a narrator line inside a sketch cuts to a listener reacting
   (comedy_and_pacing); review_tools transcribes with Whisper's VAD filter and no carried-over context (it invented "Thank you" over
   the end card and missed a sighed "Alpha", which Israa reported as faults).
+  2.33.0 (Israa on ep 28, 6/10, the stranger PASSED): `END_HOLD` 1.3 s: the last shot stays after the last word before the end card
+  (the payoff "Alpha" was spoken over the cut); review_tools transcribes the clean voice track beside the video (`voice_of`; under
+  the music Whisper lost a whole exchange and Israa reported an audio break that wasn't there); a card's first line is up within
+  half a second; the freeze label never runs off the screen; the title card's kicker clears the title; diagram people at x 200.
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits
