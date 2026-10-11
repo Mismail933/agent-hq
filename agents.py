@@ -1064,7 +1064,9 @@ def calina_batch(project_id, count=None, notes="", topic=""):
                 cp.log("Calina", "rewrite_skipped", p["idea_id"], {"episode": eid, "why": f"it is {old['status']}"})
                 return False
             lock = old["data"].get("topic_lock") or quality.make_lock(topic, old["data"])
-            notes_ = "\n".join(f"- {x['issue']} -> fix: {x['fix']}" for x in review.get("problems", []))
+            # Israa's notes are {issue, fix}; the free checks (pre_review) send plain sentences (2.31.4: that crashed the batch)
+            notes_ = "\n".join(f"- {x.get('issue', '')} -> fix: {x.get('fix', '')}" if isinstance(x, dict) else f"- {x}"
+                               for x in review.get("problems", []))
             clean = {k: v for k, v in old["data"].items() if k not in ("review", "checks", "topic_lock")}
             if review.get("topic_fix"):
                 keep = f"The story MUST be about the owner's topic: {topic}. Change the subject, place and year to fit it."
