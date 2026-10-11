@@ -639,6 +639,24 @@ def resend(kind="all", chat=None):
     return len(ws)
 
 
+def _rerendering(p):
+    """If p is an episode's video and a new version of that episode is being rendered right now, the reason not to send it."""
+    m = re.search(r"[\\/]ep-(\d+)[\\/][^\\/]+\.(mp4|mov|webm)$", str(p), re.I)
+    if not m:
+        return ""
+    eid = int(m.group(1))
+    try:
+        with cp._db() as con:
+            for kind, args, ts in con.execute("SELECT kind, args, ts FROM jobs WHERE state IN ('running', 'queued') AND kind IN ('render', 'render_voices')"):
+                if (json.loads(args or "[]") or [None])[0] == eid:
+                    return (f"Not sent: a new version of episode {eid} is being rendered right now (started "
+                            f"{time.strftime('%H:%M', time.localtime(ts))}). This file is the OLD version. Wait until the new one is "
+                            f"ready and Israa has checked it, then send that.")
+    except Exception:  # noqa: BLE001  (never block a send because the check itself failed)
+        return ""
+    return ""
+
+
 def send_file(path, caption=""):
     """hq send-phone: a file from the company's folders (content, briefs, plans, Atlas-HQ/review) to the owner's phone."""
     if not owner_chat():
@@ -651,6 +669,9 @@ def send_file(path, caption=""):
         raise ValueError("Only files in content/, briefs/, plans/ or Atlas-HQ/review/ can be sent.")
     if not p.is_file():
         raise ValueError(f"No such file: {p}")
+    rendering = _rerendering(p)
+    if rendering:   # 2.33.1, the owner: "why the hell is Atlas sending me old videos" (he sent ep 28's old cut mid re-render)
+        raise ValueError(rendering)
     ext = p.suffix.lower()
     kind = "photo" if ext in PHOTO else "audio" if ext in AUDIO else "video" if ext in VIDEO else "document"
     ok = send_media({"kind": kind, "path": str(p), "caption": caption or p.name})

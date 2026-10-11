@@ -393,6 +393,8 @@ Agents never spend money without the owner's explicit approval.
   (the payoff "Alpha" was spoken over the cut); review_tools transcribes the clean voice track beside the video (`voice_of`; under
   the music Whisper lost a whole exchange and Israa reported an audio break that wasn't there); a card's first line is up within
   half a second; the freeze label never runs off the screen; the title card's kicker clears the title; diagram people at x 200.
+  2.33.1: `phone.send_file` refuses an episode's video while a render of that episode is running or queued (`_rerendering`): Atlas
+  sent the owner ep 28's old cut while the corrected one was rendering (and ep 24 twice). The reason goes back to Atlas.
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits
