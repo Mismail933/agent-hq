@@ -113,6 +113,16 @@ def friendly_error(e):
     return f"Something went wrong: {name}: {msg[:300]}"
 
 
+def builder_note(text):
+    """A note from the Builder chat for Atlas (2.31.3): what the Builder did in the office and why. It reaches Atlas with the
+    owner's next message (NEWS), not the owner's phone, and shows in the office chat as from the Builder."""
+    with LOCK:
+        CHAT.append({"from": "atlas", "ts": time.time(), "text": "(Note from the Builder) " + text[:2000]})
+        NEWS.append("NOTE FROM THE BUILDER (the engineer chat; it works in the office with the same hq tools, so its actions show "
+                    "in the activity log under your name or the owner's): " + text[:2000])
+    cp.log("Builder", "builder_note", None, {"text": text[:300]})
+
+
 def atlas_says(text):
     with LOCK:
         CHAT.append({"from": "atlas", "ts": time.time(), "text": text})
@@ -2041,6 +2051,12 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/jobs/resume":   # Atlas: hq resume <job id | kind> (from its last finished step)
             ok, msg = resume_job(self._json_body().get("job", ""))
             return self._send(202 if ok else 409, {"ok": ok, "message": msg} if ok else {"error": msg})
+        if u.path == "/api/builder-note":   # the Builder chat tells Atlas what it did and why (local only, like every route)
+            text = str(self._json_body().get("text", "")).strip()
+            if not text:
+                return self._send(400, {"error": "No text."})
+            builder_note(text)
+            return self._send(200, {"ok": True})
         if u.path == "/api/restart":   # Atlas: hq restart ["why"] (the same safe restart: waits for running work, jobs resume)
             body = self._json_body()
             by = "Owner" if body.get("by") == "owner" else "Atlas"

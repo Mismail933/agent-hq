@@ -53,6 +53,11 @@ import workers            # noqa: E402
 import production         # noqa: E402
 
 NOT_RUNNING = "The office isn't running, so nothing can be ordered right now. Ask the owner to double-click START-HERE."
+# 2.31.3: a slow order (sending a video to the phone, a render, a batch) used to time out after 15 s and print NOT_RUNNING while
+# the office was fine and still finishing it; Atlas then told the owner the office was down (and sent the video twice).
+BUSY = ("The office is running but busy: it didn't answer within {secs} s. The order may still finish. Check `hq activity 10` "
+        "before repeating it, and don't tell the owner the office is down.")
+SLOW = ("/api/phone", "/send", "/render", "/batch", "/voice", "/cast", "/design", "/frames")
 
 
 def show(obj):
@@ -82,18 +87,27 @@ def rule_change(key, action, value=None, why=""):
     return msg + (f" Undo: hq rule undo {key}" if action == "set" else "")
 
 
-def office(path, body=None):
-    """POST to the running office. Returns (status code, reply)."""
+def office(path, body=None, timeout=None):
+    """POST to the running office. Returns (status code, reply). A refused connection = the office isn't running; a slow
+    answer = it is busy (never reported as down)."""
+    import socket
     port_file = ROOT / ".port"
     port = port_file.read_text().strip() if port_file.exists() else os.environ.get("HQ_PORT", "8765")
     req = urllib.request.Request(f"http://127.0.0.1:{port}{path}", data=json.dumps(body or {}).encode(),
                                  headers={"Content-Type": "application/json"}, method="POST")
+    secs = timeout or (600 if any(k in path for k in SLOW) else 90)
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=secs) as r:
             return r.status, json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read() or b"{}")
-    except (urllib.error.URLError, ConnectionError, TimeoutError):
+    except (TimeoutError, socket.timeout):
+        sys.exit(BUSY.format(secs=secs))
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, "reason", None), (TimeoutError, socket.timeout)):
+            sys.exit(BUSY.format(secs=secs))
+        sys.exit(NOT_RUNNING)
+    except ConnectionError:
         sys.exit(NOT_RUNNING)
 
 

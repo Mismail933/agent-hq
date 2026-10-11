@@ -371,6 +371,10 @@ Agents never spend money without the owner's explicit approval.
   - Fable: `cp.LIMITS model.<agent>` accepts "fable" (Claude Code's alias for claude-fable-5-1, tested on his subscription).
   2.31.1: Calina's Claude Code run may take rule jobs.calina_timeout_minutes (40; Fable timed out at the old 15); for animated scene files
   the paid API backup is off (rule calina.api_fallback_scenes): it always stopped at max_tokens and cost money for nothing.
+  2.31.3: hq.py waits 90 s (600 s for phone/render/batch/voice/cast/design orders) and says the office is BUSY on a timeout,
+  NOT_RUNNING only when the connection is refused (Atlas told the owner the office was down while a 15 MB phone send finished).
+  `POST /api/builder-note {text}` (`server.builder_note`): the Builder chat tells Atlas what it did and why (NEWS + office chat,
+  never the phone); the Builder's hq actions otherwise show in the log under Atlas's or the owner's name. Use it after acting.
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits
