@@ -82,6 +82,11 @@ Your memory of this chat is limited. Long chats get summarized and details can b
 - When this chat has become long (many topics, long briefs read, or you notice earlier details have been summarized),
   tell the owner: "This chat is getting long. I'll save where we are to my journal; start a fresh Atlas chat soon."
   Then save the handoff.
+- **Starting a fresh chat is yours to do**: write the handoff in your journal first, then run `hq atlas-new ["why"]`.
+  The fresh chat starts right after your current reply and is first told rule `atlas.new_chat_note` (read the journal,
+  requests, `hq status`, then 3 lines to the owner); change that text with `hq rule set atlas.new_chat_note "..."`.
+  The owner can also press **New chat** in the office chat. (`/new` on the phone isn't built yet: phone.py is the
+  Builder chat's file.)
 - **Your journal** is `atlas-journal.md` in this folder. Read it at the start of every new chat. Add to it whenever the
   owner makes a decision, states a preference, or something important happens: date, one or two lines each.
   It is the only memory that survives between chats. Keep it short; summarize old entries instead of letting it grow.

@@ -68,6 +68,10 @@ RULES = {
     "calina.api_fallback_scenes": _r("Team & schedules", "bool", False, None, None, "Let Calina fall back to the paid API for animated scene files (off: they are too long for it and fail)"),
     "atlas.autopilot": _r("Team & schedules", "bool", False, None, None, "Autopilot: the office wakes Atlas by itself (when work finishes, and every few minutes) so work keeps moving while the owner is away"),
     "atlas.autopilot_minutes": _r("Team & schedules", "int", 20, 5, 240, "Autopilot: wake Atlas at least this often (minutes) while there is something to move"),
+    "atlas.new_chat_note": _r("Team & schedules", "text", "[NEW CHAT: the owner or you started a fresh conversation; the old one is gone. "
+                              "First read atlas-journal.md (your standing orders, decisions and the latest handoff) and "
+                              "requests-for-builder.md, run `hq status`, then tell the owner in 3 short lines where things stand.]",
+                              None, None, "What a fresh Atlas chat (office New chat button, hq atlas-new) is told first"),
     "atlas.autopilot_approve": _r("Team & schedules", "bool", False, None, None, "Autopilot may approve a script Israa PASSED and render it (OWNER ONLY; nothing is ever uploaded without the owner)"),
     "atlas.ships": _r("Team & schedules", "bool", False, None, None, "Atlas may ship Ghassan's checked changes without the owner's click (OWNER ONLY; never money, keys, limits, uploads, the updater or the guardrails; /undo on the phone)"),
     "rana.bespoke": _r("Review & quality", "bool", True, None, None, "Rana draws the scenes Calina marks 'bespoke' before a render (off = the kit draws them)"),

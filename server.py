@@ -1433,6 +1433,7 @@ def autopilot_loop():
                         if reply and reply.strip().rstrip(".").lower() != "nothing to do":
                             CHAT.append({"from": "atlas", "ts": time.time(), "text": "(Autopilot) " + reply})
                         STATE["busy"] = False
+                    pending_new_chat()
         except Exception as e:  # noqa: BLE001
             print("autopilot:", repr(e), flush=True)
             with LOCK:
@@ -1452,6 +1453,42 @@ def run_chat(text):
         STATE["busy"] = False
     cp.log("Atlas", "reply", None, {"chars": len(reply)})
     phone.atlas_replied(reply)
+    pending_new_chat()
+
+
+# ---- A fresh Atlas chat (Atlas's request 2026-10-11: the conversation ran for days and lost details) -------------------------
+NEW_CHAT = {}   # asked for while Atlas was answering (e.g. his own `hq atlas-new`): it starts right after that reply
+
+
+def new_atlas_chat(by, why=""):
+    """End Atlas's conversation and start a fresh one that first reads his journal (rule atlas.new_chat_note)."""
+    with LOCK:
+        if STATE["busy"]:
+            NEW_CHAT.update(by=by, why=why)
+            return "A fresh Atlas chat starts as soon as he finishes his current reply."
+        STATE["busy"] = True
+    threading.Thread(target=_fresh_chat, args=(by, why), daemon=True).start()
+    return "Starting a fresh Atlas chat. He reads his journal first, then says where things stand."
+
+
+def _fresh_chat(by, why):
+    atlas_engine.new_conversation()   # the local Claude Code session
+    ATLAS.messages.clear()            # the backup API Atlas
+    who = "Owner" if by == "owner" else "Atlas"
+    cp.log(who, "atlas_new_chat", None, {"why": str(why)[:300]})
+    with LOCK:
+        CHAT.append({"from": "atlas", "ts": time.time(),
+                     "text": f"(New chat started by {'you' if by == 'owner' else 'Atlas'}{': ' + why[:200] if why else ''}. "
+                             "Atlas is reading his journal.)"})
+    run_chat(rules.get("atlas.new_chat_note") or rules.RULES["atlas.new_chat_note"]["default"])
+
+
+def pending_new_chat():
+    with LOCK:
+        p = dict(NEW_CHAT)
+        NEW_CHAT.clear()
+    if p:
+        new_atlas_chat(p["by"], p["why"])
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1711,6 +1748,10 @@ class Handler(BaseHTTPRequestHandler):
                 cp.log("Owner", "chat_images", None, {"files": images})
             threading.Thread(target=run_chat, args=(prompt,), daemon=True).start()
             return self._send(202, accepted(warning))
+        if u.path == "/api/atlas/new":   # a fresh Atlas chat: the office's New chat button (owner) or `hq atlas-new` (Atlas)
+            body = self._json_body()
+            by = "owner" if body.get("by") == "owner" else "atlas"
+            return self._send(200, {"ok": True, "message": new_atlas_chat(by, str(body.get("why", ""))[:300])})
         if u.path == "/api/ghassan/now":   # check Atlas's requests now instead of at the next turn
             if ghassan.LOCK.locked():
                 return self._send(409, {"error": f"Ghassan is already building: {ghassan.STATUS.get('request')}."})

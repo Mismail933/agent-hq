@@ -9,6 +9,7 @@ Atlas's controls for Agent HQ.
                  prompt <agent> show | extra "text" | append "text" | set --file <path> ["why"] | reset [extra] | undo [extra] | history
                  unblock <agent|all>     (live team rules and agent instructions: no Builder, no restart)
                  restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
+                 atlas-new ["why"]     (a fresh Atlas chat after your current reply; write the handoff in atlas-journal.md first)
                  resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
@@ -531,6 +532,9 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "restart":   # the office restarts into the newest version once nothing is running (saved jobs resume)
             code, reply = office("/api/restart", {"why": " ".join(args)})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "atlas-new":   # hq atlas-new ["why"]: after your handoff is in the journal, a fresh chat starts after this reply
+            code, reply = office("/api/atlas/new", {"by": "atlas", "why": " ".join(args)})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "stop":
             office("/api/stop"); show("Kill switch ON. Every agent stops before its next step.")

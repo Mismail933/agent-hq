@@ -410,6 +410,13 @@ Agents never spend money without the owner's explicit approval.
     each Atlas ship -> phone "Reply /undo"; `/undo` (phone) -> `POST /api/ghassan/undo {by: owner}` -> `ghassan.undo()` (git revert
     of the last ship as a new version, then after_ship).
   - atlas/CLAUDE.md "Autopilot and shipping" tells Atlas the limits.
+  2.34.x fresh Atlas chat (Atlas's request 2026-10-11, the conversation had run for days): `POST /api/atlas/new {by, why}`
+  (`server.new_atlas_chat`; office chat drawer's **New chat** button = owner, `hq atlas-new ["why"]` = Atlas) forgets the local
+  Claude Code session (`atlas_engine.new_conversation`) and the backup Atlas's messages, logs `atlas_new_chat`, marks it in the
+  chat and runs rule `atlas.new_chat_note` (read the journal + requests, `hq status`, 3 lines to the owner) as the first message.
+  Asked while Atlas is answering (his own hq call) -> `NEW_CHAT`, started after that reply (`pending_new_chat`). The cloud
+  Atlas's conversation.md is not cleared (it keeps only 24 turns). Still to do in the Builder chat: `/new` on the phone
+  (phone.py is protected): it should call `office("/api/atlas/new", {"by": "owner"})` and add `/new` to HELP.
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits

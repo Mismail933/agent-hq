@@ -731,7 +731,7 @@ main.arrive{animation:arrive .5s cubic-bezier(.22,1,.36,1)}
 <div class="rtip" id="rtip" hidden></div>
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" aria-label="Chat with Atlas" aria-hidden="true">
-  <div class="ch"><span class="blip violetb"></span><h2 id="hChat">Atlas · general manager</h2><button class="x" type="button" data-do="closechat" aria-label="Close chat"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="ch"><span class="blip violetb"></span><h2 id="hChat">Atlas · general manager</h2><button class="btn ghost sm" type="button" data-do="newchat" title="End this conversation; Atlas starts fresh and reads his journal first">New chat</button><button class="x" type="button" data-do="closechat" aria-label="Close chat"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="ctxbar" id="ctxbar"></div>
   <div class="chat">
     <div class="msgs" id="msgs" aria-live="polite" tabindex="0" role="region" aria-label="Conversation with Atlas"></div>
@@ -2591,6 +2591,7 @@ function doAction(a) {
     case 'chatagent': return openChat(x);
     case 'ctxclear': return openChat('');
     case 'closechat': return closeChat();
+    case 'newchat': if (!confirm('Start a new chat with Atlas? He forgets this conversation and reads his journal first.')) return; return contentAct('/api/atlas/new', {by: 'owner'}, 'Starting a fresh Atlas chat.');
     case 'filter': { epFilter = x; if (sub !== 'eps') return openProject(space, 'eps', {filter:x}); renderContent(true); return; }
     case 'batchopen': batchOpen = true; if (sub !== 'eps') openProject(space, 'eps'); else renderContent(true); setTimeout(() => { const t = $('#nbTopic'); if (t) t.focus(); }, 90); return;
     case 'batchclose': batchOpen = false; renderContent(true); return;
