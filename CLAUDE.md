@@ -375,6 +375,12 @@ Agents never spend money without the owner's explicit approval.
   NOT_RUNNING only when the connection is refused (Atlas told the owner the office was down while a 15 MB phone send finished).
   `POST /api/builder-note {text}` (`server.builder_note`): the Builder chat tells Atlas what it did and why (NEWS + office chat,
   never the phone); the Builder's hq actions otherwise show in the log under Atlas's or the owner's name. Use it after acting.
+  2.32.0 (Israa on ep 26, 5/10, the stranger couldn't say how the stick gives 7.2 degrees): `diagram_steps` puts each step on its
+  own word, hides a step nobody names (null -> Diagram never draws it), pulls a step forward when a later one is named first, and
+  starts a later diagram scene with the steps earlier ones drew (`drawn`, `shown_before`); the camera cuts to the stick when its
+  angle is named (hit who "rod": Short.jsx `subjects.rod`); a narrator line inside a sketch cuts to a listener reacting
+  (comedy_and_pacing); review_tools transcribes with Whisper's VAD filter and no carried-over context (it invented "Thank you" over
+  the end card and missed a sighed "Alpha", which Israa reported as faults).
   Test frames without a full render: a scratch copy of the app with a `Grid` still (`<Sequence from={-f}>` around `Short`;
   `Freeze` does not move the scenes' Sequences).
 - Rana, Designer & Animator (2.27.0; the owner named her; was "the Animator": `agents.RETIRED` renames the agent row and its limits

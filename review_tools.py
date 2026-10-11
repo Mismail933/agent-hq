@@ -50,7 +50,10 @@ def frame_times(secs, cuts):
 def transcribe(video, folder):
     from faster_whisper import WhisperModel
     model = WhisperModel("base.en", device="cpu", compute_type="int8")
-    segs, info = model.transcribe(str(video), word_timestamps=True, language="en", vad_filter=False)
+    # 2.32.0: voice activity filter on, no carry-over between windows: Whisper otherwise "hears" words in silence or music (it
+    # wrote "Thank you" over ep 26's end card) and drops a quiet sighed word ("Alpha"); Israa then reported both as faults
+    segs, info = model.transcribe(str(video), word_timestamps=True, language="en", vad_filter=True,
+                                  vad_parameters={"min_silence_duration_ms": 300}, condition_on_previous_text=False)
     words, text = [], []
     for s in segs:
         text.append(s.text.strip())

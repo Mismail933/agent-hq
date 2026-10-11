@@ -676,20 +676,29 @@ def _first_word_frame(words, start, end, candidates):
     return min(hits) if hits else None
 
 
-def diagram_steps(s, words, start, end):
-    """Frame (from the scene's start) of each step of the Earth diagram: its own `on_words`, else the first word that names
-    it; a step whose word is never said comes after the previous one (never before what it builds on)."""
+DIAGRAM_ORDER = ("beams", "rods", "centre", "wedge", "label")
+
+
+def diagram_steps(s, words, start, end, shown_before=()):
+    """Frame (from the scene's start) of each step of the Earth diagram (2.32.0, Israa on ep 26: the sticks and centre lines came
+    10 s after they were said, because each step waited for the one before it):
+    - a step appears on its own word (`on_words`, else the first word that names it);
+    - a step that is never named here stays hidden (None), unless an earlier diagram already drew it (`shown_before`): then it is
+      there from the first frame (the same drawing coming back);
+    - a step never appears after a later one: if a later step is named first, everything it builds on comes with it."""
     want = (s.get("diagram") or {}).get("on_words") or {}
     n = max(1, end - start)
-    at, prev = {}, 0
-    defaults = {"beams": 0.05, "rods": 0.25, "centre": 0.45, "wedge": 0.6, "label": 0.75}
-    for step in ("beams", "rods", "centre", "wedge", "label"):
+    at = {}
+    for step in DIAGRAM_ORDER:
         own = want.get(step)
         f = _first_word_frame(words, start, end, [own] if own else DIAGRAM_WORDS[step])
-        rel = (f - start) if f is not None else int(n * defaults[step])
-        rel = max(prev, min(n - 1, rel))
-        at[step] = rel
-        prev = rel
+        at[step] = 0 if step in shown_before else (min(n - 1, f - start) if f is not None else None)
+    later = None
+    for step in reversed(DIAGRAM_ORDER):
+        if later is not None:
+            at[step] = later if at[step] is None else min(at[step], later)
+        if at[step] is not None:
+            later = at[step]
     return at
 
 
@@ -827,8 +836,13 @@ def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cu
                     auto.append((a, "whoosh"))
             elif who in here and len(here) >= 2 and who != prev:
                 hits.append({"at": at, "cam": "punch_in", "who": who})
-            elif who == "narrator" and prev in here and len(here) >= 2:
-                hits.append({"at": at, "cam": "release"})
+            elif who == "narrator" and here:
+                # 2.32.0 (Israa: "the narrator talks over characters just standing"): during the one narrator line a sketch may
+                # have, the camera cuts to a listener's face and he reacts, so the picture answers the voice
+                listener = prev if prev in here else sorted(here)[0]
+                hits.append({"at": at, "cam": "punch_in", "who": listener})
+                beats[i].append({"at": at + 8, "who": listener, "expression": ("thinking", "surprised", "smug", "worried")[len(hits) % 4]})
+                beats[i].sort(key=lambda x: x["at"])
             prev = who
         gag = s.get("gag") or {}
         out_gag = None
@@ -1283,6 +1297,7 @@ def render_episode(eid, voice=None, suffix=""):
         say(f"  Pacing: the longest still stretch is {pacing['longest_still_s']} s ({pacing['longest_still_at']}).")
     scenes = []
     grp = 0   # where the drawing this scene continues began (a long diagram or map scene split in parts is ONE drawing)
+    drawn = set()   # the diagram steps already drawn earlier in the video (a later diagram scene starts with them)
     for i, s in enumerate(d["scenes"]):
         prev = d["scenes"][i - 1] if i else None
         same = bool(prev) and s.get("backdrop") in ("diagram", "map") and prev.get("backdrop") == s.get("backdrop") and \
@@ -1304,9 +1319,15 @@ def render_episode(eid, voice=None, suffix=""):
         if s.get("backdrop") == "diagram":
             group = [x for j, x in enumerate(d["scenes"]) if grp <= bounds[j] < bounds[i + 1] and x.get("backdrop") == "diagram"]
             merged = {**s, "lines": [l for x in group for l in x.get("lines") or []]}
-            sc["diagram"] = {**(s.get("diagram") or {}), "at": diagram_steps(merged, words, grp, bounds[i + 1])}
+            at = diagram_steps(merged, words, grp, bounds[i + 1], shown_before=drawn if bounds[i] == grp else ())
+            sc["diagram"] = {**(s.get("diagram") or {}), "at": at}
+            drawn |= {k for k, v in at.items() if v is not None}
         if any((p or {}).get("type") == "rod" for p in s.get("props") or []):
             sc["props"] = [rod_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "rod" else p for p in s.get("props") or []]
+            beam = next((p.get("beam_at") for p in sc["props"] if p.get("type") == "rod" and p.get("beam_at") is not None), None)
+            if beam is not None:   # Israa on ep 26: "a tiny 7.2 label beside the stick in a wide shot": cut in to the stick
+                sc["hits"] = sorted(sc.get("hits", []) + [{"at": beam, "cam": "punch_in", "who": "rod"},
+                                                          {"at": min(sc["frames"] - 1, beam + 150), "cam": "release"}], key=lambda h: h["at"])
         if s.get("backdrop") == "card" and (s.get("card") or {}).get("lines"):
             sc["card"] = {**s["card"], "at": card_steps(s, words, bounds[i], bounds[i + 1])}
         if any((p or {}).get("type") == "globe" for p in s.get("props") or []):

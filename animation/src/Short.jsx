@@ -239,6 +239,12 @@ const Scene = ({scene, mouth, speaker, index}) => {
     const r = c.x + c.r.right * c.scale;
     subjects[c.who] = {focus: (l + r) / 2, spread: (r - l) / 2, topY: c.y - c.r.top * c.scale};
   });
+  const rod0 = (scene.props || []).find((p) => p.type === 'rod');
+  if (rod0) {   // the stick can be framed like a person (the camera cuts to it when its angle is named)
+    const k = sc * ROD_K;
+    const shadow = (60 + 360 * (rod0.shadow ?? 0.5)) * k;
+    subjects.rod = {focus: rodX[0] - shadow / 2 + 60 * k, spread: shadow / 2 + 140 * k, topY: feet - 340 * k};
+  }
   const hits = scene.ending || scene.backdrop === 'card' ? [] : (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
   const Back = BACKDROPS[scene.backdrop];
   const t = easeOut(clamp01(frame / TRANSITION));

@@ -16,7 +16,8 @@ const R = 350;   // 2.31.0: bigger (Israa: 'the diagram is small'); its label st
 export const Diagram = ({diagram, frame, frames}) => {
   const {fps} = useVideoConfig();
   const at = diagram.at || null;
-  const T = (k, frac) => (at && at[k] != null ? at[k] : frames * frac);
+  // a step the voice never names stays hidden (null); without `at` (old scene files) the old even spacing
+  const T = (k, frac) => (at ? (at[k] == null ? 1e9 : at[k]) : frames * frac);
   const gap = diagram.gap || 24;
   const a = (gap * Math.PI) / 180;
   const earth = spring({frame, fps, config: {damping: 12, stiffness: 120}});
