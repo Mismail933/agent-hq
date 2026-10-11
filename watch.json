@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.296",
-   "checked": "2026-10-10"
+   "checked": "2026-10-11"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-10-09 dynamic workflows (Managed Agents); 2026-10-07 Sonnet 5.5 cache read $0.10, Max/Team API credits",
-   "checked": "2026-10-10"
+   "checked": "2026-10-11"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-08 Usage Policy, Cyber Mission; no new models",
-   "checked": "2026-10-10"
+   "checked": "2026-10-11"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -34,6 +34,11 @@
    "url": "https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan",
    "last_seen": "claude -p billing change paused (updated 2026-10-07)",
    "checked": "2026-10-10"
+  },
+  "claude-code-env-vars": {
+   "url": "https://code.claude.com/docs/en/env-vars",
+   "last_seen": "retry watchdog opt-in; WATCHDOG_MAX_WAIT_MS needs 2.1.295+",
+   "checked": "2026-10-11"
   }
  },
  "repos": {
@@ -71,6 +76,13 @@
    "verdict": "watch",
    "checked": "2026-10-09",
    "note": "MIT; tests whether skills/MCPs earn their tokens."
+  },
+  "shaharia-lab/agento": {
+   "stars": 33,
+   "last_commit": "2026-10-07",
+   "verdict": "skip",
+   "checked": "2026-10-11",
+   "note": "MIT session viewer; overlaps claude-devtools."
   }
  }
 }
