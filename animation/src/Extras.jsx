@@ -18,8 +18,9 @@ export const Rod = ({x = 300, y = 1250, shadow = 0.5, frame, scale = 1, revealAt
   const tip = -len * grow - 46;
   return (
     <g transform={`translate(${x} ${y - (1 - plant) * 160}) scale(${scale})`} opacity={Math.min(1, plant * 2)}>
-      <path d={`M -14 2 L ${tip} 16 L ${tip + 6} 44 L 14 30 Z`} fill={C.ink} opacity="0.55" />
-      {grow > 0.95 && <path d={`M ${tip + 3} 0 L ${tip + 3} 60`} stroke={C.ink} strokeWidth="6" strokeLinecap="round" />}
+      {/* 2.36.3 (ep 28: "no visible shadow"): darker, so it reads on any ground; a stick at noon in Syene (shadow 0) has none */}
+      {shadow > 0 && <path d={`M -14 2 L ${tip} 16 L ${tip + 6} 44 L 14 30 Z`} fill={C.ink} opacity="0.8" />}
+      {shadow > 0 && grow > 0.95 && <path d={`M ${tip + 3} 0 L ${tip + 3} 60`} stroke={C.ink} strokeWidth="6" strokeLinecap="round" />}
       {/* the sunbeam that makes the shadow: from the shadow's tip past the top of the rod, and the angle it makes with the
           rod (2.29.1, Israa on ep 23: "picture a line from the top of the stick to the tip of its shadow" must be on screen) */}
       {shadow > 0 && beamAt !== null && (() => {

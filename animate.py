@@ -915,6 +915,10 @@ def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cu
                 listener = prev if prev in here else sorted(here)[0]
                 hits.append({"at": at, "cam": "punch_in", "who": listener})
                 beats[i].append({"at": at + 8, "who": listener, "expression": ("thinking", "surprised", "smug", "worried")[len(hits) % 4]})
+                # 2.36.3 (ep 28's ending, 294-302 s: the narrator talked over a man just standing; the ending has no cuts): he nods
+                # along every two seconds while the narrator speaks
+                for f in range(at + 14, max(at + 15, round(b * FPS) - start - 10), 2 * FPS):
+                    beats[i].append({"at": f, "who": listener, "action": "nod"})
                 beats[i].sort(key=lambda x: x["at"])
             prev = who
         gag = s.get("gag") or {}
@@ -1270,12 +1274,15 @@ def heard_captions(wav, words):
       (the voice skipped it, or its timing landed in a pause) is not captioned.
     2.36.2 (Israa on ep 28's 17:54 render: a whole line captioned over silence, "TWO THOUSAND AND" after "2007", "EIGHT..." on
     "Excuse me"; Eleven v3 now and then skips or rewords part of a line while its timings still cover the script's words): where the
-    script and what was heard disagree, the captions follow the voice:
-    - script words the voice never said are not captioned (one or two short words inside speech are kept: whisper drops those);
-    - a stretch said differently is captioned as heard, at the heard times (a name or close spelling keeps the script's spelling,
-      spread over the heard time); words heard but not in the script are captioned when whisper is sure of them;
-    - a matched word's end is cut where the voice stopped saying it (no "SIX..." held over the pause after it).
-    Only when whisper heard less than half the script (something went wrong) do the captions keep the script's words."""
+    script and what was heard disagree, the timings follow the voice.
+    2.36.3 (Israa 4.5 on ep 28's 00:28 render: whisper's own words on screen broke numbers and lines: "7 .2 DEGREES", "5 ,000",
+    "240 ABOUT YEARS", "SCHOLARS DOLLARS WOULD"): the captions ALWAYS show the script's words and numbers, never a heard word.
+    What whisper heard only moves their times:
+    - a matched word takes the heard time when its own is far off, and ends where the voice stopped saying it;
+    - a stretch said differently: the script's words spread over the heard time (one for one when the counts match), in order;
+    - words heard but not in the script are never captioned; script words not heard keep their own time (the silence check below
+      drops them if no voice is there).
+    Only when whisper heard less than half the script (something went wrong) are the script's own timings kept."""
     import difflib
     import numpy as np
     import soundfile as sf
@@ -1292,15 +1299,9 @@ def heard_captions(wav, words):
             if sum(i2 - i1 for op, i1, i2, _, _ in ops if op == "equal") < 0.5 * len(out):
                 say("  Captions: the voice and the script are too far apart to compare; using the script's words.")
             else:
-                new, swapped, dropped, added = [], 0, 0, 0
+                new, moved = [], 0
 
-                def who_at(i):
-                    return out[min(max(0, i), len(out) - 1)][3:]
-
-                def is_name(i):
-                    return i > 0 and not re.search(r"[.!?]$", out[i - 1][0]) and re.sub(r"^\W*", "", out[i][0])[:1].isupper()
-
-                def spread(ws, h0, h1):   # script words over a heard stretch, in proportion to their length
+                def spread(ws, h0, h1):   # script words over a heard stretch, in order, in proportion to their length
                     tot = sum(max(1, len(w[0])) for w in ws)
                     t = h0
                     for w in ws:
@@ -1313,44 +1314,27 @@ def heard_captions(wav, words):
                             w, h = list(out[i1 + k]), heard[j1 + k]
                             if abs(w[1] - h[1]) > 0.4:
                                 w[1], w[2] = h[1], max(h[2], h[1] + 0.1)
+                                moved += 1
                             w[2] = max(w[1] + 0.1, min(w[2], h[2] + 0.15))
                             new.append(w)
-                    elif op == "delete":
-                        run = out[i1:i2]
-                        inside = any(h[1] - 0.05 < run[-1][2] and run[0][1] < h[2] + 0.05 for h in heard)
-                        if len(run) <= 2 and inside and all(len(_norm(w[0])) <= 4 for w in run):
-                            new += [list(w) for w in run]
-                        else:
-                            dropped += len(run)
-                    elif op == "insert":
-                        for k in range(j1, j2):
-                            h = heard[k]
-                            if h[3] >= 0.6 and b[k]:
-                                new.append([h[0], h[1], max(h[2], h[1] + 0.1)] + who_at(i1 - 1))
-                                added += 1
-                    else:   # replace
+                    elif op == "delete":   # not heard: the script's word at its own time (the silence check decides)
+                        new += [list(w) for w in out[i1:i2]]
+                    elif op == "replace":   # said differently (or whisper split "7.2" into "7" ".2"): the script's words, heard times
                         run, hs = out[i1:i2], heard[j1:j2]
-                        close = difflib.SequenceMatcher(None, "".join(a[i1:i2]), "".join(b[j1:j2])).ratio() >= 0.6
-                        if close or (any(is_name(i) for i in range(i1, i2)) and len(run) <= 2 * len(hs)):   # whisper mishears names
-                            if len(run) == len(hs):
-                                for k, w in enumerate(run):
-                                    h = hs[k]
-                                    w = list(w)
-                                    if not is_name(i1 + k) and not re.search(r"\d", w[0]) and h[3] >= 0.8 and len(b[j1 + k]) >= 3 \
-                                            and difflib.SequenceMatcher(None, a[i1 + k], b[j1 + k]).ratio() >= 0.75:
-                                        core = re.sub(r"[^A-Za-z']", "", h[0]).lower()
-                                        core = core.capitalize() if re.sub(r"^\W*", "", w[0])[:1].isupper() else core
-                                        w[0] = re.match(r"^\W*", w[0]).group(0) + core + re.search(r"\W*$", w[0]).group(0)
-                                        swapped += 1
-                                    new.append([w[0], h[1], max(h[2], h[1] + 0.1)] + w[3:])
-                            else:
-                                spread(run, hs[0][1], max(hs[-1][2], hs[0][1] + 0.1 * len(run)))
+                        if len(run) == len(hs):
+                            new += [[w[0], h[1], max(h[2], h[1] + 0.1)] + w[3:] for w, h in zip(run, hs)]
                         else:
-                            new += [[h[0], h[1], max(h[2], h[1] + 0.1)] + who_at(i1) for h in hs]
-                            swapped += len(hs)
-                out = sorted(new, key=lambda w: w[1])
-                if swapped or dropped or added:
-                    say(f"  Captions follow the voice: {swapped} word(s) written as said, {dropped} never said left out, {added} said but not in the script added.")
+                            spread(run, hs[0][1], max(hs[-1][2], hs[0][1] + 0.1 * len(run)))
+                        moved += len(run)
+                    # "insert": heard but not in the script: never captioned
+                # in script order: a word's time never puts it before the one said before it
+                for k in range(1, len(new)):
+                    if new[k][1] < new[k - 1][1]:
+                        new[k][1] = new[k - 1][1]
+                        new[k][2] = max(new[k][2], new[k][1] + 0.1)
+                out = new
+                if moved:
+                    say(f"  Captions: the script's words, {moved} of them timed to where the voice really says them.")
         except Exception as ex:  # noqa: BLE001  (never hold the video up: the captions keep the script's words)
             say(f"  Captions: couldn't listen to the voice ({str(ex)[:100]}); using the script's words.")
     a, sr = sf.read(str(wav), dtype="float32")
@@ -1428,6 +1412,17 @@ def stage_speakers(d):
                     if p.get("by") not in CAST:
                         p["by"] = line.get("who") if line.get("who") in CAST else lead
                     need.append(p["by"])
+        # 2.36.3 (Israa on ep 28: "no shadow" said at Syene with no stick on screen): a scene whose words name a shadow shows a
+        # stick: with no shadow when the words say there is none, else one with its shadow, planted by the story's lead
+        text = said(s)
+        if re.search(r"\bshadows?\b", text, re.I) and not any((p or {}).get("type") == "rod" for p in s.get("props") or []):
+            none = re.search(r"\bno shadows?\b|\bwithout (a|any) shadows?\b|\bshadowless\b|\bno\s+\w+\s+shadows?\b|"
+                             r"\b(didn't|did not|doesn't|does not|don't|do not|cast no|casts no|threw no)\b[^.!?]{0,25}\bshadows?\b", text, re.I)
+            if none:
+                s["props"] = list(s.get("props") or []) + [{"type": "rod", "shadow": 0, "beam_word": "-"}]
+            elif re.search(r"\b(sticks?|rods?|poles?)\b", text, re.I):
+                s["props"] = list(s.get("props") or []) + [{"type": "rod", "by": lead}]
+                need.append(lead)
         for who in need:
             if who in CAST and who not in have and len(cast) < 4:
                 used = {c.get("at") for c in cast}
@@ -1686,6 +1681,20 @@ def render_episode(eid, voice=None, suffix=""):
         except Exception as ex:  # noqa: BLE001  (never hold the video up for a drawing)
             say(f"  Rana's drawings were skipped: {str(ex)[:160]}")
     ch = (project.get("meta") or {}).get("channel") or {}
+    heard = heard_captions(folder / f"voice{suffix}.wav", words)
+    # 2.36.3 (Israa on ep 28: "ALPHA = NUMBER ONE" on screen in the ending while nobody said it): a callout is shown only if the
+    # voice says one of its words in that scene (the captions above keep only words really voiced)
+    for i, sc in enumerate(scenes):
+        if not sc.get("callout") or sc.get("generated"):
+            continue
+        # words only (a number may be said in words: "1/50" is "one fiftieth"); "stadia" / "stadion" match on their first letters
+        want = {x.lower() for x in re.findall(r"[A-Za-z]{3,}", sc["callout"] + " " + str(d["scenes"][i].get("callout_word") or ""))} - \
+            {"the", "and", "one", "two", "for", "not", "but", "was", "his", "her", "about", "number"}
+        got = {_norm(w[0]) for w in heard if sc["from"] <= round(w[1] * FPS) < sc["from"] + sc["frames"]}
+        if want and not any(g == x or (len(g) >= 4 and len(x) >= 4 and g[:4] == x[:4]) for x in want for g in got):
+            say(f"  Scene {i + 1}: the callout \"{sc['callout']}\" is left out (nobody says it in that scene).")
+            sc.pop("callout")
+            sc.pop("callout_from", None)
     props = {
         "durationInFrames": total,
         "audio": audio_name,
@@ -1696,7 +1705,7 @@ def render_episode(eid, voice=None, suffix=""):
         "outro_from": round(end_t * FPS),
         **({"title": {"from": round(title["from_s"] * FPS), "frames": round(title["secs"] * FPS), "text": title["text"],
                       "place": short_place(title["place"]), "year": short_year(title["year"])}} if title else {}),
-        "caption_chunks": caption_chunks(heard_captions(folder / f"voice{suffix}.wav", words)),
+        "caption_chunks": caption_chunks(heard),
         "framing": {"margin": int(FRAME_MARGIN), "speaker_min": float(SPEAKER_MIN_H)},
         "outro_fade": max(1, round(END_FADE * FPS)),
         "scenes": scenes,

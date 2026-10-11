@@ -402,7 +402,7 @@ Agents never spend money without the owner's explicit approval.
   added; an empty scene's callout becomes a card, else the previous scene's cast (same backdrop) stays on. Freeze labels up to 90
   characters, wrapped in 3 lines. The title card fades in and grows from its middle. Ending: the push-in finishes by the last word
   (`hold_frames`) and holds rule video.end_hold_seconds (2.0), then the end card fades in over rule video.end_fade_seconds (no pop).
-  Captions: `animate.heard_captions` (rule captions.heard_words: faster-whisper on the voice track swaps close look-alikes, e.g.
+  Captions (since 2.36.3 the words are always the script's; see below): `animate.heard_captions` (rule captions.heard_words: faster-whisper on the voice track swaps close look-alikes, e.g.
   pacers/paces, and fixes far-off timings; names and numbers kept) and no word is captioned over silence. Props: `framing`, `outro_fade`.
   2.34.0 Atlas autopilot + Atlas shipping (the owner's explicit yes in the Builder chat, 2026-10-11: shipping on, and the
   autopilot may "also approve and render"):
@@ -520,6 +520,23 @@ Agents never spend money without the owner's explicit approval.
     screen (`PLANT_WORDS`) gets `by` = its own, else the character whose line plants it, else the story's lead (scholar if in the
     story, else most lines), and he is added to the scene.
   - Not found from the code (no episode data here): the fade to white at 207.5 s.
+- Ep 28's 00:28 render (2.36.3, Atlas's request; Israa 4.5, stranger failed; no words changed, nothing re-voiced):
+  - Captions are ALWAYS the script's words and numbers (2.36.2's heard words broke them: "7 .2 DEGREES", "5 ,000", "SCHOLARS DOLLARS
+    WOULD"). `heard_captions` only takes TIMES from faster-whisper: matched words move to the heard time when far off and end where
+    the voice stops; a stretch said differently = the script's words spread over the heard time, in order; heard extra words are
+    never captioned; unheard script words keep their time (the silence check still drops words over silence).
+  - A callout nobody says in its scene (none of its words, 3+ letters, in that scene's voiced captions) is left out (`render_episode`,
+    after the captions; logged in the render output).
+  - Diagram: Alexandria's angle is no longer drawn on the small globe (its label sat on the centre's). A close-up panel across the top
+    (`Diagram.jsx CloseUp`, from the sticks step, else the angle step): flat ground, the stick, parallel slanting sunbeams, a dark
+    shadow (drawn at least 16 degrees wide), on the angle step the arc between the stick and the ray through its top with the label,
+    and a dashed arrow down to the centre's angle with a SAME ANGLE tag. A diagram scene's callout hides while the panel is up
+    (`closeUpFrom`).
+  - Rods: a stick with a shadow shows one at least 0.35 long (`Short.jsx shadeOf`; 0 = none, drawn with no shadow at all), the shadow
+    is darker; in a rod scene the camera's `keep` box holds the stick, its whole shadow and its planter with whoever speaks (no more
+    speaker single with the stick at the edge). `stage_speakers`: a scene whose words name a shadow but has no rod gets one: shadow 0
+    when the words say there is none (Syene), else a stick with a shadow planted by the story's lead.
+  - A narrator line inside a sketch: the listener nods every 2 s while it lasts (the ending has no cuts, so he stood still).
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

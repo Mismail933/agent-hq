@@ -66,7 +66,7 @@ RULES = {
     "video.end_fade_seconds": _r("Video & render", "float", 1.0, 0.1, 5, "The end card fades in over the last shot this slowly (seconds)", ("animate", "END_FADE")),
     "video.frame_margin_px": _r("Video & render", "int", 60, 0, 200, "Safe margin at the picture's edges (px of 1080): whoever speaks stays fully inside it; people half cut by the edge in a close shot are left out of it", ("animate", "FRAME_MARGIN")),
     "video.speaker_min_height": _r("Video & render", "float", 0.40, 0, 0.9, "Whoever talks fills at least this share of the picture's height (a wide shot cuts in on him; 0 = off)", ("animate", "SPEAKER_MIN_H")),
-    "captions.heard_words": _r("Video & render", "bool", True, None, None, "Captions are checked against what the voice really says (a word the voice says differently is written as said; off = the script's words). Words over silence are never captioned"),
+    "captions.heard_words": _r("Video & render", "bool", True, None, None, "Captions are timed to where the voice really says each word (the words and numbers are always the script's; off = the script's own timings). Words over silence are never captioned"),
     "pace.freeze_frames": _r("Pacing & sound", "int", 48, 10, 240, "How long a freeze-frame label holds (frames, 30 a second)", ("animate", "FREEZE_FRAMES")),
     "pace.action_hold_frames": _r("Pacing & sound", "int", 30, 5, 180, "How long a pose-action (facepalm, shrug) is held (frames)", ("animate", "ACTION_HOLD")),
     "sound.music_volume": _r("Pacing & sound", "float", 0.16, 0, 1, "Music volume under the voices (0-1; it also ducks while anyone speaks)", ("animate", "MUSIC_VOLUME")),

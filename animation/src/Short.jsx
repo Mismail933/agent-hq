@@ -5,7 +5,7 @@ import {Camera, SAFE, cameraFrame} from './Camera';
 import {BACKDROPS} from './Backdrops';
 import {Character, Crowd, reach} from './Character';
 import {MapIntro} from './MapIntro';
-import {Diagram} from './Diagram';
+import {Diagram, closeUpFrom} from './Diagram';
 import {Rod, Globe, Callout} from './Extras';
 import {Captions, TitleCard, EpisodeTitle, Outro} from './Overlays';
 import GENERATED from './generated/index.js';
@@ -35,6 +35,8 @@ const BASE_SCALE = [1.3, 1.3, 1.15, 0.98, 0.86]; // by the number of people on s
 const GAP = 70;       // px between two bodies
 const HEIGHT = 612;   // a figure's height at scale 1 (head top), before its own `tall`
 const ROD_K = 1.35;   // a rod stands about two thirds of a person's height, so its shadow reads at a glance
+// 2.36.3 (ep 28: "no visible shadow"): a stick that casts a shadow casts one you can see; 0 stays no shadow (Syene at noon)
+const shadeOf = (p) => (p.shadow === 0 ? 0 : Math.max(0.35, p.shadow ?? 0.5));
 
 // half the width of a body at scale 1 (shoulders, cloak) and how far its hands and prop reach to the back and the front
 const bodyOf = (who, poses, noProp) => {
@@ -225,7 +227,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   const items = [
     ...castItems,
     ...rodsIn.map((p) => ({prop: true, fixed: p.x != null, facing0: 1, want: rodWant(p),
-      b: {half: 30 * ROD_K, back: (60 + 360 * (p.shadow ?? 0.5)) * ROD_K, front: 120 * ROD_K, top: 320 * ROD_K}})),
+      b: {half: 30 * ROD_K, back: (60 + 360 * shadeOf(p)) * ROD_K, front: 120 * ROD_K, top: 320 * ROD_K}})),
     // a story's own prop (one design, assets.py) stands in the row like a person: about 400 units tall, never on top of anyone
     ...propsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
       b: {half: 180 * (p.size ?? 1), back: 200 * (p.size ?? 1), front: 200 * (p.size ?? 1), top: 400 * (p.size ?? 1)}})),
@@ -251,7 +253,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   const crowdBeat = [...beats].reverse().find((b) => b.who === 'crowd' && b.at <= frame);
   const crowdReaction = (crowdBeat && crowdBeat.reaction) || (scene.crowd && scene.crowd.reaction) || 'idle';
   // the props that matter (the rod and its shadow) count too; a rod is staged in the row like a person, at the cast's scale
-  const rodShadow = (p) => (60 + 360 * (p.shadow ?? 0.5)) * sc * ROD_K;
+  const rodShadow = (p) => (60 + 360 * shadeOf(p)) * sc * ROD_K;
   let rk = 0;
   let pk = 0;
   const props = (scene.props || []).map((p) => (p.type === 'rod' ? {...p, x: rodX[rk++], y: feet, scale: sc * ROD_K}
@@ -275,7 +277,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   const rod0 = (scene.props || []).find((p) => p.type === 'rod');
   if (rod0) {   // the stick can be framed like a person (the camera cuts to it when its angle is named)
     const k = sc * ROD_K;
-    const shadow = (60 + 360 * (rod0.shadow ?? 0.5)) * k;
+    const shadow = (60 + 360 * shadeOf(rod0)) * k;
     subjects.rod = {focus: rodX[0] - shadow / 2 + 60 * k, spread: shadow / 2 + 140 * k, topY: feet - 340 * k};
   }
   const hits = scene.ending || scene.backdrop === 'card' ? [] : (scene.hits || []).map((h) => ({...h, subject: (h.who && subjects[h.who]) || null}));
@@ -292,8 +294,22 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   });
   // 2.35.0 (Israa on ep 28): whoever speaks is fully in frame and big enough to read (see cameraFrame)
   const si = speakingChar ? chars.indexOf(speakingChar) : -1;
-  const keep = si >= 0 && !live[si].walking ? {left: live[si].x - speakingChar.r.left * sc, right: live[si].x + speakingChar.r.right * sc,
+  let keep = si >= 0 && !live[si].walking ? {left: live[si].x - speakingChar.r.left * sc, right: live[si].x + speakingChar.r.right * sc,
     topY: speakingChar.y - speakingChar.r.top * sc, h: speakingChar.r.top * sc} : null;
+  // 2.36.3 (Israa on ep 28: "he stood a stick up. A shadow!" showed the assistant filling the frame and a tiny pole at the edge):
+  // in a rod scene the stick, its whole shadow and the one who planted it stay in the shot with whoever speaks
+  if (rod0) {
+    const k = sc * ROD_K;
+    const box = {left: rodX[0] - (60 + 360 * shadeOf(rod0)) * k, right: rodX[0] + 120 * k, topY: feet - 340 * k};
+    const bi = cast.findIndex((c) => c.who === rod0.by);
+    if (bi >= 0 && !live[bi].walking) {
+      box.left = Math.min(box.left, live[bi].x - chars[bi].r.left * sc);
+      box.right = Math.max(box.right, live[bi].x + chars[bi].r.right * sc);
+      box.topY = Math.min(box.topY, chars[bi].y - chars[bi].r.top * sc);
+    }
+    keep = keep ? {left: Math.min(keep.left, box.left), right: Math.max(keep.right, box.right), topY: Math.min(keep.topY, box.topY), h: keep.h}
+      : {...box, h: 1e6};   // nobody on screen speaks: keep the stick in, never cut in on it for that
+  }
   const move = scene.ending ? 'ending' : scene.backdrop === 'card' ? 'still' : scene.camera || 'push_in';
   const view = cameraFrame({move, frame, frames: scene.frames, focus, spread, topY, topLimit, hits, margin, keep, minH, hold: scene.hold_frames || 0});
   // someone the shot cuts in half (a lone arm or half a body at the edge) is left out of it; walkers cross the edge on purpose
@@ -332,7 +348,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
         <Camera move={move} frame={frame} frames={scene.frames} view={view}>
           {Back && <Back frame={frame} tone={scene.tone} scene={scene} />}
           {props.map((p, i) => {
-            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={p.shadow ?? 0.5} scale={p.scale} revealAt={p.reveal_at ?? 0} beamAt={p.beam_at ?? null} label={p.angle_label || null} plantAt={p.plant_at ?? null} />;
+            if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={shadeOf(p)} scale={p.scale} revealAt={p.reveal_at ?? 0} beamAt={p.beam_at ?? null} label={p.angle_label || null} plantAt={p.plant_at ?? null} />;
             if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} slices={p.slices || 0} sliceAt={p.slice_at ?? null} />;
             if (p.type === 'asset' && p.scale) return <Asset key={i} id={p.id} x={p.x} y={p.y} scale={p.scale} frame={frame} at={p.at ?? null} />;
             return null;
@@ -371,7 +387,8 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
           })}
         </g>
       )}
-      {scene.callout && frame >= (scene.callout_from ?? 0) && (
+      {/* 2.36.3: in a diagram the close-up of Alexandria's stick takes the top of the picture: the callout makes way for it */}
+      {scene.callout && frame >= (scene.callout_from ?? 0) && !(isDiagram && frame + off >= closeUpFrom(scene.diagram || {}, scene.frames + off)) && (
         <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isDiagram ? 300 : 215} />
       )}
       {gag && gag.type === 'cutaway' && <CutawayTag text={(gag.text || 'MEANWHILE...').toUpperCase()} frame={frame} />}
