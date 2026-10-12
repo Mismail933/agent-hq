@@ -2009,11 +2009,28 @@ async function setRule(body) {
 }
 document.addEventListener('change', e => { const el = e.target.closest('[data-rule]'); if (el) { el.blur(); setRule({key:el.dataset.rule, value:el.value, action:'set', why:'changed in the office'}); } });
 document.addEventListener('click', e => { const b = e.target.closest('[data-undo]'); if (b) setRule({key:b.dataset.undo, action:'undo'}); });
+/* ---------- Your other computers: this office over Tailscale (remote.py, 2.39.0) ---------- */
+function remoteHtml(rm) {
+  if (!rm || !rm.enabled) return '';
+  let body;
+  if (!rm.local) body = `<p class="note">You're using the office from another computer; the work runs on the PC.</p>
+      <div><button class="btn sm ghost" type="button" id="remoteOut">Sign this computer out</button></div>`;
+  else if (!rm.serving) body = `<p class="note">Open this office from your Mac or another computer of yours. One time:<br>
+      1. Install <a href="https://tailscale.com/download" target="_blank" rel="noopener">Tailscale</a> on this PC and on the Mac, and sign in to the same account on both.<br>
+      2. Wait a minute: this card then shows the address to open on the Mac.${rm.error ? `<br><span style="color:#FDA4AF">${esc(rm.error)}</span>` : ''}</p>`;
+  else body = `<p class="note">On your Mac (with Tailscale on), open <b style="font-family:var(--mono)">${esc(rm.url)}</b> and enter this code once.
+      Only your own Tailscale devices can reach it.</p>
+      <div class="lrow"><label>Access code<small>${rm.locked ? 'Locked after 5 wrong tries: restart the office for new tries.' : 'Each computer asks for it once.'}</small></label><b style="font-family:var(--mono);font-size:22px;letter-spacing:.2em;color:var(--cyan-ink)">${esc(rm.code || '')}</b></div>
+      <p class="note">${rm.devices.length ? `Signed in: ${rm.devices.map(d => esc(d.label)).join(', ')}.` : 'No other computer signed in yet.'}</p>
+      <div><button class="btn sm ghost" type="button" id="remoteNew">New code (signs every other computer out)</button></div>`;
+  return `<div class="lim"><strong>Your other computers</strong>${body}</div>`;
+}
 async function renderPhone(force) {
   if (!(space === 'hq' && page === 'limits')) return;
   const box = $('#phoneCard'); if (!force && box.contains(document.activeElement)) return;
-  let v; try { v = await (await fetch('/api/phone', {cache:'no-store'})).json(); } catch { return; }
-  const k = JSON.stringify(v); if (!force && k === phoneKey) return; phoneKey = k;
+  let v, rm; try { v = await (await fetch('/api/phone', {cache:'no-store'})).json(); } catch { return; }
+  try { rm = await (await fetch('/api/remote', {cache:'no-store'})).json(); } catch { rm = null; }
+  const k = JSON.stringify([v, rm]); if (!force && k === phoneKey) return; phoneKey = k;
   const bot = v.bot ? `<a href="https://t.me/${encodeURIComponent(v.bot)}" target="_blank" rel="noopener">@${esc(v.bot)}</a>` : 'your bot';
   let body;
   if (!v.configured || (v.error && !v.running)) body = `
@@ -2030,7 +2047,19 @@ async function renderPhone(force) {
       Phone alerts: <b>${({decisions:'calm: only what needs you and finished videos, grouped, quiet at night, morning digest', everything:'every update', nothing:'muted: only Atlas\'s replies'})[v.send] || 'calm'}</b>. Change it in Telegram with /quiet, /all or /mute; /help lists the rest.</p>
       ${v.error ? `<p class="note" style="color:#FDA4AF">Last problem reaching Telegram: ${esc(v.error)}</p>` : ''}
       <div><button class="btn sm ghost" type="button" id="phoneUnpair">Unpair this phone</button></div>`;
-  box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>`;
+  box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>` + remoteHtml(rm);
+  const nc = $('#remoteNew');
+  if (nc) nc.addEventListener('click', async () => {
+    if (!confirm('Make a new access code? Every other computer is signed out and must enter the new code.')) return;
+    try { const r = await fetch('/api/remote/new-code', {method:'POST'}); const j = await r.json().catch(() => ({})); toast(j.message || j.error || 'Done.'); }
+    catch { toast("Can't reach the engine."); }
+    renderPhone(true);
+  });
+  const so = $('#remoteOut');
+  if (so) so.addEventListener('click', async () => {
+    try { await fetch('/api/remote/sign-out', {method:'POST'}); } catch {}
+    location.reload();
+  });
   const f = $('#phoneForm');
   if (f) f.addEventListener('submit', async e => {
     e.preventDefault(); const t = $('#phoneTok').value.trim(); if (!t) return;

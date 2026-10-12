@@ -96,6 +96,7 @@ import quality            # noqa: E402
 import sfx                # noqa: E402
 import ghassan            # noqa: E402
 import phone              # noqa: E402
+import remote             # noqa: E402
 import design             # noqa: E402
 import client             # noqa: E402
 import cast               # noqa: E402
@@ -1631,8 +1632,34 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             return {}
 
-    def do_GET(self):
+    def _remote_gate(self):
+        """Another computer (over Tailscale) that hasn't entered the access code: the sign-in page, nothing else (remote.py)."""
         u = urlparse(self.path)
+        if self.command == "POST" and u.path == "/api/remote/sign-in":
+            body = self._json_body()
+            cookie, why = remote.sign_in(self, body.get("code"), body.get("label"))
+            if not cookie:
+                cp.log("Owner", "remote_sign_in_failed", None, {"ip": self.client_address[0]})
+                return self._send(403, {"error": why})
+            cp.log("Owner", "remote_signed_in", None, {"ip": self.client_address[0], "device": str(body.get("label") or "")[:80]})
+            data = json.dumps({"ok": True}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Set-Cookie", cookie)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        if self.command == "GET" and u.path in ("/", "/index.html"):
+            return self._send(200, remote.LOGIN_PAGE.encode(), "text/html")
+        return self._send(401, {"error": "Sign in with the office's access code first."})
+
+    def do_GET(self):
+        if not remote.allowed(self):
+            return self._remote_gate()
+        u = urlparse(self.path)
+        if u.path == "/api/remote":   # Spend & limits -> Your other computers (the code only on this PC)
+            return self._send(200, remote.view(self))
         if u.path in ("/", "/index.html"):
             return self._send(200, (ROOT / "office.html").read_bytes(), "text/html")
         if u.path == "/api/phone":   # the office's 'Your phone' card (never the token)
@@ -1832,7 +1859,18 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
     def do_POST(self):
+        if not remote.allowed(self):
+            return self._remote_gate()
         u = urlparse(self.path)
+        if u.path == "/api/remote/new-code":   # this PC only: a fresh code, every other computer signed out
+            if not remote.is_local(self):
+                return self._send(403, {"error": "A new code can only be made on the PC itself."})
+            c = remote.new_code()
+            cp.log("Owner", "remote_new_code", None, {})
+            return self._send(200, {"ok": True, "code": remote.pretty(c), "message": "New code made. Every other computer is signed out."})
+        if u.path == "/api/remote/sign-out":   # the computer you're on
+            remote.sign_out(self)
+            return self._send(200, {"ok": True, "message": "Signed out."})
         if u.path == "/api/chat":
             body = self._json_body()
             text, warning = clip(body.get("text", ""), "chat")
@@ -2631,6 +2669,7 @@ def main():
     phone.PROVIDERS.append(phone_cards)
     phone.PROVIDERS.append(design_cards)
     phone.start(srv.server_port)
+    remote.start(Server, Handler, srv.server_port)   # the same office on the owner's other computers, over Tailscale (2.39.0)
     threading.Thread(target=resume_jobs, daemon=True).start()
     threading.Thread(target=first_logo, daemon=True).start()
     if os.environ.get("HQ_SIMULATE") != "1":

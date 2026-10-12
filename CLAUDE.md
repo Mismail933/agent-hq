@@ -67,6 +67,15 @@ Agents never spend money without the owner's explicit approval.
   settings_local/skips + ~/Atlas-HQ (not .atlas-session) + ~/.agent-hq/telegram.json -> Desktop/AgentHQ-for-Mac.zip);
   `unpack_if_found` on a fresh install (no hq.db). `cp.portable_paths` (every init) turns absolute brief/plan paths into
   'briefs/x.md'. Keep new code OS-neutral: no `.exe`, `Scripts/`, `os.startfile`, `cmd` without an `os.name` check.
+  The owner then chose (2026-10-12): **the Windows PC is the main office; the Mac is a screen for it** (no data on the Mac).
+- `remote.py` (2.39.0, protected from Ghassan): the office on his other computers over Tailscale. `remote.start` (in main) binds a
+  second `Server` on this PC's Tailscale IPv4 only (from `tailscale status --json`, else a 100.64/10 address; retried every
+  minute; never 0.0.0.0), same port. Every request: `remote.allowed` (loopback always; else a Tailscale address with a valid
+  `hq_remote` cookie, HttpOnly SameSite=Strict, sha256 kept in ~/.agent-hq/remote.json) or `Handler._remote_gate` (login page
+  `remote.LOGIN_PAGE`, `POST /api/remote/sign-in` with the 8-character access code, 5 wrong = locked until restart).
+  `GET /api/remote` (code only to this PC), `POST /api/remote/new-code` (PC only; signs every device out), `/api/remote/sign-out`.
+  Office: Spend & limits -> "Your other computers" (`remoteHtml`, inside the phone card). Off: settings.REMOTE_OFFICE = False;
+  practice mode only with HQ_REMOTE=1. Tested with a fake Tailscale address (127.0.0.2); not yet with real Tailscale.
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI
   (`HQ_CLAUDE_PATH`, PATH, or the copy bundled with the Claude desktop app under `%APPDATA%\Claude\claude-code\<ver>\`).

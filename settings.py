@@ -84,6 +84,7 @@ ELEVEN_MONTHLY_CHARS = 30000     # the Starter plan's monthly credits, counted p
 ELEVEN_FALLBACK = True           # if ElevenLabs fails, the free Kokoro voice makes the Short (and says so loudly)
 
 RHUBARB = True                   # lip-sync mouth shapes from Rhubarb Lip Sync (MIT licence); False = the simple loudness mouths
+REMOTE_OFFICE = True             # 2.39.0: also serve the office on this PC's Tailscale address (access code needed); False = this PC only
 
 # ---- The Shorts pipeline (shorts.py) -----------------------------------------------
 # It runs in its own Python environment because the Kokoro voice needs PyTorch. One-time setup, in PowerShell:

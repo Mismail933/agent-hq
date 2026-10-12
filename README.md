@@ -49,6 +49,12 @@ apply at once, survive updates and show in Activity. Atlas can change them too, 
    the live office in your browser, where you chat with Atlas and watch the team work.
    Next time, double-click it again. Keep its window open while you use the office.
 
+## Use the office from your Mac (the PC stays the office)
+
+1. Install Tailscale (https://tailscale.com/download) on the PC and on the Mac; sign in to the same account on both.
+2. On the PC, open the office: Spend & limits -> Your other computers shows the address (http://<pc-name>:8765) and an access code.
+3. On the Mac, open that address in the browser and enter the code once. The PC must be on with Agent HQ running.
+
 ## Setup on a Mac (M-chip or Intel)
 
 1. Open Terminal (Applications > Utilities) and paste this once:
