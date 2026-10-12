@@ -537,6 +537,24 @@ Agents never spend money without the owner's explicit approval.
     speaker single with the stick at the edge). `stage_speakers`: a scene whose words name a shadow but has no rod gets one: shadow 0
     when the words say there is none (Syene), else a stick with a shadow planted by the story's lead.
   - A narrator line inside a sketch: the listener nods every 2 s while it lasts (the ending has no cuts, so he stood still).
+- `client.py` (2.37.0, the owner's request 2026-10-12: a paid music video for a client's song "inspired by Marco Polo and the
+  Mongols", 9:16 AND 16:9, social-media safe): client projects made by the owner's word, not from an idea. `cp.new_client_project`
+  = a `projects` row with no idea, status approved; meta {kind/format `client_music_video`, name (= the title), brief, rules (its
+  own do's and don'ts, in every prompt for it), song, style}. Files in content/project-N/ (song/, style-frames/, storyboard/, videos/).
+  Kept apart from POV Then History: `calina_batch` and `quality.scout_references` refuse it; no channel, cast or kit art.
+  `hq project-new "<name>" --kind client_music_video ["brief"]` (Atlas: only on the owner's word) or Ideas -> New client project
+  (`POST /api/client/new`). Office (`clientHtml`, `CLIENT_PAGES`, `clientWaits`, state `client` + `designing`): Brief (brief + rules
+  form), Song (upload: raw body to `POST /api/client/<pid>/song`, checked by its bytes, 120 MB; lyrics), Style options, Storyboard
+  (placeholder), Rana's work, Videos (video-vertical.mp4 / video-wide.mp4, `/api/client/<pid>/video/vertical|wide`).
+  Style frames (`hq style-frames <project> ["brief"]`, journaled job `style_frames` -> `server.run_style_frames`, checkpointed): Rana
+  writes frame-K.svg (1920x1080 scene paintings; Write only in her work folder, `STYLE_SYSTEM`) + `STYLE_SCHEMA` (name, theme, look,
+  motion, scene, palette, crop_x); `design.clean_svg(svg, limit=MAX_FRAME_SVG)`; `animate.py style-render <folder>` -> frame.png,
+  vertical.png (608x1080 at crop_x), sheet.png (frame with the 9:16 window marked + the crop); Israa checks (`STYLE_REVIEW_SCHEMA`:
+  is_scene, crop_works, safe; rule `review.style_frames`), weak ones repainted once; the owner picks (`style-choose`, `hq style-pick`)
+  -> meta.style + style-frames/chosen/. NOT built yet: the music-video pipeline (song as soundtrack, cuts on the beat, scenes on
+  the lyrics, both shapes from one edit): build it when the owner sends the song.
+- Atlas's notes (2.37.0): `atlas_engine.allow()` adds his journal and requests by absolute path (Edit + Write). The "./" rules are
+  read against the shell's current folder; after Atlas cd'd into the program folder (2026-10-12) every edit was refused.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
   `~/.agent-hq-anim/app/src/gen_<id>.jsx` + `generated/index.js` at render time only; `Short.jsx` renders `scene.generated`.
   Validator: kit-only imports, banned tokens (network, disk, clock, random), size cap, then a 3-frame test render, up to 2

@@ -2020,6 +2020,48 @@ def design_render(folder):
     return {"options": made}
 
 
+def style_render(folder):
+    """Rana's style frames for a client's music video (client.py): every option-k/frame.svg -> frame.png (1920x1080), vertical.png
+    (the 9:16 window at its crop_x, 608x1080) and sheet.png (the frame with the window marked, beside the window) for Israa and
+    the owner."""
+    import base64
+    from PIL import Image, ImageDraw
+    folder = Path(folder).resolve()   # Remotion runs in its own folder
+    ensure_toolchain()
+    made = []
+    for opt in sorted(folder.glob("option-*")):
+        meta = json.loads((opt / "meta.json").read_text(encoding="utf-8"))
+        props = opt / "_props.json"
+        src = "data:image/svg+xml;base64," + base64.b64encode((opt / "frame.svg").read_bytes()).decode()
+        props.write_text(json.dumps({"src": src, "bg": "#000000", "w": 1920, "h": 1080, "pad": 0}), encoding="utf-8")
+        say(f"{opt.name}: the frame")
+        remotion(["still", "src/index.jsx", "SvgStill", str(opt / "frame.png"), f"--props={props}", "--log=error", "--overwrite"], timeout=900)
+        props.unlink(missing_ok=True)
+        frame = Image.open(opt / "frame.png").convert("RGB")
+        W, H = frame.size
+        cw = round(H * 9 / 16)
+        x0 = min(W - cw, max(0, round(float(meta.get("crop_x", 0.5)) * W - cw / 2)))
+        vertical = frame.crop((x0, 0, x0 + cw, H))
+        vertical.save(opt / "vertical.png")
+        # the sheet: the 16:9 frame at 1280x720 with everything outside the 9:16 window dimmed and the window outlined, then the window
+        k = 720 / H
+        wide = frame.resize((round(W * k), 720), Image.LANCZOS)
+        shade = Image.new("RGB", wide.size, "#000000")
+        mask = Image.new("L", wide.size, 110)
+        ImageDraw.Draw(mask).rectangle((round(x0 * k), 0, round((x0 + cw) * k), 720), fill=0)
+        wide = Image.composite(shade, wide, mask)
+        d = ImageDraw.Draw(wide)
+        d.rectangle((round(x0 * k), 1, round((x0 + cw) * k) - 1, 718), outline="#FFD54A", width=4)
+        sheet = Image.new("RGB", (24 + wide.width + 24 + round(cw * k) + 24, 790), "#FFFFFF")
+        sheet.paste(wide, (24, 48))
+        sheet.paste(vertical.resize((round(cw * k), 720), Image.LANCZOS), (24 + wide.width + 24, 48))
+        ImageDraw.Draw(sheet).text((24, 16), f"{opt.name}: {meta.get('name', '')}. Left: the 16:9 frame, the yellow box is the 9:16 window. "
+                                   "Right: the 9:16 window.", fill="#111111")
+        sheet.save(opt / "sheet.png")
+        made.append(opt.name)
+    return {"options": made}
+
+
 def asset_still(project_id, aid):
     """Stills of one piece of a story's own art (assets.py) for Israa: a backdrop with a person standing in it (still.png), a prop at
     rest and after its animation beside a person (rest.png, acted.png), a costume as the character's sheet before and after
@@ -2066,6 +2108,14 @@ def main():
         try:
             folder = Path(sys.argv[3]).resolve()
             print("RESULT " + json.dumps(make_character_library(int(sys.argv[2]), clips=True, root=folder / "characters", cast=folder / "Character.jsx")))
+        except Blocked as e:
+            print("BLOCKED " + str(e))
+            sys.exit(2)
+        return
+    if len(sys.argv) > 2 and sys.argv[1] == "style-render":   # animate.py style-render <folder> (Rana's style frames, client.py)
+        cp.init()
+        try:
+            print("RESULT " + json.dumps(style_render(sys.argv[2])))
         except Blocked as e:
             print("BLOCKED " + str(e))
             sys.exit(2)

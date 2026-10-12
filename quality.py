@@ -132,6 +132,8 @@ def scout_references(project_id, notes=""):
         return f"No project {project_id}."
     if p["status"] != "approved":
         return f"Project {p['id']} isn't approved (it's {p['status'].replace('_', ' ')})."
+    if (p.get("meta") or {}).get("kind"):   # client projects (client.py) are kept apart from the channel's research
+        return f"Project {p['id']} is a client project: the Scout's YouTube board is for the channel's projects."
     if not SCOUTING.acquire(blocking=False):
         return "The Scout is already working. Try again when he's done."
     try:

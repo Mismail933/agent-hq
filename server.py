@@ -94,6 +94,7 @@ import sfx                # noqa: E402
 import ghassan            # noqa: E402
 import phone              # noqa: E402
 import design             # noqa: E402
+import client             # noqa: E402
 import cast               # noqa: E402
 import assets             # noqa: E402
 import checkpoint         # noqa: E402
@@ -442,7 +443,8 @@ def job_label(kind, a):
             "batch": "Calina's scripts for project {0}", "scout_refs": "The Scout's reference board for project {0}",
             "review": "Calina's learning note for project {0}", "plan": "Serge's plan for idea #{0}",
             "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}",
-            "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}",
+            "style_frames": "Rana's style frames for project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -478,7 +480,8 @@ def journaled(kind, fn):
 JOBS = {"cast_draw": "run_cast_draw", "cast_check": "run_cast_check","design": "run_design", "render": "run_render", "render_voices": "run_render_voices", "characters": "run_characters", "char_review": "run_char_review",
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
-        "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video", "assets": "run_assets"}
+        "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video", "assets": "run_assets",
+        "style_frames": "run_style_frames"}
 
 
 LOGO_BRIEF = ("The logo of Agent HQ: the owner's AI company, a small team of AI agents (each with a name and a job) run by a manager, "
@@ -1005,7 +1008,8 @@ def allowance_short(agents):
 
 
 JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "cast_check": ("Israa",),"design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
-             "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",), "assets": ("Rana", "Israa")}   # the agents a long job can't finish without
+             "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",), "assets": ("Rana", "Israa"),
+             "style_frames": ("Rana", "Israa")}   # the agents a long job can't finish without
 
 
 def cast_watch():
@@ -1109,6 +1113,51 @@ def run_design(what, brief=""):
     except Exception as ex:
         cp.log("Rana", "design_failed", None, {"what": what, "reason": str(ex)[:300]})
         atlas_says(f"Rana couldn't finish the {what}: {ex}")
+    finally:
+        DESIGNING["what"] = ""
+
+
+def run_style_frames(pid, extra=""):
+    """A client's music video (client.py): Rana paints 3 looks as 16:9 scenes, the engine renders them with the 9:16 crop, Israa
+    checks them (weak ones go back to Rana once), the owner picks one."""
+    p = client.get(pid)
+    name = p["meta"].get("name") or f"project {pid}"
+    DESIGNING["what"] = f"style frames for {name}"
+    try:
+        drawn = checkpoint.get("frames painted")   # resumed: what was painted, rendered and checked before the stop is kept
+        if drawn is None:
+            cp.log("Rana", "style_frames_started", None, {"project": pid})
+            v = client.save_frames(pid, client.ask_rana(p, extra))
+            checkpoint.done("frames painted", {"folder": str(v)})
+        else:
+            v = Path(drawn["folder"])
+        if checkpoint.get("frames rendered") is None:
+            _animate("style-render", v, timeout=3600)
+            checkpoint.done("frames rendered")
+        checked = checkpoint.get("Israa's check")
+        if checked is None:
+            rv = client.review(p, v, extra) if rules.get("review.style_frames") else {}   # live rule: off = straight to the owner
+            checkpoint.done("Israa's check", {"rv": rv})
+        else:
+            rv = {int(k): r for k, r in checked["rv"].items()}   # (JSON keys are text)
+        weak = {k: r for k, r in rv.items() if r.get("verdict") == "weak"}
+        if weak:
+            notes = "\n".join(f"Look {i} (now frame-{i}.svg): {r.get('summary', '')} Fixes: {'; '.join(r.get('fixes') or [])}"
+                               for i, (k, r) in enumerate(weak.items(), 1))
+            new = client.ask_rana(p, extra + f"\nRepaint only these {len(weak)} look(s), one each, fixing Israa's notes.", notes, only=list(weak))
+            for (k, _), (o, svg) in zip(weak.items(), new):
+                client.write_option(v, k, o, svg)
+            _animate("style-render", v, timeout=3600)
+            rv.update(client.review(p, v, extra))
+        state = client.write_state(pid, v, extra, "ready", rv)
+        good = sum(1 for o in state["options"] if (o.get("review") or {}).get("verdict") == "good")
+        cp.log("Rana", "style_frames_ready", None, {"project": pid, "version": state["version"], "options": len(state["options"])})
+        atlas_says(f"**Rana's style frames for {name} are ready: {len(state['options'])} looks** "
+                   + (f"({good} passed Israa's check: a real scene, the vertical crop works, safe for social media). " if rv else "(Israa's check is switched off.) ")
+                   + "Open the project's Style options page and pick one with **Use this look**.")
+    except Exception as ex:
+        cp.log("Rana", "style_frames_failed", None, {"project": pid, "reason": str(ex)[:300]})
+        atlas_says(f"Rana couldn't finish the style frames for {name}: {ex}")
     finally:
         DESIGNING["what"] = ""
 
@@ -1618,6 +1667,8 @@ class Handler(BaseHTTPRequestHandler):
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "designs": [d for d in design.open_designs() if d.get("status") == "ready"],
+                "client": {p["id"]: client.view(p) for p in cp.list_projects(20) if client.is_client(p)},
+                "designing": DESIGNING["what"],
                 "ghassan": dict(ghassan.STATUS, pending={k: v for k, v in (ghassan.pending() or {}).items() if k != "diff"} or None),
                 "voice_match": {p["id"]: voice_match_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "cast": {p["id"]: cast_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
@@ -1689,6 +1740,27 @@ class Handler(BaseHTTPRequestHandler):
             if design.BRAND.resolve() not in path.parents or path.suffix.lower() != ".png" or not path.exists():
                 return self._send(404, {"error": "no such image"})
             return self._send_file(path, "image/png")
+        if u.path.startswith("/api/client/"):   # /api/client/<pid>/song | /api/client/<pid>/file/<path under the project's folder>.png
+            parts = u.path.strip("/").split("/")
+            try:
+                pid = int(parts[2])
+                client.get(pid)
+            except (IndexError, ValueError):
+                return self._send(404, {"error": "no such client project"})
+            if parts[3:4] == ["song"]:
+                f = client.song_file(pid)
+                types = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".flac": "audio/flac", ".ogg": "audio/ogg", ".m4a": "audio/mp4"}
+                return self._send_file(f, types.get(f.suffix, "application/octet-stream")) if f else self._send(404, {"error": "no song yet"})
+            if parts[3:4] == ["video"] and parts[4:5] in (["vertical"], ["wide"]):
+                f = client.folder(pid) / "videos" / f"video-{parts[4]}.mp4"
+                return self._send_file(f, "video/mp4") if f.exists() else self._send(404, {"error": "not made yet"})
+            if parts[3:4] == ["file"]:
+                base = client.folder(pid).resolve()
+                path = (base / "/".join(parts[4:])).resolve()
+                if base not in path.parents or path.suffix.lower() != ".png" or not path.exists():
+                    return self._send(404, {"error": "no such image"})
+                return self._send_file(path, "image/png")
+            return self._send(404, {"error": "not found"})
         if u.path.startswith("/api/upload/"):   # /api/upload/<file>: an image the owner attached in the chat
             name = Path(u.path.rsplit("/", 1)[1]).name
             path = UPLOADS / name
@@ -2313,6 +2385,57 @@ class Handler(BaseHTTPRequestHandler):
             busy = working_now()
             return self._send(202, {"ok": True, "message": "The office restarts " + ("once this is done: " + "; ".join(busy) if busy else "now")
                                     + ". It loads the newest version from GitHub; saved jobs resume after it (about 30 s)."})
+        if u.path == "/api/client/new":   # a client project by the owner's word: {name, kind, brief, by} (office or hq project-new)
+            body = self._json_body()
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            try:
+                pr = client.create(body.get("name", ""), str(body.get("kind") or client.MUSIC_VIDEO), clip(body.get("brief", ""), "notes")[0], by)
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            atlas_says(f"**New client project: {pr['title']}** (project {pr['id']}, {client.KINDS[pr['meta']['kind']]}), made by {by}. It is on "
+                       "the left rail with its own pages: Brief, Song, Style options, Storyboard, Rana's work, Videos. "
+                       f"Next: `hq style-frames {pr['id']}` for Rana's three looks.")
+            return self._send(200, {"ok": True, "project": pr["id"], "message": f"Project {pr['id']} '{pr['title']}' is open on the left rail."})
+        if u.path.startswith("/api/client/"):   # /api/client/<pid>/<brief|song|lyrics|style-frames|style-choose>
+            parts = u.path.strip("/").split("/")
+            try:
+                pid, action = int(parts[2]), parts[3]
+                pr = client.get(pid)
+            except (IndexError, ValueError) as e:
+                return self._send(400, {"error": f"bad request: {e}"})
+            if action == "song":   # the raw file in the body (X-File-Name header), from the Song page
+                n = int(self.headers.get("Content-Length") or 0)
+                if n > client.MAX_SONG:
+                    return self._send(413, {"error": f"The song can be at most {client.MAX_SONG // (1024 * 1024)} MB."})
+                data = self.rfile.read(n)
+                from urllib.parse import unquote
+                try:
+                    info = client.save_song(pid, data, unquote(self.headers.get("X-File-Name", "song")), "Owner")
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+                atlas_says(f"**The client's song is here** for {pr['title']}: {info['name']} ({info['bytes'] // 1024:,} KB). "
+                           "The music-video pipeline (cuts on the beat, scenes on the lyrics) is the Builder's next step.")
+                return self._send(200, {"ok": True, "message": f"Saved {info['name']}."})
+            body = self._json_body()
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            try:
+                if action == "brief":
+                    client.set_brief(pid, body.get("brief"), body.get("rules"), by)
+                    return self._send(200, {"ok": True, "message": "Brief saved."})
+                if action == "lyrics":
+                    client.save_lyrics(pid, body.get("text", ""), by)
+                    return self._send(200, {"ok": True, "message": "Lyrics saved."})
+                if action == "style-choose":
+                    return self._send(200, {"ok": True, "message": client.choose(pid, int(body.get("version", 0)), int(body.get("option", 0)), by)})
+            except (ValueError, OSError) as e:
+                return self._send(400, {"error": str(e)})
+            if action == "style-frames":   # Rana paints 3 looks (the owner's button, or Atlas: hq style-frames)
+                if anim_busy():
+                    return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
+                threading.Thread(target=run_style_frames, args=(pid, clip(body.get("brief", ""), "notes")[0]), daemon=True).start()
+                return self._send(202, {"ok": True, "message": f"Rana is painting 3 looks for {pr['title']}: full 16:9 scenes with the 9:16 crop, "
+                                                               "checked by Israa (about 20-40 minutes)."})
+            return self._send(400, {"error": f"Unknown action '{action}'."})
         if u.path == "/api/design":   # Rana draws: {what, brief} (the owner, or Atlas: hq design)
             body = self._json_body()
             what = str(body.get("what", "")).strip()[:60]

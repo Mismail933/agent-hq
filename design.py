@@ -57,14 +57,14 @@ DESIGN_SCHEMA = {"type": "object", "properties": {"options": {"type": "array", "
 BANNED_TAGS = {"script", "foreignObject", "image", "iframe", "object", "embed", "audio", "video", "use"}
 
 
-def clean_svg(svg):
-    """The SVG if it is safe and parses, else raises ValueError with the reason."""
+def clean_svg(svg, limit=MAX_SVG):
+    """The SVG if it is safe and parses, else raises ValueError with the reason. limit: bigger for a full scene (client.py)."""
     s = (svg or "").strip()
     s = re.sub(r"^```(?:svg|xml)?\s*|\s*```$", "", s)
     if not s.startswith("<svg") and "<svg" in s:
         s = s[s.index("<svg"):]
-    if len(s) > MAX_SVG:
-        raise ValueError(f"the SVG is {len(s):,} characters (at most {MAX_SVG:,})")
+    if len(s) > limit:
+        raise ValueError(f"the SVG is {len(s):,} characters (at most {limit:,})")
     if re.search(r"(javascript:|https?://(?!www\.w3\.org)|@import|<!ENTITY|<!DOCTYPE)", s, re.I):
         raise ValueError("it links to something outside itself")
     try:

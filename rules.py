@@ -92,6 +92,7 @@ RULES = {
     "check.stranger_video": _r("Review & quality", "bool", True, None, None, "The stranger test on finished videos (off = not run)"),
     "review.video": _r("Review & quality", "bool", True, None, None, "Israa reviews every finished video before the owner sees it"),
     "review.design": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's design options before the owner sees them (off = straight to the owner)"),
+    "review.style_frames": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's style frames for a client's music video before the owner sees them (off = straight to the owner)"),
     "review.voice_versions": _r("Review & quality", "bool", True, None, None, "Israa reviews voice versions before the owner compares them"),
     "cast.review_rounds": _r("Review & quality", "int", 2, 0, 6, "Times Israa may send Rana's redrawn cast characters back to her", ("cast", "ROUNDS")),
     "cast.final_check": _r("Review & quality", "bool", True, None, None, "Before a redrawn cast reaches the owner, its final drawing is always rendered and checked by Israa once more (if it changed after her last check)"),

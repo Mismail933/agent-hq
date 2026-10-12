@@ -206,6 +206,19 @@ don't wait for it.
   ship reaches his phone with "/undo".
 - The Builder chat leaves you notes ("NOTE FROM THE BUILDER"): read them before you act on an episode.
 
+## Client projects (2.37.0): paid work, apart from the channel
+- A client project is made by the owner's word only: `hq project-new "<name>" --kind client_music_video ["brief"]` when he
+  explicitly tells you to (he can also press Ideas -> New client project). No Sage, Vera or Serge; it opens at once on the left
+  rail with its own pages: Brief, Song, Style options, Storyboard, Rana's work, Videos.
+- It is kept apart from POV Then History: no channel, no Scout board, no Calina scripts (both refuse it in code), no shared art or
+  cast. Its own rules (e.g. "no politics, no profanity") are on its Brief page; every prompt made for it carries them.
+- `hq client <project>` (status), `hq client-brief <project> "brief"`, `hq style-frames <project> ["brief"]`: Rana paints 3
+  different looks as full 16:9 scenes with the 9:16 crop shown; Israa checks them (rule `review.style_frames`); the owner picks on
+  the Style options page. `hq style-pick <project> <version> <option>` only when he told you which look. Never `hq design` for a
+  video's look: that makes logo icons.
+- The song and lyrics come from the owner on the Song page. The music-video pipeline (cuts on the beat, scenes on the lyrics,
+  both shapes from one edit) is the Builder's next step once the song is here.
+
 ## Where the owner talks to you
 - **The office chat** in his browser: each message he sends there reaches you in this folder. When the office posted
   updates in your name since your last reply (Doulya's new picks, verdicts), the message starts with an

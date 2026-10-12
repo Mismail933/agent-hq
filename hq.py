@@ -13,6 +13,8 @@ Atlas's controls for Agent HQ.
                  atlas-new ["why"]     (a fresh Atlas chat after your current reply; write the handoff in atlas-journal.md first)
                  resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
+                 project-new "<name>" --kind client_music_video ["brief"]     (a client project: ONLY on the owner's explicit word)
+                 client <project> | client-brief <project> "brief" | style-frames <project> ["brief"] | style-pick <project> <version> <option>     (client projects; the owner picks the look)
                  assets <episode> [make | add <backdrop|prop|costume> <id> "brief" [--for court|ruler] [--act "animation"] | skip ["why"] | unskip]     (a story's own art, drawn by Rana before the render)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
@@ -60,7 +62,7 @@ NOT_RUNNING = "The office isn't running, so nothing can be ordered right now. As
 # the office was fine and still finishing it; Atlas then told the owner the office was down (and sent the video twice).
 BUSY = ("The office is running but busy: it didn't answer within {secs} s. The order may still finish. Check `hq activity 10` "
         "before repeating it, and don't tell the owner the office is down.")
-SLOW = ("/api/phone", "/send", "/render", "/batch", "/voice", "/cast", "/design", "/frames")
+SLOW = ("/api/phone", "/send", "/render", "/batch", "/voice", "/cast", "/design", "/frames", "/style-frames")
 
 
 def show(obj):
@@ -566,6 +568,35 @@ def main(argv):
         elif cmd == "design":   # Rana draws: hq design <what> ["brief"] (3 options, rendered, checked by Israa, sent to the owner)
             code, reply = office("/api/design", {"what": args[0], "brief": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "project-new":   # hq project-new "<name>" --kind client_music_video ["brief"]: only on the owner's explicit word
+            kind, rest = "client_music_video", list(args)
+            if "--kind" in rest:
+                i = rest.index("--kind")
+                kind = rest[i + 1] if i + 1 < len(rest) else ""
+                del rest[i:i + 2]
+            code, reply = office("/api/client/new", {"name": rest[0] if rest else "", "kind": kind, "brief": " ".join(rest[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "client":   # hq client <project>: a client project's brief, song, style frames and videos
+            import client
+            p = client.find(args[0])
+            v = client.view(p)
+            show({"project": p["id"], "name": p["title"], "kind": v["kind"], "brief": v["brief"], "rules": v["rules"], "song": v["song"] or "not yet",
+                  "lyrics_lines": len([l for l in v["lyrics"].splitlines() if l.strip()]), "style": v["style"] or "not chosen",
+                  "style_frames": [{"version": f["version"], "status": f["status"], "looks": [{"option": o["option"], "name": o.get("name"),
+                                    "israa": (o.get("review") or {}).get("verdict"), "sheet": o.get("sheet")} for o in f["options"]]} for f in v["frames"]],
+                  "videos": v["videos"], "steps": v["steps"]})
+        elif cmd == "client-brief":   # hq client-brief <project> "brief"
+            import client
+            code, reply = office(f"/api/client/{client.find(args[0])['id']}/brief", {"brief": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "style-frames":   # hq style-frames <project> ["brief"]: Rana paints 3 looks (16:9 scenes, 9:16 crop shown), Israa checks
+            import client
+            code, reply = office(f"/api/client/{client.find(args[0])['id']}/style-frames", {"brief": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "style-pick":   # hq style-pick <project> <version> <option>: only when the owner told you which look
+            import client
+            code, reply = office(f"/api/client/{client.find(args[0])['id']}/style-choose", {"version": int(str(args[1]).lstrip("v")), "option": int(args[2])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "phone-resend":   # push waiting cards to the owner's phone again: all, or one kind
             code, reply = office("/api/phone/resend", {"kind": args[0] if args else "all"})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
@@ -592,6 +623,8 @@ def main(argv):
             show(__doc__)
     except (IndexError, ValueError):
         show(f"Missing or wrong arguments for '{cmd}'.\n{__doc__}")
+    except LookupError as e:   # (client.find: no such client project; IndexError is caught above)
+        show(f"Not done: {e}")
 
 
 if __name__ == "__main__":

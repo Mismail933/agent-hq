@@ -54,6 +54,13 @@ def _rule_path(p):
 
 ALLOW = ["Bash(python hq.py)", "Bash(python hq.py *)", "Read", "WebFetch", "WebSearch",   # 2.20.1: Atlas may look at links (as data)
          "Edit(./atlas-journal.md)", "Edit(./requests-for-builder.md)"]
+NOTES = ("atlas-journal.md", "requests-for-builder.md")
+
+
+def allow():
+    """ALLOW plus his two notes by absolute path. A "./" rule is read against the shell's current folder, so after
+    Atlas cd'd into the program folder (2026-10-12) every edit of his journal and requests was refused."""
+    return ALLOW + [f"{tool}({_rule_path(HOME / n)})" for n in NOTES for tool in ("Edit", "Write")]
 
 
 def deny():
@@ -78,7 +85,7 @@ def setup():
     _write(HOME / "hq.py", SHIM.format(path=str(ROOT / "hq.py")))
     # For the Atlas chat in the Claude app. The office passes the same rules on the command line (see _run),
     # because Claude Code ignores a folder's allow rules until someone accepts its trust dialog.
-    perms = {"permissions": {"allow": ALLOW, "deny": deny(), "additionalDirectories": [str(ROOT)]}}
+    perms = {"permissions": {"allow": allow(), "deny": deny(), "additionalDirectories": [str(ROOT)]}}
     (HOME / ".claude").mkdir(exist_ok=True)
     _write(HOME / ".claude" / "settings.json", json.dumps(perms, indent=2) + "\n")
     for name, text in STARTERS.items():
@@ -138,7 +145,7 @@ def offer_login(exe):
 
 def _run(exe, prompt, model, resume):
     cmd = [exe, "-p", "--output-format", "json", "--max-turns", str(getattr(settings, "ATLAS_MAX_TURNS", 20)),
-           "--add-dir", str(ROOT), "--allowedTools", *ALLOW, "--disallowedTools", *deny()]
+           "--add-dir", str(ROOT), "--allowedTools", *allow(), "--disallowedTools", *deny()]
     if model:
         cmd += ["--model", model]
     if resume:

@@ -424,6 +424,13 @@ def new_project(idea_id):
                            (idea_id, time.time(), "planning")).lastrowid
 
 
+def new_client_project():
+    """A client project (client.py): made by the owner's word, no idea and no plan, open at once."""
+    with _db() as con:
+        return con.execute("INSERT INTO projects(idea_id,ts,status,revision,decided_ts) VALUES(NULL,?,?,0,?)",
+                           (time.time(), "approved", time.time())).lastrowid
+
+
 def update_project(pid, **fields):
     assert set(fields) <= set(PROJECT_FIELDS), fields
     if isinstance(fields.get("plan"), (dict, list)):
@@ -439,7 +446,7 @@ def _project_row(r, with_text=False):
     p["meta"] = json.loads(r["meta"]) if "meta" in r.keys() and r["meta"] else {}
     with _db() as con:
         t = con.execute("SELECT title FROM ideas WHERE id=?", (r["idea_id"],)).fetchone()
-    p["title"] = t["title"] if t else f"Idea #{r['idea_id']}"
+    p["title"] = p["meta"].get("name") or (t["title"] if t else f"Idea #{r['idea_id']}")
     if with_text:
         path = Path(r["plan_path"]) if r["plan_path"] else None
         if path and not path.is_absolute():

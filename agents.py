@@ -993,6 +993,8 @@ def calina_batch(project_id, count=None, notes="", topic=""):
         p = _project_context(project_id)
     except ValueError as e:
         return str(e)
+    if (p.get("meta") or {}).get("kind"):   # a client project (client.py) has its own pipeline, apart from the channel's
+        return f"Project {p['id']} is a client project ({p['meta'].get('name')}): Calina doesn't write channel scripts for it."
     bar = quality.style_bar(p["id"])
     if not bar:   # standing rule: nothing is written until the owner has seen what works and chosen a direction
         return (f"Calina can't start: project {p['id']} has no approved reference board. The Scout first finds what really works "
