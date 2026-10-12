@@ -97,6 +97,7 @@ import sfx                # noqa: E402
 import ghassan            # noqa: E402
 import phone              # noqa: E402
 import remote             # noqa: E402
+import studio             # noqa: E402
 import design             # noqa: E402
 import client             # noqa: E402
 import cast               # noqa: E402
@@ -1355,6 +1356,27 @@ def lnd_loop():
         time.sleep(1800)
 
 
+def studio_loop():
+    """The Studio (2.41.0, studio.py): keep the Mac's instructions in the private repo and bring its results into the projects."""
+    time.sleep(30)
+    try:
+        studio.publish_instructions()
+    except Exception as e:
+        studio.STATUS["error"] = str(e)[:300]
+        print("Studio:", e, flush=True)
+    while True:
+        try:
+            for jid, pid, folder, res in studio.collect():
+                n, bad = len(res.get("files") or []), len(res.get("failed") or [])
+                atlas_says(f"**The Mac's studio sent back job {jid}** (project {pid}): {n} file(s)" + (f", {bad} not made" if bad else "")
+                           + f". They're in `{folder}`." + (f" Note from the Mac: {str(res.get('notes'))[:400]}" if res.get("notes") else ""))
+            studio.STATUS["error"] = ""
+        except Exception as e:
+            studio.STATUS["error"] = str(e)[:300]
+            print("Studio:", e, flush=True)
+        time.sleep(60 * max(1, int(getattr(settings, "STUDIO_EVERY_MINUTES", 3))))
+
+
 def run_review(project_id, stats):
     text = agents.calina_review(project_id, stats)
     atlas_says(f"**Calina's learning note is ready.**\n\n{text[:1500]}" + ("…" if len(text) > 1500 else ""))
@@ -1477,7 +1499,7 @@ def save_uploads(items):
 # something waits. He acts within the owner's standing orders (atlas-journal.md). Quiet: his autopilot replies go to the office
 # chat, never to the phone (he sends the owner something himself only when it matters). Rules in atlas/CLAUDE.md.
 WAKE_KINDS = ("video_ready", "video_reviewed", "video_failed", "batch_ready", "script_reviewed", "halted", "bespoke_failed",
-              "ready_to_ship", "ghassan_shipped", "job_given_up", "assets_ready", "assets_failed")
+              "ready_to_ship", "ghassan_shipped", "job_given_up", "assets_ready", "assets_failed", "studio_ready", "studio_failed")
 AUTOPILOT = {"last_wake": 0.0, "last_event": 0, "wakes": 0}
 
 
@@ -1660,6 +1682,8 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if u.path == "/api/remote":   # Spend & limits -> Your other computers (the code only on this PC)
             return self._send(200, remote.view(self))
+        if u.path == "/api/studio":   # the Mac's studio: open jobs and imported results (hq studio-status)
+            return self._send(200, {"jobs": studio.jobs(), "error": studio.STATUS["error"], "repo_set": bool(studio.repo())})
         if u.path in ("/", "/index.html"):
             return self._send(200, (ROOT / "office.html").read_bytes(), "text/html")
         if u.path == "/api/phone":   # the office's 'Your phone' card (never the token)
@@ -1869,6 +1893,16 @@ class Handler(BaseHTTPRequestHandler):
             c = remote.new_code()
             cp.log("Owner", "remote_new_code", None, {})
             return self._send(200, {"ok": True, "code": remote.pretty(c), "message": "New code made. Every other computer is signed out."})
+        if u.path == "/api/studio":   # a job for the Mac's studio (hq studio ...; studio.py)
+            body = self._json_body()
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            try:
+                job = studio.request(body.get("project"), body.get("kind"), body.get("count", 1), body.get("brief"),
+                                     body.get("shape") or "9:16", body.get("refs") or [], by)
+            except (studio.StudioError, ValueError, TypeError) as e:
+                return self._send(400, {"error": str(e)})
+            return self._send(200, {"ok": True, "job": job, "message": f"Studio job {job['id']} is waiting for the Mac: open Claude "
+                                    "Code on the Mac in the Studio folder and say \"do the studio jobs\"."})
         if u.path == "/api/remote/sign-out":   # the computer you're on
             remote.sign_out(self)
             return self._send(200, {"ok": True, "message": "Signed out."})
@@ -2678,6 +2712,8 @@ def main():
         threading.Thread(target=restart_watch, daemon=True).start()
     if os.environ.get("HQ_NO_LND") != "1":
         threading.Thread(target=lnd_loop, daemon=True).start()
+    if os.environ.get("HQ_SIMULATE") != "1" or os.environ.get("HQ_STUDIO") == "1":
+        threading.Thread(target=studio_loop, daemon=True).start()
     if os.environ.get("HQ_NO_BROWSER") != "1":
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

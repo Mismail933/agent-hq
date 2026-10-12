@@ -87,6 +87,18 @@ Agents never spend money without the owner's explicit approval.
   Mac: `load_if_found` at every START-HERE (newest AgentHQ-knowledge*.zip in Downloads/Desktop, once per manifest id in
   `.knowledge-loaded`, asks first): hq.db replaced (old kept as hq.db.before-knowledge-<time>), Atlas's session cleared, a journal
   entry tells him to read the conversation. Never .env, telegram.json, sessions, Ghassan's clone.
+  Then the owner settled it (2026-10-12): **the PC is the only office; the Mac is the Studio** (images and video on its M4 GPU),
+  started by hand. The Mac's own office, the knowledge pack and remote.py stay in the code but aren't his workflow.
+- `studio.py` (2.41.0): the Studio mailbox in the PRIVATE repo (settings.STUDIO_REPO, "" = ATLAS_CLOUD_REPO, atlas-hq-private;
+  clone in ~/.agent-hq/studio). `request(project, kind images|video, count, brief, shape, refs, by)` writes
+  studio/jobs/<id>/job.json (+ refs/, + the project's chosen style frames, its meta.rules and style) and pushes; Atlas: `hq studio
+  <project> images|video <count> "brief" [--shape] [--ref]`, `hq studio-status` (`POST/GET /api/studio`). STUDIO.md (= `STUDIO_MD`,
+  pushed by `publish_instructions` at start) is the Mac's job description: Claude Code on the Mac, started by the owner ("do the
+  studio jobs"), makes them with FLUX.1 schnell (mflux, MLX) / Wan 2.2 TI2V-5B (both Apache 2.0; never FLUX.1 dev), tools in
+  ~/studio-tools, writes studio/results/<id>/ (files + result.json) and pushes. `server.studio_loop` (every STUDIO_EVERY_MINUTES;
+  practice mode only with HQ_STUDIO=1) runs `collect()`: copies to content/project-N/studio/<id>/, removes job+result from the
+  repo, logs `studio_ready`/`studio_failed` (WAKE_KINDS) and Atlas announces it. Test: HQ_STUDIO_REPO=<local bare repo with
+  HEAD -> main> HQ_STUDIO_CLONE=<scratch>. Not yet: showing studio results on the project's pages (Atlas reports them).
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI
   (`HQ_CLAUDE_PATH`, PATH, or the copy bundled with the Claude desktop app under `%APPDATA%\Claude\claude-code\<ver>\`).

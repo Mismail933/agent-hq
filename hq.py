@@ -15,6 +15,7 @@ Atlas's controls for Agent HQ.
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
                  project-new "<name>" --kind client_music_video ["brief"]     (a client project: ONLY on the owner's explicit word)
                  client <project> | client-brief <project> "brief" | style-frames <project> ["brief"] | style-pick <project> <version> <option>     (client projects; the owner picks the look)
+                 studio <project> images|video <count> "brief" [--shape 9:16|16:9|9:16,16:9] [--ref <file>]... | studio-status     (pictures and clips made on the owner's Mac: he starts it there by hand)
                  assets <episode> [make | add <backdrop|prop|costume> <id> "brief" [--for court|ruler] [--act "animation"] | skip ["why"] | unskip]     (a story's own art, drawn by Rana before the render)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
@@ -593,6 +594,29 @@ def main(argv):
             import client
             code, reply = office(f"/api/client/{client.find(args[0])['id']}/style-frames", {"brief": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "studio":   # hq studio <project> images|video <count> "brief" [--shape ...] [--ref file]...
+            if len(args) < 4:
+                show('Use: hq studio <project> images|video <count> "brief" [--shape 9:16,16:9] [--ref <file>]...')
+                return
+            shape, refs, rest, i = "9:16", [], [], 0
+            while i < len(args):
+                if args[i] == "--shape" and i + 1 < len(args):
+                    shape, i = args[i + 1], i + 2
+                elif args[i] == "--ref" and i + 1 < len(args):
+                    refs.append(args[i + 1]); i += 2
+                else:
+                    rest.append(args[i]); i += 1
+            pid = rest[0]
+            if not str(pid).isdigit():
+                import client
+                pid = client.find(pid)["id"]
+            code, reply = office("/api/studio", {"project": int(pid), "kind": rest[1], "count": int(rest[2]), "brief": " ".join(rest[3:]),
+                                                 "shape": shape, "refs": refs})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "studio-status":   # the Mac's studio: jobs waiting for the Mac, results brought in
+            port = (ROOT / ".port").read_text().strip() if (ROOT / ".port").exists() else "8765"
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/studio", timeout=30) as r:
+                show(json.loads(r.read()))
         elif cmd == "style-pick":   # hq style-pick <project> <version> <option>: only when the owner told you which look
             import client
             code, reply = office(f"/api/client/{client.find(args[0])['id']}/style-choose", {"version": int(str(args[1]).lstrip("v")), "option": int(args[2])})

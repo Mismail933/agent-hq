@@ -85,6 +85,9 @@ ELEVEN_FALLBACK = True           # if ElevenLabs fails, the free Kokoro voice ma
 
 RHUBARB = True                   # lip-sync mouth shapes from Rhubarb Lip Sync (MIT licence); False = the simple loudness mouths
 REMOTE_OFFICE = True             # 2.39.0: also serve the office on this PC's Tailscale address (access code needed); False = this PC only
+# 2.41.0 the Studio: image/video jobs for the owner's Mac go through a PRIVATE repo (studio.py). "" = the private Atlas repo below.
+STUDIO_REPO = ""
+STUDIO_EVERY_MINUTES = 3         # how often the office looks for the Mac's results
 
 # ---- The Shorts pipeline (shorts.py) -----------------------------------------------
 # It runs in its own Python environment because the Kokoro voice needs PyTorch. One-time setup, in PowerShell:

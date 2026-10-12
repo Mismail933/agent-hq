@@ -219,6 +219,20 @@ don't wait for it.
 - The song and lyrics come from the owner on the Song page. The music-video pipeline (cuts on the beat, scenes on the lyrics,
   both shapes from one edit) is the Builder's next step once the song is here.
 
+## The Studio on the owner's Mac (2.41.0): photoreal images and video clips
+- This PC can't make images or video (2 GB graphics). The owner's Mac (M4, 24 GB) can. The office stays on this PC; the Mac is
+  only the studio. Jobs go through the private GitHub repo; **the owner starts the Mac by hand** (Claude Code there, "do the
+  studio jobs"), so nothing comes back until he does.
+- `hq studio <project> images|video <count> "brief" [--shape 9:16|16:9|9:16,16:9] [--ref <file>]...`: one job (images up to 24, video
+  clips up to 6). The project's chosen style frames and its rules go with it by themselves; add refs (review/uploads/..., content/...)
+  when they help. A good brief says what each picture shows, the mood, the light, and who/what must NOT appear.
+  Then tell the owner: "Job <id> is waiting for the Mac: open Claude Code in the Studio folder and say do the studio jobs."
+- The office checks every few minutes; results land in `content/project-N/studio/<id>/` (files + result.json with prompts, seeds,
+  what failed and why) and you get a `studio_ready` / `studio_failed` event. Look at the images with Read before telling him.
+- `hq studio-status`: jobs waiting for the Mac, results brought in.
+- Models (licences allow paid client work): images FLUX.1 schnell; video Wan 2.2 (slow on the Mac: a few short hero clips, not
+  whole videos). Never ask for FLUX.1 dev (non-commercial).
+
 ## Where the owner talks to you
 - **The office chat** in his browser: each message he sends there reaches you in this folder. When the office posted
   updates in your name since your last reply (Doulya's new picks, verdicts), the message starts with an
