@@ -584,6 +584,11 @@ button.trow:hover b{color:var(--cyan-ink)}
 .look dt{color:var(--ink-2)}.look dd{margin:0}
 .slots{display:grid;grid-template-columns:minmax(0,.4fr) minmax(0,1fr);gap:16px;align-items:start}
 .slot video{width:100%;border-radius:4px;background:#000;display:block}
+.vgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.7fr);gap:14px;align-items:start;margin:10px 0}
+.vgrid .vplay{margin:0}.vgrid .vplay video{width:100%;border-radius:4px;background:#000;display:block}
+.vgrid .vplay.vertical video{max-height:560px}.vgrid figcaption{font-size:12px;opacity:.75;margin-top:4px}
+.ver>summary,.idea details>summary{cursor:pointer;padding:10px 14px}.idea .ch h2{white-space:normal;overflow:visible;text-overflow:clip}.vnote{max-width:640px}
+@media (max-width:700px){.vgrid{grid-template-columns:1fr}}
 @media (max-width:700px){.look .pair,.slots{grid-template-columns:1fr}}
 .weekly{padding:10px 14px}
 .weekly summary{cursor:pointer;color:var(--ink-2);font-size:13.5px;min-height:32px;display:flex;align-items:center}
@@ -2642,8 +2647,34 @@ function clientHtml(P) {
     + (frames.length ? frames.map(f => `<section class="card sec"><div class="ch"><h2>Style frames, round ${f.version} · ${esc(f.made || '')} · ${f.status === 'chosen' ? 'one picked' : 'waiting for your pick'}</h2></div><div class="secb looks">${f.options.map(o => `<figure style="margin:0"><img src="${clImg(P.id, o.sheet)}" alt="${esc(o.name || '')}: the frame with the vertical window marked" loading="lazy" style="width:100%;border:1px solid var(--line-2);border-radius:4px"><figcaption class="src">${o.option}. ${esc(o.name || '')}${(o.review || {}).verdict ? ' · Israa: ' + esc(o.review.verdict) : ''}</figcaption></figure>`).join('')}</div></section>`).join('')
       : '<p class="calm">Nothing drawn yet.</p>')
     + `<p class="src">Files: content/project-${P.id}/ (song, style-frames, storyboard, videos). This project's art never mixes with your channel's.</p>`;
-  if (sub === 'videos') { const v = c.videos || {};
-    return head('Videos', 'The finished music video in both shapes, cut from one edit.') + `<div class="slots">${[['9:16', 'Vertical 9:16', 'Shorts, Reels, TikTok'], ['16:9', 'Wide 16:9', 'YouTube']].map(([k, t, d]) => `<section class="card sec slot"><div class="ch"><h2>${t}</h2></div><div class="secb">${v[k] ? `<video controls preload="metadata" src="/api/client/${P.id}/video/${k === '9:16' ? 'vertical' : 'wide'}"></video>` : `<p class="calm">Not made yet.</p>`}<p class="src">${d}</p></div></section>`).join('')}</div>`; }
+  if (sub === 'videos') {
+    // every idea for this song, each with all its versions (newest first), and a form for a new idea (2.42.0)
+    const ideas = c.ideas || [];
+    const vsrc = (idea, v, name) => `/api/client/${P.id}/idea/${encodeURIComponent(idea.slug)}/${encodeURIComponent(v.v)}/${name}`;
+    const verHtml = (idea, v, open) => {
+      const players = [['wide', 'Wide 16:9', 'YouTube', v.wide], ['vertical', 'Vertical 9:16', 'Shorts, Reels, TikTok', v.vertical]].filter(x => x[3])
+        .map(([k, t, d]) => `<figure class="vplay ${k}"><video controls preload="none" src="${vsrc(idea, v, k + '.mp4')}"></video><figcaption>${t} · ${d}</figcaption></figure>`).join('');
+      const clips = v.clips.map(cn => `<figure class="vplay wide"><video controls preload="none" src="${vsrc(idea, v, cn)}"></video><figcaption>${esc(cn.replace(/^clip-|\.mp4$/g, '').replace(/-/g, ' '))}</figcaption></figure>`).join('');
+      return `<details class="card sec ver" ${open ? 'open' : ''}><summary><b>${esc(v.label)}</b> · ${esc(v.made || '')}${v.rating ? ` · your rating <b>${v.rating}/10</b>` : ''}</summary><div class="secb">
+        ${v.about ? `<p class="src">${esc(v.about)}</p>` : ''}
+        <div class="vgrid">${players}${clips}</div>
+        <form class="clform vnote" data-cform="clnote" data-idea="${esc(idea.slug)}" data-v="${esc(v.v)}"><div class="fld"><label>Your rating</label>
+          <select name="rating" aria-label="Your rating for ${esc(v.label)}"><option value="">none</option>${Array.from({length: 10}, (_, i) => `<option ${v.rating === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
+          <div class="fld"><label>Your notes (what to change)</label><textarea name="notes" maxlength="4000" style="min-height:70px">${esc(v.notes || '')}</textarea></div>
+          <div class="acts"><button class="btn sm" type="submit">Save</button></div></form></div></details>`;
+    };
+    const ideaHtml = (idea) => `<section class="card sec idea"><div class="ch"><h2>Idea ${idea.n}: ${esc(idea.title)}</h2>
+        <span class="stp ${idea.versions.length ? 'work' : 'plain'}">${idea.versions.length ? idea.versions.length + ' version' + (idea.versions.length > 1 ? 's' : '') : esc(idea.status || 'waiting for the Builder')}</span></div>
+      <div class="secb"><details><summary>The story</summary><p style="white-space:pre-wrap">${esc(idea.story || '')}</p>
+        ${idea.refs.length ? `<div class="looks">${idea.refs.map(r => `<img src="${clImg(P.id, r)}" alt="A picture you gave for this idea" loading="lazy" style="width:100%;border:1px solid var(--line-2);border-radius:4px">`).join('')}</div>` : ''}</details>
+        ${idea.versions.length ? idea.versions.map((v, i) => verHtml(idea, v, i === 0)).join('') : '<p class="calm">No video yet: the Builder makes it.</p>'}</div></section>`;
+    return head('Videos', 'Every idea for this song, each with all its versions. Rate a version and say what to change; add a new idea with its story.')
+      + (ideas.length ? ideas.map(ideaHtml).join('') : '<p class="calm">No videos yet.</p>')
+      + `<form class="card sec" data-cform="clidea"><div class="ch"><h2>New idea for this song</h2></div><div class="secb clform">
+        <div class="fld"><label for="clIdeaTitle">Title</label><input id="clIdeaTitle" name="title" maxlength="100" placeholder="e.g. The Silk Road caravan" required></div>
+        <div class="fld"><label for="clIdeaStory">The story: what happens in the video, scene by scene if you like</label><textarea id="clIdeaStory" name="story" maxlength="20000" style="min-height:180px" required></textarea></div>
+        <div class="acts"><button class="btn" type="submit">Save the idea</button></div><p class="src">The Builder chat makes the animation; it then shows up here as version 1 of this idea.</p></div></form>`;
+  }
   return '';
 }
 
@@ -2838,6 +2869,8 @@ $('#contentTop').addEventListener('submit', e => {
   const pid = +f.closest('[data-pid]').dataset.pid;
   if (f.dataset.cform === 'clbrief') { contentAct(`/api/client/${pid}/brief`, {brief:f.brief.value, rules:f.rules.value, by:'owner'}, 'Brief saved.'); return; }
   if (f.dataset.cform === 'cllyrics') { contentAct(`/api/client/${pid}/lyrics`, {text:f.lyrics.value, by:'owner'}, 'Lyrics saved.'); return; }
+  if (f.dataset.cform === 'clidea') { contentAct(`/api/client/${pid}/idea`, {title:f.title.value, story:f.story.value, by:'owner'}, 'Idea saved.'); return; }
+  if (f.dataset.cform === 'clnote') { contentAct(`/api/client/${pid}/version-note`, {idea:f.dataset.idea, version:f.dataset.v, rating:f.rating.value, notes:f.notes.value, by:'owner'}, 'Saved.'); return; }
   if (f.dataset.cform === 'clstyle') { if (designing) { toast('Rana is busy: ' + designing + '.'); return; } designing = 'style frames'; contentAct(`/api/client/${pid}/style-frames`, {brief:f.brief.value, by:'owner'}, 'Rana is painting 3 looks.'); return; }
   if (f.dataset.cform === 'batch') {
     const val = n => (f.querySelector(`[name=${n}]`) || {}).value || '';

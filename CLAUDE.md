@@ -533,6 +533,15 @@ Agents never spend money without the owner's explicit approval.
   events `assets_ready`/`assets_failed` wake the autopilot. Same release: `animate.drop_repeats` (rule voice.drop_repeats) cuts a word
   Eleven v3 said twice inside a line (faster-whisper on the voice track; v3 gets no previous/next text, so not the joins) and moves
   every later time up; the title card's year is `short_year` ("138 CE", not a sentence) and its ribbon type shrinks to fit.
+- Client project ideas and versions (2.42.0, the owner: "see all the videos we created as versions" and "a different animation with
+  a story I give, for the same song: another idea inside the idea"): `content/project-N/ideas/<idea-K-slug>/` = `idea.json` {n, title,
+  story, created, by, status}, `refs/*.png`, `versions/<v>/` (wide.mp4, vertical.mp4, clip-*.mp4 test clips, meta.json {label, made,
+  about, rating, notes}). `client.ideas/add_idea/version_file/note_version`; `view()` carries `ideas`. Routes: GET
+  `/api/client/<pid>/idea/<idea>/<v>/<file>.mp4`, POST `/api/client/<pid>/idea {title, story}` and `/version-note {idea, version,
+  rating, notes}`. Office: the project's Videos page lists every idea with its versions (newest open), players, the owner's rating and
+  notes, and a New idea form. The videos are made by the Builder chat (the music-video Remotion project in ~/.agent-hq-anim/mv:
+  `src/Video2.jsx` + `src/World.jsx` = idea 1 v2, one pinhole camera, Muybridge horses in `public/h2`); `video-wide.mp4` /
+  `video-vertical.mp4` in videos/ stay the current pick (hard links to a version's files).
 - Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
   - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
     (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`

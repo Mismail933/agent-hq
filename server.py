@@ -1809,6 +1809,9 @@ class Handler(BaseHTTPRequestHandler):
             if parts[3:4] == ["video"] and parts[4:5] in (["vertical"], ["wide"]):
                 f = client.folder(pid) / "videos" / f"video-{parts[4]}.mp4"
                 return self._send_file(f, "video/mp4") if f.exists() else self._send(404, {"error": "not made yet"})
+            if parts[3:4] == ["idea"] and len(parts) == 7:   # /api/client/<pid>/idea/<idea>/<version>/<wide|vertical|clip-x>.mp4
+                f = client.version_file(pid, parts[4], parts[5], parts[6])
+                return self._send_file(f, "video/mp4") if f else self._send(404, {"error": "no such video"})
             if parts[3:4] == ["file"]:
                 base = client.folder(pid).resolve()
                 path = (base / "/".join(parts[4:])).resolve()
@@ -2506,6 +2509,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, {"ok": True, "message": "Lyrics saved."})
                 if action == "style-choose":
                     return self._send(200, {"ok": True, "message": client.choose(pid, int(body.get("version", 0)), int(body.get("option", 0)), by)})
+                if action == "idea":   # another idea (story/animation) for the same song, saved for the Builder to make
+                    idea = client.add_idea(pid, body.get("title"), body.get("story"), by)
+                    atlas_says(f"**New idea for {pr['title']}: {idea['title']}.** It is saved under the song (Videos page) and waits for the "
+                               "Builder chat, which makes the animation.")
+                    return self._send(200, {"ok": True, "message": f"Saved idea {idea['n']}: {idea['title']}. The Builder makes it next."})
+                if action == "version-note":   # the owner's rating and notes on one version
+                    client.note_version(pid, body.get("idea"), body.get("version"), body.get("rating"), body.get("notes"), by)
+                    return self._send(200, {"ok": True, "message": "Saved."})
             except (ValueError, OSError) as e:
                 return self._send(400, {"error": str(e)})
             if action == "style-frames":   # Rana paints 3 looks (the owner's button, or Atlas: hq style-frames)

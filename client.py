@@ -402,6 +402,107 @@ def view(p):
         f = folder(pid) / "videos" / name
         vids[shape] = f.relative_to(ROOT).as_posix() if f.exists() else ""
     return {"kind": m.get("kind"), "brief": m.get("brief", ""), "rules": m.get("rules", ""), "song": song, "lyrics": lyrics(pid),
-            "style": m.get("style"), "frames": versions(pid)[:4], "storyboard": [], "videos": vids,
+            "style": m.get("style"), "frames": versions(pid)[:4], "storyboard": [], "videos": vids, "ideas": ideas(pid),
             "steps": [["Brief", bool(m.get("brief"))], ["Song", bool(song)], ["Style", bool(m.get("style"))],
                       ["Storyboard", False], ["Videos", all(vids.values())]]}
+
+
+# ---- ideas and their versions (2.42.0, the owner: "see all the videos we created as versions", and "a different animation
+# with a story I give, for the same song: another idea inside the idea") ------------------------------------------------------
+#   content/project-N/ideas/<idea-K-slug>/idea.json      {n, title, story, created, by, status}
+#   content/project-N/ideas/<idea-K-slug>/refs/          pictures the owner gave for this idea (png/jpg)
+#   content/project-N/ideas/<idea-K-slug>/versions/<v>/  wide.mp4, vertical.mp4, clip-*.mp4 (test clips), meta.json
+#                                                        {label, made, about, rating, notes}
+# The videos are made by the Builder chat for now (the agents can't animate a whole music video from a story yet).
+VERSION_FILES = re.compile(r"^(wide|vertical)\.mp4$|^clip-[a-z0-9-]{1,60}\.mp4$")
+
+
+def ideas_dir(pid):
+    return folder(pid) / "ideas"
+
+
+def _slugify(s):
+    return re.sub(r"[^a-z0-9]+", "-", str(s).lower()).strip("-")[:40] or "idea"
+
+
+def ideas(pid):
+    out = []
+    d = ideas_dir(pid)
+    for f in sorted(d.glob("*/idea.json")) if d.exists() else []:
+        try:
+            idea = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        idea["slug"] = f.parent.name
+        idea["refs"] = [x.relative_to(ROOT).as_posix() for x in sorted((f.parent / "refs").glob("*.png"))] if (f.parent / "refs").exists() else []
+        vers = []
+        for vd in sorted((f.parent / "versions").iterdir()) if (f.parent / "versions").exists() else []:
+            if not vd.is_dir():
+                continue
+            try:
+                meta = json.loads((vd / "meta.json").read_text(encoding="utf-8")) if (vd / "meta.json").exists() else {}
+            except (OSError, ValueError):
+                meta = {}
+            vers.append({"v": vd.name, "label": meta.get("label") or vd.name, "made": meta.get("made", ""), "about": meta.get("about", ""),
+                         "rating": meta.get("rating"), "notes": meta.get("notes", ""), "wide": (vd / "wide.mp4").exists(),
+                         "vertical": (vd / "vertical.mp4").exists(), "clips": [c.name for c in sorted(vd.glob("clip-*.mp4"))]})
+        vers.sort(key=lambda x: x["made"], reverse=True)
+        idea["versions"] = vers
+        out.append(idea)
+    out.sort(key=lambda i: i.get("n", 0))
+    return out
+
+
+def add_idea(pid, title, story, by="Owner"):
+    """A new idea (another story/animation) for the same song. Saved for the Builder to make."""
+    get(pid)
+    title = re.sub(r"\s+", " ", str(title or "")).strip()[:100]
+    story = str(story or "").replace("\r\n", "\n").strip()[:20000]
+    if not title:
+        raise ValueError("Give the idea a short title.")
+    if len(story) < 20:
+        raise ValueError("Write the story (what happens in the video), at least a sentence or two.")
+    n = len(list(ideas_dir(pid).glob("*/idea.json"))) + 1 if ideas_dir(pid).exists() else 1
+    d = ideas_dir(pid) / f"idea-{n}-{_slugify(title)}"
+    d.mkdir(parents=True, exist_ok=True)
+    idea = {"n": n, "title": title, "story": story, "created": time.strftime("%Y-%m-%d %H:%M"), "by": by, "status": "waiting for the Builder"}
+    (d / "idea.json").write_text(json.dumps(idea, indent=1, ensure_ascii=False), encoding="utf-8")
+    cp.log(by, "idea_added", None, {"project": int(pid), "idea": d.name, "title": title})
+    return {**idea, "slug": d.name}
+
+
+def _version_dir(pid, slug, v):
+    if not re.match(r"^idea-\d+-[a-z0-9-]+$", str(slug)) or not re.match(r"^[a-z0-9-]{1,40}$", str(v)):
+        raise ValueError("No such idea or version.")
+    d = ideas_dir(pid) / slug / "versions" / v
+    if not d.is_dir():
+        raise ValueError("No such idea or version.")
+    return d
+
+
+def version_file(pid, slug, v, name):
+    """A video of a version (wide/vertical/test clip), or None."""
+    if not VERSION_FILES.match(str(name)):
+        return None
+    try:
+        f = _version_dir(pid, slug, v) / name
+    except ValueError:
+        return None
+    return f if f.exists() else None
+
+
+def note_version(pid, slug, v, rating=None, notes=None, by="Owner"):
+    """The owner's rating (1-10) and notes on one version."""
+    d = _version_dir(pid, slug, v)
+    mf = d / "meta.json"
+    meta = json.loads(mf.read_text(encoding="utf-8")) if mf.exists() else {}
+    if rating not in (None, ""):
+        r = int(rating)
+        if not 1 <= r <= 10:
+            raise ValueError("A rating is 1 to 10.")
+        meta["rating"] = r
+    if notes is not None:
+        meta["notes"] = str(notes).strip()[:4000]
+    mf.write_text(json.dumps(meta, indent=1, ensure_ascii=False), encoding="utf-8")
+    cp.log(by, "version_noted", None, {"project": int(pid), "idea": slug, "version": v, "rating": meta.get("rating")})
+    return meta
