@@ -1,0 +1,82 @@
+{
+ "date": "2026-10-12",
+ "focus": "agents",
+ "note": "Nothing worth your time today. The sweep found no new Claude Code, API or Anthropic change that touches how we run workers. This was a light run: fewer searches than my usual target, so treat 'nothing' as 'nothing obvious'.",
+ "research": {
+  "searches": 3,
+  "pages_read": 5,
+  "minutes": 8,
+  "questions": [
+   "Did Claude Code 2.1.293-296 change claude -p, --json-schema, sessions or permissions in a way our workers.py relies on?",
+   "Any new Anthropic model or pricing change since 2026-10-09?",
+   "Any new MIT repo that beats what we built for agent prompts or faceless Shorts?"
+  ],
+  "gaps": [
+   "Did not reach the 15 searches / 8 pages target",
+   "Did not read the Claude Code changelog past the newest 4 versions",
+   "Did not check YouTube policy pages (not a results day)"
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.295: claude -p text output no longer drops earlier responses; --tools/--restricted now apply to late-registered built-ins; a skill's allowed-tools no longer dropped in -p runs",
+  "Claude Code 2.1.296: Sonnet 5.5 cache reads priced $0.10/M in cost figures (matches API change of 2026-10-07, already known)",
+  "No new Anthropic news after 2026-10-08"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "2.1.293-296 are fixes; none changes our worker flags"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Usage policy and cyber items only; no models"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest entry 2026-10-09 (Managed Agents workflows), already in watch"
+  },
+  {
+   "title": "GitHub search: claude code subagents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Same role-prompt libraries as before"
+  },
+  {
+   "title": "GitHub search: faceless video shorts",
+   "url": "https://api.github.com/search/repositories?q=faceless+video+shorts+automation",
+   "tier": "A",
+   "result": "rejected",
+   "why": "1-star repos, no licence"
+  },
+  {
+   "title": "Headless mode guides (web search)",
+   "url": "https://docs.claude.com/en/docs/claude-code/headless",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "General guidance only"
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "wshobson/agents",
+   "url": "https://github.com/wshobson/agents",
+   "licence": "MIT",
+   "stars": 40433,
+   "last_commit": "2026-10-12",
+   "verdict": "watch",
+   "fit": "Role-prompt reference only",
+   "why": "Very active, MIT; nothing to adopt"
+  }
+ ],
+ "ideas": []
+}

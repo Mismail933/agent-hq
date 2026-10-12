@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.296",
-   "checked": "2026-10-11"
+   "checked": "2026-10-12"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-10-09 dynamic workflows (Managed Agents); 2026-10-07 Sonnet 5.5 cache read $0.10, Max/Team API credits",
-   "checked": "2026-10-11"
+   "checked": "2026-10-12"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-08 Usage Policy, Cyber Mission; no new models",
-   "checked": "2026-10-11"
+   "checked": "2026-10-12"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -57,10 +57,10 @@
    "note": "MIT log viewer; workers run without session logs."
   },
   "wshobson/agents": {
-   "stars": 40286,
-   "last_commit": "2026-10-05",
+   "stars": 40433,
+   "last_commit": "2026-10-12",
    "verdict": "watch",
-   "checked": "2026-10-08",
+   "checked": "2026-10-12",
    "note": "MIT role-prompt library; reference only."
   },
   "getagentseal/codeburn": {

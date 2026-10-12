@@ -1,173 +1,82 @@
 {
- "date": "2026-10-11",
- "focus": "reliability",
- "note": "Nothing new in the daily sweep. One idea: when a worker run fails, say why and don't restart from zero on the paid API; also kill the whole Claude Code process on a timeout. Evidence on the Windows part is secondary, so confidence is moderate.",
+ "date": "2026-10-12",
+ "focus": "agents",
+ "note": "Nothing worth your time today. The sweep found no new Claude Code, API or Anthropic change that touches how we run workers. This was a light run: fewer searches than my usual target, so treat 'nothing' as 'nothing obvious'.",
  "research": {
-  "searches": 15,
-  "pages_read": 11,
-  "minutes": 30,
+  "searches": 3,
+  "pages_read": 5,
+  "minutes": 8,
   "questions": [
-   "When a `claude -p` worker fails in workers.run, which failures does the code treat the same way (all become Unavailable and a paid API rerun), and does Claude Code have newer settings for this?",
-   "Does the 900 s timeout in workers.run clean up what Claude Code started, on Windows?",
-   "Did Claude Code 2.1.292-2.1.296 change anything about unattended or one-shot runs that we rely on?"
+   "Did Claude Code 2.1.293-296 change claude -p, --json-schema, sessions or permissions in a way our workers.py relies on?",
+   "Any new Anthropic model or pricing change since 2026-10-09?",
+   "Any new MIT repo that beats what we built for agent prompts or faceless Shorts?"
   ],
   "gaps": [
-   "No Anthropic doc says what `result` holds for subtype error_max_turns, so I cannot say if a partial brief survives.",
-   "I did not find our own hq.db fallback_api events (not in this checkout), so I cannot say how often max-turns or timeouts really happen.",
-   "Windows orphan behaviour of claude -p after subprocess timeout is from user bug reports, not Anthropic docs."
+   "Did not reach the 15 searches / 8 pages target",
+   "Did not read the Claude Code changelog past the newest 4 versions",
+   "Did not check YouTube policy pages (not a results day)"
   ]
  },
  "new_today": [
-  "Nothing new since the 10-10 run: Claude Code CHANGELOG top is still 2.1.296; API release notes top is still 2026-10-09; Anthropic news has no new model.",
-  "Already in 2.1.295/296 (seen before, now read in detail): CLAUDE_CODE_RETRY_WATCHDOG_MAX_WAIT_MS caps unattended 429/529 waits; CLAUDE_CODE_OVERLOADED_RETRY_MAX_DELAY_MS added. Both only matter if CLAUDE_CODE_RETRY_WATCHDOG=1, which we do not set, so by default a run fails after 10 retries and does not hang."
+  "Claude Code 2.1.295: claude -p text output no longer drops earlier responses; --tools/--restricted now apply to late-registered built-ins; a skill's allowed-tools no longer dropped in -p runs",
+  "Claude Code 2.1.296: Sonnet 5.5 cache reads priced $0.10/M in cost figures (matches API change of 2026-10-07, already known)",
+  "No new Anthropic news after 2026-10-08"
  ],
  "checked": [
   {
-   "title": "Claude Code CHANGELOG (2.1.291-2.1.296)",
+   "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "nothing new",
-   "why": "Top is 2.1.296 as yesterday. 2.1.292: one-shot runs now wait for background commands (affects only workers that use Bash)."
-  },
-  {
-   "title": "Claude API release notes",
-   "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Top entry still 2026-10-09 (Managed Agents dynamic workflows)."
+   "why": "2.1.293-296 are fixes; none changes our worker flags"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Latest items are policy and cyber programs; no model."
+   "why": "Usage policy and cyber items only; no models"
   },
   {
-   "title": "Claude Code env vars reference",
-   "url": "https://code.claude.com/docs/en/env-vars",
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "used",
-   "why": "Confirms the retry watchdog is opt-in; default is 10 retries then fail. API_TIMEOUT_MS default 600000."
-  },
-  {
-   "title": "Claude Code headless / claude -p docs",
-   "url": "https://code.claude.com/docs/en/headless",
-   "tier": "A",
-   "result": "used",
-   "why": "Exit codes, 10-minute background-wait ceiling, SIGTERM exits 143, --max-budget-usd stops a run; api_retry events carry the error category."
-  },
-  {
-   "title": "Agent SDK TypeScript reference (result message)",
-   "url": "https://code.claude.com/docs/en/agent-sdk/typescript",
-   "tier": "A",
-   "result": "rejected",
-   "why": "The page text I could read was cut before SDKResultMessage; subtype names taken from other sources instead."
-  },
-  {
-   "title": "GitHub search: claude code agents reliability",
-   "url": "https://api.github.com/search/repositories?q=claude+code+agents+reliability",
-   "tier": "A",
-   "result": "used",
-   "why": "Small repos only; none fit better than our own code."
-  },
-  {
-   "title": "GitHub search: agent checkpoint resume",
-   "url": "https://api.github.com/search/repositories?q=agent+checkpoint+resume+workflow+llm",
-   "tier": "A",
-   "result": "rejected",
-   "why": "0-2 star repos; we already built checkpoint.py."
-  },
-  {
-   "title": "GitHub search: youtube shorts faceless automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
-   "tier": "A",
-   "result": "rejected",
-   "why": "All 0-1 stars and no licence file; skip."
-  },
-  {
-   "title": "Issue: headless claude -p stalls ~405 s (macOS, 2.1.220/221)",
-   "url": "https://claudeissues.com/issue/83859-headless-claude-p-runs-stall-for-a-constant-405s-early-in-every-session-9-9-sinc",
-   "tier": "B",
-   "result": "used",
-   "why": "A stall needs a timeout above ~7 min; ours is 900 s, so fine. One report, open."
-  },
-  {
-   "title": "Issue: Bash tool leaks child processes on Windows timeout",
-   "url": "https://claudeissues.com/issue/76353-bash-tool-leaks-orphaned-child-processes-on-windows-timeout-runaway-ind-scans-ac",
-   "tier": "B",
-   "result": "used",
-   "why": "User bug report; shows Windows does not tear down descendants. Search snippet only, page not opened."
-  },
-  {
-   "title": "Issue: taskkill /T /F spawned by Claude Code hangs",
-   "url": "https://claudeissues.com/issue/67888-bug-windows-cleanup-taskkill-pid-x-t-f-spawned-by-claude-code-hangs-forever-and",
-   "tier": "B",
-   "result": "used",
-   "why": "Warns that taskkill itself can hang; give it its own short timeout. Search snippet only."
-  },
-  {
-   "title": "Issue: --max-turns result shape (#3286)",
-   "url": "https://claudeissues.com/issue/3286-bug",
-   "tier": "C",
-   "result": "used",
-   "why": "Old (CLI 1.0.44) report that error_max_turns carries session_id. Only a hint."
-  },
-  {
-   "title": "AWS Well-Architected agentic AI lens: retry / failure classification",
-   "url": "https://docs.aws.amazon.com/wellarchitected/latest/agentic-ai-lens/agentrel07-bp02.html",
-   "tier": "B",
-   "result": "used",
-   "why": "Classify failures, retry transient, fall back for persistent. Search summary only."
-  },
-  {
-   "title": "YouTube policy search (October 2026)",
-   "url": "https://air.io/en/monetization/youtube-monetization-policy-changes-2026-a-complete-dated-timeline",
-   "tier": "C",
    "result": "nothing new",
-   "why": "No official October change found; the Feb 2027 YPP change is already in idea 2026-10-08-2."
+   "why": "Newest entry 2026-10-09 (Managed Agents workflows), already in watch"
+  },
+  {
+   "title": "GitHub search: claude code subagents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Same role-prompt libraries as before"
+  },
+  {
+   "title": "GitHub search: faceless video shorts",
+   "url": "https://api.github.com/search/repositories?q=faceless+video+shorts+automation",
+   "tier": "A",
+   "result": "rejected",
+   "why": "1-star repos, no licence"
+  },
+  {
+   "title": "Headless mode guides (web search)",
+   "url": "https://docs.claude.com/en/docs/claude-code/headless",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "General guidance only"
   }
  ],
  "repo_watch": [
   {
-   "name": "shaharia-lab/agento",
-   "url": "https://github.com/shaharia-lab/agento",
+   "name": "wshobson/agents",
+   "url": "https://github.com/wshobson/agents",
    "licence": "MIT",
-   "stars": 33,
-   "last_commit": "2026-10-07",
-   "verdict": "skip",
-   "fit": "Desktop app that reads Claude Code session files and shows cost; overlaps claude-devtools and our own usage table.",
-   "why": "Windows installer asks for admin rights, our workers write no session files (--no-session-persistence), 17 open issues."
+   "stars": 40433,
+   "last_commit": "2026-10-12",
+   "verdict": "watch",
+   "fit": "Role-prompt reference only",
+   "why": "Very active, MIT; nothing to adopt"
   }
  ],
- "ideas": [
-  {
-   "id": "2026-10-11-1",
-   "title": "Say why a worker failed, stop the whole Claude Code process on a timeout, and don't pay the API to start from zero after running out of turns",
-   "area": "reliability",
-   "problem": "In workers.py run(), every failure becomes the same `Unavailable`: a timeout (`raise Unavailable(\"Claude Code took too long.\")`), a result that is not `subtype == \"success\"` (this includes error_max_turns and error_max_budget_usd), no structured answer, and sign-in or plan-limit errors. The callers then log `fallback_api` and rerun the whole job on the paid API (agents.py: Sage ~line 130, Serge ~line 430). Sage is allowed max_turns=30 and Serge 15, so a slow research day can end as: 30 turns of subscription work thrown away, then a second full run on the API. Also, subprocess.run(timeout=...) only kills the process it started; on Windows Claude Code's own children (Bash tool, node, MCP) are not cleaned up, per user bug reports.",
-   "proposal": "Three small changes in workers.py, nothing else. (1) Replace subprocess.run with Popen + communicate(timeout); on TimeoutExpired run `taskkill /T /F /PID <pid>` with its own 15 s timeout (Windows only), then proc.kill() and communicate() to drain. (2) After the JSON is parsed, read out['subtype']; raise `OutOfTurns(Unavailable)` for 'error_max_turns' (and keep Unavailable for others), and put the kind (timeout | out_of_turns | no_structured_answer | limit | other) in the `fallback_api` event and in the Unavailable text the office shows. (3) In sage_research and serge: on OutOfTurns, retry ONCE on the subscription with max_turns raised by 50% and the extra line 'You are short on turns: stop searching and write the brief now from what you have.' Only if that also fails, fall back to the API as today. Leave the daily allowance check and caps as they are.",
-   "gain": "Fewer wasted paid API reruns and no leftover claude.exe/node.exe processes after a timeout. Measure: count `fallback_api` events by kind over two weeks (today they carry only free text); target is zero API reruns caused by out_of_turns, and no claude.exe left in Task Manager after a forced 900 s timeout.",
-   "test": "(a) Normal: HQ_SIMULATE with a fake claude that returns subtype success -> no change, no fallback. (b) Edge: fake claude printing {subtype:'error_max_turns'} -> OutOfTurns raised, one subscription retry with the extra line, fallback_api kind=out_of_turns only if the retry also fails. (c) Failure: fake claude that sleeps past a short timeout after starting a child process -> on Windows both processes are gone afterwards and Unavailable says 'timeout'. Pass = all three behave as written and existing tests still pass.",
-   "effort": "S",
-   "confidence": "moderate",
-   "confidence_why": "Retry/timeouts/budget behaviour is from Anthropic's own docs (A); the Windows orphan behaviour and error_max_turns result shape rest on user bug reports (B/C), and I could not see how often it happens in our logs.",
-   "risks": "workers.py is a file Ghassan must not edit, so this is a Builder-chat job. taskkill can itself hang (issue 67888), hence its own timeout. A second subscription run uses more of the daily allowance. Does not overlap idea 2026-10-07-2 (dollar cap per run): that one stops cost, this one changes what happens after a stop. If the owner says yes to both, apply them together in the same function.",
-   "links": [
-    {
-     "title": "Claude Code headless docs",
-     "url": "https://code.claude.com/docs/en/headless"
-    },
-    {
-     "title": "Claude Code env vars",
-     "url": "https://code.claude.com/docs/en/env-vars"
-    },
-    {
-     "title": "Bash tool leaks child processes on Windows timeout",
-     "url": "https://claudeissues.com/issue/76353-bash-tool-leaks-orphaned-child-processes-on-windows-timeout-runaway-ind-scans-ac"
-    }
-   ],
-   "builds_on": ""
-  }
- ]
+ "ideas": []
 }
