@@ -79,6 +79,14 @@ Agents never spend money without the owner's explicit approval.
   Then (2026-10-12) the owner changed his mind: the PC and the Mac each run their OWN office (separate data, separate Telegram
   bots, files moved by hand via Drive). 2.39.1: the API key is optional: Enter at START-HERE's key question writes `.no-api-key`
   (in KEEP): subscription only, no banner, `llm.client` halts with a clear reason if a paid backup is ever needed (the Mac).
+- `knowledge.py` (2.40.0): the PC's knowledge for the Mac's own office, no keys. PC: `SEND-KNOWLEDGE-TO-MAC.bat` = `launch.py
+  --knowledge` -> Desktop/AgentHQ-knowledge.zip (~80 MB): SQLite backup of hq.db (running/queued jobs given up, job_steps emptied),
+  briefs, plans, settings_local.py, content/ minus videos/voice caches/review frames (audio kept for audio-kit, voice-samples,
+  song/ and client projects), Atlas-HQ journal/requests/richard-approved/review/uploads+refs, `from-the-pc/atlas-conversation.md`
+  (every Atlas Claude Code chat as text, from ~/.claude/projects/<encoded Atlas-HQ>/*.jsonl) and Atlas's Claude memory notes.
+  Mac: `load_if_found` at every START-HERE (newest AgentHQ-knowledge*.zip in Downloads/Desktop, once per manifest id in
+  `.knowledge-loaded`, asks first): hq.db replaced (old kept as hq.db.before-knowledge-<time>), Atlas's session cleared, a journal
+  entry tells him to read the conversation. Never .env, telegram.json, sessions, Ghassan's clone.
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI
   (`HQ_CLAUDE_PATH`, PATH, or the copy bundled with the Claude desktop app under `%APPDATA%\Claude\claude-code\<ver>\`).

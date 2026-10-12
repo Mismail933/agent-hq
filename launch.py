@@ -26,7 +26,7 @@ BRANCH = "main"
 
 # Never overwritten by an update: your key, your data, and the launcher itself
 KEEP = {".env", "hq.db", "briefs", "plans", "content", ".installed", "START-HERE.bat", "STOP", "settings_local.py", ".atlas-cloud-skip", ".elevenlabs-skip",
-        ".installed-commit", ".last-good-commit", ".hold-version", ".rolled-back", "START-HERE.command", ".rosetta-skip", ".gcm-skip", ".want-blackhole", ".no-api-key"}
+        ".installed-commit", ".last-good-commit", ".hold-version", ".rolled-back", "START-HERE.command", ".rosetta-skip", ".gcm-skip", ".want-blackhole", ".no-api-key", ".knowledge-loaded"}
 MAC = sys.platform == "darwin"
 PACK_NAME = "AgentHQ-for-Mac.zip"   # the company's data, carried from the PC to the Mac (2.38.0)
 RESTART = 75   # the office exits with this code to be updated and started again (after the owner ships Ghassan's change)
@@ -253,9 +253,18 @@ def main():
     if "--pack" in sys.argv:
         pack()
         return
+    if "--knowledge" in sys.argv:   # SEND-KNOWLEDGE-TO-MAC.bat (2.40.0)
+        import knowledge
+        knowledge.make(ROOT)
+        return
     if "--no-update" not in sys.argv:
         update()
     unpack_if_found()
+    try:
+        import knowledge   # imported after the update, so the newest copy runs
+        knowledge.load_if_found(ROOT)
+    except ImportError:
+        pass
     install()
     video_tools()
     ensure_key()

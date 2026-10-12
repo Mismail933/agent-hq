@@ -19,3 +19,6 @@ node_modules/
 .want-blackhole
 AgentHQ-for-Mac.zip
 .no-api-key
+.knowledge-loaded
+AgentHQ-knowledge*.zip
+hq.db.before-knowledge-*
