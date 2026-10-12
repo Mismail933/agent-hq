@@ -90,7 +90,8 @@ RHUBARB = True                   # lip-sync mouth shapes from Rhubarb Lip Sync (
 #   py -3 -m venv $env:USERPROFILE\.agent-hq-shorts
 #   & $env:USERPROFILE\.agent-hq-shorts\Scripts\python.exe -m pip install kokoro soundfile pillow certifi
 #   winget install -e --id Gyan.FFmpeg
-SHORTS_PYTHON = None            # None = ~/.agent-hq-shorts/Scripts/python.exe
+# On a Mac, START-HERE.command + launch.py make it by themselves (~/.agent-hq-shorts/bin/python, FFmpeg from Homebrew).
+SHORTS_PYTHON = None            # None = ~/.agent-hq-shorts/Scripts/python.exe (Mac: ~/.agent-hq-shorts/bin/python)
 SHORTS_VOICE = "bm_george"      # Kokoro voice: bm_george (British man), am_michael (American man), bf_emma, af_heart ...
 FFMPEG = None                   # None = find it (PATH or winget's folder)
 

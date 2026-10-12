@@ -151,9 +151,25 @@ def cast_voices(project, speakers):
 
 
 # ---- tools: Node + Remotion ----------------------------------------------------------
+# Windows: Node's zip (node.exe, npm.cmd at the top). Mac (2.38.0): Node's tar.gz for the chip (bin/node, bin/npm).
+WINDOWS = os.name == "nt"
+NODE_BIN = NODE_DIR if WINDOWS else NODE_DIR / "bin"
+NODE_EXE = NODE_BIN / ("node.exe" if WINDOWS else "node")
+NPM = NODE_BIN / ("npm.cmd" if WINDOWS else "npm")
+
+
+def node_package():
+    """(folder name, archive extension) of the Node build for this computer."""
+    import platform
+    if WINDOWS:
+        return f"node-v{NODE_VERSION}-win-x64", ".zip"
+    arch = "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "x64"
+    return f"node-v{NODE_VERSION}-{'darwin' if sys.platform == 'darwin' else 'linux'}-{arch}", ".tar.gz"
+
+
 def node_env():
     env = dict(os.environ)
-    env["PATH"] = str(NODE_DIR) + os.pathsep + env.get("PATH", "")
+    env["PATH"] = str(NODE_BIN) + os.pathsep + env.get("PATH", "")
     return env
 
 
@@ -174,20 +190,26 @@ def cast_file(project_id):
 def ensure_toolchain(project_id=None, cast=None):
     """Node (a private copy, so the owner's own Node never matters) and Remotion's packages. Safe to call every time."""
     HOME.mkdir(exist_ok=True)
-    if not (NODE_DIR / "node.exe").exists():
+    if not NODE_EXE.exists():
         say(f"Installing the animation tools (Node {NODE_VERSION}), one time...")
-        name = f"node-v{NODE_VERSION}-win-x64"
-        zpath = HOME / "node.zip"
-        download(f"https://nodejs.org/dist/v{NODE_VERSION}/{name}.zip", zpath)
+        name, ext = node_package()
+        zpath = HOME / ("node" + ext)
+        download(f"https://nodejs.org/dist/v{NODE_VERSION}/{name}{ext}", zpath)
         sums = shorts.fetch(f"https://nodejs.org/dist/v{NODE_VERSION}/SHASUMS256.txt")
         sums = sums.decode() if isinstance(sums, bytes) else sums
-        want = next((l.split()[0] for l in sums.splitlines() if l.strip().endswith(name + ".zip")), None)
+        want = next((l.split()[0] for l in sums.splitlines() if l.strip().endswith(name + ext)), None)
         got = hashlib.sha256(zpath.read_bytes()).hexdigest()
         if want != got:
             zpath.unlink(missing_ok=True)
             raise Blocked("The Node download didn't match its published checksum, so it was thrown away.")
-        with zipfile.ZipFile(zpath) as z:
-            z.extractall(HOME)
+        shutil.rmtree(HOME / name, ignore_errors=True)
+        if ext == ".zip":
+            with zipfile.ZipFile(zpath) as z:
+                z.extractall(HOME)
+        else:   # tar keeps the run permissions and npm's links
+            import tarfile
+            with tarfile.open(zpath) as t:
+                t.extractall(HOME)
         shutil.rmtree(NODE_DIR, ignore_errors=True)
         (HOME / name).rename(NODE_DIR)
         zpath.unlink(missing_ok=True)
@@ -202,7 +224,7 @@ def ensure_toolchain(project_id=None, cast=None):
         shutil.copy2(src / "package-lock.json", APP / "package-lock.json")
     if changed or not (APP / "node_modules" / "remotion").exists():
         say("Installing Remotion (the animation engine), one time...")
-        p = subprocess.run([str(NODE_DIR / "npm.cmd"), "install", "--no-audit", "--no-fund"], cwd=APP, env=node_env(),
+        p = subprocess.run([str(NPM), "install", "--no-audit", "--no-fund"], cwd=APP, env=node_env(),
                            capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=NOFLAGS)
         if p.returncode != 0:
             raise Blocked("Installing Remotion failed: " + (p.stderr or p.stdout).strip()[-300:])
@@ -253,7 +275,7 @@ def remotion(args, timeout=3000):
     cli = APP / "node_modules" / "@remotion" / "cli" / "remotion-cli.js"
     args = [*args, f"--timeout={BROWSER_TIMEOUT_MS}"]
     for attempt in (1, 2):
-        p = subprocess.run([str(NODE_DIR / "node.exe"), str(cli), *args], cwd=APP, env=node_env(), capture_output=True,
+        p = subprocess.run([str(NODE_EXE), str(cli), *args], cwd=APP, env=node_env(), capture_output=True,
                            text=True, encoding="utf-8", errors="replace", timeout=timeout, creationflags=NOFLAGS)
         if p.returncode == 0:
             return p.stdout
@@ -1116,14 +1138,18 @@ def short_year(year):
 
 
 RHUBARB_VERSION = "1.14.0"   # Rhubarb Lip Sync, MIT licence (commercial use allowed), https://github.com/DanielSWolf/rhubarb-lip-sync
-RHUBARB_URL = f"https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v{RHUBARB_VERSION}/Rhubarb-Lip-Sync-{RHUBARB_VERSION}-Windows.zip"
-RHUBARB_SHA256 = "62fa416a8d5e382a3828ee4bef358ce520d0b4cabdeaea75a7ac266d098d1fe3"
+# Pinned checksums per build. The Mac build is Intel-only: on an M-chip Mac it runs through Rosetta (START-HERE.command offers
+# it); if it can't run, mouth_for falls back to the loudness mouths and says so.
+RHUBARB_OS = "Windows" if os.name == "nt" else "macOS"
+RHUBARB_URL = f"https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v{RHUBARB_VERSION}/Rhubarb-Lip-Sync-{RHUBARB_VERSION}-{RHUBARB_OS}.zip"
+RHUBARB_SHA256 = {"Windows": "62fa416a8d5e382a3828ee4bef358ce520d0b4cabdeaea75a7ac266d098d1fe3",
+                  "macOS": "f991deacac6c973a14a4431a16a58b842f436531e120cfaea142c87c0d3ab4c5"}[RHUBARB_OS]
 RHUBARB_DIR = HOME / "rhubarb"
 
 
 def ensure_rhubarb():
     """Rhubarb Lip Sync, installed once into the animation tools folder. The download must match the pinned checksum."""
-    exe = RHUBARB_DIR / f"Rhubarb-Lip-Sync-{RHUBARB_VERSION}-Windows" / "rhubarb.exe"
+    exe = RHUBARB_DIR / f"Rhubarb-Lip-Sync-{RHUBARB_VERSION}-{RHUBARB_OS}" / ("rhubarb.exe" if os.name == "nt" else "rhubarb")
     if exe.exists():
         return exe
     RHUBARB_DIR.mkdir(parents=True, exist_ok=True)
@@ -1136,6 +1162,8 @@ def ensure_rhubarb():
     with zipfile.ZipFile(z) as zf:
         zf.extractall(RHUBARB_DIR)
     z.unlink(missing_ok=True)
+    if os.name != "nt" and exe.exists():   # zipfile drops the run permission
+        exe.chmod(0o755)
     if not exe.exists():
         raise Blocked("Rhubarb didn't unpack where expected.")
     return exe

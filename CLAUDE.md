@@ -54,6 +54,19 @@ Agents never spend money without the owner's explicit approval.
   Calina's "Video #N failed" block (`lastFail`, from `video_failed` events) clears when that episode starts again, gets a video or
   voice versions (`voice_variants_ready`), is rejected, or when any later video succeeds; the card shows when it failed (`whenOf`).
 - `launch.py`: auto-updater. Compares raw GitHub `VERSION` with the local one; on mismatch downloads the main zip and overwrites program files (keeps .env, hq.db, briefs, settings_local.py, STOP, START-HERE.bat), then runs server.py.
+- Mac (2.38.0, the owner has an M4; not yet run on a real Mac by the Builder): `mac-install.sh` (one Terminal paste: curl ->
+  ~/Agent-HQ, Desktop "Agent HQ.command", no Gatekeeper block because curl files aren't quarantined) -> `START-HERE.command`
+  (in KEEP; installs Homebrew, python@3.12, ffmpeg, git, Claude Code via claude.ai/install.sh; offers Rosetta (Rhubarb's Mac build
+  is Intel-only; without it the loudness mouths are used), GitHub's credential manager (Ship/lnd pushes; `.gcm-skip`), BlackHole
+  when voice_match left `.want-blackhole`; the office runs in the venv ~/.agent-hq-office so agents have `python`). launch.py
+  `video_tools()` (Mac only) makes ~/.agent-hq-shorts from `requirements-video.txt` (+ optional piper-tts). OS-specific spots:
+  animate (`node_package`, `NODE_EXE`, `NPM`, Rhubarb per-OS URL + pinned SHA256, chmod), atlas_engine.find_claude (~/.local/bin,
+  Homebrew, ~/Library/Application Support/Claude/claude-code), server (`tool_dirs` Homebrew/node bin, `open` for folders, lsof +
+  kill in `stop_old_office`), shorts.find_ffmpeg, `shorts_python` (bin/python), linkpeek certifi, voice_match (BlackHole input
+  instead of WASAPI loopback). Moving data: `PACK-FOR-MAC.bat` = `launch.py --pack` (sqlite backup + briefs/plans/content/.env/
+  settings_local/skips + ~/Atlas-HQ (not .atlas-session) + ~/.agent-hq/telegram.json -> Desktop/AgentHQ-for-Mac.zip);
+  `unpack_if_found` on a fresh install (no hq.db). `cp.portable_paths` (every init) turns absolute brief/plan paths into
+  'briefs/x.md'. Keep new code OS-neutral: no `.exe`, `Scripts/`, `os.startfile`, `cmd` without an `os.name` check.
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI
   (`HQ_CLAUDE_PATH`, PATH, or the copy bundled with the Claude desktop app under `%APPDATA%\Claude\claude-code\<ver>\`).

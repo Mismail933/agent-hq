@@ -102,14 +102,24 @@ def find_claude():
     if found:
         return found
     cands = list(Path.home().glob(".local/bin/claude.exe"))
+    if os.name != "nt":   # Mac (2.38.0): Claude Code's own installer, Homebrew, npm
+        cands = [p for p in (Path.home() / ".local/bin/claude", Path.home() / ".claude/local/claude",
+                             Path("/opt/homebrew/bin/claude"), Path("/usr/local/bin/claude")) if p.is_file()]
 
     def ver(exe):
-        return tuple(int(x) for x in re.findall(r"\d+", exe.parent.parent.name)[:3])
+        for part in reversed(exe.parts[:-1]):   # the version folder, wherever it sits in the path
+            if re.match(r"^\d+\.\d+", part):
+                return tuple(int(x) for x in re.findall(r"\d+", part)[:3])
+        return ()
     # The Claude desktop app ships Claude Code. The Microsoft Store version keeps its AppData in a package folder
     # that programs outside the app (like START-HERE) can only reach by its real path.
-    bundled = list((Path(os.environ.get("APPDATA", "")) / "Claude" / "claude-code").glob("*/*/claude.exe"))
-    bundled += Path(os.environ.get("LOCALAPPDATA", "")).glob(
-        "Packages/Claude_*/LocalCache/Roaming/Claude/claude-code/*/*/claude.exe")
+    if os.name == "nt":
+        bundled = list((Path(os.environ.get("APPDATA", "")) / "Claude" / "claude-code").glob("*/*/claude.exe"))
+        bundled += Path(os.environ.get("LOCALAPPDATA", "")).glob(
+            "Packages/Claude_*/LocalCache/Roaming/Claude/claude-code/*/*/claude.exe")
+    else:   # the Mac app keeps its copy under Application Support
+        base = Path.home() / "Library" / "Application Support" / "Claude" / "claude-code"
+        bundled = [p for p in [*base.glob("*/claude"), *base.glob("*/*/claude")] if p.is_file() and os.access(p, os.X_OK)]
     cands += sorted(bundled, key=ver, reverse=True)
     return str(cands[0]) if cands else None
 

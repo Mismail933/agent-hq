@@ -17,6 +17,7 @@ PyTorch. The office starts it; you rarely run it by hand.
 """
 import argparse
 import json
+import os
 import re
 import shutil
 import ssl
@@ -266,8 +267,11 @@ def find_ffmpeg():
     if p:
         return p
     hits = sorted(Path.home().glob("AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg*/ffmpeg-*/bin/ffmpeg.exe"))
+    hits += [p for p in (Path("/opt/homebrew/bin/ffmpeg"), Path("/usr/local/bin/ffmpeg")) if p.exists()]   # Mac (Homebrew)
     if hits:
         return str(hits[-1])
+    if os.name != "nt":
+        raise Blocked("FFmpeg isn't installed. Close the Agent HQ window and open START-HERE.command again: it installs it.")
     raise Blocked("FFmpeg isn't installed. Run: winget install -e --id Gyan.FFmpeg")
 
 

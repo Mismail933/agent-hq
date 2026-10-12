@@ -69,7 +69,23 @@ def init():
             con.execute("ALTER TABLE ideas ADD COLUMN pitch TEXT")
         if "meta" not in {r[1] for r in con.execute("PRAGMA table_info(projects)")}:   # 2.9.1: facts like the channel name
             con.execute("ALTER TABLE projects ADD COLUMN meta TEXT")
+        portable_paths(con)
     apply_limits()
+
+
+def portable_paths(con):
+    """Briefs and plans were saved by full path (C:\\Users\\...\\briefs\\x.md). Moved to another computer (the Mac, 2.38.0) that path
+    is wrong: keep it relative to the program folder ('briefs/x.md'), which every reader joins with ROOT. Only rewritten when
+    the file is really there."""
+    import re
+    for table, col in (("ideas", "brief_path"), ("projects", "plan_path")):
+        for r in con.execute(f"SELECT id, {col} FROM {table} WHERE {col} IS NOT NULL AND {col} != ''").fetchall():
+            m = re.search(r"(?:^|[\\/])((?:briefs|plans|content)[\\/].+)$", r[1])
+            if not m or not (Path(r[1]).is_absolute() or "\\" in r[1]):
+                continue
+            rel = m.group(1).replace("\\", "/")
+            if (ROOT / rel).exists() and rel != r[1]:
+                con.execute(f"UPDATE {table} SET {col}=? WHERE id=?", (rel, r[0]))
 
 
 # ---- Limits the owner changes in the office (or Atlas, when the owner asks) -------

@@ -28,6 +28,8 @@ def _tls():
     except Exception:
         pass
     bundled = Path.home() / ".agent-hq-shorts" / "Lib" / "site-packages" / "certifi" / "cacert.pem"   # the video tools' copy
+    if not bundled.exists():   # Mac: lib/python3.x/site-packages
+        bundled = next(iter(sorted((Path.home() / ".agent-hq-shorts" / "lib").glob("python3*/site-packages/certifi/cacert.pem"))), bundled)
     return ssl.create_default_context(cafile=str(bundled)) if bundled.exists() else ssl.create_default_context()
 
 

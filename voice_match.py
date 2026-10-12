@@ -64,9 +64,20 @@ def record(pid, seconds=40):
     folder = ref_dir(pid)
     folder.mkdir(parents=True, exist_ok=True)
     try:
-        devices = [m for m in sc.all_microphones(include_loopback=True) if m.isloopback]
+        if sys.platform == "darwin":   # a Mac can't record its speakers by itself: a virtual input (BlackHole) carries the sound
+            devices = [m for m in sc.all_microphones() if any(k in m.name.lower() for k in ("blackhole", "loopback", "soundflower"))]
+        else:
+            devices = [m for m in sc.all_microphones(include_loopback=True) if m.isloopback]
     except Exception as e:
         raise Blocked(f"Couldn't list the speakers to record from: {str(e)[:200]}")
+    if not devices and sys.platform == "darwin":
+        try:
+            (ROOT / ".want-blackhole").touch()   # START-HERE.command offers BlackHole on its next start
+        except OSError:
+            pass
+        raise Blocked("On a Mac, recording what plays needs the free BlackHole add-on (one time): close the Agent HQ window, "
+                      "double-click START-HERE.command again and answer Y when it offers BlackHole; it then says how to set "
+                      "the sound output.")
     if not devices:
         raise Blocked("This PC has no speaker output that can be recorded (no loopback device). Plug in or turn on speakers/headphones and try again.")
     got, errors, live = {}, {}, {}

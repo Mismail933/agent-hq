@@ -14,3 +14,7 @@ __pycache__/
 .port
 _art/
 node_modules/
+.rosetta-skip
+.gcm-skip
+.want-blackhole
+AgentHQ-for-Mac.zip

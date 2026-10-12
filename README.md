@@ -49,6 +49,19 @@ apply at once, survive updates and show in Activity. Atlas can change them too, 
    the live office in your browser, where you chat with Atlas and watch the team work.
    Next time, double-click it again. Keep its window open while you use the office.
 
+## Setup on a Mac (M-chip or Intel)
+
+1. Open Terminal (Applications > Utilities) and paste this once:
+   ```
+   curl -fsSL https://raw.githubusercontent.com/Mismail933/agent-hq/main/mac-install.sh | bash
+   ```
+   It puts Agent HQ in `~/Agent-HQ`, adds **Agent HQ** to the Desktop and opens it. The first start installs Homebrew,
+   Python 3.12, FFmpeg, Claude Code and the video tools (asks your Mac password once; 10-20 minutes the first time).
+2. From then on, double-click **Agent HQ** on the Desktop.
+3. Moving from the Windows PC: on the PC double-click `PACK-FOR-MAC.bat` (makes `AgentHQ-for-Mac.zip` on the Desktop with
+   the database, keys, briefs, plans, content, Atlas-HQ and the phone pairing). Copy it to the Mac's Downloads folder
+   before the first start: START-HERE asks to bring it in. Run the office on one computer at a time.
+
 ## Setup by hand (any computer)
 
 1. Install Python 3.10 or newer.

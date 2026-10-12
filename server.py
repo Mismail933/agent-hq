@@ -57,6 +57,9 @@ def tool_dirs():
             break
     out.append(Path.home() / ".agent-hq-anim" / "node")
     out += [Path(p).parent for p in sorted(glob.glob(str(Path.home() / "AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg*/ffmpeg-*/bin/ffmpeg.exe")))[-1:]]
+    if os.name != "nt":   # Mac (2.38.0): our Node's bin, Homebrew (ffmpeg, git), Claude Code's own installer folder
+        out += [Path.home() / ".agent-hq-anim" / "node" / "bin", Path("/opt/homebrew/bin"), Path("/usr/local/bin"),
+                Path.home() / ".local" / "bin", Path("/usr/bin"), Path("/bin")]
     return [str(d) for d in out if d.is_dir()]
 
 
@@ -264,7 +267,7 @@ def with_upload_text(episodes):
 
 
 def shorts_python():
-    p = getattr(settings, "SHORTS_PYTHON", None) or Path.home() / ".agent-hq-shorts" / "Scripts" / "python.exe"
+    p = getattr(settings, "SHORTS_PYTHON", None) or Path.home() / ".agent-hq-shorts" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     return str(p) if Path(p).exists() else None
 
 
@@ -681,7 +684,7 @@ def restart_office(why="the new version"):
     end_run(f"restarted for {why}")
     if os.environ.get("HQ_LAUNCHER_LOOP") != "1":
         bat = ROOT / "START-HERE.bat"
-        if bat.exists():
+        if bat.exists() and os.name == "nt":
             subprocess.Popen(["cmd", "/c", "start", "Agent HQ", str(bat)], cwd=ROOT, env=dict(os.environ, HQ_NO_BROWSER="1"))
     os._exit(75)
 
@@ -2192,8 +2195,11 @@ class Handler(BaseHTTPRequestHandler):
                 folder = production.clips_folder(e)
                 folder.mkdir(parents=True, exist_ok=True)
                 try:
-                    os.startfile(str(folder))   # Windows only
-                except AttributeError:
+                    if os.name == "nt":
+                        os.startfile(str(folder))
+                    else:   # Mac: Finder
+                        subprocess.Popen(["open", str(folder)])
+                except (AttributeError, OSError):
                     pass
                 return self._send(200, {"ok": True, "message": f"Opened {folder}"})
             if action == "log":
@@ -2530,17 +2536,30 @@ def stop_old_office(port):
                 return
     except Exception:
         return   # nothing there, or not ours
-    if os.name != "nt":
-        print(f"  Another Agent HQ is already running on port {port}. Close it first.", flush=True)
-        return
-    out = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
-    pids = {int(line.split()[-1]) for line in out.splitlines()
-            if f"127.0.0.1:{port} " in line and "LISTENING" in line and line.split()[-1].isdigit()}
-    for pid in pids - {os.getpid()}:
-        subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
+    if os.name != "nt":   # Mac (2.38.0): the process listening on the port, via lsof
+        try:
+            out = subprocess.run(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"], capture_output=True, text=True, timeout=20).stdout
+        except (OSError, subprocess.SubprocessError):
+            print(f"  Another Agent HQ is already running on port {port}. Close it first.", flush=True)
+            return
+        pids = {int(x) for x in out.split() if x.isdigit()}
+        import signal
+        for pid in pids - {os.getpid()}:
+            try:
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(2)
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass   # already gone
+    else:
+        out = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
+        pids = {int(line.split()[-1]) for line in out.splitlines()
+                if f"127.0.0.1:{port} " in line and "LISTENING" in line and line.split()[-1].isdigit()}
+        for pid in pids - {os.getpid()}:
+            subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
     if pids:
         print(f"  Closed {len(pids)} older copy(ies) of Agent HQ that were still running.", flush=True)
-        print("  Their black windows now say they stopped; you can close them.\n", flush=True)
+        print("  Their windows now say they stopped; you can close them.\n", flush=True)
         time.sleep(1)
     return bool(pids - {os.getpid()})
 

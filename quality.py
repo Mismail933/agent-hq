@@ -1231,7 +1231,7 @@ def _facts(ffmpeg, video, d):
 
 
 def shorts_python():
-    p = getattr(settings, "SHORTS_PYTHON", None) or Path.home() / ".agent-hq-shorts" / "Scripts" / "python.exe"
+    p = getattr(settings, "SHORTS_PYTHON", None) or Path.home() / ".agent-hq-shorts" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     return str(p) if Path(p).exists() else None
 
 

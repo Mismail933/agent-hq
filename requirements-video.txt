@@ -1,0 +1,9 @@
+# The video tools' own Python (~/.agent-hq-shorts): voices, word timings, pictures, voice matching.
+# On a Mac launch.py installs these by itself (2.38.0). On the Windows PC this environment was set up by hand (settings.py).
+kokoro==0.9.4
+faster-whisper==1.2.1
+soundfile
+pillow
+certifi
+numpy
+SoundCard==0.4.5
