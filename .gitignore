@@ -18,3 +18,4 @@ node_modules/
 .gcm-skip
 .want-blackhole
 AgentHQ-for-Mac.zip
+.no-api-key

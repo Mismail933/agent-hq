@@ -26,7 +26,7 @@ BRANCH = "main"
 
 # Never overwritten by an update: your key, your data, and the launcher itself
 KEEP = {".env", "hq.db", "briefs", "plans", "content", ".installed", "START-HERE.bat", "STOP", "settings_local.py", ".atlas-cloud-skip", ".elevenlabs-skip",
-        ".installed-commit", ".last-good-commit", ".hold-version", ".rolled-back", "START-HERE.command", ".rosetta-skip", ".gcm-skip", ".want-blackhole"}
+        ".installed-commit", ".last-good-commit", ".hold-version", ".rolled-back", "START-HERE.command", ".rosetta-skip", ".gcm-skip", ".want-blackhole", ".no-api-key"}
 MAC = sys.platform == "darwin"
 PACK_NAME = "AgentHQ-for-Mac.zip"   # the company's data, carried from the PC to the Mac (2.38.0)
 RESTART = 75   # the office exits with this code to be updated and started again (after the owner ships Ghassan's change)
@@ -115,15 +115,16 @@ def install():
 
 def ensure_key():
     env = ROOT / ".env"
-    if env.exists() and "ANTHROPIC_API_KEY=" in env.read_text():
+    if (env.exists() and "ANTHROPIC_API_KEY=" in env.read_text()) or (ROOT / ".no-api-key").exists():
         return
-    say("Paste your Anthropic API key from https://console.anthropic.com/settings/keys")
+    say("The team runs on your Claude subscription. An Anthropic API key is only the paid backup for when it can't.")
+    say("Paste your API key from https://console.anthropic.com/settings/keys, or just press Enter to run without one.")
     say("(Cmd+V to paste, then press Enter)" if MAC else "(right-click in this window to paste, then press Enter)")
     key = input("  API key: ").strip()
-    if not key:
-        say("No key entered. Run START-HERE again when you have one.")
-        input("  Press Enter to close.")
-        sys.exit(1)
+    if not key:   # 2.39.1: the owner's Mac runs on the subscription only
+        (ROOT / ".no-api-key").write_text("The owner chose to run this computer without an API key (subscription only).\n")
+        say("No key: this computer runs on your Claude subscription only. No paid backup, no API spend.")
+        return
     env.write_text(f"ANTHROPIC_API_KEY={key}\n")
     say("Key saved in the .env file on this computer only.")
 

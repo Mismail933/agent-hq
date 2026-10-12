@@ -20,7 +20,8 @@ def client():
         else:
             import anthropic
             if not os.environ.get("ANTHROPIC_API_KEY"):
-                raise cp.Halt("ANTHROPIC_API_KEY is not set. Put it in the .env file (see README).")
+                raise cp.Halt("No API key on this computer (it runs on the Claude subscription only), so the paid backup can't "
+                              "answer. Try again when Claude Code is available.")
             _client = anthropic.Anthropic(max_retries=5)  # rides out brief overloads and rate limits
     return _client
 

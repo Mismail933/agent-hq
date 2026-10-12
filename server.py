@@ -1717,7 +1717,8 @@ class Handler(BaseHTTPRequestHandler):
                 "kill": cp.STOP_FILE.exists(),
                 "version": (ROOT / "VERSION").read_text(encoding="utf-8").strip() if (ROOT / "VERSION").exists() else "",
                 "simulated": os.environ.get("HQ_SIMULATE") == "1",
-                "has_key": bool(os.environ.get("ANTHROPIC_API_KEY")) or os.environ.get("HQ_SIMULATE") == "1",
+                "has_key": bool(os.environ.get("ANTHROPIC_API_KEY")) or os.environ.get("HQ_SIMULATE") == "1"
+                           or (ROOT / ".no-api-key").exists(),   # subscription only by choice: no "no key" banner
             })
         if u.path.startswith("/api/variant/"):   # /api/variant/<episode>/<n>: one voice version of a Short
             try:

@@ -76,6 +76,9 @@ Agents never spend money without the owner's explicit approval.
   `GET /api/remote` (code only to this PC), `POST /api/remote/new-code` (PC only; signs every device out), `/api/remote/sign-out`.
   Office: Spend & limits -> "Your other computers" (`remoteHtml`, inside the phone card). Off: settings.REMOTE_OFFICE = False;
   practice mode only with HQ_REMOTE=1. Tested with a fake Tailscale address (127.0.0.2); not yet with real Tailscale.
+  Then (2026-10-12) the owner changed his mind: the PC and the Mac each run their OWN office (separate data, separate Telegram
+  bots, files moved by hand via Drive). 2.39.1: the API key is optional: Enter at START-HERE's key question writes `.no-api-key`
+  (in KEEP): subscription only, no banner, `llm.client` halts with a clear reason if a paid backup is ever needed (the Mac).
 - `simulate.py`: canned responses for every agent so everything can be tested for free.
 - `atlas_engine.py`: runs Atlas as `claude -p --output-format json --resume <session>` in Atlas-HQ. Finds the CLI
   (`HQ_CLAUDE_PATH`, PATH, or the copy bundled with the Claude desktop app under `%APPDATA%\Claude\claude-code\<ver>\`).
