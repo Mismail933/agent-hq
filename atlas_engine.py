@@ -119,7 +119,9 @@ def find_claude():
             "Packages/Claude_*/LocalCache/Roaming/Claude/claude-code/*/*/claude.exe")
     else:   # the Mac app keeps its copy under Application Support
         base = Path.home() / "Library" / "Application Support" / "Claude" / "claude-code"
-        bundled = [p for p in [*base.glob("*/claude"), *base.glob("*/*/claude")] if p.is_file() and os.access(p, os.X_OK)]
+        bundled = [p for p in [*base.glob("*/claude"), *base.glob("*/*/claude"),
+                               *base.glob("*/*/claude.app/Contents/MacOS/claude")]   # 2.39.2: <ver>/<hash>/claude.app
+                   if p.is_file() and os.access(p, os.X_OK)]
     cands += sorted(bundled, key=ver, reverse=True)
     return str(cands[0]) if cands else None
 
