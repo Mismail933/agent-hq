@@ -506,3 +506,87 @@ def note_version(pid, slug, v, rating=None, notes=None, by="Owner"):
     mf.write_text(json.dumps(meta, indent=1, ensure_ascii=False), encoding="utf-8")
     cp.log(by, "version_noted", None, {"project": int(pid), "idea": slug, "version": v, "rating": meta.get("rating")})
     return meta
+
+
+# ---- music videos from an edit plan (2.43.0; musicvideo.py renders them) ---------------------------------------------------
+# ideas/<idea>/edit.json is the plan: the song, the lyrics with their times, every shot on the song's clock (a Gemini video in
+# shots/, or a picture there with a camera move), and the shots still to make. Atlas reads it with `hq mv`, swaps a picture for a
+# finished video with `hq mv-shot`, and renders a version with `hq mv-render` (a job; the result goes into versions/<v>/).
+
+
+def idea_slug(pid, ref):
+    """An idea by number ('2'), or its folder name."""
+    d = ideas_dir(pid)
+    ref = str(ref).strip()
+    if re.match(r"^\d+$", ref):
+        hits = sorted(d.glob(f"idea-{int(ref)}-*")) if d.exists() else []
+        if hits:
+            return hits[0].name
+    elif re.match(r"^idea-\d+-[a-z0-9-]+$", ref) and (d / ref).is_dir():
+        return ref
+    raise ValueError(f"No idea '{ref}' in project {pid}. `hq client {pid}` lists them.")
+
+
+def edit_path(pid, ref):
+    f = ideas_dir(pid) / idea_slug(pid, ref) / "edit.json"
+    if not f.exists():
+        raise ValueError("This idea has no edit plan (edit.json) yet: the Builder chat writes the first one.")
+    return f
+
+
+def edit_view(pid, ref):
+    f = edit_path(pid, ref)
+    plan = json.loads(f.read_text(encoding="utf-8"))
+    base = f.parent
+    shots = []
+    for s in plan.get("shots") or []:
+        src = s.get("video") or s.get("picture") or ""
+        shots.append({"id": s.get("id"), "start": s.get("start"), "end": s.get("end"), "kind": "video" if s.get("video") else "picture",
+                      "file": src, "exists": (base / src).exists() if src else False, "note": s.get("note", ""),
+                      "video_prompt": s.get("video_prompt", "") if not s.get("video") else ""})
+    return {"idea": base.name, "title": plan.get("title", ""), "end": plan.get("end"), "song_length": plan.get("song_length"),
+            "look": plan.get("look", ""), "rules": plan.get("rules") or [], "shots": shots, "todo": plan.get("todo") or [],
+            "versions": [v["v"] for v in next((i["versions"] for i in ideas(pid) if i["slug"] == base.name), [])]}
+
+
+def set_shot(pid, ref, shot, src, start_at=0.0, by="Atlas"):
+    """A finished clip (e.g. a Gemini video the owner sent from his phone) becomes a shot's video. The clip is copied into the
+    idea's shots/ folder; the shot keeps its place on the song. The next render uses it."""
+    f = edit_path(pid, ref)
+    plan = json.loads(f.read_text(encoding="utf-8"))
+    s = next((x for x in plan.get("shots") or [] if str(x.get("id")) == str(shot)), None)
+    if not s:
+        raise ValueError(f"No shot '{shot}'. `hq mv {pid} {ref}` lists them.")
+    import atlas_engine
+    p = Path(src)
+    if not p.is_absolute():
+        p = (ROOT / p) if (ROOT / p).exists() else (atlas_engine.HOME / p)
+    p = p.resolve()
+    allowed = [(atlas_engine.HOME / "review" / "uploads").resolve(), (ROOT / "content").resolve()]
+    if not any(a == p.parent or a in p.parents for a in allowed) or not p.exists():
+        raise ValueError("The clip must be a file in Atlas-HQ/review/uploads (videos the owner sends on Telegram land there) or in content/.")
+    if p.suffix.lower() not in (".mp4", ".mov", ".m4v", ".webm") or p.stat().st_size > 400 * 1024 * 1024:
+        raise ValueError("That isn't a video file (mp4/mov/m4v/webm, at most 400 MB).")
+    dest = f.parent / "shots" / f"veo-{re.sub(r'[^a-z0-9-]', '', str(shot).lower())}{p.suffix.lower()}"
+    n = 2
+    while dest.exists():
+        dest = dest.with_name(f"veo-{str(shot).lower()}-{n}{p.suffix.lower()}")
+        n += 1
+    dest.parent.mkdir(exist_ok=True)
+    shutil.copy2(p, dest)
+    old = s.get("video") or s.get("picture")
+    s.pop("to", None)
+    s["video"] = dest.relative_to(f.parent).as_posix()
+    s["from"] = float(start_at or 0)
+    s.setdefault("was", old)
+    f.write_text(json.dumps(plan, indent=1, ensure_ascii=False), encoding="utf-8")
+    cp.log(by, "mv_shot_set", None, {"project": int(pid), "idea": f.parent.name, "shot": shot, "file": dest.name})
+    slot = float(s["end"]) - float(s["start"])
+    return (f"Shot {shot} now uses {dest.name} (from {s['from']:g} s; its slot is {slot:.1f} s, so the render plays "
+            f"{slot:.1f} s of it, stretched smoothly if the clip is shorter). Render to see it: hq mv-render {pid} {ref}.")
+
+
+def next_version(pid, ref):
+    vers = edit_view(pid, ref)["versions"]
+    n = max([int(m.group(1)) for v in vers for m in [re.match(r"^v(\d+)", v)] if m] + [0]) + 1
+    return f"v{n}"

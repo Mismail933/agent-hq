@@ -8,6 +8,7 @@ Everything runs on your computer at http://localhost:8765.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -449,7 +450,8 @@ def job_label(kind, a):
             "review": "Calina's learning note for project {0}", "plan": "Serge's plan for idea #{0}",
             "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}",
             "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}",
-            "style_frames": "Rana's style frames for project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "style_frames": "Rana's style frames for project {0}",
+            "mv_render": "The music video {1} {2} of project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -486,7 +488,7 @@ JOBS = {"cast_draw": "run_cast_draw", "cast_check": "run_cast_check","design": "
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
         "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video", "assets": "run_assets",
-        "style_frames": "run_style_frames"}
+        "style_frames": "run_style_frames", "mv_render": "run_mv_render"}
 
 
 LOGO_BRIEF = ("The logo of Agent HQ: the owner's AI company, a small team of AI agents (each with a name and a job) run by a manager, "
@@ -1167,6 +1169,53 @@ def run_style_frames(pid, extra=""):
         DESIGNING["what"] = ""
 
 
+MVRENDER = {"on": ""}   # one music video renders at a time (it uses every core)
+
+
+def run_mv_render(pid, idea, version, about="", quick=False, vertical=False, by="Atlas"):
+    """2.43.0: a client's music video from its edit plan (ideas/<idea>/edit.json) by musicvideo.py in the video tools' Python:
+    versions/<version>/wide.mp4 (+ vertical.mp4), wide.phone.mp4 (720p, for Telegram) and review/sheet-NN.png (a frame every
+    2 s, for Atlas's eyes). Its checks stop a render with a gap, a missing shot or a blank stretch, and say where."""
+    p = client.get(pid)
+    name = p["meta"].get("name") or f"project {pid}"
+    MVRENDER["on"] = f"{name}, {idea}, {version}"
+    try:
+        ef = client.edit_path(pid, idea)
+        out = ef.parent / "versions" / version
+        py = shorts_python()
+        if not py:
+            raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+        cp.log(by, "mv_render_started", None, {"project": pid, "idea": ef.parent.name, "version": version, "quick": bool(quick)})
+        r = subprocess.run([py, str(ROOT / "musicvideo.py"), "render", str(ef), str(out)] + (["--quick"] if quick else [])
+                           + (["--vertical"] if vertical else []), cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=4 * 3600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        lines = (r.stdout or "").splitlines()
+        res = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
+        if not res:
+            raise RuntimeError(next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+                               or ((r.stderr or r.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+        res = json.loads(res)
+        mf = out / "meta.json"
+        meta = json.loads(mf.read_text(encoding="utf-8")) if mf.exists() else {}
+        meta.update({"label": meta.get("label") or (f"{version}: quick test (half size)" if quick else version),
+                     "made": time.strftime("%Y-%m-%d %H:%M"), "about": about or meta.get("about", ""), "by": by,
+                     "seconds": res["seconds"], "video_shots": res["video_shots"], "picture_shots": res["picture_shots"]})
+        mf.write_text(json.dumps(meta, indent=1, ensure_ascii=False), encoding="utf-8")
+        cp.log(by, "mv_ready", None, {"project": pid, "idea": ef.parent.name, "version": version, "seconds": res["seconds"],
+                                      "minutes": res["minutes"], "quick": bool(quick)})
+        rel = Path(res["wide"]).relative_to(ROOT).as_posix()
+        atlas_says(f"**Music video ready: {name}, {ef.parent.name}, {version}** ({res['seconds']:.0f} s: {res['video_shots']} Gemini "
+                   f"videos + {res['picture_shots']} paintings; made in {res['minutes']} min"
+                   + (", a QUICK TEST at half size" if quick else "") + "). Look at the frame sheets first ("
+                   + ", ".join(Path(x).relative_to(ROOT).as_posix() for x in res["sheets"][:2]) + (" ..." if len(res["sheets"]) > 2 else "")
+                   + f"), then send it: `hq send-phone {rel} \"caption\"`.")
+    except Exception as ex:
+        cp.log(by, "mv_failed", None, {"project": pid, "idea": idea, "version": version, "reason": str(ex)[:300]})
+        atlas_says(f"The music video ({name}, {idea}, {version}) didn't render: {ex}")
+    finally:
+        MVRENDER["on"] = ""
+
+
 def animator_test_view(p):
     try:
         return json.loads((ROOT / "content" / f"project-{p['id']}" / "animator-test" / "test.json").read_text(encoding="utf-8"))
@@ -1499,7 +1548,8 @@ def save_uploads(items):
 # something waits. He acts within the owner's standing orders (atlas-journal.md). Quiet: his autopilot replies go to the office
 # chat, never to the phone (he sends the owner something himself only when it matters). Rules in atlas/CLAUDE.md.
 WAKE_KINDS = ("video_ready", "video_reviewed", "video_failed", "batch_ready", "script_reviewed", "halted", "bespoke_failed",
-              "ready_to_ship", "ghassan_shipped", "job_given_up", "assets_ready", "assets_failed", "studio_ready", "studio_failed")
+              "ready_to_ship", "ghassan_shipped", "job_given_up", "assets_ready", "assets_failed", "studio_ready", "studio_failed",
+              "mv_ready", "mv_failed")
 AUTOPILOT = {"last_wake": 0.0, "last_event": 0, "wakes": 0}
 
 
@@ -2519,6 +2569,30 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, {"ok": True, "message": "Saved."})
             except (ValueError, OSError) as e:
                 return self._send(400, {"error": str(e)})
+            if action == "mv-shot":   # a finished clip becomes a shot's video: {idea, shot, file, from} (hq mv-shot)
+                try:
+                    return self._send(200, {"ok": True, "message": client.set_shot(pid, body.get("idea"), body.get("shot"), body.get("file"),
+                                                                                 float(body.get("from") or 0), by)})
+                except (ValueError, OSError) as e:
+                    return self._send(400, {"error": str(e)})
+            if action == "mv-render":   # render a version of a music video from its edit plan: {idea, version, about, quick, vertical}
+                if MVRENDER["on"]:
+                    return self._send(409, {"error": f"A music video is rendering already ({MVRENDER['on']}). One at a time."})
+                try:
+                    slug = client.idea_slug(pid, body.get("idea") or "")
+                    client.edit_path(pid, slug)
+                    quick = bool(body.get("quick"))
+                    version = str(body.get("version") or ("test" if quick else client.next_version(pid, slug))).strip().lower()
+                    if not re.match(r"^[a-z0-9-]{1,40}$", version):
+                        raise ValueError("A version name is lower-case letters, numbers and dashes (e.g. v3).")
+                    if not quick and (client.ideas_dir(pid) / slug / "versions" / version / "wide.mp4").exists():
+                        raise ValueError(f"Version {version} exists already; pick a new name (versions are kept, never overwritten).")
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+                threading.Thread(target=run_mv_render, args=(pid, slug, version, clip(body.get("about", ""), "notes")[0], quick,
+                                                             bool(body.get("vertical")), by), daemon=True).start()
+                return self._send(202, {"ok": True, "message": f"Rendering {slug} {version}" + (" as a quick test (half size, ~3-8 min)"
+                                        if quick else " (full size, about 25-40 min for 2-4 minutes of video)") + ". You'll be told when it's ready."})
             if action == "style-frames":   # Rana paints 3 looks (the owner's button, or Atlas: hq style-frames)
                 if anim_busy():
                     return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})

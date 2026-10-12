@@ -15,6 +15,7 @@ Atlas's controls for Agent HQ.
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
                  project-new "<name>" --kind client_music_video ["brief"]     (a client project: ONLY on the owner's explicit word)
                  client <project> | client-brief <project> "brief" | style-frames <project> ["brief"] | style-pick <project> <version> <option>     (client projects; the owner picks the look)
+                 mv <project> <idea> | mv-shot <project> <idea> <shot> <clip> [--from S] | mv-render <project> <idea> [version] ["what changed"] [--quick] [--vertical]     (music videos)
                  studio <project> images|video <count> "brief" [--shape 9:16|16:9|9:16,16:9] [--ref <file>]... | studio-status     (pictures and clips made on the owner's Mac: he starts it there by hand)
                  assets <episode> [make | add <backdrop|prop|costume> <id> "brief" [--for court|ruler] [--act "animation"] | skip ["why"] | unskip]     (a story's own art, drawn by Rana before the render)
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
@@ -593,6 +594,39 @@ def main(argv):
         elif cmd == "style-frames":   # hq style-frames <project> ["brief"]: Rana paints 3 looks (16:9 scenes, 9:16 crop shown), Israa checks
             import client
             code, reply = office(f"/api/client/{client.find(args[0])['id']}/style-frames", {"brief": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "mv":   # hq mv <project> <idea>: a music video's plan: every shot (video or still painting), what's left, versions
+            import client
+            pid = client.find(args[0])["id"]
+            v = client.edit_view(pid, args[1] if len(args) > 1 else "1")
+            show({"idea": v["idea"], "title": v["title"], "rendered_until_s": v["end"], "song_length_s": v["song_length"], "look": v["look"],
+                  "rules": v["rules"], "versions": v["versions"],
+                  "shots": [f"{s['id']}: {s['start']:.2f}-{s['end']:.2f} s  {s['kind'].upper()} {s['file']}" + ("" if s["exists"] else "  (FILE MISSING)")
+                            + (f"  | {s['note']}" if s["note"] else "") for s in v["shots"]],
+                  "still_paintings_with_their_gemini_video_prompt": {s["id"]: s["video_prompt"] for s in v["shots"] if s["kind"] == "picture"},
+                  "not_made_yet": v["todo"]})
+        elif cmd == "mv-shot":   # hq mv-shot <project> <idea> <shot> <clip file> [--from S]: a finished clip becomes that shot's video
+            import client
+            rest, frm = list(args), 0.0
+            if "--from" in rest:
+                i = rest.index("--from")
+                frm = float(rest[i + 1])
+                del rest[i:i + 2]
+            if len(rest) < 4:
+                show("Use: hq mv-shot <project> <idea> <shot> <clip file> [--from seconds]")
+                return
+            code, reply = office(f"/api/client/{client.find(rest[0])['id']}/mv-shot", {"idea": rest[1], "shot": rest[2], "file": rest[3], "from": frm})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "mv-render":   # hq mv-render <project> <idea> [version] ["about"] [--quick] [--vertical]
+            import client
+            rest = [a for a in args if a not in ("--quick", "--vertical")]
+            if len(rest) < 2:
+                show('Use: hq mv-render <project> <idea> [version] ["what changed"] [--quick] [--vertical]')
+                return
+            ver = rest[2] if len(rest) > 2 and re.match(r"^[a-z0-9-]{1,40}$", rest[2]) else ""
+            about = " ".join(rest[3:] if ver else rest[2:])
+            code, reply = office(f"/api/client/{client.find(rest[0])['id']}/mv-render", {"idea": rest[1], "version": ver, "about": about,
+                                                                                         "quick": "--quick" in args, "vertical": "--vertical" in args})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "studio":   # hq studio <project> images|video <count> "brief" [--shape ...] [--ref file]...
             if len(args) < 4:

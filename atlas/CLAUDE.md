@@ -216,8 +216,34 @@ don't wait for it.
   different looks as full 16:9 scenes with the 9:16 crop shown; Israa checks them (rule `review.style_frames`); the owner picks on
   the Style options page. `hq style-pick <project> <version> <option>` only when he told you which look. Never `hq design` for a
   video's look: that makes logo icons.
-- The song and lyrics come from the owner on the Song page. The music-video pipeline (cuts on the beat, scenes on the lyrics,
-  both shapes from one edit) is the Builder's next step once the song is here.
+- The song and lyrics come from the owner on the Song page. Each song can have several ideas (stories), each with versions
+  (Videos page; the owner rates them there).
+
+## Music videos (2.43.0): you can finish and re-render them yourself
+A music video is a PLAN: `content/project-N/ideas/<idea>/edit.json`: the song, the lyrics with their times, and every shot on the
+song's clock, each either a finished **Gemini video** (in the idea's `shots/` folder) or a **painting** that the renderer animates
+with a slow camera move, dust, mist, rain or firelight until its video exists. Each still painting carries the exact Gemini
+`video_prompt` that turns it into its video. The plan also lists the shots `not_made_yet` with their picture prompts.
+- `hq mv <project> <idea>`: the plan: every shot (VIDEO or PICTURE, times, file), the prompt of every still painting, what's not
+  made yet, the versions so far. Read the Builder's handoff note in Atlas-HQ before your first change.
+- `hq mv-shot <project> <idea> <shot> <clip> [--from S]`: a finished clip becomes that shot's video (copied into shots/; the shot
+  keeps its place on the song; `--from` skips a bad start). Clips come from `Atlas-HQ/review/uploads/` (a video the owner sends
+  the Telegram bot lands there, and you are told its path) or `content/`.
+- `hq mv-render <project> <idea> [version] ["what changed"] [--quick] [--vertical]`: a job. `--quick` = half size, no smooth
+  slow-motion, a few minutes: ALWAYS run it first after a change and look at its frame sheets (`versions/test/review/sheet-NN.png`,
+  a frame every 2 s) with Read. Then the full render (a new version name, e.g. v3; versions are never overwritten; 25-40 min for
+  2-4 minutes of video). You get `mv_ready` / `mv_failed`. The render stops by itself on a gap, a missing file or a blank stretch,
+  and says where. It writes `wide.mp4` (1920x1080) and `wide.phone.mp4` (720p, under Telegram's limit): send it with
+  `hq send-phone content/project-N/ideas/<idea>/versions/<v>/wide.mp4 "caption"` (the 720p copy goes by itself).
+- `--vertical` adds `vertical.mp4` (9:16: the wide picture in the middle over a blurred copy of itself, lyrics under it). The owner
+  has NOT chosen the vertical look yet: show him a quick vertical test before calling any vertical video final.
+- **You can't make Gemini videos or pictures** (no browser; and driving the Gemini website with a script may break Google's
+  terms). The owner (Gemini app on his phone, or the Builder chat with him) makes them from the prompts in the plan. When he asks
+  for the next shots, send him the picture and the exact `video_prompt` of each (`hq send-phone` the painting from shots/).
+- What you may do alone: place a clip the owner sent (`mv-shot`), choose the better of two takes, trim a bad start with `--from`,
+  quick and full renders, send the result to his phone. What waits for him: changing the story, the order of shots, the look,
+  the lyric style, the vertical look, cutting the song, anything with the client's name (never on screen), the delivery to the
+  client, and any money.
 
 ## The Studio on the owner's Mac (2.41.0): photoreal images and video clips
 - This PC can't make images or video (2 GB graphics). The owner's Mac (M4, 24 GB) can. The office stays on this PC; the Mac is

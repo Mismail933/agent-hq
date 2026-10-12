@@ -542,6 +542,27 @@ Agents never spend money without the owner's explicit approval.
   notes, and a New idea form. The videos are made by the Builder chat (the music-video Remotion project in ~/.agent-hq-anim/mv:
   `src/Video2.jsx` + `src/World.jsx` = idea 1 v2, one pinhole camera, Muybridge horses in `public/h2`); `video-wide.mp4` /
   `video-vertical.mp4` in videos/ stay the current pick (hard links to a version's files).
+- Music videos from a plan (2.43.0, Atlas's "hand Tarek's music video over to Atlas", the owner away on 10-14): idea 2 of project 4 is
+  made from **Gemini (Veo) videos** generated in the owner's Gemini web app (Pro plan, ~4 videos a day, resets ~00:48 Beirut; the
+  Builder chat drives it in his Chrome via Claude in Chrome, ONE send per video: a hidden tab queues sends and they all fire later,
+  which cost 2 videos on 10-13) and **paintings** (Gemini pictures, 2752x1536, same chat) animated by the renderer until their video
+  exists. `content/project-N/ideas/<idea>/edit.json` = song (relative path), lyrics [{in, out, text}], end, fades, `shots` [{id, start,
+  end, video+from/to/mirror | picture+move{zoom, focus, drift}+fx{dust warm|cold|rgb, n, mist rgb, mist_a, fire [x,y,r], rain},
+  note, video_prompt}], `todo` (pictures not made), look, rules. A shot starting before the previous one ends = dissolve over the
+  overlap (max 2.5 s), else a cut. `musicvideo.py render <edit.json> <out> [--quick] [--vertical] [--until S]` (shorts venv: numpy,
+  Pillow): each shot -> its own clip in `<idea>/_work/` (cached by its spec, file, size, `CODE`), 4 at a time; video shots trimmed and
+  stretched to their slot (minterpolate when slowed, refused beyond 1.6x slow / 2x fast); the compositor blends dissolves in numpy,
+  darkens the bottom band, draws the lyrics (Oswald 600 caps, letter-spaced, soft shadow, fade+rise; font downloaded once into
+  ~/.agent-hq-anim/fonts, OFL), global fades, then muxes the song (afade out) -> wide.mp4, wide.phone.mp4 (720p, sized under 44 MB
+  for Telegram), review/sheet-NN.png (a frame every 2 s). `--vertical`: vertical.mp4 = the wide picture in the middle of 1080x1920
+  over a blurred, darkened copy, lyrics under it (the owner hasn't chosen the vertical look). Checks: every file there, no gap, no
+  three-way overlap, slot >= 0.4 s, no near-black stretch >= 0.5 s outside the fades. Office: journaled job `mv_render`
+  (`run_mv_render`, one at a time `MVRENDER`), POST `/api/client/<pid>/mv-render {idea, version, about, quick, vertical}` (quick ->
+  version "test"; full versions never overwritten; default name `client.next_version`) and `/mv-shot {idea, shot, file, from}`
+  (`client.set_shot`: a clip from Atlas-HQ/review/uploads or content/ copied into shots/, the shot keeps its time, `was` keeps the
+  old file); events `mv_ready`/`mv_failed` wake the autopilot. `hq mv | mv-shot | mv-render`. phone.py (2.43.0): a video the owner
+  sends the bot (<= 20 MB, the Bot API's limit) is saved to Atlas-HQ/review/uploads/<date>-phone-<name>.mp4 and its path goes to
+  Atlas with his caption. The first plan was written by the Builder (scratchpad make_edit.py); idea 2's v2-up-to-2m36 = that plan.
 - Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
   - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
     (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`
