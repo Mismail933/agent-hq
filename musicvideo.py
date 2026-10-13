@@ -148,8 +148,10 @@ def video_clip(job):
     if s.get("mirror"):
         vf.append("hflip")
     vf += [f"scale={W}:{H}:flags=lanczos", "unsharp=5:5:0.4", "format=yuv420p"]
+    part = out.with_name(out.stem + ".part.mp4")   # renamed when complete: a stopped render never leaves a half clip in the cache
     run(["-i", src, "-an", "-vf", ",".join(vf), "-r", FPS, "-frames:v", fr(s["end"]) - fr(s["start"]),
-         "-c:v", "libx264", "-crf", "16", "-preset", "veryfast" if quick else "medium", out])
+         "-c:v", "libx264", "-crf", "16", "-preset", "veryfast" if quick else "medium", part])
+    part.replace(out)
     return s.get("id")
 
 
@@ -185,8 +187,9 @@ def picture_clip(job):
             d.ellipse([x - r * 1.8, y - r * 0.5, x + r * 1.8, y + r * 0.5], fill=int(60 + rnd.random() * 80))
         strength = float(fx.get("mist_a", 0.3))
         mist = m.filter(ImageFilter.GaussianBlur(70 * k)).point(lambda v: int(v * strength))
+    part = out.with_name(out.stem + ".part.mp4")
     p = subprocess.Popen([FF, "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-                          "-c:v", "libx264", "-crf", "16", "-preset", "veryfast" if quick else "medium", "-pix_fmt", "yuv420p", str(out)],
+                          "-c:v", "libx264", "-crf", "16", "-preset", "veryfast" if quick else "medium", "-pix_fmt", "yuv420p", str(part)],
                          stdin=subprocess.PIPE, creationflags=NOFLAGS)
     for i in range(frames):
         u = i / max(1, frames - 1)
@@ -230,6 +233,7 @@ def picture_clip(job):
     p.stdin.close()
     if p.wait():
         raise Blocked(f"shot {s.get('id')}: encoding its picture failed")
+    part.replace(out)
     return s.get("id")
 
 
