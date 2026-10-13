@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.296",
-   "checked": "2026-10-12"
+   "checked": "2026-10-13"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-09 dynamic workflows (Managed Agents); 2026-10-07 Sonnet 5.5 cache read $0.10, Max/Team API credits",
-   "checked": "2026-10-12"
+   "last_seen": "2026-10-09 dynamic workflows (Managed Agents); nothing newer",
+   "checked": "2026-10-13"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-08 Usage Policy, Cyber Mission; no new models",
-   "checked": "2026-10-12"
+   "checked": "2026-10-13"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -39,6 +39,16 @@
    "url": "https://code.claude.com/docs/en/env-vars",
    "last_seen": "retry watchdog opt-in; WATCHDOG_MAX_WAIT_MS needs 2.1.295+",
    "checked": "2026-10-11"
+  },
+  "youtube-shorts-original-content": {
+   "url": "https://ppc.land/re-uploaded-shorts-lose-reach-as-youtube-favours-original-clips/",
+   "last_seen": "2026-10-01 TeamYouTube: less Shorts reach for channels mainly re-uploading others' videos; original post not read",
+   "checked": "2026-10-13"
+  },
+  "youtube-reach-help": {
+   "url": "https://support.google.com/youtube/answer/9314355?hl=en",
+   "last_seen": "Stayed to watch defined",
+   "checked": "2026-10-13"
   }
  },
  "repos": {
@@ -60,7 +70,7 @@
    "stars": 40433,
    "last_commit": "2026-10-12",
    "verdict": "watch",
-   "checked": "2026-10-12",
+   "checked": "2026-10-13",
    "note": "MIT role-prompt library; reference only."
   },
   "getagentseal/codeburn": {
@@ -83,6 +93,13 @@
    "verdict": "skip",
    "checked": "2026-10-11",
    "note": "MIT session viewer; overlaps claude-devtools."
+  },
+  "Jakeschincariol/arena-skill": {
+   "stars": 507,
+   "last_commit": "2026-09-27",
+   "verdict": "watch",
+   "checked": "2026-10-13",
+   "note": "MIT; picks the best of several tries of a task"
   }
  }
 }

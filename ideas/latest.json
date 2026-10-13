@@ -1,82 +1,163 @@
 {
- "date": "2026-10-12",
- "focus": "agents",
- "note": "Nothing worth your time today. The sweep found no new Claude Code, API or Anthropic change that touches how we run workers. This was a light run: fewer searches than my usual target, so treat 'nothing' as 'nothing obvious'.",
- "research": {
-  "searches": 3,
-  "pages_read": 5,
-  "minutes": 8,
-  "questions": [
-   "Did Claude Code 2.1.293-296 change claude -p, --json-schema, sessions or permissions in a way our workers.py relies on?",
-   "Any new Anthropic model or pricing change since 2026-10-09?",
-   "Any new MIT repo that beats what we built for agent prompts or faceless Shorts?"
+  "date": "2026-10-13",
+  "focus": "results",
+  "note": "One idea today: our weekly stats box is a single free-text line, so Calina never learns which Short lost people in the first seconds. YouTube also changed Shorts reach on 1 Oct to favour original work; our narrated-story format looks safe, but the wording is vague.",
+  "research": {
+    "searches": 14,
+    "pages_read": 9,
+    "minutes": 25,
+    "questions": [
+      "Does YouTube's 1 Oct 2026 Shorts change put a faceless, narrated, public-domain-image history channel at risk?",
+      "Which per-Short numbers does YouTube itself define for judging a Short's opening, and do we capture them?",
+      "Does anything new in Claude Code or the API this week touch our claude -p workers or costs?"
+    ],
+    "gaps": [
+      "Could not open TeamYouTube's original help-community post; its wording comes from three secondary reports that agree (A-grade source not read).",
+      "No official YouTube page confirms where 'Stayed to watch' sits in Studio (Reach tab vs Content report); sources disagree.",
+      "No primary data on what retention history Shorts get; all benchmarks found are vendor blogs (C).",
+      "Today's GitHub searches for YouTube analytics and faceless video returned only 0-1 star hobby repos with no licence."
+    ]
+  },
+  "new_today": [
+    "Claude Code 2.1.296: Sonnet 5.5 cache reads now priced $0.10/M in /cost and --max-budget-usd (matches the API cut of 7 Oct)",
+    "Claude Code 2.1.292-295: one-shot claude -p now waits for background commands and prints what it waits for; routines no longer stay 'running' for hours after finishing",
+    "YouTube, 1 Oct 2026: Shorts recommendations now favour original content and give less reach to channels that mainly re-upload others' videos",
+    "No new Anthropic models since Haiku 5.5 (7 Oct); API notes 9 Oct: dynamic workflows for Managed Agents (beta), not relevant to us",
+    "A search result claimed 'Shorts up to 3 minutes from 15 Oct 2026'. That is wrong: it is the 2024 change (15 Oct 2024). Our SHORT_LIMIT of 178 s already matches it."
   ],
-  "gaps": [
-   "Did not reach the 15 searches / 8 pages target",
-   "Did not read the Claude Code changelog past the newest 4 versions",
-   "Did not check YouTube policy pages (not a results day)"
+  "checked": [
+    {
+      "title": "Claude Code CHANGELOG",
+      "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+      "tier": "A",
+      "result": "used",
+      "why": "2.1.296 latest; cache price and claude -p fixes; nothing on --json-schema"
+    },
+    {
+      "title": "Claude API release notes",
+      "url": "https://platform.claude.com/docs/en/release-notes/overview",
+      "tier": "A",
+      "result": "nothing new",
+      "why": "Latest is 9 Oct Managed Agents workflows; already known items from 7 Oct"
+    },
+    {
+      "title": "Anthropic news",
+      "url": "https://www.anthropic.com/news",
+      "tier": "A",
+      "result": "nothing new",
+      "why": "Usage Policy update and Cyber Mission on 8 Oct; no model news"
+    },
+    {
+      "title": "Outlier Kit: Shorts original-content update",
+      "url": "https://outlierkit.com/resources/youtube-shorts-original-content-update/",
+      "tier": "C",
+      "result": "used",
+      "why": "Summarises TeamYouTube post; says it does not address public-domain-image channels"
+    },
+    {
+      "title": "PPC Land: re-uploaded Shorts lose reach",
+      "url": "https://ppc.land/re-uploaded-shorts-lose-reach-as-youtube-favours-original-clips/",
+      "tier": "B",
+      "result": "used",
+      "why": "Quotes YouTube's wording and Creator Insider; no start date, no threshold"
+    },
+    {
+      "title": "The Tech Outlook: Shorts 3-minute update",
+      "url": "https://www.thetechoutlook.com/new-release/software-apps/youtube-officially-announces-some-new-updates-to-shorts/",
+      "tier": "C",
+      "result": "rejected",
+      "why": "Article is from Oct 2024; a search summary had misdated it to 2026"
+    },
+    {
+      "title": "ContentStudio Shorts analytics guide",
+      "url": "https://contentstudio.io/blog/youtube-shorts-analytics-guide",
+      "tier": "B",
+      "result": "used",
+      "why": "Lists the per-Short metrics worth reading"
+    },
+    {
+      "title": "YouTube Help: Understand your engagement",
+      "url": "https://support.google.com/youtube/answer/9313698?hl=en",
+      "tier": "A",
+      "result": "used",
+      "why": "Average view duration = among those who stayed to watch, from engaged views"
+    },
+    {
+      "title": "YouTube Help: Understand your video reach",
+      "url": "https://support.google.com/youtube/answer/9314355?hl=en",
+      "tier": "A",
+      "result": "used",
+      "why": "Defines Stayed to watch: percentage of times viewers stayed past the initial seconds of a Short"
+    },
+    {
+      "title": "YouTube Partner Program help",
+      "url": "https://support.google.com/youtube/answer/72851",
+      "tier": "A",
+      "result": "nothing new",
+      "why": "Not re-opened; 1 Feb 2027 dates already in Atlas notes (idea 2026-10-08-2)"
+    },
+    {
+      "title": "faceless.so Shorts retention tactics",
+      "url": "https://faceless.so/blog/9-youtube-shorts-retention-tactics-that-work",
+      "tier": "C",
+      "result": "rejected",
+      "why": "Practitioner advice, no data"
+    },
+    {
+      "title": "GitHub search: faceless video / YouTube analytics / prompt evaluation",
+      "url": "https://api.github.com/search/repositories?q=faceless+video+automation+shorts",
+      "tier": "A",
+      "result": "rejected",
+      "why": "Only 0-3 star repos, most with no licence"
+    },
+    {
+      "title": "GitHub search: Claude Code subagents skills",
+      "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
+      "tier": "A",
+      "result": "nothing new",
+      "why": "cc-sdd, buildwithclaude, arena-skill: nothing we need"
+    }
+  ],
+  "repo_watch": [
+    {
+      "name": "Jakeschincariol/arena-skill",
+      "url": "https://github.com/Jakeschincariol/arena-skill",
+      "licence": "MIT",
+      "stars": 507,
+      "last_commit": "2026-09-27",
+      "verdict": "watch",
+      "fit": "Runs several versions of a task and keeps the winner; could one day pick between Calina's hooks",
+      "why": "Small, one maintainer; we already have 3 endings per sketch and Israa. Not read in depth."
+    }
+  ],
+  "ideas": [
+    {
+      "id": "2026-10-13-1",
+      "title": "Give Calina real numbers for every Short: a small stats form per episode",
+      "area": "results",
+      "problem": "The only way channel results reach Calina is calina_review(project_id, stats) in agents.py: the owner pastes one free-text line into a single input (office.html, 'Weekly review: paste this week's channel stats'). Calina is told to work out what worked from those words plus a list of titles and hooks. There is no per-Short record of how many people stayed past the opening or how long they watched, so she cannot tell a bad hook from a bad ending, and the next batch cannot be told which hooks to repeat. Israa's review is all opinion before upload; nothing measures what the audience did afterwards. YouTube defines the number that matters for a hook: 'Stayed to watch', the percentage of times viewers stayed to watch past the initial seconds of a Short (YouTube Help, reach page).",
+      "proposal": "1) After 'Mark as published' (agents.mark_published), show a small form on that episode in the Content tab with 5 optional fields typed by the owner from YouTube Studio: views, engaged views, 'Stayed to watch' %, average percentage viewed, subscribers gained. Store it in episodes.data.stats with a date (cp.update_episode, no schema change). 2) New function in agents.py, stats_table(project_id), that returns a compact table (episode, hook first 8 words, era, length in seconds, the 5 numbers) for published episodes. 3) calina_review: replace the raw stats-only task by 'f\"{stats}\\n\\nPer-Short numbers:\\n{stats_table}\"' and add the line 'Rank Shorts by Stayed to watch first, then average percentage viewed. Name the 2 hooks to repeat and the 2 to drop. Say 'too few Shorts to tell' when fewer than 6 have numbers.' 4) calina_batch: add the table's top 3 and bottom 3 hooks to the task (same place the earlier titles and rejection notes already go in). 5) Later, optional: the YouTube Analytics API could fill the form, but it needs an OAuth sign-in the owner has not set up; not now.",
+      "gain": "Calina's weekly note and every next batch are steered by what viewers did, not by guesses. It also gives the owner the go/no-go memo's numbers without retyping. Measure: after 10 published Shorts, check that the median 'Stayed to watch' of the newest 5 is above that of the first 5; if the form is never filled in, the idea failed. Cost: about 1 extra minute per Short for the owner (YouTube Studio numbers copied by hand).",
+      "test": "Free test in practice mode (HQ_SIMULATE=1): (1) normal: 8 episodes with stats, calina_review's task contains the table sorted by Stayed to watch and the note names 2 hooks to repeat and 2 to drop. (2) edge: only 3 episodes have stats, the note says 'too few Shorts to tell' and does not invent a ranking. (3) failure: a stats field left blank or typed as 'n/a', the table shows '-' and the page still saves; nothing crashes and no number is made up. Pass = all three, plus calina_batch's task shows at most 3 best and 3 worst hooks.",
+      "effort": "S",
+      "confidence": "moderate",
+      "confidence_why": "The definition of Stayed to watch rests on YouTube's own help page (A); where Studio shows it is disputed between sources, and the benefit depends on the owner typing the numbers. No benchmark for what a good value is: compare only with our own Shorts.",
+      "risks": "Small samples (a handful of Shorts a week) make rankings noisy, hence the 'too few' rule. Views since 31 Mar 2025 count loops, so average percentage viewed can pass 100%: compare it only across our own Shorts, and prefer engaged views as the size of the sample (secondary sources; A source not found). Asking the owner for a new weekly chore costs his 3 hours a week; keep every field optional.",
+      "links": [
+        {
+          "title": "YouTube Help: Understand your video reach (defines Stayed to watch)",
+          "url": "https://support.google.com/youtube/answer/9314355?hl=en"
+        },
+        {
+          "title": "YouTube Help: Understand your engagement (average view duration, engaged views)",
+          "url": "https://support.google.com/youtube/answer/9313698?hl=en"
+        },
+        {
+          "title": "ContentStudio: Shorts analytics, which metrics to read per Short",
+          "url": "https://contentstudio.io/blog/youtube-shorts-analytics-guide"
+        }
+      ],
+      "builds_on": "2026-10-06-1"
+    }
   ]
- },
- "new_today": [
-  "Claude Code 2.1.295: claude -p text output no longer drops earlier responses; --tools/--restricted now apply to late-registered built-ins; a skill's allowed-tools no longer dropped in -p runs",
-  "Claude Code 2.1.296: Sonnet 5.5 cache reads priced $0.10/M in cost figures (matches API change of 2026-10-07, already known)",
-  "No new Anthropic news after 2026-10-08"
- ],
- "checked": [
-  {
-   "title": "Claude Code CHANGELOG",
-   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "2.1.293-296 are fixes; none changes our worker flags"
-  },
-  {
-   "title": "Anthropic news",
-   "url": "https://www.anthropic.com/news",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Usage policy and cyber items only; no models"
-  },
-  {
-   "title": "Claude API release notes",
-   "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Newest entry 2026-10-09 (Managed Agents workflows), already in watch"
-  },
-  {
-   "title": "GitHub search: claude code subagents",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Same role-prompt libraries as before"
-  },
-  {
-   "title": "GitHub search: faceless video shorts",
-   "url": "https://api.github.com/search/repositories?q=faceless+video+shorts+automation",
-   "tier": "A",
-   "result": "rejected",
-   "why": "1-star repos, no licence"
-  },
-  {
-   "title": "Headless mode guides (web search)",
-   "url": "https://docs.claude.com/en/docs/claude-code/headless",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "General guidance only"
-  }
- ],
- "repo_watch": [
-  {
-   "name": "wshobson/agents",
-   "url": "https://github.com/wshobson/agents",
-   "licence": "MIT",
-   "stars": 40433,
-   "last_commit": "2026-10-12",
-   "verdict": "watch",
-   "fit": "Role-prompt reference only",
-   "why": "Very active, MIT; nothing to adopt"
-  }
- ],
- "ideas": []
 }
