@@ -316,15 +316,20 @@ def lyric_layers(lyrics, W, H, vertical=False):
     for ln in lyrics:
         rgb, a = line_image(ln["text"], size, W * (0.86 if vertical else 0.84))
         out.append({"in": float(ln["in"]), "out": float(ln["out"]), "rgb": rgb, "a": a, "size": size})
+    out.sort(key=lambda L: L["in"])
+    for L, nxt in zip(out, out[1:] + [None]):   # a line is gone before the next one starts to appear: never two at once
+        L["stop"] = min(L["out"] + 0.5, nxt["in"] - 0.35) if nxt else L["out"] + 0.5
     return out
 
 
 def draw_lyrics(img, layers, t, W, H, bottom):
     for L in layers:
-        if L["in"] - 0.35 <= t <= L["out"] + 0.5:
+        stop = L.get("stop", L["out"] + 0.5)
+        if L["in"] - 0.35 <= t <= stop:
             u = min(1.0, max(0.0, (t - (L["in"] - 0.35)) / 0.45))
             inn = u * u * (3 - 2 * u)
-            v = min(1.0, max(0.0, (t - L["out"]) / 0.5))
+            fo = min(L["out"], stop - 0.2)   # the fade out starts when the line is sung, or earlier if the next line is close
+            v = min(1.0, max(0.0, (t - fo) / max(0.05, stop - fo)))
             op = min(inn, 1 - v * v * (3 - 2 * v))
             if op <= 0.01:
                 continue

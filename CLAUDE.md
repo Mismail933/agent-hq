@@ -552,7 +552,7 @@ Agents never spend money without the owner's explicit approval.
   overlap (max 2.5 s), else a cut. `musicvideo.py render <edit.json> <out> [--quick] [--vertical] [--until S]` (shorts venv: numpy,
   Pillow): each shot -> its own clip in `<idea>/_work/` (cached by its spec, file, size, `CODE`; written as .part.mp4 and renamed when complete, 2.43.1, so a stopped render leaves no half clip), 4 at a time; video shots trimmed and
   stretched to their slot (minterpolate when slowed, refused beyond 1.6x slow / 2x fast); the compositor blends dissolves in numpy,
-  darkens the bottom band, draws the lyrics (Oswald 600 caps, letter-spaced, soft shadow, fade+rise; font downloaded once into
+  darkens the bottom band, draws the lyrics (Oswald 600 caps, letter-spaced, soft shadow, fade+rise; 2.43.2: a line is gone before the next starts to appear, never two at once; font downloaded once into
   ~/.agent-hq-anim/fonts, OFL), global fades, then muxes the song (afade out) -> wide.mp4, wide.phone.mp4 (720p, sized under 44 MB
   for Telegram), review/sheet-NN.png (a frame every 2 s). `--vertical`: vertical.mp4 = the wide picture in the middle of 1080x1920
   over a blurred, darkened copy, lyrics under it (the owner hasn't chosen the vertical look). Checks: every file there, no gap, no
