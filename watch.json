@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.296",
-   "checked": "2026-10-13"
+   "last_seen": "2.1.299",
+   "checked": "2026-10-14"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-10-09 dynamic workflows (Managed Agents); nothing newer",
-   "checked": "2026-10-13"
+   "checked": "2026-10-14"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-08 Usage Policy, Cyber Mission; no new models",
-   "checked": "2026-10-13"
+   "checked": "2026-10-14"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -49,6 +49,11 @@
    "url": "https://support.google.com/youtube/answer/9314355?hl=en",
    "last_seen": "Stayed to watch defined",
    "checked": "2026-10-13"
+  },
+  "remotion-5-migration": {
+   "url": "https://remotion.dev/docs/5-0-migration",
+   "last_seen": "5.0 not released; contractors will count toward team size; we pin 4.0.250",
+   "checked": "2026-10-14"
   }
  },
  "repos": {
@@ -100,6 +105,20 @@
    "verdict": "watch",
    "checked": "2026-10-13",
    "note": "MIT; picks the best of several tries of a task"
+  },
+  "eat-pray-ai/yutu": {
+   "stars": 698,
+   "last_commit": "2026-10-11",
+   "verdict": "watch",
+   "checked": "2026-10-14",
+   "note": "Apache-2.0 YouTube CLI/MCP; retention reports unconfirmed"
+  },
+  "Hao0321/video-autopilot-kit": {
+   "stars": 2183,
+   "last_commit": "2026-10-06",
+   "verdict": "skip",
+   "checked": "2026-10-14",
+   "note": "MIT; needs outside Editkin service"
   }
  }
 }
