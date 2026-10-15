@@ -1,32 +1,28 @@
 {
- "date": "2026-10-14",
- "focus": "ui",
- "note": "No new idea today. The sweep found nothing that changes our code. Two things to know: Remotion 5.0 (not out yet) will count contractors in its free-licence team size, and we are pinned to 4.0.250, so nothing changes unless someone upgrades. Claude Code 2.1.296-2.1.298 could run a tool call twice in headless runs (fixed in 2.1.299).",
+ "date": "2026-10-15",
+ "focus": "tokens",
+ "note": "No new idea today. Claude Code 2.1.300 and the caching docs changed nothing we need to act on. Still waiting on your answer to the 10-08 and 10-09 cost ideas: our spend counter still prices Sonnet cache reads as full input and has no Haiku 5.5 price. This was a lighter run than usual (about 8 searches, 5 pages).",
  "research": {
-  "searches": 14,
-  "pages_read": 9,
-  "minutes": 30,
+  "searches": 8,
+  "pages_read": 5,
+  "minutes": 12,
   "questions": [
-   "Did Claude Code or the API change anything this week that touches our claude -p workers (flags, caching, cost, double tool calls)?",
-   "Is there a better way to show 'approval waiting' items in an agent dashboard than our Today page (ui focus)?",
-   "Does the Remotion 5.0 plan change our licence position or our render commands?",
-   "Is any new open-source repo a real fit for our Shorts pipeline or our Claude Code setup?"
+   "Did Claude Code 2.1.300 or the caching docs change anything for our claude -p workers or Atlas's resumed session?",
+   "Does the new Sonnet 5.5 cache-read price ($0.10/M) change what our spend counter shows?",
+   "Is any new repo a real fit for token cost or Shorts production?",
+   "Did YouTube's Shorts rules change this week (3-minute Shorts from 15 Oct)?"
   ],
   "gaps": [
-   "The ui search returned only secondary blogs (grade C); nothing showed our Today/Needs-you design is wrong, so I made no ui idea.",
-   "Could not read GitHub repo pages for wshobson/agents and arena-skill (API returned 403 to the fetcher); their stars are from earlier runs.",
-   "Remotion's licence page text did not load, so team-size thresholds for 4.x/5.0 are not confirmed today (the migration page only says contractors will count).",
-   "No official YouTube page defines 'Viewed vs swiped away' in the API; Analytics API availability of Shorts retention is still unconfirmed.",
-   "Changelog entries 2.1.297 and 2.1.298 do not appear on the page, so I could not check them."
+   "Fewer than the 15 searches / 8 pages the job asks for: I stopped early because nothing pointed to a strong idea.",
+   "Did not open YouTube's own announcement of the 3-minute Shorts change; only secondary blogs (grade C). Our SHORT_LIMIT of 178 s already matches the old rule, so a change would only matter if we want Shorts up to 180 s.",
+   "No GitHub repo pages opened (API search lists only)."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.299: fixes a 2.1.296 regression where cloud and headless sessions could run an approved tool call twice when a new message arrived as a session resumed after a restart (our workers use --no-session-persistence, so the risk was low)",
-  "Claude Code 2.1.299: idle compaction before the 1-hour cache expires (interactive, not relevant to one-shot claude -p); /usage now warns about max effort and large tool results",
-  "Claude Code 2.1.296: Sonnet 5.5 cache reads priced at $0.10/M in /cost and --max-budget-usd (already noted 13 Oct)",
-  "Remotion 5.0 is announced but not released: contractors will count toward team size, the licence is tied to new terms, company licences must enable telemetry. We pin remotion and @remotion/cli at 4.0.250 in animation/package.json",
-  "No new Anthropic models or news since 8 Oct (Usage Policy, Cyber Mission); API notes unchanged since 9 Oct",
-  "Telegram Bot API: latest I can find is 10.2 (14 Jul 2026); nothing newer found"
+  "Claude Code 2.1.300: OpenTelemetry api_request splits 5-minute and 1-hour cache writes; fixes for headless resume after compaction; large requests gzip-compressed",
+  "Anthropic API: OpenTelemetry export in beta (Oct 14); no new models since Haiku 5.5 (Oct 7)",
+  "Caching docs: idleCompaction (compacts a 200K+ conversation shortly before its 1-hour cache ends) needs v2.1.290+; main -p conversation gets a 1-hour cache on the subscription, subagents and workflows only 5 minutes",
+  "YouTube: Shorts up to 3 minutes from 15 Oct 2026 (secondary sources only)"
  ],
  "checked": [
   {
@@ -34,135 +30,72 @@
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "used",
-   "why": "2.1.299 latest; double-tool-call regression 2.1.296 fixed; nothing on --json-schema since 2.1.290"
+   "why": "2.1.300 is new; nothing we must change"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest is 9 Oct Managed Agents workflows"
+   "why": "OTel beta only; Sonnet cache read $0.10/M already known"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest items 8 Oct; no model news"
+   "why": "policy and office news; no new model"
   },
   {
-   "title": "Claude Code headless docs",
-   "url": "https://code.claude.com/docs/en/headless",
+   "title": "Claude Code prompt caching docs",
+   "url": "https://code.claude.com/docs/en/prompt-caching",
    "tier": "A",
    "result": "used",
-   "why": "Confirms --bare needs an API key (not our subscription runs); --permission-prompts none exists since 2.1.259; json output carries total_cost_usd and usage as we already read"
+   "why": "confirms TTL buckets and cache-hit check via usage.cache_creation; supports the 10-09 measure-first idea"
   },
   {
-   "title": "Claude Code environment variables",
-   "url": "https://code.claude.com/docs/en/env-vars",
-   "tier": "A",
+   "title": "GitHub search: Claude Code skills/subagents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+skills+subagents",
+   "tier": "B",
    "result": "nothing new",
-   "why": "Idle compaction and print background wait are for interactive or background work, not our one-shot runs"
+   "why": "skill hubs; no fit"
   },
   {
-   "title": "Remotion 5.0 migration guide",
-   "url": "https://remotion.dev/docs/5-0-migration",
-   "tier": "A",
-   "result": "used",
-   "why": "Licence change planned, 5.0 not released; render API changes would need small edits only on upgrade"
-  },
-  {
-   "title": "Remotion licence page",
-   "url": "https://www.remotion.dev/docs/license",
-   "tier": "A",
+   "title": "GitHub search: faceless Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "tier": "B",
    "result": "rejected",
-   "why": "Page text did not load; thresholds not confirmed"
+   "why": "tiny repos, no licence"
   },
   {
-   "title": "YouTube Help: reach and Shorts metrics",
-   "url": "https://support.google.com/youtube/answer/9314355?hl=en",
-   "tier": "A",
+   "title": "GitHub search: token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction",
+   "tier": "B",
+   "result": "rejected",
+   "why": "2 stars or non-OSI licence"
+  },
+  {
+   "title": "GitHub search: multi-agent orchestration",
+   "url": "https://api.github.com/search/repositories?q=multi-agent+orchestration+claude",
+   "tier": "B",
    "result": "nothing new",
-   "why": "'Stayed to watch' = share who stayed past the first seconds; no location in Studio named; same as 13 Oct"
+   "why": "coding-agent harnesses; we already have our own"
   },
   {
-   "title": "GitHub search: Claude Code hooks/subagents",
-   "url": "https://api.github.com/search/repositories?q=claude+code+hooks+subagents",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Only generic skill collections; none fits a gap of ours"
-  },
-  {
-   "title": "GitHub search: YouTube Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
-   "tier": "A",
-   "result": "used",
-   "why": "video-autopilot-kit and yutu reviewed below"
-  },
-  {
-   "title": "GitHub search: token cost / prompt caching",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching",
-   "tier": "A",
-   "result": "rejected",
-   "why": "Two tiny repos, one with a non-standard licence"
-  },
-  {
-   "title": "GitHub search: Claude Code orchestration plugins",
-   "url": "https://api.github.com/search/repositories?q=claude+code+skills+plugins+hooks+orchestration",
-   "tier": "A",
-   "result": "rejected",
-   "why": "0-17 stars, one GPL-3.0, one no licence"
-  },
-  {
-   "title": "GitHub: Hao0321/video-autopilot-kit",
-   "url": "https://github.com/Hao0321/video-autopilot-kit",
-   "tier": "A",
-   "result": "rejected",
-   "why": "MIT, but needs the outside Editkin service, no TTS, built for the author's own workflow"
-  },
-  {
-   "title": "GitHub: eat-pray-ai/yutu",
-   "url": "https://github.com/eat-pray-ai/yutu",
-   "tier": "A",
-   "result": "rejected",
-   "why": "Apache-2.0 YouTube CLI/MCP; README does not say it reads per-video retention; needs Google OAuth. Revisit if we ever automate stats"
-  },
-  {
-   "title": "Mastra / agent-UX articles on approval patterns",
-   "url": "https://mastra.ai/blog/human-in-the-loop-when-to-use-agent-approval",
+   "title": "Web: Haiku 5.5 pricing",
+   "url": "https://apidog.com/blog/claude-haiku-5-5-pricing/",
    "tier": "C",
    "result": "nothing new",
-   "why": "Advice to use an approval queue, previews and a visible stop button; our Today page and Stop button already do these"
+   "why": "cache read $0.01/M; matches earlier idea"
   },
   {
-   "title": "ElevenLabs v3 pricing search",
-   "url": "https://aireiter.com/blog/elevenlabs-eleven-v3-api-guide",
+   "title": "Web: YouTube Shorts changes Oct 2026",
+   "url": "https://outlierkit.com/resources/youtube-shorts-original-content-update/",
    "tier": "C",
-   "result": "rejected",
-   "why": "Sources disagree on dates and limits; no October change found"
+   "result": "nothing new",
+   "why": "originality rule already in watch.json; 3-minute Shorts unverified"
   }
  ],
- "repo_watch": [
-  {
-   "name": "eat-pray-ai/yutu",
-   "url": "https://github.com/eat-pray-ai/yutu",
-   "licence": "Apache-2.0",
-   "stars": 698,
-   "last_commit": "2026-10-11",
-   "verdict": "watch",
-   "fit": "Could pull channel stats into the stats form (13 Oct idea) if the owner later wants it automatic",
-   "why": "Active; needs Google OAuth client secret on his PC; no releases listed; retention reports unconfirmed"
-  },
-  {
-   "name": "Hao0321/video-autopilot-kit",
-   "url": "https://github.com/Hao0321/video-autopilot-kit",
-   "licence": "MIT",
-   "stars": 2183,
-   "last_commit": "2026-10-06",
-   "verdict": "skip",
-   "fit": "Overlaps our own pipeline; depends on an outside editing service",
-   "why": "No TTS, setup built around the author's data"
-  }
- ],
+ "repo_watch": [],
  "ideas": []
 }

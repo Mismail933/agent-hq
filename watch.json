@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.299",
-   "checked": "2026-10-14"
+   "last_seen": "2.1.300",
+   "checked": "2026-10-15"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-09 dynamic workflows (Managed Agents); nothing newer",
-   "checked": "2026-10-14"
+   "last_seen": "2026-10-14 OpenTelemetry export beta; nothing else new",
+   "checked": "2026-10-15"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-08 Usage Policy, Cyber Mission; no new models",
-   "checked": "2026-10-14"
+   "last_seen": "2026-10-14 midterms policy, Singapore office; no new models",
+   "checked": "2026-10-15"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -22,8 +22,8 @@
   },
   "claude-code-prompt-caching-docs": {
    "url": "https://code.claude.com/docs/en/prompt-caching",
-   "last_seen": "1h TTL for main conversation on subscription; boundary line v2.1.275+",
-   "checked": "2026-10-09"
+   "last_seen": "idleCompaction v2.1.290+; subagents get 5m TTL on subscription",
+   "checked": "2026-10-15"
   },
   "api-credits-subscribers": {
    "url": "https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers",
