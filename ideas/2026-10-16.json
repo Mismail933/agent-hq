@@ -1,0 +1,162 @@
+{
+ "date": "2026-10-16",
+ "focus": "reliability",
+ "note": "One small idea today: make failed Claude Code runs explain themselves, and stop a timed-out run from leaving stray programs running on your PC. Nothing in the daily sweep needs action; I checked that the new 'retry watchdog' setting would hurt us, so I say no to it.",
+ "research": {
+  "searches": 13,
+  "pages_read": 12,
+  "minutes": 25,
+  "questions": [
+   "When a worker's Claude Code run fails (workers.run), do we know why, and does a timeout leave anything running on Windows?",
+   "Do the new retry settings (watchdog, 529 delay, fallback model) fit our fail-fast design?",
+   "Do the model fallbacks in Claude Code change which model really answers us?"
+  ],
+  "gaps": [
+   "Searches (13) are under the 15 the job asks for; GitHub queries for headless wrappers and cost tools returned nothing new.",
+   "No hq.db in this checkout, so I could not count how often fallback_api or timeouts happen. The idea starts with measuring that.",
+   "The docs do not say whether --fallback-model applies to claude -p."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.301: CLAUDE_CODE_RETRY_WATCHDOG_MAX_USAGE_LIMIT_WAIT_MS ends an unattended wait when a usage limit resets too far away; headless $.model.fork fix",
+  "Claude Code 2.1.299/300: resuming headless sessions keeps compaction summaries; claude -p says why settings failed validation",
+  "Claude API 2026-10-15: fast mode for Opus 5.5 is generally available (no header needed)",
+  "Claude API 2026-10-14: OpenTelemetry export beta; 2026-10-07: Haiku 5.5 launched, Sonnet 5.5 cache reads halved to $0.10/M",
+  "Anthropic news: no new models since Haiku 5.5 (2026-10-07)"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.294-2.1.301 read; retry, headless and hook fixes, nothing that breaks us"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new for us",
+   "why": "Opus 5.5 fast mode GA, OTel beta, cache price cut for Sonnet 5.5 (we use the subscription)"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Policy and office news only"
+  },
+  {
+   "title": "Claude Code headless docs",
+   "url": "https://code.claude.com/docs/en/headless",
+   "tier": "A",
+   "result": "used",
+   "why": "exit codes, api_retry event, SIGTERM and background-work behaviour"
+  },
+  {
+   "title": "Claude Code CLI reference",
+   "url": "https://code.claude.com/docs/en/cli-reference",
+   "tier": "A",
+   "result": "used",
+   "why": "--max-budget-usd, --fallback-model, --max-turns semantics"
+  },
+  {
+   "title": "Claude Code errors / automatic retries",
+   "url": "https://code.claude.com/docs/en/errors",
+   "tier": "A",
+   "result": "used",
+   "why": "10 retries by default; no retry after output has started; one retry on 'no response'"
+  },
+  {
+   "title": "Claude Code env vars",
+   "url": "https://code.claude.com/docs/en/env-vars",
+   "tier": "A",
+   "result": "used",
+   "why": "API_TIMEOUT_MS 10 min; 529 delay cap needs 2.1.296+"
+  },
+  {
+   "title": "Claude Code model config (fallbacks)",
+   "url": "https://code.claude.com/docs/en/model-config",
+   "tier": "A",
+   "result": "used",
+   "why": "fallback chain never fires on rate-limit errors; safety-classifier fallback can change the model; real model is in modelUsage"
+  },
+  {
+   "title": "Agent SDK cost tracking",
+   "url": "https://code.claude.com/docs/en/agent-sdk/cost-tracking",
+   "tier": "A",
+   "result": "used",
+   "why": "error results still carry total_cost_usd; use modelUsage"
+  },
+  {
+   "title": "Bash tool leaks orphaned child processes on Windows (issue 76353)",
+   "url": "https://claudeissues.com/issue/76353-bash-tool-leaks-orphaned-child-processes-on-windows-timeout-runaway-ind-scans-ac",
+   "tier": "B",
+   "result": "used",
+   "why": "open; seen on 2.1.206 and still on 2.1.272 per commenters"
+  },
+  {
+   "title": "Retry watchdog write-up (DevelopersDigest)",
+   "url": "https://www.developersdigest.tech/blog/claude-code-retry-watchdog-unattended-runs",
+   "tier": "B",
+   "result": "used",
+   "why": "watchdog waits out a usage limit silently for hours: wrong for us"
+  },
+  {
+   "title": "Headless runs stall ~405 s (issue 83859)",
+   "url": "https://claudeissues.com/issue/83859-headless-claude-p-runs-stall-for-a-constant-405s-early-in-every-session-9-9-sinc",
+   "tier": "C",
+   "result": "rejected",
+   "why": "macOS, one reporter, unconfirmed cause; only matters for the Mac Studio"
+  },
+  {
+   "title": "Idempotent LLM pipelines (tianpan.co) and agent checkpoint posts (urandom.io)",
+   "url": "https://tianpan.co/blog/2026/04/20/idempotency-llm-pipelines",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "We already checkpoint (checkpoint.py, saved jobs); search snippets only"
+  },
+  {
+   "title": "Python subprocess tree-kill patterns (search results)",
+   "url": "https://pygacity.readthedocs.io/en/stable/_modules/pygacity/util/command.html",
+   "tier": "C",
+   "result": "used",
+   "why": "taskkill /F /T /PID after a timeout is the common pattern; snippets only"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": [
+  {
+   "id": "2026-10-16-1",
+   "title": "Make failed Claude Code runs explain themselves, and clean up after a timeout",
+   "area": "reliability",
+   "problem": "workers.run turns every failure into Unavailable with a 300-character message, and the only record of a good or bad run is the model_call event with turns/secs. The result's subtype (error_max_turns, error_max_budget_usd, error_during_execution...) is not logged, so we cannot tell a plan limit from an overloaded API from a hang. Also: on timeout, subprocess.run (workers.py line ~104, atlas_engine._run) kills only the claude process. Claude Code's own docs and an open issue (76353, Windows, still seen on 2.1.272) say child processes of the Bash tool survive a kill. Atlas has Bash(python hq.py), Ghassan has python -m py_compile, so a stuck run can leave a python process behind. Last, the usage row records the configured model, but Claude Code can switch to a fallback model; the real one is only in modelUsage.",
+   "proposal": "1) In workers.run, when not ok, add subtype, terminal error text (first 200 chars) and the keys of modelUsage to a new 'run_failed' event (cp.log) next to the existing model_call; also log the real model(s) from modelUsage in the model_call info and in cp.record_usage. 2) Replace subprocess.run with subprocess.Popen + communicate(timeout); on TimeoutExpired call 'taskkill /F /T /PID <pid>' on Windows (os.killpg with start_new_session on Mac/Linux), then communicate() to collect output. Same change in atlas_engine._run. Put the helper in workers.py (shared). 3) Do NOT enable CLAUDE_CODE_RETRY_WATCHDOG: it waits out a usage limit for hours, while our design fails fast and parks (LIMIT_UNTIL, cloud Atlas). workers.py and atlas_engine.py are protected from Ghassan, so the Builder chat must make the change.",
+   "gain": "Small but real: every fallback_api and every 'Claude Code took too long' gets a cause, so the next reliability idea can be based on counts instead of guesses. No stray python/find processes after a timeout. Measure: after two weeks, group run_failed by subtype and see which cause is biggest; check Task Manager for leftover python.exe after a forced timeout (set WORKER_TIMEOUT_SECONDS low in practice mode).",
+   "test": "1) Normal: a successful run still returns the same output and model_call now lists the real model. 2) Edge: run with --max-turns 1 on a two-step task; the event shows subtype error_max_turns and the message is unchanged for the user. 3) Failure: a fake claude script (practice mode) that spawns a child 'sleep 600' and hangs; after the timeout both processes are gone and Unavailable is raised within 5 seconds of the limit.",
+   "effort": "S",
+   "confidence": "low",
+   "confidence_why": "Retry and fallback facts are from official docs (A). The orphan-process leak rests on an open GitHub issue (B) and I have not seen it happen on this PC; how often our runs fail is unmeasured (no hq.db here).",
+   "risks": "taskkill /T can kill more than intended if the pid is reused after the process ended: only call it inside the TimeoutExpired branch. Extra logging adds a few events per day. No outside code is adopted.",
+   "links": [
+    {
+     "title": "Claude Code: automatic retries and errors",
+     "url": "https://code.claude.com/docs/en/errors"
+    },
+    {
+     "title": "Claude Code headless: exit codes, SIGTERM, api_retry",
+     "url": "https://code.claude.com/docs/en/headless"
+    },
+    {
+     "title": "Agent SDK cost tracking: modelUsage on error results",
+     "url": "https://code.claude.com/docs/en/agent-sdk/cost-tracking"
+    },
+    {
+     "title": "Issue 76353: Bash tool leaks orphaned child processes on Windows",
+     "url": "https://claudeissues.com/issue/76353-bash-tool-leaks-orphaned-child-processes-on-windows-timeout-runaway-ind-scans-ac"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
+}

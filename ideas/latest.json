@@ -1,28 +1,28 @@
 {
- "date": "2026-10-15",
- "focus": "tokens",
- "note": "No new idea today. Claude Code 2.1.300 and the caching docs changed nothing we need to act on. Still waiting on your answer to the 10-08 and 10-09 cost ideas: our spend counter still prices Sonnet cache reads as full input and has no Haiku 5.5 price. This was a lighter run than usual (about 8 searches, 5 pages).",
+ "date": "2026-10-16",
+ "focus": "reliability",
+ "note": "One small idea today: make failed Claude Code runs explain themselves, and stop a timed-out run from leaving stray programs running on your PC. Nothing in the daily sweep needs action; I checked that the new 'retry watchdog' setting would hurt us, so I say no to it.",
  "research": {
-  "searches": 8,
-  "pages_read": 5,
-  "minutes": 12,
+  "searches": 13,
+  "pages_read": 12,
+  "minutes": 25,
   "questions": [
-   "Did Claude Code 2.1.300 or the caching docs change anything for our claude -p workers or Atlas's resumed session?",
-   "Does the new Sonnet 5.5 cache-read price ($0.10/M) change what our spend counter shows?",
-   "Is any new repo a real fit for token cost or Shorts production?",
-   "Did YouTube's Shorts rules change this week (3-minute Shorts from 15 Oct)?"
+   "When a worker's Claude Code run fails (workers.run), do we know why, and does a timeout leave anything running on Windows?",
+   "Do the new retry settings (watchdog, 529 delay, fallback model) fit our fail-fast design?",
+   "Do the model fallbacks in Claude Code change which model really answers us?"
   ],
   "gaps": [
-   "Fewer than the 15 searches / 8 pages the job asks for: I stopped early because nothing pointed to a strong idea.",
-   "Did not open YouTube's own announcement of the 3-minute Shorts change; only secondary blogs (grade C). Our SHORT_LIMIT of 178 s already matches the old rule, so a change would only matter if we want Shorts up to 180 s.",
-   "No GitHub repo pages opened (API search lists only)."
+   "Searches (13) are under the 15 the job asks for; GitHub queries for headless wrappers and cost tools returned nothing new.",
+   "No hq.db in this checkout, so I could not count how often fallback_api or timeouts happen. The idea starts with measuring that.",
+   "The docs do not say whether --fallback-model applies to claude -p."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.300: OpenTelemetry api_request splits 5-minute and 1-hour cache writes; fixes for headless resume after compaction; large requests gzip-compressed",
-  "Anthropic API: OpenTelemetry export in beta (Oct 14); no new models since Haiku 5.5 (Oct 7)",
-  "Caching docs: idleCompaction (compacts a 200K+ conversation shortly before its 1-hour cache ends) needs v2.1.290+; main -p conversation gets a 1-hour cache on the subscription, subagents and workflows only 5 minutes",
-  "YouTube: Shorts up to 3 minutes from 15 Oct 2026 (secondary sources only)"
+  "Claude Code 2.1.301: CLAUDE_CODE_RETRY_WATCHDOG_MAX_USAGE_LIMIT_WAIT_MS ends an unattended wait when a usage limit resets too far away; headless $.model.fork fix",
+  "Claude Code 2.1.299/300: resuming headless sessions keeps compaction summaries; claude -p says why settings failed validation",
+  "Claude API 2026-10-15: fast mode for Opus 5.5 is generally available (no header needed)",
+  "Claude API 2026-10-14: OpenTelemetry export beta; 2026-10-07: Haiku 5.5 launched, Sonnet 5.5 cache reads halved to $0.10/M",
+  "Anthropic news: no new models since Haiku 5.5 (2026-10-07)"
  ],
  "checked": [
   {
@@ -30,72 +30,133 @@
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "used",
-   "why": "2.1.300 is new; nothing we must change"
+   "why": "2.1.294-2.1.301 read; retry, headless and hook fixes, nothing that breaks us"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "nothing new",
-   "why": "OTel beta only; Sonnet cache read $0.10/M already known"
+   "result": "nothing new for us",
+   "why": "Opus 5.5 fast mode GA, OTel beta, cache price cut for Sonnet 5.5 (we use the subscription)"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "policy and office news; no new model"
+   "why": "Policy and office news only"
   },
   {
-   "title": "Claude Code prompt caching docs",
-   "url": "https://code.claude.com/docs/en/prompt-caching",
+   "title": "Claude Code headless docs",
+   "url": "https://code.claude.com/docs/en/headless",
    "tier": "A",
    "result": "used",
-   "why": "confirms TTL buckets and cache-hit check via usage.cache_creation; supports the 10-09 measure-first idea"
+   "why": "exit codes, api_retry event, SIGTERM and background-work behaviour"
   },
   {
-   "title": "GitHub search: Claude Code skills/subagents",
-   "url": "https://api.github.com/search/repositories?q=claude+code+skills+subagents",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "skill hubs; no fit"
+   "title": "Claude Code CLI reference",
+   "url": "https://code.claude.com/docs/en/cli-reference",
+   "tier": "A",
+   "result": "used",
+   "why": "--max-budget-usd, --fallback-model, --max-turns semantics"
   },
   {
-   "title": "GitHub search: faceless Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "title": "Claude Code errors / automatic retries",
+   "url": "https://code.claude.com/docs/en/errors",
+   "tier": "A",
+   "result": "used",
+   "why": "10 retries by default; no retry after output has started; one retry on 'no response'"
+  },
+  {
+   "title": "Claude Code env vars",
+   "url": "https://code.claude.com/docs/en/env-vars",
+   "tier": "A",
+   "result": "used",
+   "why": "API_TIMEOUT_MS 10 min; 529 delay cap needs 2.1.296+"
+  },
+  {
+   "title": "Claude Code model config (fallbacks)",
+   "url": "https://code.claude.com/docs/en/model-config",
+   "tier": "A",
+   "result": "used",
+   "why": "fallback chain never fires on rate-limit errors; safety-classifier fallback can change the model; real model is in modelUsage"
+  },
+  {
+   "title": "Agent SDK cost tracking",
+   "url": "https://code.claude.com/docs/en/agent-sdk/cost-tracking",
+   "tier": "A",
+   "result": "used",
+   "why": "error results still carry total_cost_usd; use modelUsage"
+  },
+  {
+   "title": "Bash tool leaks orphaned child processes on Windows (issue 76353)",
+   "url": "https://claudeissues.com/issue/76353-bash-tool-leaks-orphaned-child-processes-on-windows-timeout-runaway-ind-scans-ac",
    "tier": "B",
+   "result": "used",
+   "why": "open; seen on 2.1.206 and still on 2.1.272 per commenters"
+  },
+  {
+   "title": "Retry watchdog write-up (DevelopersDigest)",
+   "url": "https://www.developersdigest.tech/blog/claude-code-retry-watchdog-unattended-runs",
+   "tier": "B",
+   "result": "used",
+   "why": "watchdog waits out a usage limit silently for hours: wrong for us"
+  },
+  {
+   "title": "Headless runs stall ~405 s (issue 83859)",
+   "url": "https://claudeissues.com/issue/83859-headless-claude-p-runs-stall-for-a-constant-405s-early-in-every-session-9-9-sinc",
+   "tier": "C",
    "result": "rejected",
-   "why": "tiny repos, no licence"
+   "why": "macOS, one reporter, unconfirmed cause; only matters for the Mac Studio"
   },
   {
-   "title": "GitHub search: token cost reduction",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction",
-   "tier": "B",
-   "result": "rejected",
-   "why": "2 stars or non-OSI licence"
-  },
-  {
-   "title": "GitHub search: multi-agent orchestration",
-   "url": "https://api.github.com/search/repositories?q=multi-agent+orchestration+claude",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "coding-agent harnesses; we already have our own"
-  },
-  {
-   "title": "Web: Haiku 5.5 pricing",
-   "url": "https://apidog.com/blog/claude-haiku-5-5-pricing/",
+   "title": "Idempotent LLM pipelines (tianpan.co) and agent checkpoint posts (urandom.io)",
+   "url": "https://tianpan.co/blog/2026/04/20/idempotency-llm-pipelines",
    "tier": "C",
    "result": "nothing new",
-   "why": "cache read $0.01/M; matches earlier idea"
+   "why": "We already checkpoint (checkpoint.py, saved jobs); search snippets only"
   },
   {
-   "title": "Web: YouTube Shorts changes Oct 2026",
-   "url": "https://outlierkit.com/resources/youtube-shorts-original-content-update/",
+   "title": "Python subprocess tree-kill patterns (search results)",
+   "url": "https://pygacity.readthedocs.io/en/stable/_modules/pygacity/util/command.html",
    "tier": "C",
-   "result": "nothing new",
-   "why": "originality rule already in watch.json; 3-minute Shorts unverified"
+   "result": "used",
+   "why": "taskkill /F /T /PID after a timeout is the common pattern; snippets only"
   }
  ],
  "repo_watch": [],
- "ideas": []
+ "ideas": [
+  {
+   "id": "2026-10-16-1",
+   "title": "Make failed Claude Code runs explain themselves, and clean up after a timeout",
+   "area": "reliability",
+   "problem": "workers.run turns every failure into Unavailable with a 300-character message, and the only record of a good or bad run is the model_call event with turns/secs. The result's subtype (error_max_turns, error_max_budget_usd, error_during_execution...) is not logged, so we cannot tell a plan limit from an overloaded API from a hang. Also: on timeout, subprocess.run (workers.py line ~104, atlas_engine._run) kills only the claude process. Claude Code's own docs and an open issue (76353, Windows, still seen on 2.1.272) say child processes of the Bash tool survive a kill. Atlas has Bash(python hq.py), Ghassan has python -m py_compile, so a stuck run can leave a python process behind. Last, the usage row records the configured model, but Claude Code can switch to a fallback model; the real one is only in modelUsage.",
+   "proposal": "1) In workers.run, when not ok, add subtype, terminal error text (first 200 chars) and the keys of modelUsage to a new 'run_failed' event (cp.log) next to the existing model_call; also log the real model(s) from modelUsage in the model_call info and in cp.record_usage. 2) Replace subprocess.run with subprocess.Popen + communicate(timeout); on TimeoutExpired call 'taskkill /F /T /PID <pid>' on Windows (os.killpg with start_new_session on Mac/Linux), then communicate() to collect output. Same change in atlas_engine._run. Put the helper in workers.py (shared). 3) Do NOT enable CLAUDE_CODE_RETRY_WATCHDOG: it waits out a usage limit for hours, while our design fails fast and parks (LIMIT_UNTIL, cloud Atlas). workers.py and atlas_engine.py are protected from Ghassan, so the Builder chat must make the change.",
+   "gain": "Small but real: every fallback_api and every 'Claude Code took too long' gets a cause, so the next reliability idea can be based on counts instead of guesses. No stray python/find processes after a timeout. Measure: after two weeks, group run_failed by subtype and see which cause is biggest; check Task Manager for leftover python.exe after a forced timeout (set WORKER_TIMEOUT_SECONDS low in practice mode).",
+   "test": "1) Normal: a successful run still returns the same output and model_call now lists the real model. 2) Edge: run with --max-turns 1 on a two-step task; the event shows subtype error_max_turns and the message is unchanged for the user. 3) Failure: a fake claude script (practice mode) that spawns a child 'sleep 600' and hangs; after the timeout both processes are gone and Unavailable is raised within 5 seconds of the limit.",
+   "effort": "S",
+   "confidence": "low",
+   "confidence_why": "Retry and fallback facts are from official docs (A). The orphan-process leak rests on an open GitHub issue (B) and I have not seen it happen on this PC; how often our runs fail is unmeasured (no hq.db here).",
+   "risks": "taskkill /T can kill more than intended if the pid is reused after the process ended: only call it inside the TimeoutExpired branch. Extra logging adds a few events per day. No outside code is adopted.",
+   "links": [
+    {
+     "title": "Claude Code: automatic retries and errors",
+     "url": "https://code.claude.com/docs/en/errors"
+    },
+    {
+     "title": "Claude Code headless: exit codes, SIGTERM, api_retry",
+     "url": "https://code.claude.com/docs/en/headless"
+    },
+    {
+     "title": "Agent SDK cost tracking: modelUsage on error results",
+     "url": "https://code.claude.com/docs/en/agent-sdk/cost-tracking"
+    },
+    {
+     "title": "Issue 76353: Bash tool leaks orphaned child processes on Windows",
+     "url": "https://claudeissues.com/issue/76353-bash-tool-leaks-orphaned-child-processes-on-windows-timeout-runaway-ind-scans-ac"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
 }

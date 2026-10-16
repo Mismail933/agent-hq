@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.300",
-   "checked": "2026-10-15"
+   "last_seen": "2.1.301",
+   "checked": "2026-10-16"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-14 OpenTelemetry export beta; nothing else new",
-   "checked": "2026-10-15"
+   "last_seen": "2026-10-15 Opus 5.5 fast mode GA; Haiku 5.5 launched 10-07",
+   "checked": "2026-10-16"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-14 midterms policy, Singapore office; no new models",
-   "checked": "2026-10-15"
+   "last_seen": "2026-10-15 independent evaluators update; no new models",
+   "checked": "2026-10-16"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -54,6 +54,16 @@
    "url": "https://remotion.dev/docs/5-0-migration",
    "last_seen": "5.0 not released; contractors will count toward team size; we pin 4.0.250",
    "checked": "2026-10-14"
+  },
+  "claude-code-errors": {
+   "url": "https://code.claude.com/docs/en/errors",
+   "last_seen": "10 retries default; watchdog opt-in",
+   "checked": "2026-10-16"
+  },
+  "claude-code-model-config": {
+   "url": "https://code.claude.com/docs/en/model-config",
+   "last_seen": "fallback chains max 3, never on rate-limit; classifier fallback",
+   "checked": "2026-10-16"
   }
  },
  "repos": {
@@ -119,6 +129,12 @@
    "verdict": "skip",
    "checked": "2026-10-14",
    "note": "MIT; needs outside Editkin service"
+  }
+ },
+ "issues": {
+  "anthropics/claude-code orphan processes on Windows (76353)": {
+   "status": "open",
+   "checked": "2026-10-16"
   }
  }
 }
