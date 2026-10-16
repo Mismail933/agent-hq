@@ -182,6 +182,89 @@ def snapshot(days=28):
             "not_available": "YouTube's API gives no impressions or click-through rate; read them in YouTube Studio when needed."}
 
 
+def seconds(iso):
+    """ISO 8601 duration (PT1M58S) -> seconds."""
+    import re
+    m = re.fullmatch(r"P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", iso or "")
+    if not m:
+        return 0
+    d, h, mi, s = (int(x or 0) for x in m.groups())
+    return d * 86400 + h * 3600 + mi * 60 + s
+
+
+def _ref(ref):
+    """A channel link, @handle or channel id -> ('id', 'UC...') / ('handle', '@x') / ('user', 'x') / ('search', 'words')."""
+    import re
+    from urllib.parse import unquote, urlparse
+    r = unquote(str(ref).strip())
+    if re.fullmatch(r"UC[\w-]{22}", r):
+        return "id", r
+    if r.startswith("@"):
+        return "handle", r.split("/")[0]
+    if "youtube.com" in r or "youtu.be" in r:
+        path = urlparse(r if "://" in r else "https://" + r).path.strip("/").split("/")
+        if path and path[0].startswith("@"):
+            return "handle", path[0]
+        if len(path) > 1 and path[0] == "channel":
+            return "id", path[1]
+        if len(path) > 1 and path[0] == "user":
+            return "user", path[1]
+        if len(path) > 1 and path[0] == "c":
+            return "search", path[1]
+    return "search", r
+
+
+def public_channel(ref, n=15):
+    """Any channel's PUBLIC numbers (for Omar's rivals): who it is, and its last n uploads with views, likes, comments, length and
+    upload time. Read-only; nothing private exists for someone else's channel anyway."""
+    if _sim():
+        return _fake_rival(ref, n)
+    from googleapiclient.discovery import build
+    yt = build("youtube", "v3", credentials=_creds(), cache_discovery=False)
+    kind, val = _ref(ref)
+    part = "snippet,statistics,contentDetails"
+    if kind == "search":   # an old /c/ name or plain words: the best channel match (costs more quota, so only when adding)
+        got = yt.search().list(part="snippet", q=val, type="channel", maxResults=1).execute().get("items", [])
+        if not got:
+            raise LookupError(f"No YouTube channel found for {ref!r}.")
+        kind, val = "id", got[0]["snippet"]["channelId"]
+    args = {"id": val} if kind == "id" else {"forHandle": val} if kind == "handle" else {"forUsername": val}
+    items = yt.channels().list(part=part, **args).execute().get("items", [])
+    if not items:
+        raise LookupError(f"No YouTube channel found for {ref!r}.")
+    ch = items[0]
+    st = ch.get("statistics", {})
+    out = {"id": ch["id"], "title": ch["snippet"]["title"], "handle": ch["snippet"].get("customUrl", ""),
+           "subscribers": int(st.get("subscriberCount", 0)), "views": int(st.get("viewCount", 0)), "videos": int(st.get("videoCount", 0)),
+           "recent": []}
+    if n:
+        pl = ch["contentDetails"]["relatedPlaylists"]["uploads"]
+        ids = [i["contentDetails"]["videoId"] for i in
+               yt.playlistItems().list(part="contentDetails", playlistId=pl, maxResults=min(50, n)).execute().get("items", [])]
+        if ids:
+            for v in yt.videos().list(part="snippet,statistics,contentDetails", id=",".join(ids)).execute().get("items", []):
+                s = v.get("statistics", {})
+                out["recent"].append({"id": v["id"], "title": v["snippet"]["title"], "published": v["snippet"]["publishedAt"],
+                                      "seconds": seconds(v["contentDetails"].get("duration")), "views": int(s.get("viewCount", 0)),
+                                      "likes": int(s.get("likeCount", 0)), "comments": int(s.get("commentCount", 0))})
+            out["recent"].sort(key=lambda v: v["published"], reverse=True)
+    return out
+
+
+def _fake_rival(ref, n):
+    import hashlib
+    k = int(hashlib.md5(str(ref).encode()).hexdigest()[:6], 16)
+    name = str(ref).rstrip("/").split("/")[-1].lstrip("@") or "Rival"
+    today = date.today()
+    recent = [{"id": f"r{k}{i}", "title": f"{name}: the story of {t}", "published": (today - timedelta(days=2 * i + 1)).isoformat() + "T16:00:00Z",
+               "seconds": 55 if i % 3 else 840, "views": (k % 900 + 100) * (40 - i) * 10, "likes": (k % 900 + 100) * (40 - i) // 3,
+               "comments": (k % 90 + 10) * (40 - i) // 10}
+              for i, t in enumerate(["the siege that failed", "a king's worst idea", "the map that lied", "the empire's last day",
+                                     "a war over a pig", "the bridge of boats"][:n])]
+    return {"id": f"UCfake{k:018d}"[:24], "title": f"{name} (practice)", "handle": "@" + name.lower(), "subscribers": (k % 900 + 100) * 1000,
+            "views": (k % 900 + 100) * 90000, "videos": 120, "recent": recent}
+
+
 def _fake(days):
     """Practice mode: a small, believable channel."""
     today = date.today()

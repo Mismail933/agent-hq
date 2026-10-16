@@ -2531,6 +2531,16 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=run_omar, args=(what,), daemon=True).start()
             return self._send(200, {"ok": True, "message": "Omar is reading the channel." if what == "daily" else
                                     "Omar is writing his weekly note (a minute or two); it comes to you and to the chat."})
+        if u.path in ("/api/omar/watch", "/api/omar/unwatch"):   # hq omar watch|unwatch <channel>: rivals, public numbers only
+            body = self._json_body()
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            try:
+                msg = (omar.watch if u.path.endswith("/watch") else omar.unwatch)(str(body.get("ref", ""))[:300], by)
+            except (ValueError, LookupError) as e:
+                return self._send(400, {"error": str(e)})
+            except Exception as e:
+                return self._send(502, {"error": f"YouTube didn't answer: {type(e).__name__}: {str(e)[:200]}"})
+            return self._send(200, {"ok": True, "message": msg})
         if u.path.startswith("/api/omar/suggest/"):   # hq omar suggest <episode>: packaging ideas before an upload
             try:
                 eid = int(u.path.rsplit("/", 1)[1])

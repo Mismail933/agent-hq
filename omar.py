@@ -9,6 +9,10 @@ replies, edits or spends: those stay the owner's.
   the owner (what worked, what to change: titles, thumbnails, posting time, topics) -> content/project-N/channel/weekly-<date>.md,
   sent to the owner's phone (rule omar.phone_weekly) and given to Calina's next learning note (rule omar.feed_calina).
 - Before an upload: `hq omar suggest <episode>` -> 3 titles, a thumbnail idea, the description's first lines, tags, a time to post.
+- Rivals (2.45.0, the owner: "let Omar check other channels, how they're successful, and learn"): `hq omar watch <channel link|@handle>`
+  adds a channel to content/project-N/channel/rivals.json (at most MAX_RIVALS); every daily look also reads their PUBLIC numbers
+  (youtube.public_channel: subscribers, last uploads with views/likes/comments/length/upload time) into rivals-<date>.json, and the
+  weekly note has a "from_rivals" part: what works for them that we don't do. Read-only, public data only, no video downloads.
 Practice mode (HQ_SIMULATE=1) uses made-up numbers and a canned note.
 """
 import json
@@ -56,9 +60,11 @@ WEEKLY_SCHEMA = {
         "topics": {"type": "array", "items": {"type": "string"}},
         "for_calina": {"type": "string", "description": "what Calina should write differently in the next scripts"},
         "ask_owner": {"type": "string", "description": "anything only the owner can check (e.g. impressions/CTR in YouTube Studio), or empty"},
+        "from_rivals": {"type": "array", "items": {"type": "string"},
+                        "description": "what works for the channels we watch that we don't do yet (from their numbers), or empty if none are watched"},
     },
     "required": ["headline", "numbers", "what_worked", "what_didnt", "change_next", "titles_to_test", "posting_time", "topics",
-                 "for_calina", "ask_owner"],
+                 "for_calina", "ask_owner", "from_rivals"],
 }
 
 SUGGEST_SCHEMA = {
@@ -117,6 +123,100 @@ def snapshots(pid=None, n=8):
     return out
 
 
+MAX_RIVALS = 10
+
+
+def rivals(pid=None):
+    """The channels Omar watches for this project: [{id, title, handle, url, added, by}]."""
+    try:
+        return json.loads((folder(pid) / "rivals.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+
+
+def _save_rivals(lst, pid=None):
+    (folder(pid) / "rivals.json").write_text(json.dumps(lst, indent=1, ensure_ascii=False), encoding="utf-8")
+
+
+def watch(ref, by="Atlas"):
+    """Start watching a channel (a link, @handle or channel id). Looks it up once so the list holds its real id and name."""
+    lst = rivals()
+    if len(lst) >= MAX_RIVALS:
+        raise ValueError(f"Omar already watches {MAX_RIVALS} channels: unwatch one first.")
+    if not youtube.status()["connected"]:
+        raise ValueError("YouTube isn't connected yet (Spend & limits -> Your YouTube), so Omar can't look the channel up.")
+    ch = youtube.public_channel(ref, n=0)
+    if any(r["id"] == ch["id"] for r in lst):
+        return f"Omar already watches {ch['title']}."
+    lst.append({"id": ch["id"], "title": ch["title"], "handle": ch.get("handle", ""), "url": str(ref)[:200],
+                "subscribers": ch["subscribers"], "added": date.today().isoformat(), "by": by})
+    _save_rivals(lst)
+    cp.log(by, "omar_watch", None, {"channel": ch["title"], "id": ch["id"]})
+    return f"Omar now watches {ch['title']} ({_n(ch['subscribers'])} subscribers). Their numbers come in his daily look and Monday note."
+
+
+def unwatch(key, by="Atlas"):
+    k = str(key).strip().lower().lstrip("@")
+    lst = rivals()
+    keep = [r for r in lst if k not in (r["id"].lower(), r.get("handle", "").lower().lstrip("@"), r["title"].lower())]
+    if len(keep) == len(lst):
+        raise LookupError(f"Omar doesn't watch {key!r}. Watching: " + (", ".join(r["title"] for r in lst) or "nobody"))
+    _save_rivals(keep)
+    cp.log(by, "omar_unwatch", None, {"channel": str(key)[:100]})
+    return f"Omar stopped watching {key}."
+
+
+def _median(xs):
+    xs = sorted(xs)
+    return xs[len(xs) // 2] if xs else 0
+
+
+def rival_summary(ch):
+    """A rival's public numbers boiled down: how often, how long, how many views, what titles, when they post (UTC)."""
+    rec = ch.get("recent") or []
+    now = datetime.utcnow()
+    def age(v):
+        return (now - datetime.strptime(v["published"][:19], "%Y-%m-%dT%H:%M:%S")).days
+    last28 = [v for v in rec if age(v) <= 28]
+    shorts = [v for v in rec if 0 < v["seconds"] <= 180]
+    when = {}
+    for v in rec:
+        t = datetime.strptime(v["published"][:19], "%Y-%m-%dT%H:%M:%S")
+        when[f"{DAYS[t.weekday()]} {t.hour:02d}h UTC"] = when.get(f"{DAYS[t.weekday()]} {t.hour:02d}h UTC", 0) + 1
+    top = sorted(rec, key=lambda v: v["views"], reverse=True)[:3]
+    return {"channel": ch["title"], "subscribers": ch["subscribers"], "uploads_last_28_days": len(last28),
+            "median_views_recent": _median([v["views"] for v in rec[:10]]), "shorts_share": round(len(shorts) / len(rec), 2) if rec else 0,
+            "median_length_s": _median([v["seconds"] for v in rec]),
+            "likes_per_1000_views": round(1000 * sum(v["likes"] for v in rec) / max(1, sum(v["views"] for v in rec)), 1),
+            "best_recent": [{"title": v["title"], "views": v["views"], "seconds": v["seconds"]} for v in top],
+            "usual_upload_times": sorted(when, key=when.get, reverse=True)[:3]}
+
+
+def rivals_daily():
+    """Today's public numbers of every watched channel -> rivals-<date>.json. One failing channel doesn't stop the others."""
+    lst = rivals()
+    if not lst:
+        return None
+    got, failed = [], []
+    for r in lst:
+        try:
+            got.append(rival_summary(youtube.public_channel(r["id"], n=15)))
+        except Exception as e:
+            failed.append(f"{r['title']}: {type(e).__name__}")
+    today = date.today().isoformat()
+    (folder() / f"rivals-{today}.json").write_text(json.dumps({"taken": today, "rivals": got, "failed": failed}, indent=1,
+                                                              ensure_ascii=False), encoding="utf-8")
+    return got
+
+
+def latest_rivals():
+    files = sorted(folder().glob("rivals-20??-??-??.json"))
+    try:
+        return json.loads(files[-1].read_text(encoding="utf-8")) if files else None
+    except ValueError:
+        return None
+
+
 def view():
     """What the office and `hq omar status` show."""
     yt = youtube.status()
@@ -126,7 +226,8 @@ def view():
             "last_weekly": STATUS["last_weekly"], "line": STATUS["line"], "note": STATUS["note"], "error": STATUS["error"],
             "running": STATUS["running"],
             "channel": (last or {}).get("channel"), "taken": (last or {}).get("taken"),
-            "daily_hour": rules.get("omar.daily_hour"), "weekly_day": rules.get("omar.weekly_day")}
+            "daily_hour": rules.get("omar.daily_hour"), "weekly_day": rules.get("omar.weekly_day"),
+            "rivals": [{"title": r["title"], "handle": r.get("handle", ""), "subscribers": r.get("subscribers")} for r in rivals()]}
 
 
 def _n(x):
@@ -155,6 +256,12 @@ def daily():
         if best:
             parts.append(f"best recent upload: \"{best['title']}\" ({_n(best['views'])} views)")
         line = "YouTube: " + "; ".join(parts) + "."
+        try:
+            riv = rivals_daily()
+            if riv:
+                line += " Rivals read: " + ", ".join(f"{r['channel']} ({_n(r['subscribers'])})" for r in riv[:5]) + "."
+        except Exception as e:   # the rivals never stop our own daily look
+            line += f" (Rivals couldn't be read: {type(e).__name__}.)"
         STATUS.update(last_daily=snap["taken"], line=line, error="")
         _save()
         cp.log("Omar", "omar_daily", None, {"line": line[:300]})
@@ -180,6 +287,10 @@ def _brief(snaps):
              "Subscribers by day: " + ", ".join(f"{s['taken']}: {s['channel']['subscribers']}" for s in snaps),
              "Total channel views by day: " + ", ".join(f"{s['taken']}: {s['channel']['views']}" for s in snaps),
              last.get("not_available", "")]
+    riv = latest_rivals()
+    if riv and riv.get("rivals"):
+        lines.append(f"Channels we watch (public numbers, {riv['taken']}; compare with ours, learn what works for them): "
+                     + json.dumps(riv["rivals"], ensure_ascii=False))
     return "\n".join(lines)
 
 
@@ -189,6 +300,8 @@ def _md(n, d):
     out += ["", "## Change next"] + [f"{i}. **{c['what']}**: {c['why']}" for i, c in enumerate(n["change_next"], 1)]
     out += ["", "## Titles to test"] + [f"- {t}" for t in n["titles_to_test"]]
     out += ["", f"**When to post:** {n['posting_time']}", "", "## Topics"] + [f"- {t}" for t in n["topics"]]
+    if n.get("from_rivals"):
+        out += ["", "## What works for the channels we watch"] + [f"- {x}" for x in n["from_rivals"]]
     out += ["", f"**For Calina:** {n['for_calina']}"] + (["", f"**Only you can check:** {n['ask_owner']}"] if n.get("ask_owner") else [])
     return "\n".join(out)
 
@@ -210,7 +323,8 @@ def weekly():
                     "change_next": [{"what": "Put the impossible claim in the first 2 seconds", "why": "the best video does it and keeps 61%"}],
                     "titles_to_test": ["He measured the Earth with a stick (and was right)"], "posting_time": "Not enough data yet.",
                     "topics": ["Ancient measurements that turned out right"], "for_calina": "Open on the impossible claim, not on the place.",
-                    "ask_owner": "Impressions and click-through rate from YouTube Studio for the last 28 days."}
+                    "ask_owner": "Impressions and click-through rate from YouTube Studio for the last 28 days.",
+                    "from_rivals": ["They post a long video every 2 weeks and 3 Shorts cut from it; we only post Shorts."] if rivals() else []}
         else:
             import workers
             task = ("The channel's numbers for this week (daily snapshots, oldest first; the last one has the details):\n\n"

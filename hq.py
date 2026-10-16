@@ -31,6 +31,7 @@ Atlas's controls for Agent HQ.
                  cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version]
                  ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
                  omar [status | now | weekly | suggest <episode>] | channel-stats     (Omar, Social Media Manager: the YouTube channel, read-only)
+                 omar watch <channel link|@handle> | omar unwatch <channel> | omar rivals     (channels Omar learns from: public numbers only)
                  fetch <link> [link...]     (see a link the owner sent: images saved to review/refs/, YouTube title/channel/description/thumbnail)
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
@@ -388,11 +389,17 @@ def main(argv):
             elif sub in ("now", "weekly"):
                 code, reply = office("/api/omar/now", {"what": "weekly" if sub == "weekly" else "daily"})
                 show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+            elif sub in ("watch", "unwatch"):
+                code, reply = office(f"/api/omar/{sub}", {"ref": " ".join(args[1:])})
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+            elif sub == "rivals":
+                import omar
+                show({"watching": omar.rivals(), "latest_numbers": omar.latest_rivals() or "none yet (they come with Omar's daily look)"})
             elif sub == "suggest":
                 code, reply = office(f"/api/omar/suggest/{int(args[1])}", {})
                 show(reply.get("suggestion") if code < 300 else f"Not done: {reply.get('error')}")
             else:
-                show("hq omar [status | now | weekly | suggest <episode>]")
+                show("hq omar [status | now | weekly | suggest <episode> | watch <channel> | unwatch <channel> | rivals]")
         elif cmd == "channel-stats":   # the newest snapshot of the YouTube channel Omar took (numbers only)
             import omar
             snaps = omar.snapshots(n=1)

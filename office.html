@@ -2036,6 +2036,7 @@ function youtubeHtml(om) {
       ${ch ? `<div class="lrow"><label>${esc(ch.title)}<small>Last look: ${esc(om.taken || '')}</small></label><b style="font-family:var(--mono)">${Number(ch.subscribers).toLocaleString()} subs · ${Number(ch.views).toLocaleString()} views</b></div>` : ''}
       ${om.line ? `<p class="note">${esc(om.line)}</p>` : ''}
       ${om.note ? `<p class="note">Last weekly note: <span style="font-family:var(--mono)">${esc(om.note)}</span></p>` : ''}
+      <p class="note">${(om.rivals || []).length ? `Learning from: ${om.rivals.map(r => esc(r.title) + (r.subscribers ? ` (${Number(r.subscribers).toLocaleString()})` : '')).join(', ')}.` : 'Not watching other channels yet: ask Atlas to have Omar watch one (send him the channel link).'}</p>
       ${om.error ? `<p class="note" style="color:#FDA4AF">Last problem: ${esc(om.error)}</p>` : ''}
       <div><button class="btn sm" type="button" id="ytNow" ${om.running ? 'disabled' : ''}>${om.running ? 'Omar is reading…' : 'Look now'}</button>
       <button class="btn sm ghost" type="button" id="ytOff">Disconnect</button></div>`;
