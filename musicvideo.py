@@ -469,15 +469,15 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
     if not song or not song.exists():
         raise Blocked("The song file isn't there: " + str(plan.get("song")))
     sf = float(plan.get("song_from", 0))
-    af = f"afade=t=out:st={max(0.0, end - fade_out):.2f}:d={fade_out:.2f}"
+    af = f"apad,afade=t=out:st={max(0.0, end - fade_out):.2f}:d={fade_out:.2f}"   # apad: an edit longer than the song keeps its picture (silence after)
     outs = {}
     for name, silent in [("wide", silent_w)] + ([("vertical", silent_v)] if vertical else []):
         dst = out_dir / f"{name}.mp4"
         run(["-i", silent, "-ss", sf, "-t", f"{end:.3f}", "-i", song, "-map", "0:v", "-map", "1:a", "-af", af, "-c:v", "copy",
              "-c:a", "aac", "-b:a", "256k", "-shortest", "-movflags", "+faststart", dst])
         outs[name] = dst
-    phone = out_dir / "wide.phone.mp4"   # Telegram's bot limit is 50 MB: 720p at a fixed rate
-    kb = int(min(2300, 44 * 8 * 1024 / max(end, 1) - 170))
+    phone = out_dir / "wide.phone.mp4"   # Telegram's bot limit is 50 MB, but a 43.7 MB file was refused: 720p sized for ~40 MB
+    kb = int(min(2300, 40 * 8 * 1024 / max(end, 1) - 170))
     run(["-i", outs["wide"], "-vf", "scale=1280:720:flags=lanczos", "-c:v", "libx264", "-b:v", f"{kb}k", "-maxrate", f"{int(kb * 1.15)}k",
          "-bufsize", f"{kb * 2}k", "-preset", "medium", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", phone])
     rv = out_dir / "review"
