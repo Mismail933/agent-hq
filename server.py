@@ -103,6 +103,8 @@ import design             # noqa: E402
 import client             # noqa: E402
 import cast               # noqa: E402
 import assets             # noqa: E402
+import omar               # noqa: E402
+import youtube            # noqa: E402
 import checkpoint         # noqa: E402
 import rules              # noqa: E402
 import control_plane as cp  # noqa: E402
@@ -1426,6 +1428,52 @@ def studio_loop():
         time.sleep(60 * max(1, int(getattr(settings, "STUDIO_EVERY_MINUTES", 3))))
 
 
+def omar_loop():
+    """Omar (2.44.0, omar.py): the channel's numbers once a day and his weekly note, at the hours his rules set. After a failure he
+    waits an hour before trying again (YouTube's daily quota)."""
+    time.sleep(45)
+    failed = 0.0
+    while True:
+        rules.apply_all()
+        try:
+            what = "" if RESTARTING["on"] or cp.STOP_FILE.exists() or time.time() - failed < 3600 else omar.due()
+            if what:
+                run_omar(what)
+        except Exception as e:
+            failed = time.time()
+            print("Omar:", repr(e)[:300], flush=True)
+        time.sleep(300)
+
+
+def run_omar(what):
+    """One of Omar's jobs: daily (the numbers, a line to Atlas) or weekly (his note: Atlas, the phone, Calina)."""
+    if what == "daily":
+        atlas_says("**Omar (channel):** " + omar.daily())
+        return
+    headline, path = omar.weekly()
+    rel = str(path.relative_to(ROOT)).replace("\\", "/")
+    atlas_says(f"**Omar's weekly note on the channel is ready:** {headline}\n\nIt's in `{rel}`. Read it before you suggest the next batch.")
+    if rules.get("omar.phone_weekly"):
+        phone.notify("📈 " + path.read_text(encoding="utf-8")[:3800])   # as text, so he reads it in the chat (long notes are split)
+    if rules.get("omar.feed_calina"):
+        pid = omar.project()
+        if (cp.get_project(pid, with_text=False) or {}).get("status") == "approved":
+            threading.Thread(target=run_review, args=(pid, omar.calina_stats(path)), daemon=True).start()
+
+
+def run_youtube_connect():
+    try:
+        youtube.connect()
+    except Exception as e:
+        atlas_says(f"**YouTube didn't connect:** {youtube.STATE['error'] or e}")
+        return
+    cp.log("Owner", "youtube_connected", None, {})
+    try:
+        run_omar("daily")
+    except Exception as e:
+        atlas_says(f"**YouTube is connected,** but Omar's first look at the channel failed: {str(e)[:300]}")
+
+
 def run_review(project_id, stats):
     text = agents.calina_review(project_id, stats)
     atlas_says(f"**Calina's learning note is ready.**\n\n{text[:1500]}" + ("…" if len(text) > 1500 else ""))
@@ -1738,6 +1786,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (ROOT / "office.html").read_bytes(), "text/html")
         if u.path == "/api/phone":   # the office's 'Your phone' card (never the token)
             return self._send(200, phone.view())
+        if u.path == "/api/omar":   # Omar and the YouTube connection (never the client secret or the token)
+            return self._send(200, omar.view())
+        if u.path == "/api/channel-stats":   # the newest snapshot of the channel (hq channel-stats)
+            snaps = omar.snapshots(n=1)
+            return self._send(200, snaps[-1]) if snaps else self._send(404, {"error": "No snapshot yet: connect YouTube, then hq omar now."})
         if u.path == "/api/rules":   # the team's live rules (Spend & limits -> Team rules; hq rule list)
             return self._send(200, {"rules": rules.view()})
         if u.path.startswith("/api/prompt/"):   # an agent's instructions as they are now
@@ -1769,6 +1822,7 @@ class Handler(BaseHTTPRequestHandler):
                                   if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "scouting_refs": quality.SCOUTING.locked(), "reviewing": quality.REVIEWING.locked(),
                 "lnd": cp.list_lnd_ideas(30), "lnd_status": lnd.STATUS, "lnd_report": lnd.REPORT,
+                "omar": omar.view(),
                 "voice_samples": {p["id"]: voice_samples(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "designs": [d for d in design.open_designs() if d.get("status") == "ready"],
                 "client": {p["id"]: client.view(p) for p in cp.list_projects(20) if client.is_client(p)},
@@ -2445,6 +2499,47 @@ class Handler(BaseHTTPRequestHandler):
                 started = start_assets(eid)
                 msg += f" It needs its own art: {started}" if started else ""
             return self._send(200 if ok else 409, {"ok": True, "message": msg} if ok else {"error": msg})
+        if u.path == "/api/youtube/client":   # the owner's OAuth client file (Desktop app JSON from Google Cloud), raw in the body
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > 64 * 1024:
+                return self._send(413, {"error": "That file is too big for an OAuth client file."})
+            try:
+                youtube.save_client(self.rfile.read(n))
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            cp.log("Owner", "youtube_client_saved", None, {})
+            return self._send(200, {"ok": True, "message": "Client file saved. Now press Connect YouTube."})
+        if u.path in ("/api/youtube/connect", "/api/youtube/disconnect"):   # this PC only: Google's page opens in its browser
+            if not remote.is_local(self):
+                return self._send(403, {"error": "Connect YouTube on the PC itself: Google's sign-in page opens in its browser."})
+            if u.path.endswith("disconnect"):
+                youtube.disconnect()
+                cp.log("Owner", "youtube_disconnected", None, {})
+                return self._send(200, {"ok": True, "message": "YouTube disconnected. Omar stops reading the channel."})
+            if not youtube.status()["client"]:
+                return self._send(409, {"error": "Add the OAuth client file first."})
+            if youtube.STATE["connecting"]:
+                return self._send(409, {"error": "Google's page is already open: finish it in the browser."})
+            threading.Thread(target=run_youtube_connect, daemon=True).start()
+            return self._send(200, {"ok": True, "message": "Google's sign-in page is opening in your browser. Choose the channel's account and allow read-only access."})
+        if u.path == "/api/omar/now":   # hq omar now [weekly]: Omar runs now instead of at his hour
+            what = "weekly" if self._json_body().get("what") == "weekly" else "daily"
+            if omar.STATUS["running"]:
+                return self._send(409, {"error": f"Omar is already on his {omar.STATUS['running']} job."})
+            if not youtube.status()["connected"]:
+                return self._send(409, {"error": "YouTube isn't connected yet (Spend & limits -> Your YouTube)."})
+            threading.Thread(target=run_omar, args=(what,), daemon=True).start()
+            return self._send(200, {"ok": True, "message": "Omar is reading the channel." if what == "daily" else
+                                    "Omar is writing his weekly note (a minute or two); it comes to you and to the chat."})
+        if u.path.startswith("/api/omar/suggest/"):   # hq omar suggest <episode>: packaging ideas before an upload
+            try:
+                eid = int(u.path.rsplit("/", 1)[1])
+                got = omar.suggest(eid)
+            except (ValueError, LookupError) as e:
+                return self._send(400, {"error": str(e)})
+            except (workers.Unavailable, cp.Halt) as e:
+                return self._send(503, {"error": f"Omar couldn't run: {e}"})
+            return self._send(200, {"ok": True, "suggestion": got, "message": f"Omar's suggestion is saved on episode {eid}."})
         if u.path == "/api/lnd/sync":
             try:
                 n = lnd.sync()
@@ -2799,6 +2894,8 @@ def main():
         threading.Thread(target=lnd_loop, daemon=True).start()
     if os.environ.get("HQ_SIMULATE") != "1" or os.environ.get("HQ_STUDIO") == "1":
         threading.Thread(target=studio_loop, daemon=True).start()
+    if os.environ.get("HQ_SIMULATE") != "1" or os.environ.get("HQ_OMAR") == "1":
+        threading.Thread(target=omar_loop, daemon=True).start()
     if os.environ.get("HQ_NO_BROWSER") != "1":
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

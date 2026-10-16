@@ -21,11 +21,11 @@ import time
 
 import control_plane as cp
 
-AGENTS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana")
+AGENTS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana", "Omar")
 # The agents' own instructions: the code's text, replaceable as a whole (`hq prompt <agent> set --file ...`)
 PROMPT_TARGET = {"Doulya": ("agents", "DOULYA_SYSTEM"), "Sage": ("agents", "SAGE_SYSTEM"), "Vera": ("agents", "VERA_SYSTEM"),
                  "Serge": ("agents", "SERGE_SYSTEM"), "Calina": ("agents", "CALINA_SYSTEM_V3"), "Scout": ("quality", "SCOUT_SYSTEM"),
-                 "Israa": ("quality", "ISRAA_BASE"), "Rana": ("animator", "SYSTEM")}
+                 "Israa": ("quality", "ISRAA_BASE"), "Rana": ("animator", "SYSTEM"), "Omar": ("omar", "OMAR_SYSTEM")}
 NOT_FORMATTED = {"Rana"}   # used as is (its braces are code examples, not placeholders)
 
 
@@ -110,6 +110,13 @@ RULES = {
     "jobs.resume_steps": _r("Team & schedules", "bool", True, None, None, "Long jobs save each finished step (scripts written, Israa's verdicts, a made video, drawn options, finished characters) and after a restart, a crash or an allowance stop continue from the last one (off = start over)"),
     "jobs.resume_tries": _r("Team & schedules", "int", 2, 0, 10, "A job cut off more than this many times in a row is given up instead of started again (so a job that crashes the office can't loop)"),
     "jobs.allowance_low_percent": _r("Team & schedules", "int", 10, 0, 90, "For that check, an agent with less than this % of today's allowance left counts as out (a check only; the allowance itself is the owner's)"),
+    # OMAR (2.44.0): the YouTube channel, read-only
+    "omar.enabled": _r("Omar & the channel", "bool", True, None, None, "Omar reads the YouTube channel every day and writes a weekly note (needs YouTube connected in Spend & limits)"),
+    "omar.project": _r("Omar & the channel", "int", 3, 1, 999, "The project whose channel Omar watches (its snapshots go to content/project-N/channel/)"),
+    "omar.daily_hour": _r("Omar & the channel", "int", 9, 0, 23, "Hour (PC time) of Omar's daily look at the channel"),
+    "omar.weekly_day": _r("Omar & the channel", "choice", "mon", ("mon", "tue", "wed", "thu", "fri", "sat", "sun"), None, "Day of Omar's weekly note (or the first day after it the office runs)"),
+    "omar.phone_weekly": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note is sent to the owner's phone"),
+    "omar.feed_calina": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note goes into Calina's next learning note (what to write differently)"),
     # PHONE
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,
                      "What reaches the phone at once: decisions (things that need the owner + finished videos), everything, or nothing"),

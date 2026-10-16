@@ -91,7 +91,7 @@ def portable_paths(con):
 # ---- Limits the owner changes in the office (or Atlas, when the owner asks) -------
 # Stored in hq.db and applied on top of settings.py / settings_local.py, so they take effect at once and
 # survive updates. Each one is validated against a sane range so a typo can't open the floodgates.
-WORKERS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana", "Ghassan")
+WORKERS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana", "Ghassan", "Omar")
 LIMITS = {
     "daily_api": ("usd", 0, 100, "Daily API cap, whole company"),
     "per_idea": ("usd", 0, 20, "API cap per idea (research + judgment)"),

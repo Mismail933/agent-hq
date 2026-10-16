@@ -46,6 +46,7 @@ REGISTRY = [
     ("Scout",  "Ideas",     "Reference scout",    "scout",  ["web_search", "web_fetch"]),
     ("Israa",  "Judgment",  "Quality reviewer",   "israa",  ["web_fetch", "web_search", "read_files"]),
     ("Ghassan", "Dev",      "In-house Builder",   "ghassan", ["edit_program"]),
+    ("Omar",   "Marketing", "Social Media Manager", "omar", ["youtube_read"]),   # 2.44.0: read-only; never uploads or posts
     # Richard runs as a daily cloud routine (richard/RICHARD.md) and only proposes; lnd.py brings his ideas in.
     ("Richard", "Learning & Dev", "L&D Lead",     "richard", []),
 ]

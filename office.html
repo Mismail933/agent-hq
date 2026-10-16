@@ -833,7 +833,7 @@ const SPOTS = {
 const MTY = MT.cy + 30;
 
 /* ---------- Agents (only real, registered ones are drawn) ---------- */
-const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product', Dev:'product', Content:'marketing', 'Learning & Dev':'ld'};
+const DEPT_OF = {Executive:'orch', Research:'research', Judgment:'judgment', Ideas:'ideas', Product:'product', Dev:'product', Content:'marketing', Marketing:'marketing', 'Learning & Dev':'ld'};
 const agents = {};
 function addAgent(info) {
   const dept = DEPT_OF[info.dept] || 'orch';
@@ -2014,6 +2014,40 @@ async function setRule(body) {
 }
 document.addEventListener('change', e => { const el = e.target.closest('[data-rule]'); if (el) { el.blur(); setRule({key:el.dataset.rule, value:el.value, action:'set', why:'changed in the office'}); } });
 document.addEventListener('click', e => { const b = e.target.closest('[data-undo]'); if (b) setRule({key:b.dataset.undo, action:'undo'}); });
+/* ---------- Your YouTube: Omar's read-only view of the channel (youtube.py, omar.py, 2.44.0) ---------- */
+function youtubeHtml(om) {
+  if (!om || !om.youtube) return '';
+  const y = om.youtube;
+  let body;
+  if (!y.client) body = `<p class="note">Omar reads your channel's numbers (views, watch time, what keeps people watching) and tells you what to change.
+      He can only read: he never uploads, posts or replies. One time, about 10 minutes:<br>
+      1. Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud console</a> and make a project (any name).<br>
+      2. APIs &amp; Services → Library: turn on <b>YouTube Data API v3</b> and <b>YouTube Analytics API</b>.<br>
+      3. OAuth consent screen: External, add your own Google account as a test user.<br>
+      4. Credentials → Create credentials → OAuth client ID → <b>Desktop app</b> → Download JSON.<br>
+      5. Choose that file here. It stays on this PC.</p>
+      <div class="lrow"><label>OAuth client file<small>The JSON Google gives you for a Desktop app.</small></label><input type="file" id="ytClient" accept=".json,application/json" aria-label="OAuth client file"></div>`;
+  else if (!y.connected) body = `<p class="note">Client file saved. Press Connect: Google's page opens in this PC's browser. Choose the account that owns the channel and allow read-only access.</p>
+      ${y.error ? `<p class="note" style="color:#FDA4AF">${esc(y.error)}</p>` : ''}
+      <div><button class="btn sm" type="button" id="ytConnect" ${y.connecting ? 'disabled' : ''}>${y.connecting ? 'Waiting for Google…' : 'Connect YouTube'}</button></div>`;
+  else {
+    const ch = om.channel;
+    body = `<p class="note">Connected${y.practice ? ' (practice numbers)' : ''}. Omar looks at the channel every day at ${esc(String(om.daily_hour))}:00 and writes a note every ${esc(({mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'})[om.weekly_day] || om.weekly_day)}.</p>
+      ${ch ? `<div class="lrow"><label>${esc(ch.title)}<small>Last look: ${esc(om.taken || '')}</small></label><b style="font-family:var(--mono)">${Number(ch.subscribers).toLocaleString()} subs · ${Number(ch.views).toLocaleString()} views</b></div>` : ''}
+      ${om.line ? `<p class="note">${esc(om.line)}</p>` : ''}
+      ${om.note ? `<p class="note">Last weekly note: <span style="font-family:var(--mono)">${esc(om.note)}</span></p>` : ''}
+      ${om.error ? `<p class="note" style="color:#FDA4AF">Last problem: ${esc(om.error)}</p>` : ''}
+      <div><button class="btn sm" type="button" id="ytNow" ${om.running ? 'disabled' : ''}>${om.running ? 'Omar is reading…' : 'Look now'}</button>
+      <button class="btn sm ghost" type="button" id="ytOff">Disconnect</button></div>`;
+  }
+  return `<div class="lim"><strong>Your YouTube</strong>${body}</div>`;
+}
+async function ytPost(path, body, raw) {
+  try { const r = await fetch(path, raw ? {method:'POST', body} : {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body || {})});
+    const j = await r.json().catch(() => ({})); toast(r.ok ? j.message : (j.error || 'Not done.')); }
+  catch { toast("Can't reach the engine."); }
+  renderPhone(true);
+}
 /* ---------- Your other computers: this office over Tailscale (remote.py, 2.39.0) ---------- */
 function remoteHtml(rm) {
   if (!rm || !rm.enabled) return '';
@@ -2033,9 +2067,10 @@ function remoteHtml(rm) {
 async function renderPhone(force) {
   if (!(space === 'hq' && page === 'limits')) return;
   const box = $('#phoneCard'); if (!force && box.contains(document.activeElement)) return;
-  let v, rm; try { v = await (await fetch('/api/phone', {cache:'no-store'})).json(); } catch { return; }
+  let v, rm, om; try { v = await (await fetch('/api/phone', {cache:'no-store'})).json(); } catch { return; }
   try { rm = await (await fetch('/api/remote', {cache:'no-store'})).json(); } catch { rm = null; }
-  const k = JSON.stringify([v, rm]); if (!force && k === phoneKey) return; phoneKey = k;
+  try { om = await (await fetch('/api/omar', {cache:'no-store'})).json(); } catch { om = null; }
+  const k = JSON.stringify([v, rm, om]); if (!force && k === phoneKey) return; phoneKey = k;
   const bot = v.bot ? `<a href="https://t.me/${encodeURIComponent(v.bot)}" target="_blank" rel="noopener">@${esc(v.bot)}</a>` : 'your bot';
   let body;
   if (!v.configured || (v.error && !v.running)) body = `
@@ -2052,7 +2087,13 @@ async function renderPhone(force) {
       Phone alerts: <b>${({decisions:'calm: only what needs you and finished videos, grouped, quiet at night, morning digest', everything:'every update', nothing:'muted: only Atlas\'s replies'})[v.send] || 'calm'}</b>. Change it in Telegram with /quiet, /all or /mute; /help lists the rest.</p>
       ${v.error ? `<p class="note" style="color:#FDA4AF">Last problem reaching Telegram: ${esc(v.error)}</p>` : ''}
       <div><button class="btn sm ghost" type="button" id="phoneUnpair">Unpair this phone</button></div>`;
-  box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>` + remoteHtml(rm);
+  box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>` + youtubeHtml(om) + remoteHtml(rm);
+  const yc = $('#ytClient');
+  if (yc) yc.addEventListener('change', async () => { const f = yc.files[0]; if (f) ytPost('/api/youtube/client', await f.arrayBuffer(), true); });
+  const yb = $('#ytConnect'); if (yb) yb.addEventListener('click', () => ytPost('/api/youtube/connect'));
+  const yn = $('#ytNow'); if (yn) yn.addEventListener('click', () => ytPost('/api/omar/now', {what:'daily'}));
+  const yo = $('#ytOff');
+  if (yo) yo.addEventListener('click', () => { if (confirm('Disconnect YouTube? Omar stops reading the channel until you connect again.')) ytPost('/api/youtube/disconnect'); });
   const nc = $('#remoteNew');
   if (nc) nc.addEventListener('click', async () => {
     if (!confirm('Make a new access code? Every other computer is signed out and must enter the new code.')) return;

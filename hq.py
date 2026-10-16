@@ -30,6 +30,7 @@ Atlas's controls for Agent HQ.
                  voice-match <project> [record [secs] | <clip file> | show | add <voice id> <owner id> "name"] | cast-voice <project> <character> <voice>
                  cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version]
                  ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
+                 omar [status | now | weekly | suggest <episode>] | channel-stats     (Omar, Social Media Manager: the YouTube channel, read-only)
                  fetch <link> [link...]     (see a link the owner sent: images saved to review/refs/, YouTube title/channel/description/thumbnail)
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
@@ -64,7 +65,7 @@ NOT_RUNNING = "The office isn't running, so nothing can be ordered right now. As
 # the office was fine and still finishing it; Atlas then told the owner the office was down (and sent the video twice).
 BUSY = ("The office is running but busy: it didn't answer within {secs} s. The order may still finish. Check `hq activity 10` "
         "before repeating it, and don't tell the owner the office is down.")
-SLOW = ("/api/phone", "/send", "/render", "/batch", "/voice", "/cast", "/design", "/frames", "/style-frames")
+SLOW = ("/api/phone", "/send", "/render", "/batch", "/voice", "/cast", "/design", "/frames", "/style-frames", "/omar/suggest")
 
 
 def show(obj):
@@ -379,6 +380,23 @@ def main(argv):
             else:
                 import rules
                 show({k: rules.get(k) for k in ("atlas.autopilot", "atlas.autopilot_minutes", "atlas.autopilot_approve", "atlas.ships")})
+        elif cmd == "omar":   # hq omar [status | now | weekly | suggest <episode>]: the Social Media Manager (read-only)
+            sub = args[0] if args else "status"
+            if sub == "status":
+                import omar
+                show(omar.view())
+            elif sub in ("now", "weekly"):
+                code, reply = office("/api/omar/now", {"what": "weekly" if sub == "weekly" else "daily"})
+                show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+            elif sub == "suggest":
+                code, reply = office(f"/api/omar/suggest/{int(args[1])}", {})
+                show(reply.get("suggestion") if code < 300 else f"Not done: {reply.get('error')}")
+            else:
+                show("hq omar [status | now | weekly | suggest <episode>]")
+        elif cmd == "channel-stats":   # the newest snapshot of the YouTube channel Omar took (numbers only)
+            import omar
+            snaps = omar.snapshots(n=1)
+            show(snaps[-1] if snaps else "No snapshot yet: the owner connects YouTube in Spend & limits, then hq omar now.")
         elif cmd == "ghassan":   # hq ghassan [status | now | diff | ship | discard "why"]: the in-house Builder
             sub = args[0] if args else "status"
             if sub == "now":
