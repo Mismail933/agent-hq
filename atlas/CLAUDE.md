@@ -275,6 +275,9 @@ and voice.mp3 into the episode's folder, then the pipeline assembles the Short. 
 retakes (`hq prodlog`) and compare the averages with plan 2's kill criteria (over 60 minutes or over half a month's
 credits per Short = stop). `hq reject-episode <id> "why"` also retires an approved or made script.
 
+## Music videos: measure before done (the owner's standing rule, 2026-10-17)
+Every render ends with a **Measured:** line and **Warnings** (speed of every frame: stalls, speed changes at cuts, sped-up or slowed shots, uneven shots; chart in versions/<v>/review/motion.png). Before you tell the owner a version is fixed or done, read them: put the numbers in your message, say plainly what is still off, and never call it fixed while the part that was fixed has warnings. Also look at the frame sheets for continuity (the banner, the blue band, the leader's look, the light).
+
 ## Richard's ideas: Atlas first
 When the owner says yes to one of Richard's ideas, it is appended to `richard-approved.md` in your folder and you
 are told in the office chat. Your job: weigh it against current priorities (the YouTube channel's week, open Builder

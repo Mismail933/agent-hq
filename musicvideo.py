@@ -485,12 +485,132 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
     for old in rv.glob("sheet-*.png"):
         old.unlink()
     run(["-i", outs["wide"], "-vf", "fps=1/2,scale=384:-1,tile=5x4", rv / "sheet-%02d.png"])
+    say("  measuring every frame (speed, stalls, cuts)...")
+    motion = motion_report(outs["wide"], shots, end, rv)
     n_vid = sum(1 for s in shots if s.get("video"))
     res = {"ok": True, "wide": str(outs["wide"]), "vertical": str(outs.get("vertical", "")), "phone": str(phone),
            "seconds": round(end, 2), "shots": len(shots), "video_shots": n_vid, "picture_shots": len(shots) - n_vid,
            "made_now": len(todo), "quick": quick, "sheets": sorted(str(p) for p in rv.glob("sheet-*.png")),
-           "minutes": round((time.time() - t0) / 60, 1)}
+           "minutes": round((time.time() - t0) / 60, 1), "motion": motion}
     return res
+
+
+# ---- The motion report (2.46.0; the owner, 2026-10-17: "measure his work properly before telling me it's done") ----------------
+MOTION_W, MOTION_H = 320, 180
+STALL_RATIO, JUMP_RATIO, JOIN_RATIO = 0.45, 2.5, 1.8
+FAST_MAX, SLOW_MIN = 1.15, 0.87         # a video shot played faster/slower than this is listed (sped-up clips looked fake to him)
+
+
+def _motion_series(path, until):
+    """Motion of every frame: optical flow (90th percentile, px/frame at 320 wide) when OpenCV is there, else frame difference."""
+    try:
+        import cv2
+    except ImportError:
+        cv2 = None
+    p = subprocess.Popen([FF, "-v", "error", "-i", str(path), "-t", f"{until:.3f}", "-vf", f"scale={MOTION_W}:{MOTION_H}", "-f", "rawvideo",
+                          "-pix_fmt", "gray", "-"], stdout=subprocess.PIPE)
+    n = MOTION_W * MOTION_H
+    prev, out = None, []
+    while True:
+        raw = p.stdout.read(n)
+        if len(raw) < n:
+            break
+        cur = np.frombuffer(raw, np.uint8).reshape(MOTION_H, MOTION_W)
+        if prev is not None:
+            if cv2 is not None:
+                f = cv2.calcOpticalFlowFarneback(prev, cur, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+                out.append(float(np.percentile(np.hypot(f[..., 0], f[..., 1]), 90)))
+            else:
+                out.append(float(np.abs(cur.astype(np.int16) - prev.astype(np.int16)).mean()) / 3.0)
+        prev = cur
+    p.wait()
+    return np.array(out), ("optical flow" if cv2 is not None else "frame difference")
+
+
+def motion_report(path, shots, end, rv):
+    """Speed curve of the finished video: per shot (median speed, unevenness, stalls), speed changes at cuts, sped-up or slowed shots.
+    Writes review/motion.json + motion.png; returns {summary, warnings}."""
+    m, how = _motion_series(path, end)
+    if len(m) < 10:
+        return {"summary": "too short to measure", "warnings": []}
+    t = (np.arange(len(m)) + 1) / FPS
+    cuts = sorted({round(float(s["start"]), 3) for s in shots} | {round(float(s["end"]), 3) for s in shots})
+    near_cut = lambda x: any(abs(x - c) < 1.5 / FPS for c in cuts)
+    def med(a, b):
+        sel = m[(t >= a) & (t < b)]
+        return float(np.median(sel)) if len(sel) else 0.0
+    stalls, jumps = [], []
+    for i in range(len(m)):
+        nb = np.r_[m[max(0, i - 3):i], m[i + 1:i + 4]]
+        ref = float(np.median(nb)) if len(nb) else 0.0
+        if ref < 1.0 or near_cut(t[i]):
+            continue
+        if m[i] < STALL_RATIO * ref:
+            stalls.append(round(float(t[i]), 2))
+        elif m[i] > JUMP_RATIO * ref:
+            jumps.append(round(float(t[i]), 2))
+    per, joins, speed = [], [], []
+    ordered = sorted(shots, key=lambda s: float(s["start"]))
+    for k, s in enumerate(ordered):
+        a, b = float(s["start"]), min(float(s["end"]), end)
+        if k + 1 < len(ordered):
+            b2 = min(b, float(ordered[k + 1]["start"]))   # leave out the dissolve into the next shot
+        else:
+            b2 = b
+        sel = m[(t >= a + 0.1) & (t < b2 - 0.1)]
+        lr = np.log(np.maximum(sel[1:], 0.05) / np.maximum(sel[:-1], 0.05)) if len(sel) > 2 else np.array([0.0])
+        per.append({"id": s.get("id"), "start": round(a, 2), "end": round(b, 2), "speed_median": round(float(np.median(sel)), 2) if len(sel) else 0,
+                    "unevenness": round(float(lr.std()), 3)})
+        if s.get("video") and s.get("to") is not None:
+            f = (float(s["to"]) - float(s.get("from", 0))) / max(1e-6, b - a) if b > a else 1.0
+            if f > FAST_MAX or f < SLOW_MIN:
+                speed.append({"id": s.get("id"), "at": round(a, 2), "factor": round(f, 2)})
+        if k + 1 < len(ordered):
+            c = float(ordered[k + 1]["start"])
+            if c >= b - 1e-3 and c < end - 1:             # a straight cut (not a dissolve)
+                l, r = med(c - 1.0, c - 0.1), med(c + 0.1, c + 1.0)
+                if min(l, r) > 0.8 and max(l, r) / min(l, r) > JOIN_RATIO:
+                    joins.append({"at": round(c, 2), "before": round(l, 2), "after": round(r, 2)})
+    warns = []
+    if stalls:
+        warns.append(f"{len(stalls)} stall(s) (a frame that nearly stops while the picture moves): " + ", ".join(f"{x:.2f}s" for x in stalls[:8]))
+    if jumps:
+        warns.append(f"{len(jumps)} jump(s) inside a shot: " + ", ".join(f"{x:.2f}s" for x in jumps[:8]))
+    for j in joins:
+        warns.append(f"speed changes {max(j['before'], j['after']) / min(j['before'], j['after']):.1f}x at the cut {j['at']:.2f}s "
+                     f"({j['before']} -> {j['after']})")
+    for s in speed:
+        warns.append(f"shot {s['id']} at {s['at']:.2f}s is played at {s['factor']}x ({'sped up' if s['factor'] > 1 else 'slowed'})")
+    rough = [p for p in per if p["unevenness"] > 0.18 and p["speed_median"] > 1.0 and p["end"] - p["start"] > 1.5]
+    for p in rough:
+        warns.append(f"shot {p['id']} ({p['start']:.1f}-{p['end']:.1f}s) moves unevenly ({p['unevenness']}; a smooth clip is ~0.10)")
+    summary = (f"measured every frame ({how}): median speed {float(np.median(m)):.2f}, {len(stalls)} stalls, {len(jumps)} jumps, "
+               f"{len(joins)} speed changes at cuts, {len(speed)} sped-up/slowed shots, {len(rough)} uneven shots")
+    (rv / "motion.json").write_text(json.dumps({"method": how, "summary": summary, "warnings": warns, "shots": per, "stalls": stalls,
+                                                "jumps": jumps, "joins": joins, "speed": speed,
+                                                "series": [round(float(x), 2) for x in m]}, indent=1), encoding="utf-8")
+    try:   # the chart: speed of every frame, cuts as lines, problems marked
+        Wc, Hc, L, B = 1600, 420, 50, 40
+        im = Image.new("RGB", (Wc, Hc), (18, 18, 24))
+        d = ImageDraw.Draw(im)
+        top = max(6.0, float(np.percentile(m, 99)))
+        X = lambda x: L + x / end * (Wc - L - 10)
+        Y = lambda v: Hc - B - min(v, top) / top * (Hc - B - 20)
+        for c in cuts:
+            d.line([(X(c), 20), (X(c), Hc - B)], fill=(50, 50, 64))
+        pts = [(X(x), Y(v)) for x, v in zip(t, m)]
+        d.line(pts, fill=(120, 190, 255), width=1)
+        for x in stalls:
+            d.ellipse([X(x) - 6, Y(0.5) - 6, X(x) + 6, Y(0.5) + 6], outline=(255, 90, 90), width=2)
+        for j in joins:
+            d.line([(X(j["at"]), 20), (X(j["at"]), Hc - B)], fill=(255, 170, 60), width=2)
+        for s in range(0, int(end) + 1, 15):
+            d.text((X(s) - 10, Hc - B + 8), f"{s // 60}:{s % 60:02d}", fill=(200, 200, 200))
+        d.text((L, 4), "speed of every frame; grey = cuts, orange = speed change at a cut, red = stall", fill=(220, 220, 220))
+        im.save(rv / "motion.png")
+    except Exception:
+        pass
+    return {"summary": summary, "warnings": warns}
 
 
 def _init_ff(ff):
@@ -503,7 +623,19 @@ def _do(job):
     return fn(args)
 
 
+def measure(edit_path, video, a=0.0, b=None):
+    global FF
+    FF = ffmpeg()
+    plan, base, shots, end, problems = load(edit_path)
+    rv = Path(video).parent / "review"
+    rv.mkdir(exist_ok=True)
+    return motion_report(video, shots, end if b is None else b, rv)
+
+
 def main():
+    if len(sys.argv) >= 4 and sys.argv[1] == "measure":
+        print("RESULT " + json.dumps(measure(sys.argv[2], sys.argv[3])), flush=True)
+        return 0
     if len(sys.argv) < 4 or sys.argv[1] != "render":
         print(__doc__)
         return 2

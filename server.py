@@ -1210,7 +1210,10 @@ def run_mv_render(pid, idea, version, about="", quick=False, vertical=False, by=
                    f"videos + {res['picture_shots']} paintings; made in {res['minutes']} min"
                    + (", a QUICK TEST at half size" if quick else "") + "). Look at the frame sheets first ("
                    + ", ".join(Path(x).relative_to(ROOT).as_posix() for x in res["sheets"][:2]) + (" ..." if len(res["sheets"]) > 2 else "")
-                   + f"), then send it: `hq send-phone {rel} \"caption\"`.")
+                   + f"), then send it: `hq send-phone {rel} \"caption\"`."
+                   + ("\n\n**Measured:** " + res["motion"]["summary"] + "." if res.get("motion") else "")
+                   + ("\n**Warnings (say these to the owner; don't call it fixed):**\n- " + "\n- ".join(res["motion"]["warnings"][:10])
+                      if res.get("motion", {}).get("warnings") else ""))
     except Exception as ex:
         cp.log(by, "mv_failed", None, {"project": pid, "idea": idea, "version": version, "reason": str(ex)[:300]})
         atlas_says(f"The music video ({name}, {idea}, {version}) didn't render: {ex}")

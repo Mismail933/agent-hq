@@ -7,3 +7,4 @@ pillow
 certifi
 numpy
 SoundCard==0.4.5
+opencv-python-headless   # musicvideo.py's motion report (2.46.0): optical flow of every frame; without it a cruder frame difference is used
