@@ -28,6 +28,11 @@ def is_v2(ep):
     return bool((ep.get("data") or {}).get("shots"))
 
 
+def is_story(ep):
+    """A long narrated story (format story_v1, 2.47.0): sections of narration, no renderer yet."""
+    return bool((ep.get("data") or {}).get("sections"))
+
+
 def is_animated(ep):
     """An episode written as a scene file (plan 3): the cartoon engine makes it, nobody supplies clips."""
     return bool((ep.get("data") or {}).get("scenes"))

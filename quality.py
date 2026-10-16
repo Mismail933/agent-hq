@@ -391,6 +391,38 @@ The scripts:
 {scripts}
 """
 
+STORY_TASK = """Review these LONG narrated story scripts from Calina (YouTube videos of several minutes, one narrator, our own flat
+cartoon on screen). The channel learns from The Infographics Show; the guide they follow is below. Judge each one on:
+1. Cold open: do the first 30 seconds drop a stranger into a real moment, in the present tense, with sensory detail? A greeting,
+   "did you know", or a summary fails.
+2. Spine: is the `shape` really used (a clock that moves, a life in order, a countdown, a legend then its test)? Name the section
+   where the spine stalls.
+3. Re-hooks: is there an open loop, turn or cliffhanger at least every ~300 words? Name the longest stretch without one.
+4. Facts: every key fact backed by its quoted source. Open the sources (WebFetch) for the three most surprising facts and check
+   they really say that. A fact the source doesn't support fails the script. Imagined scenes must be labelled as imagined.
+5. Numbers: at least one hard number a minute (about every 200 words), each made physical; each section's `numbers` match its narration.
+6. Real voices: at least three real quotes with sources. A made-up quote presented as real fails.
+7. Voice-over: written for the ear, sentences of mixed length, plain words, humour present but never about a victim. A flat,
+   encyclopedia tone fails. There is no length target: padding fails, so does rushing a story to be short.
+8. The turn and the ending: a real turn near the end; the ending has one strong line, one comment question, one next-video line.
+9. Pictures: every section's `shows` is something an animator can draw and that really shows what the narration says.
+10. Originality and copying: different from the earlier episodes below; NOT a retelling of an Infographics Show script (same
+   title, same structure beat for beat, their phrases) - that fails.
+11. Platform risk: advertiser-safe (no graphic gore, no sexual content, no drug instructions, no glorifying a killer, no medical,
+   legal or financial advice, no party politics). Name anything YouTube could limit or remove.
+A script passes only if it is genuinely good (score 7 or more out of 10) and has no blocking problem.
+
+<guide>
+{guide}
+</guide>
+
+Earlier episodes of this channel:
+{history}
+
+The scripts:
+{scripts}
+"""
+
 REVIEW_SCHEMA = {
     "type": "object",
     "properties": {"reviews": {"type": "array", "items": {"type": "object", "properties": {
@@ -522,7 +554,15 @@ def review_scripts(p, eps, rnd=0):
             {k: v for k, v in e["data"].items() if k not in ("review", "review_history")}, ensure_ascii=False, indent=1)
             for e in eps)
         system = ISRAA_BASE.format(today=_today(), style=_style_block(p["id"]))
-        got, _ = workers.run(ISRAA, p["idea_id"], system, SCRIPTS_TASK.format(history=history, scripts=scripts),
+        if (p.get("meta") or {}).get("format") == "story_v1":   # 2.47.0: long narrated stories have their own checklist
+            try:
+                guide = (Path(__file__).parent / "guides" / "STORY-GUIDE.md").read_text(encoding="utf-8")
+            except OSError:
+                guide = "(The story guide is missing.)"
+            task = STORY_TASK.format(guide=guide, history=history, scripts=scripts)
+        else:
+            task = SCRIPTS_TASK.format(history=history, scripts=scripts)
+        got, _ = workers.run(ISRAA, p["idea_id"], system, task,
                              tools=("WebFetch", "WebSearch"), schema=REVIEW_SCHEMA, max_turns=30)
         got = got.get("reviews", [])
     by = {r["episode"]: r for r in got}

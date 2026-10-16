@@ -14,6 +14,7 @@ Atlas's controls for Agent HQ.
                  resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
                  design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
                  project-new "<name>" --kind client_music_video ["brief"]     (a client project: ONLY on the owner's explicit word)
+                 channel-new "<name>" ["brief"]     (a new channel of long narrated stories: ONLY on the owner's explicit word)
                  client <project> | client-brief <project> "brief" | style-frames <project> ["brief"] | style-pick <project> <version> <option>     (client projects; the owner picks the look)
                  mv <project> <idea> | mv-shot <project> <idea> <shot> <clip> [--from S] | mv-render <project> <idea> [version] ["what changed"] [--quick] [--vertical]     (music videos)
                  studio <project> images|video <count> "brief" [--shape 9:16|16:9|9:16,16:9] [--ref <file>]... | studio-status     (pictures and clips made on the owner's Mac: he starts it there by hand)
@@ -260,8 +261,13 @@ def main(argv):
             notes = " ".join(args[2:] if count else args[1:])
             order(f"/api/content/{int(args[0])}/batch", {"count": count, "notes": notes, "topic": topic},
                   "Calina is writing the batch. The scripts will land in the project's Episodes page and in the office chat.")
-        elif cmd == "refs":   # the Scout researches what works and writes a reference board
-            order(f"/api/content/{int(args[0])}/scout", {"notes": " ".join(args[1:])},
+        elif cmd == "refs":   # the Scout researches what works: hq refs <project> [--links "<url> <url>"] [notes] (2.47.0: --links)
+            rest, links = list(args[1:]), ""
+            if "--links" in rest:
+                i = rest.index("--links")
+                links = rest[i + 1] if i + 1 < len(rest) else ""
+                del rest[i:i + 2]
+            order(f"/api/content/{int(args[0])}/scout", {"notes": " ".join(rest), **({"links": links} if links else {})},
                   "The Scout is researching what works on YouTube (5-10 minutes). The board lands in the project's Reference board page and in the office chat.")
         elif cmd == "board":
             b = cp.latest_refboard(int(args[0]))
@@ -594,6 +600,9 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "design":   # Rana draws: hq design <what> ["brief"] (3 options, rendered, checked by Israa, sent to the owner)
             code, reply = office("/api/design", {"what": args[0], "brief": " ".join(args[1:])})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "channel-new":   # hq channel-new "<name>" ["brief"]: a new channel of long narrated stories, ONLY on the owner's word
+            code, reply = office("/api/channel/new", {"name": args[0] if args else "", "format": "story_v1", "brief": " ".join(args[1:])})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "project-new":   # hq project-new "<name>" --kind client_music_video ["brief"]: only on the owner's explicit word
             kind, rest = "client_music_video", list(args)

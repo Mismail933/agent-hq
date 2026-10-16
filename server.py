@@ -2459,6 +2459,9 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(400, {"error": "Compare two or three voices at a time (each one costs ElevenLabs characters and a render)."})
                     known = {v["id"] for v in voice_samples(cp.get_project(e["project_id"], with_text=False) or {"id": e["project_id"]})["voices"]}
                     voices = [v if v in known or ":" in v else "eleven:" + v for v in voices]
+                if production.is_story(e):   # 2.47.0: long story scripts are written and approved; their renderer comes next
+                    return self._send(409, {"error": "This is a long story script. Its video renderer (our own flat style, the owner's character) "
+                                            "isn't built yet: the Builder builds it once the owner approves the style. The approved script is kept."})
                 if production.is_animated(e):
                     pr = cp.get_project(e["project_id"], with_text=False) or {}
                     if not quality.characters_ready(pr):
@@ -2625,6 +2628,20 @@ class Handler(BaseHTTPRequestHandler):
             busy = working_now()
             return self._send(202, {"ok": True, "message": "The office restarts " + ("once this is done: " + "; ".join(busy) if busy else "now")
                                     + ". It loads the newest version from GitHub; saved jobs resume after it (about 30 s)."})
+        if u.path == "/api/channel/new":   # 2.47.0: a new channel by the owner's word: {name, format, brief, by} (hq channel-new)
+            body = self._json_body()
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            fmt = str(body.get("format") or agents.STORY_FORMAT)
+            if fmt != agents.STORY_FORMAT:
+                return self._send(400, {"error": f"Unknown channel format '{fmt}'. Known: {agents.STORY_FORMAT} (long narrated stories)."})
+            try:
+                pid = cp.new_channel_project(body.get("name", ""), fmt, clip(body.get("brief", ""), "notes")[0], by)
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            atlas_says(f"**New channel project: {cp.get_project(pid, with_text=False)['title']}** (project {pid}, long narrated stories), "
+                       f"made by {by}. Calina writes from guides/STORY-GUIDE.md (the study of The Infographics Show's 20 most-viewed videos). "
+                       f"Next, the standing rule: the Scout's reference board (`hq refs {pid}`), the owner picks a direction, then `hq batch {pid}`.")
+            return self._send(200, {"ok": True, "project": pid, "message": f"Project {pid} is open on the left rail."})
         if u.path == "/api/client/new":   # a client project by the owner's word: {name, kind, brief, by} (office or hq project-new)
             body = self._json_body()
             by = "Owner" if body.get("by") == "owner" else "Atlas"

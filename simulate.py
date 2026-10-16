@@ -123,6 +123,23 @@ class _Messages:
                     "kill_criteria": "No paying customer in 6 weeks"}
             return NS(stop_reason="tool_use", usage=_usage(7000, 1500, 0 if fitted else 1),
                       content=[NS(type="tool_use", id=_id(), name="submit_plan", input=plan)])
+        if ("You are Calina," in system[:30000]) and "LONG narrated story scripts" in system:   # 2.47.0: story_v1
+            def ep4(title, subject, place, year, shape):
+                secs = [{"heading": f"Part {i}", "marker": f"Hour {i}", "narration": f"Simulated narration for part {i} of {subject}. " * 12,
+                         "shows": "Our character watches a gauge fill.", "numbers": [f"{i * 10} metres"], "rehook": "But then something changed."}
+                        for i in range(1, 8)]
+                return {"title": title, "subject": subject, "place": place, "year": year, "family": "survival", "shape": shape,
+                        "hook": "The water is already at your chest.", "cold_open": "The water is already at your chest. " * 8,
+                        "title_question": f"How did {subject} survive?", "oddities": ["A simulated true oddity."], "sections": secs,
+                        "ending": "He never went back. Would you? Next, watch another survival story.", "surprising_fact": "A simulated fact.",
+                        "storyline": "Trapped, the long wait, the rescue.", "thumbnail": "3 DAYS DOWN: a man in an air pocket",
+                        "sources": [{"url": "https://example.com/source", "quote": "Simulated quote", "publisher": "Example Archive"}],
+                        "description": "Simulated description. AI-assisted: script and voice made with AI; facts sourced below.",
+                        "hashtags": ["#truestory", "#survival"]}
+            eps = [ep4("Trapped Under the Ice for 2 Hours", "a diver under lake ice", "Norway", "1999", "clock"),
+                   ep4("The Prison Tunnel Nobody Heard", "a tunnel escape", "Mexico", "2015", "life_in_order")]
+            return NS(stop_reason="tool_use", usage=_usage(12000, 6000, 2),
+                      content=[NS(type="tool_use", id=_id(), name="submit_batch", input={"episodes": eps, "batch_note": "Simulated story batch."})])
         if ("You are Calina," in system[:30000]) and "as SCENE FILES" in system:
             def ep3(place, year):
                 kit = ["court", "library", "nile", "well", "study", "map", "street", "study", "desert"]

@@ -447,6 +447,17 @@ def new_client_project():
                            (time.time(), "approved", time.time())).lastrowid
 
 
+def new_channel_project(name, fmt, brief="", by="Owner"):
+    """A new channel by the owner's word (2.47.0): an approved project with no idea and no plan; the brief stands in for the plan."""
+    name = " ".join(str(name or "").split())[:80]
+    if not name:
+        raise ValueError("Give the channel a name (a working name is fine; it can be changed later).")
+    pid = new_client_project()
+    set_project_meta(pid, name=name, format=fmt, brief=str(brief or "").strip()[:4000], made_by=by)
+    log(by, "channel_project_created", None, {"project": pid, "name": name, "format": fmt})
+    return pid
+
+
 def update_project(pid, **fields):
     assert set(fields) <= set(PROJECT_FIELDS), fields
     if isinstance(fields.get("plan"), (dict, list)):

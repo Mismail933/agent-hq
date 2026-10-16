@@ -2273,7 +2273,7 @@ let producingFor = null, reviewing = false, atlasLimit = null, lastFail = {};
 let STATES = {}, WAITS = {hq:[], blocked:[], per:{}, P:[], total:0}, shellKey = '', detailKey = '';
 const HQ_PAGES = {today:'Today', ideas:'Ideas', office:'Office & team', lnd:'Learning', limits:'Spend & limits'};
 const HUES = [318, 210, 172, 24, 280, 196, 100, 340];
-const FMT = {animated_v1:['YouTube · animated Shorts', 'A', 'Animated'], openart_v2:['YouTube · clips made in OpenArt', 'O', 'OpenArt'], client_music_video:['Client · music video', 'C', 'Client']};
+const FMT = {animated_v1:['YouTube · animated Shorts', 'A', 'Animated'], openart_v2:['YouTube · clips made in OpenArt', 'O', 'OpenArt'], client_music_video:['Client · music video', 'C', 'Client'], story_v1:['YouTube · long stories', 'S', 'Stories']};
 const FMT_PHOTO = ['YouTube · photo Shorts', 'P', 'Photo'];
 const tone = (h, l, a = 1) => `hsl(${h} 88% ${l}% / ${a})`;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
