@@ -464,8 +464,17 @@ def run(a, spec, folder):
     say("3. render")
     out = folder.parent / (folder.name + ".mp4")
     t0 = time.time()
-    story.remotion(["render", "src/index.jsx", "Opening", str(out), f"--props={folder / 'props.json'}", f"--concurrency={story.CONCURRENCY}", "--codec=h264",
-                    "--crf=18", "--audio-codec=aac", "--overwrite", "--log=error"])
+    # the picture without sound, then our own measured mix added with ffmpeg: Remotion's audio step crashed on a 10-minute track
+    # (its ffmpeg exited -2 after 24 minutes of frames, 2026-10-17)
+    silent = folder / "_picture.mp4"
+    story.remotion(["render", "src/index.jsx", "Opening", str(silent), f"--props={folder / 'props.json'}", f"--concurrency={story.CONCURRENCY}", "--codec=h264",
+                    "--crf=18", "--muted", "--overwrite", "--log=error"])
+    ff = shorts.find_ffmpeg()
+    r = subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(silent), "-i", str(wav), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                        "-shortest", "-movflags", "+faststart", str(out)], capture_output=True, text=True)
+    if r.returncode != 0 or not out.exists():
+        raise story.Blocked("adding the sound failed: " + (r.stderr or "")[-400:])
+    silent.unlink(missing_ok=True)
     say(f"   rendered in {(time.time() - t0) / 60:.1f} min")
     ffmpeg = shorts.find_ffmpeg()
     sheets = story.review_sheets(ffmpeg, out, folder, total)
