@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.301",
-   "checked": "2026-10-16"
+   "last_seen": "2.1.302",
+   "checked": "2026-10-17"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-15 Opus 5.5 fast mode GA; Haiku 5.5 launched 10-07",
-   "checked": "2026-10-16"
+   "last_seen": "2026-10-15 Opus 5.5 fast mode GA; 10-14 OpenTelemetry beta",
+   "checked": "2026-10-17"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-15 independent evaluators update; no new models",
-   "checked": "2026-10-16"
+   "checked": "2026-10-17"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -64,6 +64,16 @@
    "url": "https://code.claude.com/docs/en/model-config",
    "last_seen": "fallback chains max 3, never on rate-limit; classifier fallback",
    "checked": "2026-10-16"
+  },
+  "claude-code-routines-doc": {
+   "url": "https://code.claude.com/docs/en/routines",
+   "last_seen": "routines draw subscription usage; overage via usage credits; 1 h minimum interval",
+   "checked": "2026-10-17"
+  },
+  "youtube-monetization-policy": {
+   "url": "https://support.google.com/youtube/answer/1311392",
+   "last_seen": "last dated change July 15, 2025",
+   "checked": "2026-10-17"
   }
  },
  "repos": {
@@ -110,10 +120,10 @@
    "note": "MIT session viewer; overlaps claude-devtools."
   },
   "Jakeschincariol/arena-skill": {
-   "stars": 507,
+   "stars": 688,
    "last_commit": "2026-09-27",
    "verdict": "watch",
-   "checked": "2026-10-13",
+   "checked": "2026-10-17",
    "note": "MIT; picks the best of several tries of a task"
   },
   "eat-pray-ai/yutu": {
@@ -129,6 +139,13 @@
    "verdict": "skip",
    "checked": "2026-10-14",
    "note": "MIT; needs outside Editkin service"
+  },
+  "gotalab/cc-sdd": {
+   "stars": 3720,
+   "last_commit": "2026-10-13",
+   "verdict": "skip",
+   "checked": "2026-10-17",
+   "note": "MIT spec-driven coding harness; not needed."
   }
  },
  "issues": {

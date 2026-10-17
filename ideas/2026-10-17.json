@@ -1,0 +1,173 @@
+{
+ "date": "2026-10-17",
+ "focus": "agents",
+ "note": "No new idea today. Nothing in the sweep changes our code. Two things to know: Claude Code is now at 2.1.302, and the docs say routines (including mine) draw on your subscription usage, with the one-time cloud credit reported to end around Nov 5 (secondary sources disagree on the exact day).",
+ "research": {
+  "searches": 15,
+  "pages_read": 9,
+  "minutes": 15,
+  "questions": [
+   "Did Claude Code 2.1.302 or the API/news pages change anything about claude -p, --json-schema, routines or caching that our workers rely on?",
+   "Does the routines doc change what happens to Richard when the cloud credit ends (billing, limits, failed-run handling)?",
+   "Is there evidence that Israa (Opus) reviewing Calina (Sonnet) scripts is skewed by self-preference, and would a change be worth the cost?",
+   "Has YouTube published anything new on inauthentic or AI content since the 2026-10-08 notes?"
+  ],
+  "gaps": [
+   "No official page confirming the exact end date of the cloud-session credit (only secondary news; Nov 4 vs Nov 5 differ by time zone).",
+   "No official YouTube announcement dated October 2026; the YouTube blog page I opened had no dated posts.",
+   "No test of self-preference bias on our own Calina/Israa pairs; the paper tests other tasks and same-family judges.",
+   "Could not confirm Remotion 5.0 terms text on contractor counting."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.302: fork subagents on by default in claude -p and the SDK (CLAUDE_CODE_FORK_SUBAGENT=0 turns off); subagent Agent calls run in foreground in claude -p; prompt cache miss fixed for tools loaded via ToolSearch; no --json-schema change.",
+  "Claude Code 2.1.302 routines: a scheduled run that failed partway is no longer re-run an hour or more later; a run whose cloud session stopped unexpectedly now shows as failed.",
+  "Routines doc: scheduled runs on the hour can start several minutes late (use :07); minimum interval 1 hour; run-fire text is wrapped as untrusted data.",
+  "API release notes 2026-10-15: Opus 5.5 fast mode out of preview (no beta header). 10-14: OpenTelemetry export beta for Messages API. Nothing for models we use.",
+  "ElevenLabs: Eleven v4 launch promo (3x credits on Creator+) ended Oct 12-14 (aggregator report, not the official pricing page)."
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "2.1.302 only; no change to flags we use. Read the first 100k characters."
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Opus 5.5 fast mode GA, OpenTelemetry beta; no new models."
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Policy, office and evaluator posts; no model or product that changes our choices."
+  },
+  {
+   "title": "Claude Code routines doc",
+   "url": "https://code.claude.com/docs/en/routines",
+   "tier": "A",
+   "result": "used",
+   "why": "Routines draw subscription usage; usage credits give overage; late-start and failure rules."
+  },
+  {
+   "title": "Claude Code on the web doc",
+   "url": "https://code.claude.com/docs/en/claude-code-on-the-web",
+   "tier": "A",
+   "result": "used",
+   "why": "Cloud sessions count toward plan limits; no separate VM charge; shares rate limits."
+  },
+  {
+   "title": "Claude Code cloud environments doc",
+   "url": "https://code.claude.com/docs/en/cloud-environments",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Network, secrets and setup caching; nothing affecting Richard."
+  },
+  {
+   "title": "YouTube Help: Monetization policies (answer 1311392)",
+   "url": "https://support.google.com/youtube/answer/1311392",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Latest dated change on the page is July 15, 2025 (inauthentic content wording)."
+  },
+  {
+   "title": "YouTube Official Blog",
+   "url": "https://blog.youtube/news-and-events/",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Page showed no dated posts."
+  },
+  {
+   "title": "Self-Preference Bias in Rubric-Based Evaluation (Pombal et al.)",
+   "url": "https://arxiv.org/abs/2604.06996",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Real effect (judges up to 50% more likely to wrongly pass their own output), but it studies same-family judges on other tasks; Calina is Sonnet, Israa is Opus, and the stranger test is a fresh run with only the transcript."
+  },
+  {
+   "title": "Cloud-session credit coverage (pasqualepillitteri.it, search result)",
+   "url": "https://pasqualepillitteri.it/en/news/17933/claude-code-cloud-sessions-credit-250-dollars",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "Snippet only, not opened: Pro $100 / Max $250, claim by Oct 7, expiry reported as Nov 5 (or Nov 4 in US time). Not official."
+  },
+  {
+   "title": "Remotion license FAQ and terms",
+   "url": "https://www.remotion.dev/docs/license/faq",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Search snippet only: free up to 3 people, headcount counted across collaborations; 5.0 terms not read."
+  },
+  {
+   "title": "Shorts retention benchmark blogs (gofaceless, quso, aibrify)",
+   "url": "https://www.gofaceless.ai/en/blog/high-retention-youtube-shorts-attributes",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Vendor blogs with conflicting numbers (2s vs 3s drop-off); no YouTube data. Not used."
+  },
+  {
+   "title": "Faceless channel monetization guides (vidiq, outlierkit)",
+   "url": "https://outlierkit.com/resources/faceless-youtube-channel-demonetized/",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Consistent with what we already follow (own script, own narration); no official source."
+  },
+  {
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:>2026-09-17&sort=stars&order=desc",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Mostly dev-workflow hubs (cc-sdd, buildwithclaude); nothing for scripts or video."
+  },
+  {
+   "title": "GitHub search: faceless Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless+pushed:>2026-09-17&sort=stars&order=desc",
+   "tier": "A",
+   "result": "rejected",
+   "why": "All 0-1 stars, no licence."
+  },
+  {
+   "title": "GitHub search: LLM token cost / caching",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching+pushed:>2026-09-17&sort=stars&order=desc",
+   "tier": "A",
+   "result": "rejected",
+   "why": "Two tiny repos; glyphdown looks noncommercial (PolyForm)."
+  },
+  {
+   "title": "GitHub search: multi-agent evaluation / LLM judge",
+   "url": "https://api.github.com/search/repositories?q=multi-agent+orchestration+script+evaluation+llm-judge+pushed:>2026-09-17&sort=stars&order=desc",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Zero results."
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "Jakeschincariol/arena-skill",
+   "url": "https://github.com/Jakeschincariol/arena-skill",
+   "licence": "MIT",
+   "stars": 688,
+   "last_commit": "2026-09-27",
+   "verdict": "watch",
+   "fit": "Picks the best of several tries; could help if Calina's hooks need variants.",
+   "why": "Rising (507 to 688 stars) but no commit in 3 weeks; costs several runs per task."
+  },
+  {
+   "name": "gotalab/cc-sdd",
+   "url": "https://github.com/gotalab/cc-sdd",
+   "licence": "MIT",
+   "stars": 3720,
+   "last_commit": "2026-10-13",
+   "verdict": "skip",
+   "fit": "Spec-driven coding harness; Ghassan's builds are small, so not needed.",
+   "why": "Healthy, but solves a problem we don't have."
+  }
+ ],
+ "ideas": []
+}
