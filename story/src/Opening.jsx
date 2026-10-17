@@ -4,6 +4,7 @@ import React from 'react';
 import {AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate} from 'remotion';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, ease, Box, Label, Head, Bust, SeatBack, Plane, Bolt, Cloud, Canopy} from './tis';
 import {JulianeArt} from './Thumb';
+import {STORY_SHOTS, DayCard, DayCorner} from './jungle';
 import {FONT_CSS} from './fonts';
 
 // the frame (inside the line) where a word is said; fallback = a fraction of the line
@@ -280,7 +281,7 @@ function Title({f, len, line}) {
 }
 
 const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
-  breakup: Breakup, falling: Falling, wake: Wake, title: Title};
+  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS};
 
 const ShotLayer = ({line, len}) => {
   const f = useCurrentFrame();
@@ -292,19 +293,38 @@ const ShotLayer = ({line, len}) => {
   );
 };
 
+// the day: a big red card when it changes (line.p.day), then small in the corner until the next change (or day "" to clear)
+const DayLayer = ({lines}) => {
+  const frame = useCurrentFrame();
+  let day = null, since = 0;
+  for (const l of lines) {
+    const from = l.cut != null ? l.cut : l.start;
+    if (from > frame) break;
+    const d = (l.p || {}).day;
+    if (d !== undefined && d !== day) { day = d; since = from; }
+  }
+  if (day === null || day === '' || day === undefined) return null;
+  const f = frame - since;
+  return (
+    <AbsoluteFill>
+      <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>{f < 26 ? <DayCard day={day} f={f} /> : <DayCorner day={day} />}</svg>
+    </AbsoluteFill>
+  );
+};
+
 export const Opening = ({lines = [], audio}) => (
   <AbsoluteFill style={{backgroundColor: '#000'}}>
     <style>{FONT_CSS}</style>
     {audio && <Audio src={staticFile(audio)} />}
     {lines.map((l, i) => {
       const from = i === 0 ? 0 : l.cut, to = i + 1 < lines.length ? lines[i + 1].cut : l.until;
-      // inside a shot, frames count from the line's own start, so `at` matches the words
-      const shifted = {...l, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
+      const shifted = {...l, idx: i, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
       return (
         <Sequence key={i} from={from} durationInFrames={Math.max(1, to - from)} layout="none">
           <ShotLayer line={shifted} len={to - from} />
         </Sequence>
       );
     })}
+    <DayLayer lines={lines} />
   </AbsoluteFill>
 );

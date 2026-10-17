@@ -389,6 +389,7 @@ def ensure_app():
     if (APP / "src").exists():
         shutil.rmtree(APP / "src")
     shutil.copytree(KIT / "src", APP / "src")
+    shutil.copy(ROOT / "animation" / "src" / "mapdata.js", APP / "src" / "mapdata.js")   # Natural Earth (public domain), for the story maps
     shutil.copy(KIT / "package.json", APP / "package.json")
     if not (APP / "node_modules").exists():   # share the animation kit's Remotion install
         try:

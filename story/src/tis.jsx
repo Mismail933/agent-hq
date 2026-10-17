@@ -33,6 +33,7 @@ export const Label = ({x, y, text, f, at = 0, fill = '#FFE11A', color = INK, h =
 
 // ───────────────── faces ─────────────────
 const SKIN = {light: '#F2C29B', shade: '#D99C72', cheek: '#E8846A'};
+const SKINS = {light: SKIN, tan: {light: '#C98E5F', shade: '#A9724A', cheek: '#B86B4E'}};
 const blinkAt = (f, seed) => ((f + seed * 41) % 100) < 4;
 
 function Eyes({expr, f, seed, look = 0}) {
@@ -94,6 +95,12 @@ export const CAST = {
   father: {hair: '#6B5B4B', hairLight: '#8A7764', brow: '#4A3B2E', dress: '#B8A06A', dressShade: '#8F7A4D', style: 'short', beard: true, glasses: true},
   passenger: {hair: '#1F2937', hairLight: '#374151', brow: '#111827', dress: '#4B5563', dressShade: '#374151', style: 'short'},
   passenger2: {hair: '#A16207', hairLight: '#CA8A04', brow: '#713F12', dress: '#15803D', dressShade: '#166534', style: 'bob', lips: true},
+  worker1: {hair: '#1C1410', hairLight: '#3A2A1E', brow: '#120C08', dress: '#E5E7EB', dressShade: '#C9CDD3', style: 'short', hat: 'straw', mustache: true, skin: 'tan'},
+  worker2: {hair: '#1C1410', hairLight: '#3A2A1E', brow: '#120C08', dress: '#3B6E4F', dressShade: '#2C5440', style: 'short', hat: 'cap', skin: 'tan'},
+  worker3: {hair: '#2A1A10', hairLight: '#4A3020', brow: '#1A0F08', dress: '#B45309', dressShade: '#8A3F07', style: 'short', mustache: true, skin: 'tan'},
+  doctor: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#F8FAFC', dressShade: '#DDE3EA', style: 'short', glasses: true},
+  juliane_now: {hair: '#8A7A6A', hairLight: '#A89888', brow: '#5A4A3A', dress: '#3F6E5A', dressShade: '#2E5444', style: 'bob', glasses: true, lips: true},
+  pilot: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#E5E7EB', dressShade: '#C9CDD3', style: 'short', hat: 'cap', mustache: true},
 };
 
 function HairBack({c, mode}) {
@@ -113,6 +120,7 @@ function HairFront({c}) {
 // a head, chin at y≈176, centred on (0,0). expr: calm smile worried scared shock grim closed waking
 export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair = 'normal', look = 0, seed = 1}) {
   const c = CAST[who] || CAST.passenger;
+  const SKIN = SKINS[c.skin] || SKINS.light;
   return (
     <g>
       <HairBack c={c} mode={hair === 'flying' ? 'flying' : 'normal'} />
@@ -132,6 +140,9 @@ export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair 
       {c.lips && <ellipse cx={-80} cy={40} rx={22} ry={12} fill={SKIN.cheek} opacity={0.5} />}
       {c.lips && <ellipse cx={80} cy={40} rx={22} ry={12} fill={SKIN.cheek} opacity={0.4} />}
       {(expr === 'scared' || expr === 'worried') && <path d="M 108 -100 C 100 -84 100 -70 110 -66 C 120 -70 120 -84 108 -100 Z" fill="#BFE6FF" {...st(4)} />}
+      {c.mustache && <path d="M -46 82 C -30 64 -8 70 0 78 C 8 70 30 64 46 82 C 30 86 12 84 0 82 C -12 84 -30 86 -46 82 Z" fill={c.hair} {...st(5)} />}
+      {c.hat === 'straw' && <g><ellipse cx={0} cy={-150} rx={230} ry={46} fill="#E9C46A" {...ST} /><path d="M -110 -150 C -110 -250 110 -250 110 -150 Z" fill="#E9C46A" {...ST} /><path d="M -108 -170 L 108 -170" stroke="#9C6B30" strokeWidth={16} /></g>}
+      {c.hat === 'cap' && <g><path d="M -124 -110 C -124 -220 124 -220 124 -110 Z" fill={c.dressShade} {...ST} /><path d="M 40 -116 C 120 -120 200 -110 220 -96 C 160 -88 90 -96 40 -100 Z" fill={c.dressShade} {...ST} /></g>}
     </g>
   );
 }
@@ -139,7 +150,7 @@ export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair 
 // shoulders and arms below a head. arms: rest | grip | flail | hold
 export function Torso({who = 'juliane', arms = 'rest', f = 0}) {
   const c = CAST[who] || CAST.passenger;
-  const skin = SKIN.light;
+  const skin = (SKINS[c.skin] || SKINS.light).light;
   const wob = Math.sin(f * 0.9) * 6;
   return (
     <g>
@@ -250,3 +261,93 @@ export function Canopy({y0 = 700, f = 0, drift = 0, seed = 5, rows = 5, river = 
   }
   return <g>{out}</g>;
 }
+
+
+// ───────────────── a whole person, front view (2.50.0) ─────────────────
+// head centre at (0,0) like Head; feet at y≈1100 (sitting/hugging: ≈800). pose: stand walk limp run wade signal shade hold push hug lie
+export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, oneShoe = false}) {
+  const c = CAST[who] || CAST.passenger;
+  const sk = SKINS[c.skin] || SKINS.light;
+  const walk = pose === 'walk' || pose === 'limp' || pose === 'run' || pose === 'push';
+  const sw = Math.sin((f + seed * 7) * (pose === 'run' ? 0.5 : 0.26));
+  const legL = walk ? sw * (pose === 'run' ? 24 : 14) : 0;
+  const legR = pose === 'limp' ? -sw * 4 : -legL;
+  const bob = walk ? -Math.abs(sw) * (pose === 'limp' ? 16 : 9) : Math.sin(f * 0.07 + seed) * 3;
+  const arms = {
+    stand: [6, -6], walk: [-sw * 18 + 6, sw * 18 - 6], limp: [-sw * 10 + 10, sw * 6 - 30], run: [-sw * 40, sw * 40], wade: [40, -40],
+    signal: [10, -165 + Math.sin(f * 0.5) * 18], shade: [8, -150], hold: [-40, 40], push: [-60 + sw * 10, 60 - sw * 10], hug: [0, 0], lie: [10, -10],
+  }[pose] || [6, -6];
+  const leg = (x, a, shoe) => (
+    <g transform={`translate(${x} 600) rotate(${a})`}>
+      <path d="M -36 0 C -38 160 -32 300 -28 450 L 26 450 C 30 300 36 160 34 0 Z" fill={sk.light} {...ST} />
+      {dirty > 0 && <path d="M -24 300 L -6 330 M 4 380 L 20 400" stroke="#6B4423" strokeWidth={6} opacity={0.6} />}
+      {shoe ? <path d="M -40 430 L 40 430 L 52 486 L -40 486 Z" fill="#3F2A1E" {...ST} />
+        : <path d="M -34 440 C -40 470 -30 490 0 492 C 34 494 46 470 34 440 Z" fill={sk.light} {...ST} />}
+    </g>
+  );
+  const arm = (x, a, k) => (
+    <g key={k} transform={`translate(${x} 270) rotate(${a})`}>
+      <path d="M -26 0 C -32 110 -28 210 -20 300 L 20 300 C 28 210 32 110 26 0 Z" fill={sk.light} {...ST} />
+      <circle cx={0} cy={318} r={32} fill={sk.light} {...ST} />
+    </g>
+  );
+  const dress = (
+    <g>
+      <path d="M -60 216 C -128 230 -166 250 -170 300 L -186 650 L 186 650 L 170 300 C 166 250 128 230 60 216 C 36 258 -36 258 -60 216 Z" fill={c.dress} {...ST} />
+      <path d="M 96 236 C 150 254 166 280 168 320 L 182 650 L 120 650 Z" fill={c.dressShade} />
+      {dirty > 0 && <g fill="#6B4423" opacity={0.45 * dirty}><ellipse cx={-80} cy={420} rx={34} ry={22} /><ellipse cx={60} cy={540} rx={44} ry={26} /><ellipse cx={-40} cy={600} rx={30} ry={18} /></g>}
+      {dirty > 0.5 && <path d="M -186 650 L -160 618 L -140 650 L -110 610 L -86 650 M 90 650 L 112 620 L 136 650" fill="none" {...st(6)} />}
+    </g>
+  );
+  if (pose === 'hug') {   // sitting, knees up, arms around them
+    return (
+      <g transform={`translate(0 ${120 + bob})`}>
+        <ellipse cx={0} cy={700} rx={260} ry={34} fill="#000" opacity={0.18} />
+        {dress}
+        <path d="M -150 560 C -170 640 -150 690 -110 700 L -60 700 C -40 640 -50 580 -70 540 Z" fill={sk.light} {...ST} />
+        <path d="M 150 560 C 170 640 150 690 110 700 L 60 700 C 40 640 50 580 70 540 Z" fill={sk.light} {...ST} />
+        <ellipse cx={-80} cy={470} rx={88} ry={110} fill={sk.light} {...ST} />
+        <ellipse cx={80} cy={470} rx={88} ry={110} fill={sk.light} {...ST} />
+        <path d="M -170 300 C -200 420 -150 500 0 500 C 150 500 200 420 170 300" fill="none" stroke={sk.light} strokeWidth={56} strokeLinecap="round" />
+        <path d="M -170 300 C -200 420 -150 500 0 500 C 150 500 200 420 170 300" fill="none" stroke={INK} strokeWidth={70} strokeLinecap="round" opacity={0} />
+        <g transform="translate(0 60) rotate(-4)"><Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} /></g>
+      </g>
+    );
+  }
+  return (
+    <g transform={`translate(0 ${bob})`}>
+      <ellipse cx={0} cy={1090 - bob} rx={200} ry={30} fill="#000" opacity={0.18} />
+      {leg(-62, legL, true)}{leg(62, legR, !oneShoe)}
+      {arm(-150, arms[0], 'l')}
+      {dress}
+      {arm(150, arms[1], 'r')}
+      <g transform={pose === 'shade' ? 'rotate(-6)' : ''}><Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} /></g>
+    </g>
+  );
+}
+
+// ───────────────── shared scene helpers (moved from Opening.jsx) ─────────────────
+export const at = (line, word, frac = 0.3) => {
+  const want = String(word || '').toLowerCase().replace(/[^a-z0-9']/g, '');
+  if (!want) return 0;
+  const hit = (line.words || []).find((w) => w[0].toLowerCase().replace(/[^a-z0-9']/g, '').startsWith(want));
+  return hit ? hit[1] - line.start : Math.round((line.end - line.start) * frac);
+};
+export const Cam = ({f, len, from = 1, to = 1.06, x = W / 2, y = H / 2, shake = 0, children}) => {
+  const z = interpolate(f, [0, len], [from, to], {extrapolateRight: 'clamp'});
+  const sx = shake ? Math.sin(f * 1.9) * shake : 0, sy = shake ? Math.cos(f * 2.3) * shake * 0.7 : 0;
+  return <g transform={`translate(${x + sx} ${y + sy}) scale(${z}) translate(${-x} ${-y})`}>{children}</g>;
+};
+export const Rain = ({f, n = 70, seed = 3, op = 0.35, slant = -16}) => {
+  const R = rng(seed);
+  return <g>{[...Array(n)].map((_, i) => { const x = R() * (W + 200), y0 = R() * H, sp = 30 + R() * 20; const y = ((y0 + f * sp) % (H + 100)) - 60;
+    return <path key={i} d={`M ${x} ${y} l ${slant} 46`} stroke="#C7D2FE" strokeWidth={4} opacity={op} strokeLinecap="round" />; })}</g>;
+};
+// labels from the script: p.labels = [{text, on, color}] stacked top-left (or at x, y)
+export const Labels = ({line, f, x0 = 100, y0 = 100, align = 'left'}) => ((line.p || {}).labels || []).map((l, i) => {
+  const h = l.big ? 96 : 76, text = String(l.text).toUpperCase();
+  const w = Math.max(160, text.length * h * 0.43 + 40);
+  const x = l.x != null ? l.x : align === 'right' ? x0 - w : x0;
+  return <Label key={i} x={x} y={l.y != null ? l.y : y0 + i * 104} text={text} f={f} at={at(line, l.on || '', 0.15 + i * 0.2)}
+    fill={l.color === 'red' ? '#E3232C' : l.color === 'white' ? '#fff' : '#FFE11A'} color={l.color === 'red' ? '#fff' : INK} h={h} />;
+});

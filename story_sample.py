@@ -49,7 +49,8 @@ def voice_lines(spec, folder):
     cache.mkdir(parents=True, exist_ok=True)
     import hashlib
     for i, ln in enumerate(spec["lines"]):
-        key = hashlib.sha1(f"{voice}|{speed}|{ln['text']}".encode()).hexdigest()[:16]
+        spoken = ln.get("say") or ln["text"]
+        key = hashlib.sha1(f"{voice}|{speed}|{spoken}".encode()).hexdigest()[:16]
         cw, cj = cache / f"{key}.wav", cache / f"{key}.json"
         if cw.exists() and cj.exists():   # the same words in the same voice: reuse (Kokoro is slow on this PC)
             a48, _ = sf.read(str(cw), dtype="float32")
@@ -58,7 +59,7 @@ def voice_lines(spec, folder):
             say(f"  line {i + 1}: cached, {len(a48) / SR:.1f} s")
             continue
         chunks, words, off = [], [], 0.0
-        for r in pipe(ln["text"], voice=voice, speed=speed):
+        for r in pipe(spoken, voice=voice, speed=speed):
             a = r.audio.numpy() if hasattr(r.audio, "numpy") else np.asarray(r.audio)
             for tok in r.tokens or []:
                 if tok.start_ts is None:
@@ -83,9 +84,9 @@ def timeline(spec, voiced):
     t, lines = LEAD, []
     for ln, v in zip(spec["lines"], voiced):
         start, end = t, t + v["secs"]
-        lines.append({"shot": ln["shot"], "text": ln["text"], "t_start": start, "t_end": end,
+        lines.append({"shot": ln["shot"], "text": ln["text"], "t_start": start, "t_end": end, "p": ln.get("p") or {},
                       "words": [[w, start + s, start + e] for w, s, e in v["words"]]})
-        t = end + PAUSE + EXTRA.get(ln["shot"], 0)
+        t = end + PAUSE + EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))
     total = t
     for i, l in enumerate(lines):
         l["cut"] = 0 if i == 0 else int(round((l["t_start"] - LEADIN) * FPS))
@@ -193,7 +194,9 @@ def make_sound(lines, total):
         n = int(1.8 * SR)
         tt = np.arange(n) / SR
         put(music, word_t("title", "survived") or ti, np.sin(2 * np.pi * (50 - 20 * tt) * tt) * np.exp(-tt * 2.5), 0.6)
-        pad(music, ti, total + 0.5, (50, 54, 57, 62), 0.12)
+        idx = [l["shot"] for l in lines].index("title")
+        title_end = lines[idx + 1]["t_start"] - 0.2 if idx + 1 < len(lines) else total + 0.5
+        pad(music, ti, title_end, (50, 54, 57, 62), 0.12)
     # sound effects
     eng_end = breakup
     n = int(eng_end * SR)
@@ -248,7 +251,139 @@ def make_sound(lines, total):
                 m = int(0.5 * SR)
                 tt = np.arange(m) / SR
                 put(sfx, tw - 0.15, band(noise(0.5), 400, 4000) * np.sin(np.pi * tt / 0.5) ** 2, 0.25)
+    scene_sound(lines, total, music, sfx)
     return music, sfx
+
+
+OPENING = {"aerial", "cabin", "father", "storm_window", "shaking", "lightning", "mother", "breakup", "falling", "wake", "title"}
+JUNGLE = {"jungle", "wade", "seats3", "hut", "planes", "today", "close", "quote"}
+MOODS = {"tense": [(48, 51, 55, 60), (46, 50, 53, 58)], "night": [(45, 48, 52, 57), (44, 47, 50, 56)], "sad": [(45, 48, 52, 57), (41, 45, 48, 53)],
+         "hope": [(48, 52, 55, 60), (53, 57, 60, 65), (50, 53, 57, 62), (55, 59, 62, 67)], "facts": [(50, 53, 57, 62), (48, 52, 55, 60)]}
+
+
+def mood_of(l):
+    p, s = l.get("p") or {}, l["shot"]
+    if p.get("mood"):
+        return p["mood"]
+    if p.get("time") == "night" or (s == "close" and p.get("bg") == "night"):
+        return "night"
+    if s in ("seats3",):
+        return "sad"
+    if s in ("canoe", "hospital", "today", "end") or (s == "hut" and p.get("phase") == "men"):
+        return "hope"
+    if s in ("count", "map", "rule", "why", "search", "item"):
+        return "facts"
+    return "tense"
+
+
+def scene_sound(lines, total, music, sfx):
+    """Sound for the story scenes after the opening: the jungle (insects, birds by day, crickets at night), water, rain, planes,
+    a hit when the day changes, and a music mood per scene. Everything is held under the voice later (mix)."""
+    day = None
+    for i, l in enumerate(lines):
+        if l["shot"] in OPENING:
+            continue
+        p = l.get("p") or {}
+        t0 = max(0.0, l["t_start"] - 0.2)
+        t1 = (lines[i + 1]["t_start"] - 0.2) if i + 1 < len(lines) else total
+        dur = max(0.1, t1 - t0)
+        n = int(dur * SR)
+        tt = np.arange(n) / SR
+        fade = env(n, int(0.3 * SR), int(0.3 * SR))
+        night = p.get("time") == "night" or p.get("bg") == "night"
+        jungle = l["shot"] in JUNGLE and p.get("bg", "jungle") in ("jungle", "night")
+        if jungle:
+            put(sfx, t0, band(noise(dur), 4000, 9000) * (0.6 + 0.4 * np.sin(2 * np.pi * (7 if night else 3) * tt)) * fade, 0.03)
+            if night:   # crickets: short pulses
+                m = int(0.04 * SR)
+                for c in np.arange(0.2, dur - 0.1, 0.33):
+                    put(sfx, t0 + c, np.sin(2 * np.pi * 4600 * np.arange(m) / SR) * env(m, 80, 400), 0.035)
+            else:   # a few birds
+                for c in np.arange(0.5, dur - 0.3, 1.7):
+                    m2 = int(0.16 * SR)
+                    t2 = np.arange(m2) / SR
+                    put(sfx, t0 + c + rng.uniform(0, 0.6), np.sin(2 * np.pi * np.cumsum(2400 + 1200 * np.sin(2 * np.pi * 8 * t2)) / SR) * env(m2, 200, 2000), 0.05)
+        if l["shot"] in ("wade", "canoe", "hut") or p.get("water"):
+            put(sfx, t0, band(noise(dur), 300, 2200) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.4 * tt)) * fade, 0.05)
+        if p.get("rain"):
+            put(sfx, t0, band(noise(dur), 1500, 7000) * fade, 0.06)
+        if l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
+            drone = (np.sin(2 * np.pi * 110 * tt) + 0.5 * np.sin(2 * np.pi * 220 * tt)) * np.sin(np.pi * np.clip(tt / dur, 0, 1)) ** 2
+            put(sfx, t0, band(drone + band(noise(dur), 80, 600) * 0.6, 60, 900), 0.12)
+        if p.get("day") not in (None, "") and p.get("day") != day:
+            m = int(1.6 * SR)
+            th = np.arange(m) / SR
+            put(sfx, t0, np.sin(2 * np.pi * (60 - 20 * th) * th) * np.exp(-th * 3), 0.5)
+            put(sfx, t0 - 0.25, band(noise(0.5), 400, 4000) * np.sin(np.pi * np.arange(int(0.5 * SR)) / (0.5 * SR)) ** 2, 0.2)
+        if p.get("day") not in (None,):
+            day = p.get("day")
+        chords = MOODS[mood_of(l)]
+        step = 3.2
+        for k, c0 in enumerate(np.arange(t0, t1, step)):
+            pad(music, c0, min(t1 + 0.6, c0 + step + 0.6), chords[(i + k) % len(chords)], 0.07 if mood_of(l) != "hope" else 0.08)
+
+
+# the owner (2026-10-17): "in some places the sound effects get louder than the narrator". The music and the effects are held
+# under the voice by measurement, not by hand-set volumes: while the narrator speaks, effects stay UNDER_VOICE_DB below his level
+# and music MUSIC_UNDER_DB below; in the pauses neither goes above the narrator's usual level. The mix reports the loudest moment.
+UNDER_VOICE_DB = -9.0
+MUSIC_UNDER_DB = -14.0
+GAP_MAX_DB = -2.0
+
+
+def _avg(x, win):
+    """A centred moving average in O(n) (running sum); np.convolve is O(n*win) and takes hours on a 10-minute track."""
+    win = max(1, int(win))
+    c = np.cumsum(np.concatenate([[0.0], x]))
+    h = win // 2
+    idx = np.arange(len(x))
+    a, b = np.clip(idx - h, 0, len(x)), np.clip(idx - h + win, 0, len(x))
+    return (c[b] - c[a]) / np.maximum(1, b - a)
+
+
+def _rms(x, win):
+    return np.sqrt(_avg(x * x, win) + 1e-12)
+
+
+def _smooth_gain(g, win):
+    """The gain a moment needs, applied early enough: the lowest gain within half a window either side (in 10 ms blocks), so a
+    sudden sound is already turned down when it starts (an average let the day-change hit through at +2.3 dB), then 30 ms smoothing."""
+    block = int(0.01 * SR)
+    n = len(g)
+    nb = -(-n // block)
+    gp = np.concatenate([g, np.ones(nb * block - n)])
+    gb = gp.reshape(nb, block).min(1)
+    k = max(1, (win // block) // 2)
+    pad = np.concatenate([np.ones(k), gb, np.ones(k)])
+    m = gb.copy()
+    for s in range(1, k + 1):
+        m = np.minimum(m, np.minimum(pad[k - s:k - s + nb], pad[k + s:k + s + nb]))
+    m = np.minimum(m, _avg(m, 3))
+    return np.repeat(m, block)[:n]
+
+
+def hold_under(bus, voice_rms, speaking, voice_level, under_db, gap_db, win):
+    r = _rms(bus, win)
+    cap = np.where(speaking, voice_rms * 10 ** (under_db / 20), voice_level * 10 ** (gap_db / 20))
+    g = np.minimum(1.0, cap / r)
+    return bus * _smooth_gain(g, win)
+
+
+def loudness_report(voice, music, sfx, win):
+    """Per 0.4 s window: the effects (and music) against the voice, in dB. The worst moments, so 'never louder' is measured."""
+    hop = win
+    rows = []
+    vr, mr, sr_ = _rms(voice, win), _rms(music, win), _rms(sfx, win)
+    level = np.percentile(vr[vr > 1e-3], 70) if np.any(vr > 1e-3) else 1e-3
+    for i in range(0, len(voice), hop):
+        v = vr[i]
+        ref = v if v > level * 0.25 else level   # in a pause, compare with the narrator's usual level
+        rows.append((i / SR, 20 * np.log10((sr_[i] + 1e-9) / ref), 20 * np.log10((mr[i] + 1e-9) / ref), v > level * 0.25))
+    worst_sfx = max(rows, key=lambda r: r[1])
+    worst_music = max(rows, key=lambda r: r[2])
+    return {"effects_max_db_vs_voice": round(float(worst_sfx[1]), 1), "effects_max_at_s": round(worst_sfx[0], 1),
+            "music_max_db_vs_voice": round(float(worst_music[2]), 1), "music_max_at_s": round(worst_music[0], 1),
+            "effects_over_voice_windows": int(sum(1 for r in rows if r[1] > 0))}
 
 
 def mix(lines, voiced, music, sfx, folder):
@@ -256,14 +391,22 @@ def mix(lines, voiced, music, sfx, folder):
     voice = np.zeros(N)
     for l, v in zip(lines, voiced):
         put(voice, l["t_start"], v["audio"] / (np.max(np.abs(v["audio"])) + 1e-9) * 0.7)
-    venv = np.convolve(np.abs(voice), np.ones(int(0.25 * SR)) / (0.25 * SR), mode="same")
-    duck = 1 - 0.55 * np.clip(venv / 0.12, 0, 1)
-    out = voice + music * duck * 0.8 + sfx * (0.6 + 0.4 * duck)
+    win = int(0.4 * SR)
+    vr = _rms(voice, win)
+    speaking = vr > 0.02
+    level = float(np.percentile(vr[speaking], 70)) if np.any(speaking) else 0.1
+    music = hold_under(music, vr, speaking, level, MUSIC_UNDER_DB, GAP_MAX_DB - 6, win)
+    sfx = hold_under(sfx, vr, speaking, level, UNDER_VOICE_DB, GAP_MAX_DB, win)
+    report = loudness_report(voice, music, sfx, win)
+    out = voice + music + sfx
     out /= np.max(np.abs(out)) / 0.9
     raw = folder / "_mix_raw.wav"
     sf.write(str(raw), np.stack([out, out], 1).astype("float32"), SR)
     wav = folder / "mix.wav"
     story.normalise(raw, wav)
+    (folder / "loudness.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
+    say(f"   sound: effects at most {report['effects_max_db_vs_voice']} dB vs the voice (at {report['effects_max_at_s']} s), "
+        f"music at most {report['music_max_db_vs_voice']} dB; windows with effects over the voice: {report['effects_over_voice_windows']}")
     return wav
 
 
@@ -281,11 +424,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sample")
     ap.add_argument("--stills", action="store_true", help="one still per shot instead of the video")
+    ap.add_argument("--prep", action="store_true", help="voice, sound and props only (then a quick preview can be rendered)")
     a = ap.parse_args()
     spec_path = Path(a.sample).resolve()
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     folder = spec_path.with_suffix("")
     folder.mkdir(exist_ok=True)
+    story.take_lock("sample " + folder.name)   # one heavy job at a time on this PC, from the first word voiced to the last frame
+    try:
+        run(a, spec, folder)
+    finally:
+        story.drop_lock()
+
+
+def run(a, spec, folder):
     say("1. voice")
     voiced = voice_lines(spec, folder)
     lines, total = timeline(spec, voiced)
@@ -299,6 +451,9 @@ def main():
     props = {"lines": [{**l, "words": [[w, int(round(s * FPS))] for w, s, e in l["words"]]} for l in lines], "audio": "opening-mix.wav",
              "frames": int(round(total * FPS))}
     (folder / "props.json").write_text(json.dumps(props, ensure_ascii=False, indent=1), encoding="utf-8")
+    if a.prep:
+        say("RESULT " + json.dumps({"props": str(folder / "props.json"), "seconds": round(total, 1)}))
+        return
     if a.stills:
         say("3. stills")
         for i, l in enumerate(props["lines"]):
@@ -308,13 +463,9 @@ def main():
         return
     say("3. render")
     out = folder.parent / (folder.name + ".mp4")
-    story.take_lock("sample " + folder.name)
     t0 = time.time()
-    try:
-        story.remotion(["render", "src/index.jsx", "Opening", str(out), f"--props={folder / 'props.json'}", f"--concurrency={story.CONCURRENCY}", "--codec=h264",
-                        "--crf=18", "--audio-codec=aac", "--overwrite", "--log=error"])
-    finally:
-        story.drop_lock()
+    story.remotion(["render", "src/index.jsx", "Opening", str(out), f"--props={folder / 'props.json'}", f"--concurrency={story.CONCURRENCY}", "--codec=h264",
+                    "--crf=18", "--audio-codec=aac", "--overwrite", "--log=error"])
     say(f"   rendered in {(time.time() - t0) / 60:.1f} min")
     ffmpeg = shorts.find_ffmpeg()
     sheets = story.review_sheets(ffmpeg, out, folder, total)
@@ -326,7 +477,11 @@ def main():
         motion = musicvideo.motion_report(str(out), cuts, total, folder / "review")
     except Exception as ex:  # noqa: BLE001
         say(f"   (motion report skipped: {str(ex)[:160]})")
-    say("RESULT " + json.dumps({"video": str(out), "seconds": round(total, 1), "sheets": [str(s) for s in sheets],
+    try:
+        loud = json.loads((folder / "loudness.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        loud = None
+    say("RESULT " + json.dumps({"video": str(out), "seconds": round(total, 1), "sheets": [str(s) for s in sheets], "sound": loud,
                                 "motion": (motion or {}).get("summary"), "warnings": (motion or {}).get("warnings")}))
 
 
