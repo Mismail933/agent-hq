@@ -397,10 +397,11 @@ def ensure_app():
             subprocess.run(["cmd", "/c", "mklink", "/J", str(APP / "node_modules"), str(animate.APP / "node_modules")], capture_output=True)
     # the kit's font, local (no network in a render)
     import base64
-    f = HOME / "fonts" / "Nunito-wght.ttf"
     css = ""
-    if f.exists():
-        css = "@font-face{font-family:'Nunito';font-weight:200 1000;src:url(data:font/ttf;base64," + base64.b64encode(f.read_bytes()).decode() + ") format('truetype');}"
+    for name, family, weights in (("Nunito-wght.ttf", "Nunito", "200 1000"), ("Oswald-wght.ttf", "Oswald", "200 700")):   # Oswald: the thumbnails' boxed titles
+        f = HOME / "fonts" / name
+        if f.exists():
+            css += "@font-face{font-family:'" + family + "';font-weight:" + weights + ";src:url(data:font/ttf;base64," + base64.b64encode(f.read_bytes()).decode() + ") format('truetype');}"
     (APP / "src" / "fonts.js").write_text("// written by story.py\nexport const FONT_CSS = " + json.dumps(css) + ";\n", encoding="utf-8")
 
 

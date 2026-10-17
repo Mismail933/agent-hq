@@ -162,11 +162,11 @@ export function Person({who = 'man', pose = 'stand', face = 'neutral', f = 0, ta
       {spec.hair === 'long' && <path d="M -46 -60 Q -50 0 -30 10 L 30 10 Q 50 0 46 -60 Z" fill={spec.hairColor || C.hair} />}
       <g>
         <g transform={`translate(0 56) rotate(${sitting ? -80 : legL})`}>
-          <rect x={-24} y={0} width={24} height={78} rx={11} fill={spec.stripes ? '#EA580C' : C.pants} />
+          <rect x={-24} y={0} width={24} height={78} rx={11} fill={spec.stripes ? '#EA580C' : spec.legs || C.pants} />
           {spec.fins ? <path d="M -26 74 L -2 74 L 2 110 L -40 110 Z" fill={C.yellow} /> : <rect x={-30} y={74} width={32} height={16} rx={7} fill="#222" />}
         </g>
         <g transform={`translate(0 56) rotate(${sitting ? -80 : legR})`}>
-          <rect x={0} y={0} width={24} height={78} rx={11} fill={spec.stripes ? '#EA580C' : C.pants} />
+          <rect x={0} y={0} width={24} height={78} rx={11} fill={spec.stripes ? '#EA580C' : spec.legs || C.pants} />
           {spec.fins ? <path d="M -2 74 L 22 74 L 40 110 L -2 110 Z" fill={C.yellow} /> : <rect x={-2} y={74} width={32} height={16} rx={7} fill="#222" />}
         </g>
       </g>
@@ -437,3 +437,7 @@ export function Bubble({text, x, y, f = 0, at = 0, w = 520}) {
       <path d={`M -20 -2 L 0 34 L 20 -2 Z`} fill="#fff" stroke={C.navy} strokeWidth={5} /><rect x={-24} y={-8} width={48} height={8} fill="#fff" />
       {lines.map((l, i) => <T key={i} x={0} y={-h + 58 + i * 46} size={38} weight={800} anchor="middle">{l}</T>)}
     </g>
+  );
+}
+
+export const fmt = fmtNum;
