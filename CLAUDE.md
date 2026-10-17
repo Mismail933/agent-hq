@@ -664,8 +664,9 @@ Agents never spend money without the owner's explicit approval.
   animation kit's; `--concurrency` 3 = `HQ_STORY_CONCURRENCY`, the owner's "don't overheat the PC"); **one heavy render at a time on this
   PC**: `take_lock` on `~/.agent-hq/heavy-job.lock` (shared with the music-video chat; stale after 3 h); (5) `short.mp4` (the office's
   name), title/description/sources.txt, `review/sheet-NN.png` (a frame every 4 s) and `musicvideo.motion_report` (measure before done);
-  the episode gets `data.format = "video"`, `data.render`, status rendered. Not yet: Israa's video review for 16:9 (the office logs
-  `video_review_skipped` and the owner reads the sheets), a music bed, ElevenLabs (the owner: free voice first), sound effects.
+  the episode gets `data.format = "video"`, `data.render`, status rendered. 2.48.1: `quality.review_story_video(eid)` = Israa reads the contact
+  sheets (Read tool, `STORY_VIDEO_TASK`: pictures follow the words, legibility, cast, pace, respect, captions, open/close) + the shot plan +
+  the motion report -> `data.video_review` (release/redo) and `review.md`, called by `run_render` for story videos. Not yet: a music bed, ElevenLabs (the owner: free voice first), sound effects.
   Office: `/api/channel/new` is how the channel project was made (project 5 "Pip Dives", lane A approved 2026-10-17: ocean/underwater
   rescue stories on a clock, Pip's sub as the witness).
 - `youtube.py` + `omar.py` (2.44.0, Omar the Social Media Manager; Atlas's [builder-chat] 2026-10-16 "Hire him call him omar"):

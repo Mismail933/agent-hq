@@ -1356,9 +1356,14 @@ def run_render(eid):
                 r = json.loads(result)
                 cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
                 checkpoint.done("video made", r)
-            rv = quality.review_video(eid) if rules.get("review.video") and not story else None   # Israa looks at it before the owner does (live rule)
-            if story:   # 2.48.0: Israa's video review is built for Shorts; a story video gets the measured report and the sheets for now
-                cp.log("Israa", "video_review_skipped", None, {"episode": eid, "why": "story videos: the owner reviews the contact sheets; Israa's 16:9 review comes next"})
+            if story:   # 2.48.0: Israa reads the contact sheets and the shot plan of a story video
+                try:
+                    rv = quality.review_story_video(eid) if rules.get("review.video") else None
+                except (workers.Unavailable, cp.Halt) as ex:
+                    rv = {"verdict": "unreviewed", "summary": f"Israa couldn't review it: {str(ex)[:200]}", "problems": []}
+                    cp.log("Israa", "halted", None, {"reason": str(ex)[:300], "episode": eid})
+            else:
+                rv = quality.review_video(eid) if rules.get("review.video") else None   # Israa looks at it before the owner does (live rule)
             pace = (f" The voice still reads at {r['wpm']} words a minute even after slowing it: lower the speed in OpenArt's "
                     "text-to-speech next time." if r.get("wpm", 0) > 158 else "")
             what = (f"{r['shots']} shots, narrator {r.get('voice', '')} ({r.get('wpm', '?')} wpm), measured: {r.get('motion') or 'n/a'}"

@@ -15,6 +15,7 @@ a review is never skipped silently.
 import json
 import os
 import re
+import shutil
 import subprocess
 import threading
 from datetime import date
@@ -1084,6 +1085,106 @@ def review_batch(p, eids, rewrite):
     summary["still_weak"] = sum(1 for i in eids if (cp.get_episode(i)["data"].get("review") or {}).get("verdict") == "rework")
     summary["passed"] = sum(1 for i in eids if (cp.get_episode(i)["data"].get("review") or {}).get("verdict") == "pass")
     return summary
+
+
+# ---- a story video (16:9, story.py, 2.48.0) -------------------------------------------------
+STORY_VIDEO_TASK = """Review a finished LONG STORY VIDEO before the owner sees it: a 16:9 narrated video in our flat cartoon look (like The
+Infographics Show), {mins:.1f} minutes, {shots} shots, one narrator. You get contact sheets (a frame every 4 seconds, in order; the caption
+under each frame is what the voice says there), the shot plan the director wrote, and measured numbers. Open EVERY sheet with Read.
+
+Judge it on:
+1. Pictures follow the words: when a number, a place, a person or a thing is said, is it on screen right then? Name the times where the
+   screen shows something unrelated to what is being said, or the same picture holds while the story moves on.
+2. Legibility: text cut off, labels overlapping people or captions, a dark figure on a dark backdrop, a card with an empty line, a number
+   you can't read. Name the time and what is wrong.
+3. The cast: the same real person drawn the same way all through; Pip (our kid) is the witness, never the hero of the true story; nobody is
+   floating, clipped or duplicated by mistake.
+4. Pace: nothing new on screen for more than ~9 s is a fault (the shot list gives the shot lengths; the motion report lists stalls).
+5. Respect: a death is a calm, still moment; no gag, no cartoon face on a victim's moment.
+6. Captions: the spoken words, readable, not covering a face or a label.
+7. The opening 30 s and the ending: does the cold open land? Does the end card come after the last word, not over it?
+A video is `release` only if a stranger would take it for a professional channel's upload. Score 1-10. Every problem names a time (m:ss)
+and a fix the director or the kit can apply. Say what you could not judge (the voice's tone, the music).
+
+Shot plan (start time -> kind, what it shows):
+{plan}
+
+Measured: {measured}
+
+The sheets, in order:
+{sheets}
+"""
+
+
+def _shot_words(s):
+    k = s.get("kind", "stage")
+    if k == "stage":
+        people = ", ".join(f"{x.get('who')} {x.get('pose', '')} {x.get('face', '')}".strip() for x in s.get("people") or [])
+        extra = (" + sub" if s.get("sub_at") else "") + (" | tags: " + ", ".join(x["text"] for x in s.get("tags") or []) if s.get("tags") else "")
+        if s.get("card"):
+            extra += f" | card: {s['card'].get('title', '')} {s['card'].get('big', '')}"
+        if s.get("banner"):
+            extra += f" | banner: {s['banner'].get('title', '')}"
+        return f"{s.get('bg', '')}: {people}{extra}"
+    if k == "number":
+        return f"NUMBER {s.get('value', '')} {s.get('label', '')}"
+    if k == "quote":
+        return f"QUOTE {str(s.get('text', ''))[:60]} ({s.get('who', '')})"
+    if k == "marker":
+        return f"CLOCK {s.get('text', '')}"
+    return k.upper() + " " + str(s.get("title") or s.get("text") or "")[:60]
+
+
+def review_story_video(eid):
+    """Israa reviews a story video from its contact sheets (story.py wrote review/sheet-NN.png + motion.json). Stored as
+    episodes.data.video_review like a Short's, so the office shows it the same way. Raises workers.Unavailable if she can't run."""
+    e = cp.get_episode(int(eid))
+    d = e["data"]
+    p = cp.get_project(e["project_id"], with_text=False) or {}
+    folder = Path(__file__).parent / "content" / f"project-{e['project_id']}" / "videos" / f"ep-{e['id']:03d}"
+    sheets = sorted((folder / "review").glob("sheet-*.png"))
+    if not sheets:
+        raise workers.Unavailable("no review sheets beside the video")
+    try:
+        props = json.loads((folder / "props.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        props = {"shots": []}
+    try:
+        motion = json.loads((folder / "review" / "motion.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        motion = {}
+    secs = float((d.get("render") or {}).get("seconds") or (props.get("frames", 0) / 30))
+    measured = (motion.get("summary") or "no motion report") + ("; " + "; ".join(motion.get("warnings") or []) if motion.get("warnings") else "")
+    if _sim():
+        got = {"verdict": "release", "score": 8, "summary": "Simulated: a clean story video.", "what_works": ["Simulated"], "problems": [],
+               "against_references": "Simulated.", "could_not_judge": "Simulated: the voice."}
+    else:
+        work = workers.WORK / ISRAA.lower() / f"story-{e['id']}"
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir(parents=True, exist_ok=True)
+        names = []
+        for s in sheets:
+            shutil.copy2(s, work / s.name)
+            names.append(f"  - story-{e['id']}/{s.name}")
+        plan = "\n".join(f"- {s['start'] // 30 // 60}:{s['start'] // 30 % 60:02d} ({(s['end'] - s['start']) / 30:.0f} s) {_shot_words(s)}" for s in props.get("shots") or [])
+        system = ISRAA_BASE.format(today=_today(), style=_style_block(p["id"]) if p else "")
+        task = STORY_VIDEO_TASK.format(mins=secs / 60, shots=len(props.get("shots") or []), plan=plan[:12000], measured=measured[:1500], sheets="\n".join(names))
+        got, _ = workers.run(ISRAA, p.get("idea_id"), system, task, tools=("Read",), schema=VIDEO_SCHEMA, max_turns=40)
+    e = cp.get_episode(e["id"])
+    d = e["data"]
+    d["video_review"] = {**got, "by": ISRAA, "measured": {"motion": motion.get("summary"), "warnings": motion.get("warnings")}, "stranger": None, "version": None,
+                         "pack": {"sheets": [s.relative_to(Path(__file__).parent).as_posix() for s in sheets]}}
+    cp.update_episode(e["id"], data=d)
+    cp.log(ISRAA, "video_reviewed", p.get("idea_id"), {"episode": e["id"], "verdict": got["verdict"], "score": got.get("score"), "story": True})
+    try:
+        lines = [f"# Israa's review of video #{e['id']}: {e['title']}", f"Verdict: **{got['verdict']}** ({got.get('score', '?')}/10)", "", got.get("summary", ""), "",
+                 "## What works"] + [f"- {x}" for x in got.get("what_works", [])] + ["", "## Problems"] + \
+                [f"- [{x.get('area', '')}] {x['issue']} -> {x['fix']}" for x in got.get("problems", [])] + \
+                ["", "## Measured", measured, "", "## What she could not judge", got.get("could_not_judge", "")]
+        (folder / "review.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+    return d["video_review"]
 
 
 # ---- the finished video ---------------------------------------------------------
