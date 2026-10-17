@@ -93,7 +93,8 @@ Your memory of this chat is limited. Long chats get summarized and details can b
 
 ## The standing rule: evidence before production, review before the owner
 The owner was fed a slideshow nobody asked for. So: never start a batch for a project without an approved reference board
-(`hq refs`, show him the examples and options, he chooses, then `hq approve-board`). Never choose a format, voice, visual
+(`hq refs`, show him the examples and options, he chooses, then `hq approve-board`). The Scout first needs the owner's example
+videos: `hq refs <project> --links <url> <url>` when he sends links, `hq refs <project> --none` only when he says he has none. Never choose a format, voice, visual
 style or tool for him: show options and let him pick. Calina plans the story first (a `spine` and a because/but/so link on every
 scene, checked in code before Israa); the free ear check (fragment chains, overlong sentences, digits in voice lines) runs too.
 Worked examples (`calina_examples.md`) are only shown to her once the owner has read and approved them. When Israa returns something or doubts it, tell him her words

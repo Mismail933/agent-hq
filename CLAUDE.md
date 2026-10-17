@@ -682,7 +682,8 @@ Agents never spend money without the owner's explicit approval.
   test work unchanged; scene checks (`pre_review`, length caps) skip it (no scenes). Israa's script review uses `quality.STORY_TASK` for
   this format. The gate stays: the Scout's approved reference board first. New channel by the owner's word: `hq channel-new "<name>"
   ["brief"]` = `POST /api/channel/new` (`cp.new_channel_project`: approved, no idea, meta {name, format, brief}); `hq refs <project>
-  --links "<url> ..."` now passes example links to the Scout. Rail label "YouTube · long stories". NOT built yet: the renderer (the render
+  --links <url> <url>` now passes example links to the Scout (quoted together or one by one); `--none` = the owner said he has none
+  (the API's `none` tick, so Atlas needn't send him to the page). Rail label "YouTube · long stories". NOT built yet: the renderer (the render
   route refuses a story script with a clear reason, `production.is_story`), the cast rig from his Fable character, a name for the channel
   (he will choose; "Pip Explains" is taken on YouTube by a crypto channel, @PipExplainsIt / @PipDives / @BoKnowsWhy looked free 2026-10-17).
 - `story.py` + `story/` (2.48.0, the owner's "I wanna wake up to a fully animated video", 2026-10-17; he gave the Fable chat's handoff zip:

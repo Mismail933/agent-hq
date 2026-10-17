@@ -27,7 +27,7 @@ Atlas's controls for Agent HQ.
                  lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
                  clips <episode id> | assemble <episode id> | prodlog <episode id> <credits> <minutes> <retakes>
                  characters <project id> [make|sheets|review|status|approve] | animator-test <project> <episode> [scene] | voice-add <project> <voice id> ["name"] | board-note <project> "note" | render <episode> [voice voice] | do-not-upload <episode> "why" | allow-upload <episode> | keep-voice <episode> <voice id> | frames <episode id> | credits | lnd-focus "topic for Richard"
-                 refs <project id> ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
+                 refs <project id> [--links <url> <url> | --none] ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
                  voice-match <project> [record [secs] | <clip file> | show | add <voice id> <owner id> "name"] | cast-voice <project> <character> <voice>
                  cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version]
@@ -262,13 +262,17 @@ def main(argv):
             notes = " ".join(args[2:] if count else args[1:])
             order(f"/api/content/{int(args[0])}/batch", {"count": count, "notes": notes, "topic": topic},
                   "Calina is writing the batch. The scripts will land in the project's Episodes page and in the office chat.")
-        elif cmd == "refs":   # the Scout researches what works: hq refs <project> [--links "<url> <url>"] [notes] (2.47.0: --links)
-            rest, links = list(args[1:]), ""
-            if "--links" in rest:
-                i = rest.index("--links")
-                links = rest[i + 1] if i + 1 < len(rest) else ""
-                del rest[i:i + 2]
-            order(f"/api/content/{int(args[0])}/scout", {"notes": " ".join(rest), **({"links": links} if links else {})},
+        elif cmd == "refs":   # the Scout researches what works: hq refs <project> [--links <url> <url> | --none] [notes]
+            rest, links, none = list(args[1:]), "", "--none" in args   # --none: the owner said he has no example links
+            rest = [a for a in rest if a != "--none"]
+            if "--links" in rest:   # every link after it, quoted together or one by one
+                i, j = rest.index("--links"), rest.index("--links") + 1
+                while j < len(rest) and (j == i + 1 or rest[j].startswith("http")):
+                    j += 1
+                links = " ".join(rest[i + 1:j])
+                del rest[i:j]
+            order(f"/api/content/{int(args[0])}/scout", {"notes": " ".join(rest), **({"links": links} if links else {}),
+                                                        **({"none": True} if none else {})},
                   "The Scout is researching what works on YouTube (5-10 minutes). The board lands in the project's Reference board page and in the office chat.")
         elif cmd == "board":
             b = cp.latest_refboard(int(args[0]))
