@@ -290,7 +290,11 @@ function Item({f, len, line}) {
   const k = line.cont ? 1 : clamp(pop(f, a, 130, 11), 0, 1.1);   // the same object as the line before stays where it was
   return (
     <Cam f={f} len={len} from={line.cont ? 1.1 : 1} to={line.cont ? 1.16 : 1.1}>
-      {p.bg === 'jungle' ? <Rainforest f={f} seed={9} time={p.time || 'day'} /> : <rect width={W} height={H} fill={p.color || '#F5EBD7'} />}
+      {p.bg === 'jungle' ? <Rainforest f={f} seed={9} time={p.time || 'day'} /> : p.bg === 'hut' ? <g>   {/* inside the hut: planks and a floor */}
+        <rect width={W} height={H} fill="#6B4423" />{[...Array(17)].map((_, i) => <path key={i} d={`M ${i * 120} 0 L ${i * 120} 820`} stroke="#4A2E17" strokeWidth={8} />)}
+        <rect y={820} width={W} height={H - 820} fill="#8B5A2B" {...ST} /><path d="M -40 0 L 1960 0 L 1960 150 C 1500 210 400 210 -40 150 Z" fill="#C8A44D" {...ST} />
+        <g transform="translate(560 700) scale(0.9)"><rect x={-150} y={-90} width={300} height={180} rx={18} fill="#475569" {...ST} /><circle cx={-60} cy={0} r={46} fill="#94A3B8" {...st(6)} /><rect x={30} y={-40} width={80} height={80} fill="#334155" {...st(5)} /><text x={0} y={140} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={44} fill="#fff" stroke={INK} strokeWidth={6} paintOrder="stroke">MOTOR</text></g>
+      </g> : <rect width={W} height={H} fill={p.color || '#F5EBD7'} />}
       <g transform={`translate(${p.x || 960} ${p.y || 520}) scale(${k * (p.s || 2.2)}) rotate(${p.rot || -6})`}><Thing name={p.thing} f={f} /></g>
       <Labels line={line} f={f} />
     </Cam>

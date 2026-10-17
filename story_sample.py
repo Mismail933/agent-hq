@@ -75,7 +75,77 @@ def tag_of(ln):
     return FACE_TAGS.get(p.get("expr")) or TAGS.get(ln.get("shot")) or "conversational"
 
 
+PASSAGE_CHARS = 420   # one ElevenLabs take holds a few lines, so the delivery runs on across them
+
+
+def passages(spec):
+    """Consecutive lines read in one take: up to PASSAGE_CHARS, a new take when the day changes and around the title."""
+    L, groups, cur, n = spec["lines"], [], [], 0
+    for i, ln in enumerate(L):
+        p = ln.get("p") or {}
+        text = ln.get("eleven_say") or ln["text"]
+        if cur and (n + len(text) > PASSAGE_CHARS or p.get("day") not in (None, "") or ln["shot"] == "title" or L[cur[-1]]["shot"] == "title"
+                    or float(p.get("pause_before", 0)) > 0):
+            groups.append(cur)
+            cur, n = [], 0
+        cur.append(i)
+        n += len(text)
+    if cur:
+        groups.append(cur)
+    return groups
+
+
+def _rms_blocks(a, sr, ms=10):
+    w = max(1, int(sr * ms / 1000))
+    n = len(a) // w
+    return np.sqrt(np.mean(a[:n * w].reshape(n, w) ** 2, 1) + 1e-12), w
+
+
+def quiet_point(a, sr, t0, t1):
+    """The quietest 20 ms between two times (where one line ends and the next begins), as a sample index."""
+    i0, i1 = max(0, int(t0 * sr)), min(len(a), int(t1 * sr))
+    w = int(0.02 * sr)
+    if i1 - i0 <= w:
+        return (i0 + i1) // 2
+    e = np.convolve(a[i0:i1] ** 2, np.ones(w), "valid")
+    return i0 + int(np.argmin(e)) + w // 2
+
+
+def split_take(a, sr, words, counts):
+    """A take (audio + its words) -> one clip per line. Lines get their words by count (the said text minus tags, split on spaces,
+    as ElevenLabs' alignment is); the cut between two lines is the quietest moment of the pause between them. The take's own start
+    and end are trimmed by LOUDNESS (never by the word times: they are a little off, and cutting by them ate word starts and ends)."""
+    r, w = _rms_blocks(a, sr)
+    loud = np.nonzero(r > 0.035 * r.max())[0]
+    t_on = max(0.0, (loud[0] * w) / sr - 0.06) if len(loud) else 0.0
+    t_off = min(len(a) / sr, ((loud[-1] + 1) * w) / sr + 0.22) if len(loud) else len(a) / sr
+    cuts, k = [int(t_on * sr)], 0
+    for c in counts[:-1]:
+        k += c
+        end_prev, start_next = words[k - 1][2], words[k][1]
+        lo, hi = min(end_prev, start_next) - 0.12, max(end_prev, start_next) + 0.12
+        cuts.append(quiet_point(a, sr, lo, hi))
+    cuts.append(int(t_off * sr))
+    clips, k = [], 0
+    for j, c in enumerate(counts):
+        s, e = cuts[j], max(cuts[j] + 1, cuts[j + 1])
+        clip = a[s:e].astype("float32").copy()
+        f = min(len(clip) // 4, int(0.008 * sr))
+        if f > 1:
+            clip[:f] *= np.linspace(0, 1, f)
+            clip[-f:] *= np.linspace(1, 0, f) if j < len(counts) - 1 else 1.0
+        if j == len(counts) - 1:   # the take's end: a soft 40 ms fade on the trailing breath
+            g = min(len(clip) // 3, int(0.04 * sr))
+            clip[-g:] *= np.linspace(1, 0, g)
+        ws = [[x, max(0.0, s0 - s / sr), max(0.0, e0 - s / sr)] for x, s0, e0 in words[k:k + c]]
+        clips.append((clip, ws))
+        k += c
+    tail_cut = float(np.sqrt(np.mean(a[-int(0.03 * sr):] ** 2)) / (np.sqrt(np.mean(a ** 2)) + 1e-9))
+    return clips, tail_cut
+
+
 def voice_eleven(spec, folder):
+    """ElevenLabs, a passage per take (2.51.1). The raw takes are cached (`_voice-cache/t-<key>`), so re-cutting costs nothing."""
     import hashlib
     import elevenlabs
     import control_plane as cp
@@ -84,30 +154,53 @@ def voice_eleven(spec, folder):
     elevenlabs.settings.ELEVEN_V3_STABILITY = stab
     cache = folder / "_voice-cache"
     cache.mkdir(parents=True, exist_ok=True)
-    out, billed = [], 0
-    for i, ln in enumerate(spec["lines"]):
-        spoken, tag = ln.get("eleven_say") or ln["text"], tag_of(ln)   # v3 says place names well; `say` respellings are for Kokoro
-        key = hashlib.sha1(f"eleven|{vid}|{elevenlabs.model()}|{stab}|{tag}|{spoken}".encode()).hexdigest()[:16]
-        cw, cj = cache / f"e-{key}.wav", cache / f"e-{key}.json"
+    L = spec["lines"]
+    out, billed = [None] * len(L), 0
+    for gi, g in enumerate(passages(spec)):
+        parts, prev, counts = [], None, []
+        for i in g:
+            text, tag = L[i].get("eleven_say") or L[i]["text"], tag_of(L[i])
+            parts.append((f"[{tag}] " if tag and tag != prev else "") + text)
+            prev = tag
+            counts.append(len(text.split()))
+        said = " ".join(parts)
+        key = hashlib.sha1(f"take|{vid}|{elevenlabs.model()}|{stab}|{said}".encode()).hexdigest()[:16]
+        cw, cj = cache / f"t-{key}.wav", cache / f"t-{key}.json"
         if cw.exists() and cj.exists():
-            a48, _ = sf.read(str(cw), dtype="float32")
-            out.append({"audio": a48, "words": json.loads(cj.read_text(encoding="utf-8")), "secs": len(a48) / SR})
-            say(f"  line {i + 1}: cached, {len(a48) / SR:.1f} s")
-            continue
-        a, words, n = elevenlabs.speak(vid, spoken, tag=tag)
-        billed += n
-        if not words:
-            raise SystemExit(f"ElevenLabs sent no word timings for line {i + 1}")
-        lead = max(0.0, min(0.25, words[0][1] - 0.05))   # trim the silence before the first word (and the tag's breath)
-        a = a[int(lead * 24000):]
-        words = [[w, s - lead, e - lead] for w, s, e in words]
-        tail = min(len(a) / 24000, words[-1][2] + 0.25)
-        a = a[:int(tail * 24000)]
-        a48 = np.interp(np.arange(int(len(a) * SR / 24000)) / SR, np.arange(len(a)) / 24000, a).astype("float32")
-        sf.write(str(cw), a48, SR)
-        cj.write_text(json.dumps(words), encoding="utf-8")
-        out.append({"audio": a48, "words": words, "secs": len(a48) / SR})
-        say(f"  line {i + 1}: [{tag}] {len(words)} words, {len(a48) / SR:.1f} s")
+            a, _ = sf.read(str(cw), dtype="float32")
+            words = json.loads(cj.read_text(encoding="utf-8"))
+            how = "cached"
+        else:
+            a, words, n = elevenlabs.speak(vid, said)
+            billed += n
+            if not words:
+                raise SystemExit(f"ElevenLabs sent no word timings for passage {gi + 1}")
+            sf.write(str(cw), a, 24000)
+            cj.write_text(json.dumps(words), encoding="utf-8")
+            how = f"{n} characters"
+        if len(words) != sum(counts):   # the alignment split words differently: share them out by position in the text
+            fl = [w for i in g for w in (L[i].get("eleven_say") or L[i]["text"]).split()]
+            import difflib
+            norm = lambda x: re.sub(r"[^a-z0-9]", "", x.lower())
+            sm = difflib.SequenceMatcher(a=[norm(w[0]) for w in words], b=[norm(x) for x in fl], autojunk=False)
+            owner = [None] * len(words)
+            bounds = np.cumsum([0] + counts)
+            for blk in sm.get_matching_blocks():
+                for d in range(blk.size):
+                    owner[blk.a + d] = int(np.searchsorted(bounds, blk.b + d, side="right") - 1)
+            last = 0
+            for q in range(len(owner)):
+                owner[q] = last if owner[q] is None else owner[q]
+                last = owner[q]
+            counts = [owner.count(j) for j in range(len(g))]
+            if 0 in counts:
+                raise SystemExit(f"Passage {gi + 1}: couldn't find every line's words in the take")
+        clips, tail = split_take(a, 24000, words, counts)
+        say(f"  take {gi + 1} (lines {g[0] + 1}-{g[-1] + 1}): {how}, {len(a) / 24000:.1f} s" + (f"  (ends loud: {tail:.2f})" if tail > 0.3 else ""))
+        for j, i in enumerate(g):
+            clip, ws = clips[j]
+            a48 = np.interp(np.arange(int(len(clip) * SR / 24000)) / SR, np.arange(len(clip)) / 24000, clip).astype("float32")
+            out[i] = {"audio": a48, "words": ws, "secs": len(a48) / SR, "joined": j < len(g) - 1}
     if billed:
         cp.init()
         cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": billed, "what": "story sample " + folder.name, "voice": spec["voice"]})
@@ -186,7 +279,7 @@ def timeline(spec, voiced):
         start, end = t, t + v["secs"]
         lines.append({"shot": ln["shot"], "text": ln["text"], "t_start": start, "t_end": end, "p": ln.get("p") or {},
                       "words": [[w, start + s, start + e] for w, s, e in text_words(ln["text"], v["words"])]})
-        t = end + gap + (EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))) * k
+        t = end + (0.0 if v.get("joined") else gap) + (EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))) * k
     total = t
     for i, l in enumerate(lines):
         l["cut"] = 0 if i == 0 else int(round((l["t_start"] - LEADIN) * FPS))
@@ -249,6 +342,32 @@ def pad(bus, t0, t1, notes, gain):
     put(bus, t0, s * env(n, int(1.2 * SR), int(1.2 * SR)), gain)
 
 
+def bed(bus, t0, t1, chords, step, gain, fade=1.6):
+    """Chords laid back to back with equal-power crossfades (sin/cos), so the level never dips or swells between chords. The old
+    pad-per-scene restarted at every cut and its envelopes left a dip every few seconds: the owner heard the music as "corrupted"."""
+    n = int((t1 - t0) * SR)
+    if n <= 0:
+        return
+    tt = np.arange(n) / SR
+    s = np.zeros(n)
+    k = 0
+    for c0 in np.arange(0.0, t1 - t0, step):
+        a0, a1 = max(0.0, c0 - fade / 2), min(t1 - t0, c0 + step + fade / 2)
+        i0, i1 = int(a0 * SR), int(a1 * SR)
+        x = tt[i0:i1]
+        e = np.ones(i1 - i0)
+        up, dn = (x - (c0 - fade / 2)) / fade, ((c0 + step + fade / 2) - x) / fade
+        e = np.where(up < 1, np.sin(np.pi / 2 * np.clip(up, 0, 1)), e)
+        e = np.where(dn < 1, e * np.sin(np.pi / 2 * np.clip(dn, 0, 1)), e)
+        notes = chords[k % len(chords)]
+        for j, m in enumerate(notes):
+            f0 = midi(m)
+            s[i0:i1] += e * (np.sin(2 * np.pi * f0 * x + j) + 0.4 * np.sin(2 * np.pi * f0 * 1.002 * x + 2 * j)) / len(notes)
+        k += 1
+    edge = min(n // 2, int(1.5 * SR))
+    put(bus, t0, s * env(n, edge, edge), gain)
+
+
 def make_sound(lines, total):
     N = int((total + 1) * SR)
     music, sfx = np.zeros(N), np.zeros(N)
@@ -266,17 +385,13 @@ def make_sound(lines, total):
 
     # music: a calm minor pad, tension from the storm, nothing but wind in the fall, a lonely figure in the jungle, a hit on the title
     calm = [(50, 53, 57, 62), (46, 50, 53, 58), (48, 52, 55, 60), (45, 49, 52, 57)]
-    t, k = 0.0, 0
     storm = T("storm_window") or total
-    while t < storm:
-        pad(music, t, min(storm + 1, t + 4.2), calm[k % 4], 0.10)
-        t += 4.0
-        k += 1
+    bed(music, 0.0, storm + 1.0, calm, 4.0, 0.10)
     tense = [(50, 53, 56, 62), (49, 52, 56, 61)]
     t, k = storm, 0
     breakup = T("breakup") or total
+    bed(music, storm - 0.6, breakup + 0.3, tense, 2.0, 0.12)
     while t < breakup:
-        pad(music, t, min(breakup + 0.3, t + 2.2), tense[k % 2], 0.13)
         n = int(0.5 * SR)
         for b in np.arange(t, min(breakup, t + 2.0), 0.5):   # a low pulse, like a heartbeat
             put(music, b, np.sin(2 * np.pi * 55 * np.arange(n) / SR) * np.exp(-np.arange(n) / SR * 7), 0.22)
@@ -338,12 +453,12 @@ def make_sound(lines, total):
     if T("wake"):
         w0, w1 = T("wake"), (T("title") or total)
         m = int((w1 - w0) * SR)
-        put(sfx, w0, band(noise(w1 - w0), 4000, 9000) * (0.5 + 0.5 * np.sin(2 * np.pi * 6 * np.arange(m) / SR)) * env(m, SR, SR), 0.025)
-        for j in range(7):   # birds
-            c = w0 + 0.8 + j * 0.62 + rng.uniform(0, 0.3)
+        put(sfx, w0, band(noise(w1 - w0), 4000, 9000) * (0.5 + 0.5 * np.sin(2 * np.pi * 6 * np.arange(m) / SR)) * env(m, SR, SR), 0.012)
+        for j in range(3):   # a few birds, far away
+            c = w0 + 0.8 + j * 1.6 + rng.uniform(0, 0.4)
             m2 = int(0.18 * SR)
             tt = np.arange(m2) / SR
-            put(sfx, c, np.sin(2 * np.pi * np.cumsum(2600 + 1400 * np.sin(2 * np.pi * 9 * tt)) / SR) * env(m2, 200, 2000), 0.08)
+            put(sfx, c, band(np.sin(2 * np.pi * np.cumsum(2600 + 1400 * np.sin(2 * np.pi * 9 * tt)) / SR), None, 3500) * env(m2, 400, 3000), 0.025)
     if T("title"):
         for wd in ("survived", "fall"):
             tw = word_t("title", wd)
@@ -380,6 +495,38 @@ def scene_sound(lines, total, music, sfx):
     """Sound for the story scenes after the opening: the jungle (insects, birds by day, crickets at night), water, rain, planes,
     a hit when the day changes, and a music mood per scene. Everything is held under the voice later (mix)."""
     day = None
+    # music: one bed per run of lines with the same mood, the runs crossfading
+    runs = []
+    for i, l in enumerate(lines):
+        if l["shot"] in OPENING:
+            continue
+        t0 = max(0.0, l["t_start"] - 0.2)
+        t1 = (lines[i + 1]["t_start"] - 0.2) if i + 1 < len(lines) else total
+        m = mood_of(l)
+        if runs and runs[-1][2] == m and abs(runs[-1][1] - t0) < 0.5:
+            runs[-1][1] = t1
+        else:
+            runs.append([t0, t1, m])
+    for r0, r1, m in runs:
+        bed(music, max(0.0, r0 - 1.0), min(total, r1 + 1.0), MOODS[m], 6.4, 0.075 if m != "hope" else 0.085, fade=2.4)
+    # the jungle's hiss: continuous over runs of jungle lines
+    jr = []
+    for i, l in enumerate(lines):
+        p = l.get("p") or {}
+        if l["shot"] in OPENING or not (l["shot"] in JUNGLE and p.get("bg", "jungle") in ("jungle", "night")):
+            continue
+        t0 = max(0.0, l["t_start"] - 0.2)
+        t1 = (lines[i + 1]["t_start"] - 0.2) if i + 1 < len(lines) else total
+        nt = p.get("time") == "night" or p.get("bg") == "night"
+        if jr and jr[-1][2] == nt and abs(jr[-1][1] - t0) < 0.5:
+            jr[-1][1] = t1
+        else:
+            jr.append([t0, t1, nt])
+    for r0, r1, nt in jr:
+        d = r1 - r0
+        n = int(d * SR)
+        tt = np.arange(n) / SR
+        put(sfx, r0, band(noise(d), 4000, 9000) * (0.6 + 0.4 * np.sin(2 * np.pi * (7 if nt else 3) * tt)) * env(n, int(1.2 * SR), int(1.2 * SR)), 0.012)
     for i, l in enumerate(lines):
         if l["shot"] in OPENING:
             continue
@@ -393,42 +540,36 @@ def scene_sound(lines, total, music, sfx):
         night = p.get("time") == "night" or p.get("bg") == "night"
         jungle = l["shot"] in JUNGLE and p.get("bg", "jungle") in ("jungle", "night")
         if jungle:
-            put(sfx, t0, band(noise(dur), 4000, 9000) * (0.6 + 0.4 * np.sin(2 * np.pi * (7 if night else 3) * tt)) * fade, 0.03)
-            if night:   # crickets: short pulses
+            if night:   # crickets: short soft pulses
                 m = int(0.04 * SR)
-                for c in np.arange(0.2, dur - 0.1, 0.33):
-                    put(sfx, t0 + c, np.sin(2 * np.pi * 4600 * np.arange(m) / SR) * env(m, 80, 400), 0.035)
-            else:   # a few birds
-                for c in np.arange(0.5, dur - 0.3, 1.7):
-                    m2 = int(0.16 * SR)
-                    t2 = np.arange(m2) / SR
-                    put(sfx, t0 + c + rng.uniform(0, 0.6), np.sin(2 * np.pi * np.cumsum(2400 + 1200 * np.sin(2 * np.pi * 8 * t2)) / SR) * env(m2, 200, 2000), 0.05)
+                for c in np.arange(0.2, dur - 0.1, 0.5):
+                    put(sfx, t0 + c, np.sin(2 * np.pi * 4600 * np.arange(m) / SR) * env(m, 120, 600), 0.012)
+            elif i % 3 == 0 and dur > 3:   # now and then one far bird (the owner: "less sound effects ... especially the birds")
+                m2 = int(0.16 * SR)
+                t2 = np.arange(m2) / SR
+                put(sfx, t0 + dur * 0.5 + rng.uniform(-0.5, 0.5), band(np.sin(2 * np.pi * np.cumsum(2400 + 1200 * np.sin(2 * np.pi * 8 * t2)) / SR), None, 3500) * env(m2, 400, 3000), 0.015)
         if l["shot"] in ("wade", "canoe", "hut") or p.get("water"):
-            put(sfx, t0, band(noise(dur), 300, 2200) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.4 * tt)) * fade, 0.05)
+            put(sfx, t0, band(noise(dur), 300, 2200) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.4 * tt)) * env(n, int(0.8 * SR), int(0.8 * SR)), 0.025)
         if p.get("rain"):
-            put(sfx, t0, band(noise(dur), 1500, 7000) * fade, 0.06)
+            put(sfx, t0, band(noise(dur), 1500, 7000) * env(n, int(0.8 * SR), int(0.8 * SR)), 0.03)
         if l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
             drone = (np.sin(2 * np.pi * 110 * tt) + 0.5 * np.sin(2 * np.pi * 220 * tt)) * np.sin(np.pi * np.clip(tt / dur, 0, 1)) ** 2
-            put(sfx, t0, band(drone + band(noise(dur), 80, 600) * 0.6, 60, 900), 0.12)
+            put(sfx, t0, band(drone + band(noise(dur), 80, 600) * 0.6, 60, 900), 0.07)
         if p.get("day") not in (None, "") and p.get("day") != day:
             m = int(1.6 * SR)
             th = np.arange(m) / SR
-            put(sfx, t0, np.sin(2 * np.pi * (60 - 20 * th) * th) * np.exp(-th * 3), 0.5)
-            put(sfx, t0 - 0.25, band(noise(0.5), 400, 4000) * np.sin(np.pi * np.arange(int(0.5 * SR)) / (0.5 * SR)) ** 2, 0.2)
+            put(sfx, t0, np.sin(2 * np.pi * (60 - 20 * th) * th) * np.exp(-th * 3), 0.3)
+            put(sfx, t0 - 0.25, band(noise(0.5), 400, 4000) * np.sin(np.pi * np.arange(int(0.5 * SR)) / (0.5 * SR)) ** 2, 0.1)
         if p.get("day") not in (None,):
             day = p.get("day")
-        chords = MOODS[mood_of(l)]
-        step = 3.2
-        for k, c0 in enumerate(np.arange(t0, t1, step)):
-            pad(music, c0, min(t1 + 0.6, c0 + step + 0.6), chords[(i + k) % len(chords)], 0.07 if mood_of(l) != "hope" else 0.08)
 
 
 # the owner (2026-10-17): "in some places the sound effects get louder than the narrator". The music and the effects are held
 # under the voice by measurement, not by hand-set volumes: while the narrator speaks, effects stay UNDER_VOICE_DB below his level
 # and music MUSIC_UNDER_DB below; in the pauses neither goes above the narrator's usual level. The mix reports the loudest moment.
-UNDER_VOICE_DB = -9.0
-MUSIC_UNDER_DB = -14.0
-GAP_MAX_DB = -2.0
+UNDER_VOICE_DB = -14.0   # was -9 (the owner on v3: "less sound effects or make them lower")
+MUSIC_UNDER_DB = -18.0
+GAP_MAX_DB = -6.0
 
 
 def _avg(x, win):
@@ -495,7 +636,12 @@ def mix(lines, voiced, music, sfx, folder):
     vr = _rms(voice, win)
     speaking = vr > 0.02
     level = float(np.percentile(vr[speaking], 70)) if np.any(speaking) else 0.1
-    music = hold_under(music, vr, speaking, level, MUSIC_UNDER_DB, GAP_MAX_DB - 6, win)
+    # music: a STEADY level under his usual voice (it rose in every pause and dropped when he spoke: it pumped), slow gain only
+    mr = _rms(music, int(1.5 * SR))
+    vs = _rms(voice, int(1.5 * SR))   # a quiet line (the mother's words) takes the music down with it, slowly
+    gm = np.minimum(1.0, level * 10 ** (MUSIC_UNDER_DB / 20) / mr)
+    gm = np.minimum(gm, np.where(vs > 0.02, vs * 10 ** (-12.0 / 20) / mr, 1.0))
+    music = music * _avg(_smooth_gain(gm, int(1.0 * SR)), int(1.5 * SR))
     sfx = hold_under(sfx, vr, speaking, level, UNDER_VOICE_DB, GAP_MAX_DB, win)
     report = loudness_report(voice, music, sfx, win)
     out = voice + music + sfx
