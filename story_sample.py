@@ -631,7 +631,9 @@ def mix(lines, voiced, music, sfx, folder):
     N = len(music)
     voice = np.zeros(N)
     for l, v in zip(lines, voiced):
-        put(voice, l["t_start"], v["audio"] / (np.max(np.abs(v["audio"])) + 1e-9) * 0.7)
+        put(voice, l["t_start"], v["audio"])
+    voice *= 0.7 / (np.max(np.abs(voice)) + 1e-9)   # ONE gain for the narration: each line used to be levelled on its own, so inside
+    #                                                  a take a soft line jumped up to a loud one's level (it didn't sound continuous)
     win = int(0.4 * SR)
     vr = _rms(voice, win)
     speaking = vr > 0.02
@@ -642,6 +644,10 @@ def mix(lines, voiced, music, sfx, folder):
     gm = np.minimum(1.0, level * 10 ** (MUSIC_UNDER_DB / 20) / mr)
     gm = np.minimum(gm, np.where(vs > 0.02, vs * 10 ** (-12.0 / 20) / mr, 1.0))
     music = music * _avg(_smooth_gain(gm, int(1.0 * SR)), int(1.5 * SR))
+    # and a guard for short notes (the wake-up melody) that a 1.5 s average doesn't see: never within 9 dB of the voice while he
+    # speaks (his level over 1 s, so it doesn't follow every syllable) nor above his usual level -8 dB in a pause
+    v1 = _rms(voice, int(1.0 * SR))
+    music = hold_under(music, v1, v1 > 0.02, level, -9.0, -8.0, win)
     sfx = hold_under(sfx, vr, speaking, level, UNDER_VOICE_DB, GAP_MAX_DB, win)
     report = loudness_report(voice, music, sfx, win)
     out = voice + music + sfx
