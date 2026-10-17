@@ -453,7 +453,7 @@ def job_label(kind, a):
             "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}",
             "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}",
             "style_frames": "Rana's style frames for project {0}",
-            "mv_render": "The music video {1} {2} of project {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "mv_render": "The music video {1} {2} of project {0}", "render_test": "The test render of video #{0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -490,7 +490,7 @@ JOBS = {"cast_draw": "run_cast_draw", "cast_check": "run_cast_check","design": "
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
         "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video", "assets": "run_assets",
-        "style_frames": "run_style_frames", "mv_render": "run_mv_render"}
+        "style_frames": "run_style_frames", "mv_render": "run_mv_render", "render_test": "run_test_render"}
 
 
 LOGO_BRIEF = ("The logo of Agent HQ: the owner's AI company, a small team of AI agents (each with a name and a job) run by a manager, "
@@ -1329,6 +1329,45 @@ def run_samples(pid):
         SAMPLING["pid"] = None
 
 
+def animate_run(py, args, timeout=3600):
+    """animate.py <args> in the video tools' Python: the RESULT dict, or RuntimeError with what it said (BLOCKED or its last line)."""
+    p = subprocess.run([py, str(ROOT / "animate.py")] + [str(a) for a in args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=timeout, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    lines = (p.stdout or "").splitlines()
+    result = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
+    if not result:
+        blocked = next((l[8:] for l in lines if l.startswith("BLOCKED ")), None)
+        raise RuntimeError(blocked or ((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+    return json.loads(result)
+
+
+def test_needed(e):
+    """2.49.0 (rule render.test_first): an animated video's full render runs the quick test render first, unless one already passed
+    on this program version and on the scenes as they are now."""
+    import video_checks
+    ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip() if (ROOT / "VERSION").exists() else ""
+    return bool(e and production.is_animated(e) and not production.is_story(e) and rules.get("render.test_first")
+                and rules.get("check.video") != "off" and not video_checks.test_passed(e, ver))
+
+
+def run_test_render(eid):
+    """The quick test render alone (`hq render <id> --test`): a frame a second at a quarter size, same audio, the automatic checks."""
+    with RENDERING["lock"]:
+        RENDERING["episode"] = eid
+        try:
+            py = shorts_python()
+            if not py:
+                raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
+            r = animate_run(py, ["render", eid, "--test"])
+            atlas_says(f"**Test render of video #{eid} {'passed the checks' if r['ok'] else 'has faults (rule check.video is warn)'}** "
+                       f"({r['seconds'] / 60:.1f} min; {r['checks']}). Watch it: {r.get('video') or 'test.mp4'}. A full render (`hq render {eid}`) may go now.")
+        except Exception as ex:
+            cp.log("Calina", "video_failed", None, {"episode": eid, "reason": str(ex)[:300], "test": True})
+            atlas_says(f"**Test render of video #{eid} failed:** {ex}")
+        finally:
+            RENDERING["episode"] = None
+
+
 def run_render(eid):
     """Calina runs the Shorts pipeline (shorts.py) on one approved script."""
     with RENDERING["lock"]:
@@ -1344,6 +1383,13 @@ def run_render(eid):
             mode = "assemble" if e and production.is_v2(e) else "render"
             script = "story.py" if story else "animate.py" if animated else "shorts.py"
             r = checkpoint.get("video made")   # resumed after the video was made: only Israa's review is left
+            if r is None and checkpoint.get("test passed") is None and test_needed(e):   # 2.49.0: a quick test render first
+                try:
+                    t = animate_run(py, ["render", eid, "--test"])
+                except RuntimeError as ex:
+                    raise RuntimeError(f"the test render (done before every full render) failed, so the full render didn't start. {ex}")
+                checkpoint.done("test passed", t)
+                atlas_says(f"Video #{eid}: the test render passed the checks ({t['checks']}); the full render is starting.")
             if r is None:
                 p = subprocess.run([py, str(ROOT / script), "render" if (animated or story) else mode, str(eid)], cwd=ROOT, capture_output=True,
                                    text=True, encoding="utf-8", errors="replace", timeout=4 * 3600 if story else 3600 if animated else 1800,
@@ -1377,7 +1423,8 @@ def run_render(eid):
                 top = "; ".join(f"[{x.get('area', '')}] {x['issue']}" for x in (rv.get("problems") or [])[:3])
                 verdict = (f"\n\n**Israa looked at it:** {word} ({rv.get('score', '?')}/10). {rv.get('summary', '')}"
                            + (f"\nHer main problems: {top}" if top and rv["verdict"] != "release" else ""))
-            atlas_says(f"**{'Video' if story else 'Short'} #{eid} is ready:** {r['title']} ({r['seconds'] / 60:.1f} min, {what}).{pace}{verdict}\n\n"
+            checks = f" Automatic checks: {r['checks']}." if r.get("checks") else ""   # 2.49.0 (video_checks.py)
+            atlas_says(f"**{'Video' if story else 'Short'} #{eid} is ready:** {r['title']} ({r['seconds'] / 60:.1f} min, {what}).{checks}{pace}{verdict}\n\n"
                        "Watch it in the project's Episodes page. If it's good, upload it by hand with the title and description shown "
                        "there, turn on YouTube's altered/synthetic content setting, then click **Mark as published**.")
         except Exception as ex:
@@ -2448,6 +2495,19 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError as ex:
                     return self._send(400, {"error": str(ex)})
                 return self._send(200, {"ok": True, "message": msg})
+            if action == "check":   # 2.49.0: the automatic video checks again on the last video (hq check <id> [--test]); no render
+                e = cp.get_episode(eid)
+                if not e or not production.is_animated(e):
+                    return self._send(409, {"error": "The automatic checks are for animated Shorts."})
+                py = shorts_python()
+                if not py:
+                    return self._send(409, {"error": "The video tools aren't set up on this computer."})
+                try:
+                    r = animate_run(py, ["vcheck", eid] + (["--test"] if self._json_body().get("test") else []), timeout=540)
+                except (RuntimeError, subprocess.TimeoutExpired) as ex:
+                    return self._send(409, {"error": str(ex)[:600]})
+                return self._send(200, {"ok": True, "message": ("Passed every check." if r["ok"] else f"{len(r['faults'])} fault(s): {r['checks']}"),
+                                        "faults": r["faults"], "measured": r.get("measured")})
             if action == "israa":   # ask Israa to review the video again
                 e = cp.get_episode(eid)
                 if not e or not e["video_path"]:
@@ -2491,7 +2551,14 @@ class Handler(BaseHTTPRequestHandler):
                 if voices:
                     threading.Thread(target=run_render_voices, args=(eid, voices), daemon=True).start()
                     return self._send(202, {"ok": True, "message": f"Calina is making the Short in {len(voices)} voices: about 10-15 minutes each."})
+                if body.get("test"):   # 2.49.0: the quick test render alone (hq render <id> --test)
+                    if not production.is_animated(e) or production.is_story(e):
+                        return self._send(409, {"error": "The quick test render is for animated Shorts."})
+                    threading.Thread(target=run_test_render, args=(eid,), daemon=True).start()
+                    return self._send(202, {"ok": True, "message": "Calina is making the quick test render (a frame a second, same audio) with the automatic checks: a few minutes."})
                 threading.Thread(target=run_render, args=(eid,), daemon=True).start()
+                if test_needed(e):
+                    return self._send(202, {"ok": True, "message": "A quick test render with the automatic checks runs first (a few minutes); the full render starts only if it passes."})
                 wait = "about an hour" if production.is_story(e) else "10-15 minutes" if production.is_animated(e) else "2-3 minutes"
                 return self._send(202, {"ok": True, "message": f"Calina is putting the Short together. It takes about {wait}."})
             if action == "published":

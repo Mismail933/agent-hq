@@ -565,6 +565,26 @@ Agents never spend money without the owner's explicit approval.
   sends the bot (<= 20 MB, the Bot API's limit) is saved to Atlas-HQ/review/uploads/<date>-phone-<name>.mp4 and its path goes to
   Atlas with his caption. The first plan was written by the Builder (scratchpad make_edit.py); idea 2's v2-up-to-2m36 = that plan.
 - Measure before done (2.46.0; the owner's STANDING RULE 2026-10-17, via Atlas: "measure his work properly before telling me it's done"): every `musicvideo.py render` ends with `motion_report` (also `musicvideo.py measure <edit.json> <video>`): the motion of every frame (OpenCV Farneback, 90th percentile at 320 px; frame difference if OpenCV is missing; opencv-python-headless is in requirements-video.txt and installed in the PC's shorts venv), per shot median speed and unevenness (std of log frame-to-frame ratio; smooth Veo footage ~0.10), stalls (a frame under 0.45x its neighbours), jumps inside shots, speed changes over 1.8x at straight cuts, video shots played over 1.15x or under 0.87x. Writes versions/<v>/review/motion.json + motion.png; RESULT carries `motion` {summary, warnings}; `run_mv_render` puts "Measured:" and the warnings in Atlas's announcement. Builder and Atlas: never call a version fixed while the stretch that was fixed has warnings; send the numbers with it. (It caught v19's 2.4x speed drop at the catch->ride cut and its two stalls.)
+- Automatic video checks + quick test render (2.49.0, Atlas's "Stop trial and error"; the owner: "trial and error is too costly"):
+  `video_checks.py` (plain code, no AI). `animate.render_episode` runs, after the props are written and BEFORE Remotion,
+  `data_faults` (each line's speaker in his scene, first frame shows a character (not the title card), no card that is a lone title,
+  the stick planted by the staged `by`, a diagram callout that can't hide) + `sound_faults` (silencedetect on the voice track: no
+  caption over silence, every scene with lines has voice, the mix lasts to the end card) + `caption_faults` (caption words = the
+  script's, difflib on `_tok` forms; broken numbers "7 .2"); then after Remotion `frame_faults` (ffmpeg fps=1 at 270x480:
+  `animator.drawn_share` under rule check.min_drawn_percent = blank, mean change under `STILL_DIFF` longer than rule
+  check.still_max_seconds = still; title and end card skipped). Rule check.video block (a fault raises Blocked naming time + fault)
+  | warn | off. The full render writes `short.unchecked.mp4`, renamed to short.mp4 only when it passes (else
+  short.failed-checks.mp4; the episode is unchanged). Report: `checks{suffix}.json` beside the video + `data.video_checks` /
+  `data.test_render` (with VERSION and `scenes_hash` of the stored scenes); event `video_checked`. Test render: `animate.py render
+  <id> --test` = same pipeline, Remotion `--codec=gif --every-nth-frame=30 --scale=0.25` -> test.gif + test.mp4 (with the sound),
+  suffix -test (voice-test.wav, scene-props-test.json). `animate.py vcheck <id> [--test]` (`check_episode`) re-checks the last
+  video. Server: `run_test_render` (journaled `render_test`), `run_render` runs the test first when `test_needed` (rule
+  render.test_first; skipped if `video_checks.test_passed` on this VERSION and these scenes; checkpoint "test passed"),
+  `animate_run`; routes POST `/api/episode/<id>/render {test: true}` and `/check {test}`; `hq render <id> --test`, `hq check <id>
+  [--test]`. Israa's video facts say the code checks passed (judge story and look). Regression: each ep 28 fault has a check
+  named "(ep 28's ...)". Not measured: a speaker cut by the frame edge (Camera.cameraFrame's job) and where the diagram's labels
+  sit (Diagram.jsx). Not yet: Ghassan running the ep 28 test render himself before "ready to ship" (ghassan.py is protected and
+  Ghassan can't run renders: the Builder chat's).
 - Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
   - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
     (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`

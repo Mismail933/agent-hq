@@ -1519,9 +1519,14 @@ def auto_split(ep):
     return cp.get_episode(ep["id"])
 
 
-def render_episode(eid, voice=None, suffix=""):
+def render_episode(eid, voice=None, suffix="", test=False):
     """voice: an ElevenLabs/other voice id to use instead of the project's; suffix (e.g. '-1'): write a VARIANT beside the real Short
-    (short-1.mp4, voice-1.wav) without changing the episode, so the owner can compare voices on a real story."""
+    (short-1.mp4, voice-1.wav) without changing the episode, so the owner can compare voices on a real story.
+    test (2.49.0): the quick test render: the same audio and scene props, drawn a frame a second at a quarter size (test.mp4), with the
+    same automatic checks (video_checks.py); the episode's video isn't touched."""
+    import video_checks
+    if test:
+        suffix = "-test"
     ep = cp.get_episode(int(eid))
     if not ep:
         raise Blocked(f"No episode {eid}.")
@@ -1545,6 +1550,7 @@ def render_episode(eid, voice=None, suffix=""):
     assets.install_app(APP / "src", ep["project_id"], art["ready"])
     d = quality.sync_voice_lines(d)
     d = stage_speakers(d)   # whoever speaks is on screen; no empty rooms (render only)
+    script_by = {i: p["by"] for i, s in enumerate(d["scenes"]) for p in s.get("props") or [] if (p or {}).get("type") == "rod" and (p or {}).get("by")}
     items = utterances(d, project)
     lines = [shorts.fill_placeholders(l, project) for l in narration(d)]
     # the owner's own voice file (e.g. voice.mp3 from ElevenLabs); never our own generated voice.wav / voice-N.wav
@@ -1701,7 +1707,7 @@ def render_episode(eid, voice=None, suffix=""):
         audio_name = f"mix{suffix}.wav"
     # 2.31.0: Rana draws the scenes Calina marked `bespoke` (rule rana.bespoke); any failure leaves the scene to the kit
     icon_by = []
-    if not suffix and rules.get("rana.bespoke") and any((s.get("bespoke") or "").strip() for s in d["scenes"]):
+    if (not suffix or test) and rules.get("rana.bespoke") and any((s.get("bespoke") or "").strip() for s in d["scenes"]):
         try:
             import animator
             say("Rana's drawings...")
@@ -1740,10 +1746,53 @@ def render_episode(eid, voice=None, suffix=""):
         "pacing": pacing,
     }
     (folder / f"scene-props{suffix}.json").write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
-    say("Animating (this is the slow part: a few minutes)...")
+    # 2.49.0: the automatic checks (no AI, no cost). The script's data, the sound and the captions before anything is drawn...
+    mode = rules.get("check.video")
+    faults = []
+    if mode != "off":
+        say("Checking the script's staging, the sound and the captions...")
+        faults = video_checks.data_faults(props, d, items, CAST, script_by) + \
+            video_checks.sound_faults(props, items, ffmpeg, folder / f"voice{suffix}.wav", folder / audio_name) + \
+            video_checks.caption_faults(props, items)
+        if faults and mode == "block":
+            raise Blocked(_checks_failed(ep, folder, suffix, test, video_checks.report(faults, {}, test, d)))
     out = folder / f"short{suffix}.mp4"
-    remotion(["render", "src/index.jsx", "Short", str(out), f"--props={folder / f'scene-props{suffix}.json'}",
-              f"--public-dir={folder}", "--codec=h264", "--crf=20", "--log=warn", "--overwrite"], timeout=3600)
+    if test:   # a frame a second at a quarter size: minutes, not half an hour
+        say("Test render: a frame a second at a quarter size...")
+        gif = folder / "test.gif"
+        remotion(["render", "src/index.jsx", "Short", str(gif), f"--props={folder / f'scene-props{suffix}.json'}", f"--public-dir={folder}",
+                  "--codec=gif", f"--every-nth-frame={FPS}", "--scale=0.25", "--log=warn", "--overwrite"], timeout=3600)
+        drawn = gif
+    else:
+        say("Animating (this is the slow part: a few minutes)...")
+        drawn = folder / f"short{suffix}.unchecked.mp4"   # it becomes short.mp4 only once the checks pass
+        remotion(["render", "src/index.jsx", "Short", str(drawn), f"--props={folder / f'scene-props{suffix}.json'}",
+                  f"--public-dir={folder}", "--codec=h264", "--crf=20", "--log=warn", "--overwrite"], timeout=3600)
+    # ...then the picture, a frame a second
+    measured = {}
+    if mode != "off":
+        say("Checking the picture (a frame a second)...")
+        more, measured = video_checks.frame_faults(props, ffmpeg, drawn, work=folder)
+        faults += more
+    rep = video_checks.report(faults, measured, test, d)
+    if test:
+        tv = folder / "test.mp4"   # the test with its sound, to watch
+        subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(gif), "-i", str(folder / audio_name), "-map", "0:v", "-map", "1:a",
+                        "-vf", "fps=5,scale=270:480", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", str(tv)],
+                       capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if faults and mode == "block":
+            raise Blocked(_checks_failed(ep, folder, suffix, test, rep))
+        _save_checks(ep, folder, suffix, test, rep)
+        say(f"Test render done in {time.time() - t0:.0f}s: " + video_checks.summary(rep))
+        return {"episode": ep["id"], "title": ep["title"], "test": True, "ok": rep["ok"], "checks": video_checks.summary(rep),
+                "faults": rep["faults"], "video": tv.relative_to(ROOT).as_posix() if tv.exists() else None, "seconds": round(total_secs, 1)}
+    if faults and mode == "block":
+        failed = folder / f"short{suffix}.failed-checks.mp4"
+        drawn.replace(failed)
+        raise Blocked(_checks_failed(ep, folder, suffix, test, rep) + f" The video is kept as {failed.name} to look at; the episode's video is unchanged.")
+    drawn.replace(out)
+    _save_checks(ep, folder, suffix, test, rep)
+    say("  Checks: " + video_checks.summary(rep))
     if suffix:   # a voice variant: nothing else about the episode changes
         say(f"Variant done in {time.time() - t0:.0f}s: {out.name}")
         return {"id": vid, "label": used, "video": out.relative_to(ROOT).as_posix(), "seconds": round(total_secs, 1),
@@ -1776,7 +1825,63 @@ def render_episode(eid, voice=None, suffix=""):
     cp.update_episode(ep["id"], status="rendered", video_path=rel)
     say(f"Done in {time.time() - t0:.0f}s: {rel}")
     return {"episode": ep["id"], "title": ep["title"], "video": rel, "seconds": round(total_secs, 1), "images": len(scenes),
-            "wpm": round(wpm), "voice": used}
+            "wpm": round(wpm), "voice": used, "checks": video_checks.summary(rep)}
+
+
+def _version():
+    try:
+        return (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _save_checks(ep, folder, suffix, test, rep):
+    """checks.json (checks-test.json, checks-1.json for a voice version) beside the video; the main video's and the test's also on
+    the episode (`data.video_checks` / `data.test_render`, with the program version: a test counts only for the renderer it ran on)."""
+    import video_checks
+    e = cp.get_episode(ep["id"])
+    rep = {**rep, "version": _version(), "scenes_hash": video_checks.scenes_hash(e["data"])}   # the script as stored, as the office compares it
+    (folder / f"checks{suffix}.json").write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding="utf-8")
+    if suffix and not test:
+        return
+    e["data"]["test_render" if test else "video_checks"] = rep
+    cp.update_episode(ep["id"], data=e["data"])
+    cp.log("Calina", "video_checked", None, {"episode": ep["id"], "test": bool(test), "ok": rep["ok"], "faults": len(rep["faults"])})
+
+
+def _checks_failed(ep, folder, suffix, test, rep):
+    import video_checks
+    _save_checks(ep, folder, suffix, test, rep)
+    return (f"The automatic checks stopped the {'test ' if test else ''}render ({len(rep['faults'])} fault(s)): " + video_checks.summary(rep, 10)
+            + f". Full list: {(folder / f'checks{suffix}.json').relative_to(ROOT).as_posix()}.")
+
+
+def check_episode(eid, test=False):
+    """`animate.py vcheck <id> [--test]` / `hq check <id>`: the automatic checks again on the episode's last video (or test render),
+    from its saved scene props and sound. Nothing is re-rendered."""
+    import video_checks
+    ep = cp.get_episode(int(eid))
+    if not ep or not is_animated(ep):
+        raise Blocked(f"Episode {eid} isn't an animated video.")
+    suffix = "-test" if test else ""
+    folder = production.episode_folder(ep)
+    pf, video = folder / f"scene-props{suffix}.json", folder / ("test.gif" if test else "short.mp4")
+    if not pf.exists() or not video.exists():
+        raise Blocked(f"There's no {'test render' if test else 'video'} of episode {eid} to check yet.")
+    props = json.loads(pf.read_text(encoding="utf-8"))
+    project = cp.get_project(ep["project_id"], with_text=False)
+    d = stage_speakers(quality.sync_voice_lines(ep["data"]))
+    script_by = {i: p["by"] for i, s in enumerate(d["scenes"]) for p in s.get("props") or [] if (p or {}).get("type") == "rod" and (p or {}).get("by")}
+    items = utterances(d, project)
+    ffmpeg = shorts.find_ffmpeg()
+    voice = folder / f"voice{suffix}.wav"
+    faults = video_checks.data_faults(props, d, items, CAST, script_by) + video_checks.caption_faults(props, items)
+    if voice.exists():
+        faults += video_checks.sound_faults(props, items, ffmpeg, voice, folder / props.get("audio", voice.name))
+    more, measured = video_checks.frame_faults(props, ffmpeg, video, work=folder)
+    rep = video_checks.report(faults + more, measured, test, d)
+    _save_checks(ep, folder, suffix, test, rep)
+    return {"episode": ep["id"], "test": test, "ok": rep["ok"], "checks": video_checks.summary(rep, 12), "faults": rep["faults"], "measured": measured}
 
 
 def render_voices(eid, voices):
@@ -2157,10 +2262,11 @@ def main():
             sys.exit(2)
         return
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["render", "check", "samples", "setup", "characters", "sheets", "animator-test", "voice-add", "render-voices", "cast-samples"])
+    ap.add_argument("command", choices=["render", "check", "vcheck", "samples", "setup", "characters", "sheets", "animator-test", "voice-add", "render-voices", "cast-samples"])
     ap.add_argument("arg", nargs="?", type=int)
     ap.add_argument("arg2", nargs="?")
     ap.add_argument("arg3", nargs="?")
+    ap.add_argument("--test", action="store_true", help="render: the quick test render; vcheck: check the last test render")
     a = ap.parse_args()
     cp.init()
     try:
@@ -2171,6 +2277,8 @@ def main():
             ep = cp.get_episode(a.arg)
             problems = checklist(ep) if ep and is_animated(ep) else ["That episode has no scene file."]
             print(json.dumps({"ok": not problems, "problems": problems}))
+        elif a.command == "vcheck":   # animate.py vcheck <episode> [--test]: the automatic video checks on the last video (2.49.0)
+            print("RESULT " + json.dumps(check_episode(a.arg, test=a.test)))
         elif a.command == "animator-test":
             import animator
             print("RESULT " + json.dumps(animator.run_test(a.arg, int(a.arg2) if a.arg2 is not None else 6)))
@@ -2185,7 +2293,7 @@ def main():
         elif a.command == "samples":
             print("RESULT " + json.dumps({"voices": make_samples(a.arg or 3)}))
         else:
-            print("RESULT " + json.dumps(render_episode(a.arg)))
+            print("RESULT " + json.dumps(render_episode(a.arg, test=a.test)))
     except Blocked as e:
         print("BLOCKED " + str(e))
         sys.exit(2)

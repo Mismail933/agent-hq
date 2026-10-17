@@ -22,7 +22,8 @@ Atlas's controls for Agent HQ.
                  phone-resend [all|ghassan|videos|characters|scripts|ideas|plans|voices] | send-phone <file> ["caption"]     (the owner's Telegram)
                  batch <project id> [count] [--topic "fixed topic"] ["notes"] | episodes [project id] | episode <id>
                  approve-episode <id> ["note"] | reject-episode <id> "why" | review <project id> "pasted stats"
-                 render <episode id> | published <episode id> | channel <project id> "name" "@handle" ["url"]
+                 render <episode id> [--test] | check <episode id> [--test]     (automatic video checks; a quick test render runs before every full one)
+                 published <episode id> | channel <project id> "name" "@handle" ["url"]
                  lnd | lnd-idea <id> | lnd-sync | lnd-yes <id> | lnd-no <id> "why"
                  clips <episode id> | assemble <episode id> | prodlog <episode id> <credits> <minutes> <retakes>
                  characters <project id> [make|sheets|review|status|approve] | animator-test <project> <episode> [scene] | voice-add <project> <voice id> ["name"] | board-note <project> "note" | render <episode> [voice voice] | do-not-upload <episode> "why" | allow-upload <episode> | keep-voice <episode> <voice id> | frames <episode id> | credits | lnd-focus "topic for Richard"
@@ -67,7 +68,7 @@ NOT_RUNNING = "The office isn't running, so nothing can be ordered right now. As
 # the office was fine and still finishing it; Atlas then told the owner the office was down (and sent the video twice).
 BUSY = ("The office is running but busy: it didn't answer within {secs} s. The order may still finish. Check `hq activity 10` "
         "before repeating it, and don't tell the owner the office is down.")
-SLOW = ("/api/phone", "/send", "/render", "/batch", "/voice", "/cast", "/design", "/frames", "/style-frames", "/omar/suggest")
+SLOW = ("/api/phone", "/send", "/render", "/check","/batch", "/voice", "/cast", "/design", "/frames", "/style-frames", "/omar/suggest")
 
 
 def show(obj):
@@ -477,10 +478,16 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd in ("render", "assemble", "published", "folder"):
             # `hq render <episode> <voice id> <voice id>` makes the same video in two voices to compare
-            args = [a for a in args if a != "--long"]   # old habit: nothing to choose any more, length never decides anything
+            test = "--test" in args   # 2.49.0: the quick test render with the automatic checks
+            args = [a for a in args if a not in ("--long", "--test")]   # old habit: nothing to choose any more, length never decides anything
             body = {"voices": args[1:]} if cmd == "render" and len(args) > 1 else {}
+            if test and cmd == "render":
+                body = {"test": True}
             code, reply = office(f"/api/episode/{int(args[0])}/{cmd}", body)
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "check":   # hq check <episode> [--test]: the automatic video checks on its last video (or test render); no render
+            code, reply = office(f"/api/episode/{int(args[0])}/check", {"test": "--test" in args})
+            show({"result": reply.get("message"), "faults": reply.get("faults"), "measured": reply.get("measured")} if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "review":
             order(f"/api/content/{int(args[0])}/review", {"stats": " ".join(args[1:])},
                   "Calina is writing the learning note. It will appear in the office chat.")

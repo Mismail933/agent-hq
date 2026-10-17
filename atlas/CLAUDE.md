@@ -278,6 +278,19 @@ credits per Short = stop). `hq reject-episode <id> "why"` also retires an approv
 ## Music videos: measure before done (the owner's standing rule, 2026-10-17)
 Every render ends with a **Measured:** line and **Warnings** (speed of every frame: stalls, speed changes at cuts, sped-up or slowed shots, uneven shots; chart in versions/<v>/review/motion.png). Before you tell the owner a version is fixed or done, read them: put the numbers in your message, say plainly what is still off, and never call it fixed while the part that was fixed has warnings. Also look at the frame sheets for continuity (the banner, the blue band, the leader's look, the light).
 
+## Animated Shorts: automatic checks and the test render (2.49.0, the owner: "trial and error is too costly")
+- Every animated render is checked by code (no AI, no cost) before it is called ready: voice under every caption and every scene
+  with lines, the sound lasting to the end card, captions = the script word for word (no "7 .2", no extra words), no blank or
+  near-blank frame (a card with only a title is blank), every speaker in his scene, the first frame shows a character, the stick
+  planted by the one the story says, no still stretch over rule `check.still_max_seconds`. A fault stops the render and names the
+  time; the episode's video stays as it was (the failed one is kept as short.failed-checks.mp4). Israa only reviews videos that passed.
+- `hq render <id> --test`: the quick test render (a frame a second at a quarter size, same audio, the same checks, a few minutes;
+  test.mp4 to watch). Run it before any full render. With rule `render.test_first` on, `hq render <id>` runs it first by itself and
+  starts the full render only if it passes (skipped when a test already passed on this program version and these scenes).
+- `hq check <id> [--test]`: the checks again on the last video (or test render), without rendering.
+- Rules: `check.video` block|warn|off, `check.still_max_seconds`, `check.min_drawn_percent`, `check.opening_character`, `render.test_first`.
+- After a renderer change from Ghassan: ship, then `hq render 28 --test` and read the result before any full render.
+
 ## Richard's ideas: Atlas first
 When the owner says yes to one of Richard's ideas, it is appended to `richard-approved.md` in your folder and you
 are told in the office chat. Your job: weigh it against current priorities (the YouTube channel's week, open Builder

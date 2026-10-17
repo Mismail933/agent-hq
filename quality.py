@@ -1455,6 +1455,11 @@ def review_video(eid, version=0):
                 import shorts
                 ffmpeg = shorts.find_ffmpeg()
                 secs, facts, measured = _facts(ffmpeg, video, e["data"])
+                vc = e["data"].get("video_checks") or {}
+                if vc.get("ok"):   # 2.49.0: code already measured these; she judges the story and the look
+                    facts = list(facts) + ["- Automatic code checks PASSED on this render: voice under every caption, captions match the script word for "
+                                           "word, no blank frames, every speaker in his scene, the first frame shows a character, no still stretch over "
+                                           f"{rules.get('check.still_max_seconds'):.0f} s. Don't spend your verdict on those: judge the story and the look."]
                 pack = review_pack(e["id"], version)
                 names = _stage(e["id"], pack)
                 stranger = stranger_video(p, e, pack, names)
