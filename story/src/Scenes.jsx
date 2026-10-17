@@ -239,4 +239,7 @@ export function Shot({shot, f}) {
     case 'list': return <ListShot shot={shot} f={f} />;
     case 'title': return <Title shot={shot} f={f} />;
     case 'quote': return <Quote shot={shot} f={f} />;
-    case 'end': return <EndCard shot=
+    case 'end': return <EndCard shot={shot} f={f} />;
+    default: return <Stage shot={shot} f={f} />;
+  }
+}

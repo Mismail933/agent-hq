@@ -26,7 +26,7 @@ const Cloud = ({x, y, s = 1, op = 1}) => (
   </g>
 );
 
-function Juliane() {
+export function JulianeArt({boxes = true}) {
   const R = rng(17);
   const skin = '#F2C29B', skinShade = '#D99C72', hair = '#5B3317', hairLight = '#7E4A26', dress = '#D62828', dressShade = '#A11D1D';
   const canopy = [];
@@ -139,16 +139,16 @@ function Juliane() {
         <path d="M 140 -160 C 132 -144 132 -130 142 -126 C 152 -130 152 -144 140 -160 Z" fill="#BFE6FF" {...stroke} strokeWidth={4} />
       </g>
       {/* the title, TIS boxes */}
-      <Box x={50} y={70} w={900} h={170} text="SHE SURVIVED" rot={-3} />
-      <Box x={50} y={262} w={980} h={210} text="A 3 KM FALL" fill="#E3232C" color="#fff" outline rot={-3} />
+      {boxes && <Box x={50} y={70} w={900} h={170} text="SHE SURVIVED" rot={-3} />}
+      {boxes && <Box x={50} y={262} w={980} h={210} text="A 3 KM FALL" fill="#E3232C" color="#fff" outline rot={-3} />}
     </g>
   );
 }
 
-const STORIES = {juliane: Juliane};
+const STORIES = {juliane: JulianeArt};
 
 export const Thumb = ({id = 'juliane'}) => {
-  const S = STORIES[id] || Juliane;
+  const S = STORIES[id] || JulianeArt;
   return (
     <AbsoluteFill style={{backgroundColor: '#000'}}>
       <style>{FONT_CSS}</style>
