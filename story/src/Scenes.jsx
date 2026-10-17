@@ -12,13 +12,14 @@ export function People({people = [], f, s = 1}) {
     const x = p.x != null ? p.x : interpolate(i, [0, Math.max(1, n - 1)], [n === 1 ? W / 2 : 420, n === 1 ? W / 2 : W - 420]);
     const walkIn = p.enter === 'walk' ? lin(f, 0, 50, p.flip ? W + 200 : -200, x, ease) : x;
     const pose = p.enter === 'walk' && f < 50 ? 'walk' : p.pose || 'stand';
-    const y = p.y != null ? p.y : GROUND - 146;
+    const sc0 = p.s || (n === 1 ? 1.9 : n === 2 ? 1.7 : 1.4);   // people fill a 16:9 frame like the Fable POC, not a Short
+    const y = p.y != null ? p.y : GROUND - 146 * sc0;
     const delay = p.at || 0;
     const sc = p.enter === 'pop' ? clamp(pop(f, delay, 140, 11), 0, 1.1) : 1;
     return (
       <g key={i}>
-        <Person who={p.who} pose={pose} face={p.face || 'neutral'} f={f} talk={talking(p, f)} seed={i + 1} flip={!!p.flip} x={walkIn} y={y} s={(p.s || 1) * s * sc} />
-        {p.say && f >= (p.say_at || 0) && <Bubble text={p.say} x={walkIn + (p.flip ? -40 : 40)} y={y - 150 * (p.s || 1)} f={f} at={p.say_at || 0} />}
+        <Person who={p.who} pose={pose} face={p.face || 'neutral'} f={f} talk={talking(p, f)} seed={i + 1} flip={!!p.flip} x={walkIn} y={y} s={sc0 * s * sc} />
+        {p.say && f >= (p.say_at || 0) && <Bubble text={p.say} x={walkIn + (p.flip ? -40 : 40)} y={y - 150 * sc0} f={f} at={p.say_at || 0} />}
       </g>
     );
   });
@@ -34,6 +35,7 @@ export function Stage({shot, f}) {
       <Backdrop bg={shot.bg} f={f} depth={shot.depth} color={shot.color} />
       {(shot.icons || []).map((ic, i) => <g key={i} opacity={clamp(pop(f, ic.at || 0, 150, 12), 0, 1)}><Icon name={ic.name} x={ic.x} y={ic.y} s={(ic.s || 1.6) * clamp(pop(f, ic.at || 0, 150, 12), 0, 1.15)} /></g>)}
       <People people={shot.people} f={f} />
+      {shot.sub_at && <Sub f={f} x={shot.sub_at.x} y={shot.sub_at.y} s={0.9} beam={(shot.depth || 0) > 0.5 ? 1 : 0} face="worried" />}
       {(shot.tags || []).map((t, i) => <Tag key={i} text={t.text} x={t.x} y={t.y} f={f} at={t.at || 0} color={t.color} leader={t.leader} />)}
       {shot.card && <Card {...shot.card} f={f} at={shot.card.at || 8} />}
       {shot.banner && <Banner {...shot.banner} f={f} at={shot.banner.at || 8} />}
@@ -57,10 +59,10 @@ export function BigNumber({shot, f}) {
       <Backdrop bg={shot.bg || 'dark'} f={f} />
       {shot.icon && <g transform={`translate(${W / 2 - 520} ${H / 2 - 40})`} opacity={s}><Icon name={shot.icon} s={3.4 * s} /></g>}
       <g transform={`translate(${W / 2 + (shot.icon ? 150 : 0)} ${H / 2}) scale(${s})`}>
-        <T x={0} y={40} size={size} fill={col(shot.color, C.yellow)} stroke={C.navy} sw={16} anchor="middle" ls={-4}>{text}</T>
+        <T x={0} y={40} size={size} fill={['navy', 'grey', 'purple'].includes(shot.color) || !shot.color ? C.yellow : col(shot.color, C.yellow)} stroke={C.navy} sw={16} anchor="middle" ls={-4}>{text}</T>
         {wrap(shot.label, 40).map((l, i) => <T key={i} x={0} y={140 + i * 54} size={46} weight={800} fill="#fff" anchor="middle">{l}</T>)}
       </g>
-      {shot.compare && <g opacity={clamp(pop(f, at + 50, 120, 12), 0, 1)}><T x={W / 2 + (shot.icon ? 150 : 0)} y={H / 2 + 270} size={38} weight={700} fill="#9BE1FF" anchor="middle">{shot.compare}</T></g>}
+      {shot.compare && <g opacity={clamp(pop(f, at + 50, 120, 12), 0, 1)}><T x={W / 2 + (shot.icon ? 150 : 0)} y={H / 2 + 270} size={44} weight={800} fill="#9BE1FF" anchor="middle">{shot.compare}</T></g>}
     </g>
   );
 }
@@ -237,7 +239,4 @@ export function Shot({shot, f}) {
     case 'list': return <ListShot shot={shot} f={f} />;
     case 'title': return <Title shot={shot} f={f} />;
     case 'quote': return <Quote shot={shot} f={f} />;
-    case 'end': return <EndCard shot={shot} f={f} />;
-    default: return <Stage shot={shot} f={f} />;
-  }
-}
+    case 'end': return <EndCard shot=

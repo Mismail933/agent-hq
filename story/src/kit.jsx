@@ -160,12 +160,12 @@ export function Person({who = 'man', pose = 'stand', face = 'neutral', f = 0, ta
       {spec.cape && <path d="M -40 -40 L 40 -40 L 58 120 L -58 120 Z" fill={spec.cape} />}
       {spec.tank && <g><rect x={-16} y={-36} width={32} height={96} rx={12} fill={C.steel} stroke={C.dark} strokeWidth={4} /><rect x={-6} y={-48} width={12} height={16} rx={4} fill={C.dark} /></g>}
       {spec.hair === 'long' && <path d="M -46 -60 Q -50 0 -30 10 L 30 10 Q 50 0 46 -60 Z" fill={spec.hairColor || C.hair} />}
-      <g transform={sitting ? 'translate(0 40)' : ''}>
-        <g transform={`translate(0 56) rotate(${sitting ? -70 : legL})`}>
+      <g>
+        <g transform={`translate(0 56) rotate(${sitting ? -80 : legL})`}>
           <rect x={-24} y={0} width={24} height={78} rx={11} fill={spec.stripes ? '#EA580C' : C.pants} />
           {spec.fins ? <path d="M -26 74 L -2 74 L 2 110 L -40 110 Z" fill={C.yellow} /> : <rect x={-30} y={74} width={32} height={16} rx={7} fill="#222" />}
         </g>
-        <g transform={`translate(0 56) rotate(${sitting ? -70 : legR})`}>
+        <g transform={`translate(0 56) rotate(${sitting ? -80 : legR})`}>
           <rect x={0} y={0} width={24} height={78} rx={11} fill={spec.stripes ? '#EA580C' : C.pants} />
           {spec.fins ? <path d="M -2 74 L 22 74 L 40 110 L -2 110 Z" fill={C.yellow} /> : <rect x={-2} y={74} width={32} height={16} rx={7} fill="#222" />}
         </g>
@@ -387,9 +387,9 @@ export function Card({title, big, sub, color = 'blue', f = 0, at = 0, x = 110, y
       <rect width={760} height={h} rx={30} fill="#fff" />
       <rect width={760} height={78} rx={30} fill={col(color)} /><rect y={40} width={760} height={38} fill={col(color)} />
       <T x={36} y={54} size={38} fill="#fff">{String(title || '').toUpperCase()}</T>
-      <T x={36} y={156} size={bigSize}>{big}</T>
+      <T x={36} y={156} size={bigSize}>{big || subs[0] || ''}</T>
       <rect x={36} y={176} width={110} height={8} rx={4} fill={col(color)} />
-      {subs.map((l, i) => <T key={i} x={36} y={228 + i * 42} size={32} weight={700} fill={C.grey}>{l}</T>)}
+      {(big ? subs : subs.slice(1)).map((l, i) => <T key={i} x={36} y={228 + i * 42} size={32} weight={700} fill={C.grey}>{l}</T>)}
     </g>
   );
 }
@@ -412,7 +412,7 @@ export function Banner({title, sub, color = 'red', f = 0, at = 0, x = 110, y = 1
 
 export function Tag({text, x, y, f = 0, at = 0, color = '#fff', ink = C.ink, leader}) {
   const s = clamp(pop(f, at, 150, 13), 0, 1.2);
-  const w = String(text).length * 23 + 52;
+  const w = String(text).length * 26 + 64;
   return (
     <g opacity={clamp(s, 0, 1)}>
       {leader && <path d={`M ${leader[0]} ${leader[1]} L ${x} ${y + 42}`} stroke="#fff" strokeWidth={4} strokeDasharray="10 10" />}
@@ -437,7 +437,3 @@ export function Bubble({text, x, y, f = 0, at = 0, w = 520}) {
       <path d={`M -20 -2 L 0 34 L 20 -2 Z`} fill="#fff" stroke={C.navy} strokeWidth={5} /><rect x={-24} y={-8} width={48} height={8} fill="#fff" />
       {lines.map((l, i) => <T key={i} x={0} y={-h + 58 + i * 46} size={38} weight={800} anchor="middle">{l}</T>)}
     </g>
-  );
-}
-
-export const fmt = fmtNum;

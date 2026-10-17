@@ -1340,12 +1340,13 @@ def run_render(eid):
             if not py:
                 raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
             animated = bool(e and production.is_animated(e))
+            story = bool(e and production.is_story(e))   # 2.48.0: a long narrated story (story.py, the owner's flat Fable look)
             mode = "assemble" if e and production.is_v2(e) else "render"
-            script = "animate.py" if animated else "shorts.py"
+            script = "story.py" if story else "animate.py" if animated else "shorts.py"
             r = checkpoint.get("video made")   # resumed after the video was made: only Israa's review is left
             if r is None:
-                p = subprocess.run([py, str(ROOT / script), "render" if animated else mode, str(eid)], cwd=ROOT, capture_output=True,
-                                   text=True, encoding="utf-8", errors="replace", timeout=3600 if animated else 1800,
+                p = subprocess.run([py, str(ROOT / script), "render" if (animated or story) else mode, str(eid)], cwd=ROOT, capture_output=True,
+                                   text=True, encoding="utf-8", errors="replace", timeout=4 * 3600 if story else 3600 if animated else 1800,
                                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                 lines = (p.stdout or "").splitlines()
                 result = next((l[7:] for l in lines if l.startswith("RESULT ")), None)
@@ -1355,10 +1356,14 @@ def run_render(eid):
                 r = json.loads(result)
                 cp.log("Calina", "video_ready", None, {"episode": eid, "title": r["title"], "seconds": r["seconds"]})
                 checkpoint.done("video made", r)
-            rv = quality.review_video(eid) if rules.get("review.video") else None   # Israa looks at it before the owner does (live rule)
+            rv = quality.review_video(eid) if rules.get("review.video") and not story else None   # Israa looks at it before the owner does (live rule)
+            if story:   # 2.48.0: Israa's video review is built for Shorts; a story video gets the measured report and the sheets for now
+                cp.log("Israa", "video_review_skipped", None, {"episode": eid, "why": "story videos: the owner reviews the contact sheets; Israa's 16:9 review comes next"})
             pace = (f" The voice still reads at {r['wpm']} words a minute even after slowing it: lower the speed in OpenArt's "
                     "text-to-speech next time." if r.get("wpm", 0) > 158 else "")
-            what = (f"{r['images']} animated scenes, voice: {r.get('voice', '')}" if animated else
+            what = (f"{r['shots']} shots, narrator {r.get('voice', '')} ({r.get('wpm', '?')} wpm), measured: {r.get('motion') or 'n/a'}"
+                    + (f"; warnings: {'; '.join(str(w) for w in r['warnings'][:3])}" if r.get("warnings") else "") if story else
+                    f"{r['images']} animated scenes, voice: {r.get('voice', '')}" if animated else
                     f"{r['images']} clips" if mode == "assemble" else f"{r['images']} public-domain images")
             verdict = ""
             if rv:
@@ -1367,7 +1372,7 @@ def run_render(eid):
                 top = "; ".join(f"[{x.get('area', '')}] {x['issue']}" for x in (rv.get("problems") or [])[:3])
                 verdict = (f"\n\n**Israa looked at it:** {word} ({rv.get('score', '?')}/10). {rv.get('summary', '')}"
                            + (f"\nHer main problems: {top}" if top and rv["verdict"] != "release" else ""))
-            atlas_says(f"**Short #{eid} is ready:** {r['title']} ({r['seconds']:.0f} s, {what}).{pace}{verdict}\n\n"
+            atlas_says(f"**{'Video' if story else 'Short'} #{eid} is ready:** {r['title']} ({r['seconds'] / 60:.1f} min, {what}).{pace}{verdict}\n\n"
                        "Watch it in the project's Episodes page. If it's good, upload it by hand with the title and description shown "
                        "there, turn on YouTube's altered/synthetic content setting, then click **Mark as published**.")
         except Exception as ex:
@@ -2459,9 +2464,8 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(400, {"error": "Compare two or three voices at a time (each one costs ElevenLabs characters and a render)."})
                     known = {v["id"] for v in voice_samples(cp.get_project(e["project_id"], with_text=False) or {"id": e["project_id"]})["voices"]}
                     voices = [v if v in known or ":" in v else "eleven:" + v for v in voices]
-                if production.is_story(e):   # 2.47.0: long story scripts are written and approved; their renderer comes next
-                    return self._send(409, {"error": "This is a long story script. Its video renderer (our own flat style, the owner's character) "
-                                            "isn't built yet: the Builder builds it once the owner approves the style. The approved script is kept."})
+                if production.is_story(e) and voices:   # 2.48.0: story videos have one narrator (voice versions are a Shorts thing)
+                    return self._send(409, {"error": "Comparing voices only works for animated Shorts."})
                 if production.is_animated(e):
                     pr = cp.get_project(e["project_id"], with_text=False) or {}
                     if not quality.characters_ready(pr):
@@ -2483,7 +2487,7 @@ class Handler(BaseHTTPRequestHandler):
                     threading.Thread(target=run_render_voices, args=(eid, voices), daemon=True).start()
                     return self._send(202, {"ok": True, "message": f"Calina is making the Short in {len(voices)} voices: about 10-15 minutes each."})
                 threading.Thread(target=run_render, args=(eid,), daemon=True).start()
-                wait = "10-15 minutes" if production.is_animated(e) else "2-3 minutes"
+                wait = "about an hour" if production.is_story(e) else "10-15 minutes" if production.is_animated(e) else "2-3 minutes"
                 return self._send(202, {"ok": True, "message": f"Calina is putting the Short together. It takes about {wait}."})
             if action == "published":
                 msg = agents.mark_published(eid)
