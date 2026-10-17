@@ -140,8 +140,10 @@ def project():
 
 
 def name(pid):
+    """The channel's name (project meta channel.name), else the project's title."""
     try:
-        return (cp.get_project(int(pid), with_text=False) or {}).get("title") or f"project {pid}"
+        p = cp.get_project(int(pid), with_text=False) or {}
+        return ((p.get("meta") or {}).get("channel") or {}).get("name") or p.get("title") or f"project {pid}"
     except Exception:
         return f"project {pid}"
 
