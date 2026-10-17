@@ -285,10 +285,11 @@ function Rule({f, len, line}) {
 function Item({f, len, line}) {
   const p = P(line);
   const a = at(line, p.on || '', 0.15);
+  const k = line.cont ? 1 : clamp(pop(f, a, 130, 11), 0, 1.1);   // the same object as the line before stays where it was
   return (
-    <Cam f={f} len={len} from={1} to={1.1}>
+    <Cam f={f} len={len} from={line.cont ? 1.1 : 1} to={line.cont ? 1.16 : 1.1}>
       {p.bg === 'jungle' ? <Rainforest f={f} seed={9} time={p.time || 'day'} /> : <rect width={W} height={H} fill={p.color || '#F5EBD7'} />}
-      <g transform={`translate(${p.x || 960} ${p.y || 520}) scale(${clamp(pop(f, a, 130, 11), 0, 1.1) * (p.s || 2.2)}) rotate(${p.rot || -6})`}><Thing name={p.thing} f={f} /></g>
+      <g transform={`translate(${p.x || 960} ${p.y || 520}) scale(${k * (p.s || 2.2)}) rotate(${p.rot || -6})`}><Thing name={p.thing} f={f} /></g>
       <Labels line={line} f={f} />
     </Cam>
   );

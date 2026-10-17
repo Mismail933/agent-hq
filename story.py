@@ -505,7 +505,7 @@ def render_episode(eid, until=None, voice=None, use_director=True):
     try:
         import musicvideo
         musicvideo.FF = ffmpeg
-        motion = musicvideo.motion_report(str(out), [{"id": f"{s['kind']}@{s['start'] // FPS}s", "start": s["start"] / FPS, "end": s["end"] / FPS} for s in placed], total / FPS, folder / "review")
+        motion = musicvideo.motion_report(str(out), [{"id": f"{s['kind']}@{s['start'] // FPS}s", "start": s["start"] / FPS, "end": s["end"] / FPS} for s in placed], total / FPS, folder / "review", fps=FPS)
     except Exception as ex:  # noqa: BLE001
         say(f"   (motion report skipped: {str(ex)[:120]})")
     if not until:

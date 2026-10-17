@@ -40,6 +40,22 @@ def say(m):
 
 
 # ---- voice ------------------------------------------------------------------------------
+# the owner (2026-10-17): the even 0.92 read was "a bit boring"; he picked the sample read faster in action and calmer in sad
+# moments. A line's pace: p.speed if given, else by its scene: action > base > emotional.
+ACTION = {"lightning", "breakup", "falling", "shaking", "storm_window", "planes", "injuries"}
+
+
+def pace_of(ln, base):
+    p = ln.get("p") or {}
+    if p.get("speed"):
+        return float(p["speed"])
+    if ln.get("shot") in ACTION or p.get("danger"):
+        return round(base + 0.06, 2)
+    if float(p.get("pause", 0)) >= 0.6 or ln.get("shot") in ("seats3", "mother") or p.get("expr") in ("sad", "grim"):
+        return round(base - 0.07, 2)
+    return base
+
+
 def voice_lines(spec, folder):
     from kokoro import KPipeline
     voice, speed = spec.get("voice", "am_michael"), float(spec.get("speed", 0.92))
@@ -50,7 +66,8 @@ def voice_lines(spec, folder):
     import hashlib
     for i, ln in enumerate(spec["lines"]):
         spoken = ln.get("say") or ln["text"]
-        key = hashlib.sha1(f"{voice}|{speed}|{spoken}".encode()).hexdigest()[:16]
+        sp = pace_of(ln, speed) if spec.get("paced") else speed
+        key = hashlib.sha1(f"{voice}|{sp}|{spoken}".encode()).hexdigest()[:16]
         cw, cj = cache / f"{key}.wav", cache / f"{key}.json"
         if cw.exists() and cj.exists():   # the same words in the same voice: reuse (Kokoro is slow on this PC)
             a48, _ = sf.read(str(cw), dtype="float32")
@@ -59,7 +76,7 @@ def voice_lines(spec, folder):
             say(f"  line {i + 1}: cached, {len(a48) / SR:.1f} s")
             continue
         chunks, words, off = [], [], 0.0
-        for r in pipe(spoken, voice=voice, speed=speed):
+        for r in pipe(spoken, voice=voice, speed=sp):
             a = r.audio.numpy() if hasattr(r.audio, "numpy") else np.asarray(r.audio)
             for tok in r.tokens or []:
                 if tok.start_ts is None:
@@ -483,7 +500,7 @@ def run(a, spec, folder):
         import musicvideo
         musicvideo.FF = ffmpeg
         cuts = [{"id": l["shot"], "start": l["cut"] / FPS, "end": (props["lines"][i + 1]["cut"] if i + 1 < len(lines) else l["until"]) / FPS} for i, l in enumerate(props["lines"])]
-        motion = musicvideo.motion_report(str(out), cuts, total, folder / "review")
+        motion = musicvideo.motion_report(str(out), cuts, total, folder / "review", fps=FPS)
     except Exception as ex:  # noqa: BLE001
         say(f"   (motion report skipped: {str(ex)[:160]})")
     try:

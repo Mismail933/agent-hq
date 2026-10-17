@@ -318,7 +318,9 @@ export const Opening = ({lines = [], audio}) => (
     {audio && <Audio src={staticFile(audio)} />}
     {lines.map((l, i) => {
       const from = i === 0 ? 0 : l.cut, to = i + 1 < lines.length ? lines[i + 1].cut : l.until;
-      const shifted = {...l, idx: i, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
+      const prev = i > 0 ? lines[i - 1] : null;
+      const cont = !!prev && prev.shot === l.shot && l.shot === 'item' && ((prev.p || {}).thing === (l.p || {}).thing);
+      const shifted = {...l, idx: i, cont, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
       return (
         <Sequence key={i} from={from} durationInFrames={Math.max(1, to - from)} layout="none">
           <ShotLayer line={shifted} len={to - from} />

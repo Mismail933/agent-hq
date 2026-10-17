@@ -527,15 +527,17 @@ def _motion_series(path, until):
     return np.array(out), ("optical flow" if cv2 is not None else "frame difference")
 
 
-def motion_report(path, shots, end, rv):
+def motion_report(path, shots, end, rv, fps=None, series=None):
     """Speed curve of the finished video: per shot (median speed, unevenness, stalls), speed changes at cuts, sped-up or slowed shots.
-    Writes review/motion.json + motion.png; returns {summary, warnings}."""
-    m, how = _motion_series(path, end)
+    Writes review/motion.json + motion.png; returns {summary, warnings}. fps = the video's frame rate (the music videos' 24 if not
+    given; the story videos are 30). series = an earlier run's per-frame motion, to redo the report without reading the video again."""
+    fps = fps or FPS
+    m, how = (np.array(series[0], float), series[1]) if series else _motion_series(path, end)
     if len(m) < 10:
         return {"summary": "too short to measure", "warnings": []}
-    t = (np.arange(len(m)) + 1) / FPS
+    t = (np.arange(len(m)) + 1) / fps
     cuts = sorted({round(float(s["start"]), 3) for s in shots} | {round(float(s["end"]), 3) for s in shots})
-    near_cut = lambda x: any(abs(x - c) < 1.5 / FPS for c in cuts)
+    near_cut = lambda x: any(abs(x - c) < 1.5 / fps for c in cuts)
     def med(a, b):
         sel = m[(t >= a) & (t < b)]
         return float(np.median(sel)) if len(sel) else 0.0
