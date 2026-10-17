@@ -585,6 +585,11 @@ Agents never spend money without the owner's explicit approval.
   named "(ep 28's ...)". Not measured: a speaker cut by the frame edge (Camera.cameraFrame's job) and where the diagram's labels
   sit (Diagram.jsx). Not yet: Ghassan running the ep 28 test render himself before "ready to ship" (ghassan.py is protected and
   Ghassan can't run renders: the Builder chat's).
+  2.49.2 (ep 31's first wide test render, blocked by 4 faults; all 4 were real, not false alarms; no contractions were spoken):
+  `heard_captions` left out "He"/"I"/"They" opening a sentence because their timing sat in the breath before their sound: a word
+  whose own time is silent is now looked for up to 0.4 s around it (never past its neighbours) and only dropped if there is no voice
+  there either. `mix_audio` pads the voice with silence to the whole video (`apad=whole_dur`): amix's duration=first used to cut
+  music and effects at the last word, so the end hold and the end card were silent.
 - Picture shape (2.50.0, the owner 2026-10-17: "no dont make vertical video"): rule `video.shape` (text, default "3=wide"; "N=wide|vertical;
   ..."; not listed = vertical; `rules.video_shape(pid)`, validated by `rules._shapes`). `animate.render_episode` puts `shape` in the props
   (Root's `calculateMetadata` makes the Short composition 1920x1080), and a wide video is always `format: "video"` (never #shorts). The kit

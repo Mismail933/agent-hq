@@ -1043,7 +1043,9 @@ def mix_audio(ffmpeg, voice, cues, music, seconds, dst, quiet=()):
     speaks (sidechain compression), faded in and out, and stopped dead in the `quiet` windows [(from s, to s)] (a freeze-frame,
     a deadpan pause: the comic stop). Then normalised like the voice. Returns (dst, characters billed for new effects)."""
     inputs, filters, labels, billed = ["-i", str(voice)], [], ["[v]"], 0
-    filters.append("[0:a]aresample=48000,asplit=4[v][sc][sca][scs]")
+    # the voice track ends with the last word; padded with silence to the whole video so the amix below (duration=first) keeps the
+    # music and effects through the end hold and the end card (2.49.2, ep 31's test render: the sound stopped 2 s before the end card)
+    filters.append(f"[0:a]aresample=48000,apad=whole_dur={seconds:.2f},asplit=4[v][sc][sca][scs]")
     n = 1
     if music:
         inputs += ["-stream_loop", "-1", "-i", str(music)]
@@ -1377,13 +1379,22 @@ def heard_captions(wav, words):
     n = len(a) // hop
     env = np.sqrt((a[:n * hop].reshape(n, hop) ** 2).mean(axis=1)) if n else np.zeros(1, dtype="float32")
     thr = max(0.004, 0.06 * float(np.percentile(env[env > 0], 90))) if (env > 0).any() else 0.004
+    # 2.49.2 (ep 31's test render: "He", "I", "They" opening a sentence were left out though the voice says them: a short word's
+    # timing sat in the breath just before its sound): a word whose own time is silent is looked for up to 0.4 s around it, never
+    # past the words said before and after it; only a word with no voice there either (really not said) is left out
     kept, dropped = [], 0
-    for w in out:
+    for k, w in enumerate(out):
         i, j = int(w[1] * 100), max(int(w[1] * 100) + 1, int(np.ceil(w[2] * 100)))
         on = np.nonzero(env[i:j] > thr)[0]
         if not len(on):
-            dropped += 1
-            continue
+            lo = min(w[1], max(out[k - 1][2] if k else 0.0, w[1] - 0.4))
+            hi = max(w[2], min(out[k + 1][1] if k + 1 < len(out) else w[2] + 0.4, w[2] + 0.4))
+            i, j = int(lo * 100), max(int(lo * 100) + 1, int(np.ceil(hi * 100)))
+            on = np.nonzero(env[i:j] > thr)[0]
+            if not len(on):
+                dropped += 1
+                continue
+            w = [w[0], (i + on[0]) / 100, max((i + on[0]) / 100 + 0.1, min(hi, (i + on[-1]) / 100 + 0.06))] + w[3:]
         kept.append([w[0], max(w[1], (i + on[0]) / 100 - 0.02), min(w[2], (i + on[-1]) / 100 + 0.06)] + w[3:])
     if dropped:
         say(f"  Captions: {dropped} word(s) left out where the voice is silent.")
