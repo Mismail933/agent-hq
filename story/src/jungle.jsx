@@ -512,7 +512,7 @@ function End({f, len, line}) {
   return (
     <g>
       <rect width={W} height={H} fill="#0B1F3A" />
-      <Box x={W / 2 - 500} y={180} w={1000} h={150} text={(p.channel || 'PIP DIVES').toUpperCase()} fill="#FFE11A" s={clamp(pop(f, 6, 140, 12), 0, 1)} />
+      <Box x={W / 2 - 500} y={180} w={1000} h={150} text={(p.channel || 'STORYGRAPHICS').toUpperCase()} fill="#FFE11A" s={clamp(pop(f, 6, 140, 12), 0, 1)} />
       <text x={W / 2} y={460} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={64} fill="#fff" opacity={clamp((f - 16) / 12, 0, 1)}>{(p.next || 'NEXT: TRAPPED 480 M DOWN WITH 12 MINUTES OF AIR').toUpperCase()}</text>
       <g transform={`translate(${W / 2} 700) scale(${clamp(pop(f, 24, 160, 10), 0, 1.1)})`}><rect x={-280} y={-70} width={560} height={140} rx={70} fill="#E3232C" {...ST} /><text x={0} y={30} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={80} fill="#fff">SUBSCRIBE</text></g>
       <rect width={W} height={H} fill="#000" opacity={lin(f, len - 20, len, 0, 1)} />
