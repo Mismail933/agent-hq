@@ -12,7 +12,10 @@ Setup, once, by the owner (the Builder never sees the values):
    (External, add himself as a test user) -> Credentials -> Create OAuth client ID -> "Desktop app" -> Download JSON.
 2. Office -> Spend & limits -> Your YouTube -> choose that JSON file (or save it as ~/.agent-hq/youtube-client.json).
 3. "Connect YouTube": Google's consent page opens in his browser on this PC; he signs in with the account that owns the
-   channel and allows read-only access. The token is kept in ~/.agent-hq/youtube-token.json, never logged or shown.
+   channel, picks the channel and allows read-only access. The token is kept in ~/.agent-hq/youtube-token-p<project>.json,
+   never logged or shown.
+2.52.0 (the owner: "let Omar handle both"): one sign-in per channel, each tied to its project (one Google client file for all).
+The single youtube-token.json of 2.44.0 belongs to the first project Omar watches and is renamed once (`migrate`).
 Practice mode (HQ_SIMULATE=1) returns made-up numbers and needs none of this.
 """
 import json
@@ -23,9 +26,9 @@ from pathlib import Path
 
 HOME = Path(os.environ.get("HQ_YOUTUBE_HOME") or (Path.home() / ".agent-hq"))
 CLIENT = HOME / "youtube-client.json"
-TOKEN = HOME / "youtube-token.json"
+TOKEN = HOME / "youtube-token.json"   # 2.44.0's one sign-in: moved to token_path(<first project>) by migrate()
 SCOPES = ["https://www.googleapis.com/auth/youtube.readonly", "https://www.googleapis.com/auth/yt-analytics.readonly"]
-STATE = {"connecting": False, "error": ""}
+STATE = {"connecting": 0, "error": {}}   # connecting = the project whose Google page is open; error per project
 LOCK = threading.Lock()
 LIBS = ["google-api-python-client>=2.100", "google-auth-oauthlib>=1.2", "google-auth-httplib2>=0.2"]
 METRICS = "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost,likes,comments,shares"
@@ -52,10 +55,30 @@ def _libs():
         raise RuntimeError("Couldn't install Google's YouTube libraries (pip failed). Check the internet, then press Connect again.")
 
 
-def status():
-    """What the office shows: is the client file there, is the channel connected, any error. Never the secrets themselves."""
-    return {"client": CLIENT.exists() or _sim(), "connected": TOKEN.exists() or _sim(), "connecting": STATE["connecting"],
-            "error": STATE["error"], "practice": _sim()}
+def token_path(pid):
+    return HOME / f"youtube-token-p{int(pid)}.json"
+
+
+def migrate(pid):
+    """2.44.0 kept one sign-in in youtube-token.json: it is the first watched project's channel."""
+    try:
+        if TOKEN.exists() and not token_path(pid).exists():
+            TOKEN.rename(token_path(pid))
+    except OSError:
+        pass
+
+
+def connected_projects():
+    return sorted(int(f.stem.rsplit("-p", 1)[1]) for f in HOME.glob("youtube-token-p*.json") if f.stem.rsplit("-p", 1)[1].isdigit())
+
+
+def status(pid=None):
+    """What the office shows: is the client file there, is this project's channel connected (any channel, without pid), any error.
+    Never the secrets themselves."""
+    on = token_path(pid).exists() if pid else bool(connected_projects())
+    return {"client": CLIENT.exists() or _sim(), "connected": on or _sim(),
+            "connecting": (STATE["connecting"] == int(pid)) if pid else bool(STATE["connecting"]),
+            "error": STATE["error"].get(int(pid), "") if pid else "", "practice": _sim()}
 
 
 def save_client(raw):
@@ -75,57 +98,67 @@ def save_client(raw):
         os.chmod(CLIENT, 0o600)
     except OSError:
         pass
-    STATE["error"] = ""
+    STATE["error"] = {}
     return True
 
 
-def connect():
+def connect(pid):
     """Run Google's consent page in the owner's browser on this PC (a local loopback address catches the answer). Blocks until he
     answers or 10 minutes pass; run it in a thread."""
     if _sim():
         return True
     if not CLIENT.exists():
         raise RuntimeError("Add the OAuth client file first (Spend & limits -> Your YouTube).")
+    pid = int(pid)
     with LOCK:
-        STATE.update(connecting=True, error="")
+        STATE["connecting"] = pid
+        STATE["error"].pop(pid, None)
         try:
             _libs()
             from google_auth_oauthlib.flow import InstalledAppFlow
             flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT), SCOPES)
-            creds = flow.run_local_server(port=0, open_browser=True, timeout_seconds=600, prompt="consent",
+            # select_account: Google shows the account and channel chooser, so the owner can pick THIS project's channel
+            creds = flow.run_local_server(port=0, open_browser=True, timeout_seconds=600, prompt="consent select_account",
                                           success_message="YouTube is connected to the office (read-only). You can close this tab.")
             if not creds:
                 raise RuntimeError("Google didn't answer within 10 minutes.")
-            TOKEN.write_text(creds.to_json(), encoding="utf-8")
+            tok = token_path(pid)
+            tok.write_text(creds.to_json(), encoding="utf-8")
             try:
-                os.chmod(TOKEN, 0o600)
+                os.chmod(tok, 0o600)
             except OSError:
                 pass
             return True
         except Exception as e:
-            STATE["error"] = f"{type(e).__name__}: {str(e)[:200]}"
+            STATE["error"][pid] = f"{type(e).__name__}: {str(e)[:200]}"
             raise
         finally:
-            STATE["connecting"] = False
+            STATE["connecting"] = 0
 
 
-def disconnect():
-    if TOKEN.exists():
-        TOKEN.unlink()
+def disconnect(pid):
+    tok = token_path(pid)
+    if tok.exists():
+        tok.unlink()
     return True
 
 
-def _creds():
+def _creds(pid=None):
+    """This project's sign-in; without pid any connected one (public numbers of other channels read the same with any)."""
     _libs()
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
-    if not TOKEN.exists():
-        raise RuntimeError("YouTube isn't connected yet (Spend & limits -> Your YouTube -> Connect).")
-    creds = Credentials.from_authorized_user_file(str(TOKEN), SCOPES)
+    if pid is None:
+        have = connected_projects()
+        pid = have[0] if have else 0
+    tok = token_path(pid)
+    if not tok.exists():
+        raise RuntimeError("YouTube isn't connected for this channel yet (Spend & limits -> Your YouTube -> Connect).")
+    creds = Credentials.from_authorized_user_file(str(tok), SCOPES)
     if not creds.valid:
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            TOKEN.write_text(creds.to_json(), encoding="utf-8")
+            tok.write_text(creds.to_json(), encoding="utf-8")
         else:
             raise RuntimeError("The YouTube sign-in has expired. Connect again (Spend & limits -> Your YouTube).")
     return creds
@@ -136,13 +169,13 @@ def _rows(report):
     return [dict(zip(heads, r)) for r in report.get("rows", []) or []]
 
 
-def snapshot(days=28):
-    """Everything Omar reads, in one dict: the channel, its last uploads with their public numbers, the last `days` days of
-    analytics (channel totals, per video, traffic sources) and the newest comments on the last three uploads."""
+def snapshot(pid, days=28):
+    """Everything Omar reads about one project's channel, in one dict: the channel, its last uploads with their public numbers,
+    the last `days` days of analytics (channel totals, per video, traffic sources) and the newest comments on the last three uploads."""
     if _sim():
-        return _fake(days)
+        return _fake(days, pid)
     from googleapiclient.discovery import build
-    creds = _creds()
+    creds = _creds(pid)
     yt = build("youtube", "v3", credentials=creds, cache_discovery=False)
     ya = build("youtubeAnalytics", "v2", credentials=creds, cache_discovery=False)
     ch = yt.channels().list(part="snippet,statistics,contentDetails", mine=True).execute()["items"][0]
@@ -265,7 +298,10 @@ def _fake_rival(ref, n):
             "views": (k % 900 + 100) * 90000, "videos": 120, "recent": recent}
 
 
-def _fake(days):
+PRACTICE_NAMES = {3: "POV Then History", 5: "Storygraphics"}
+
+
+def _fake(days, pid=3):
     """Practice mode: a small, believable channel."""
     today = date.today()
     vids = [{"id": f"vid{i}", "title": t, "published": (today - timedelta(days=3 * i + 1)).isoformat() + "T15:00:00Z",
@@ -276,7 +312,8 @@ def _fake(days):
             "averageViewPercentage": 61.0 - i * 6, "subscribersGained": v["views"] // 90, "subscribersLost": 1, "likes": v["likes"],
             "comments": v["comments"], "shares": v["views"] // 200} for i, v in enumerate(vids)]
     return {"taken": today.isoformat(), "days": days, "from": (today - timedelta(days=days)).isoformat(), "to": today.isoformat(),
-            "channel": {"id": "UCpractice", "title": "POV Then History (practice)", "subscribers": 212, "views": 5820, "videos": 4},
+            "channel": {"id": f"UCpractice{int(pid)}", "title": f"{PRACTICE_NAMES.get(int(pid), f'Project {pid}')} (practice)",
+                        "subscribers": 212, "views": 5820, "videos": 4},
             "videos": vids,
             "analytics": {"total": {"views": 5820, "estimatedMinutesWatched": 6984, "averageViewDuration": 72, "averageViewPercentage": 55.2,
                                     "subscribersGained": 64, "subscribersLost": 4, "likes": 232, "comments": 47, "shares": 29},

@@ -1492,46 +1492,55 @@ def omar_loop():
     """Omar (2.44.0, omar.py): the channel's numbers once a day and his weekly note, at the hours his rules set. After a failure he
     waits an hour before trying again (YouTube's daily quota)."""
     time.sleep(45)
-    failed = 0.0
     while True:
         rules.apply_all()
-        try:
-            what = "" if RESTARTING["on"] or cp.STOP_FILE.exists() or time.time() - failed < 3600 else omar.due()
-            if what:
-                run_omar(what)
+        try:   # a channel that failed waits an hour (omar.due); the other channels go on (2.52.0)
+            job = None if RESTARTING["on"] or cp.STOP_FILE.exists() else omar.due()
+            if job:
+                run_omar(*job)
         except Exception as e:
-            failed = time.time()
             print("Omar:", repr(e)[:300], flush=True)
         time.sleep(300)
 
 
-def run_omar(what):
-    """One of Omar's jobs: daily (the numbers, a line to Atlas) or weekly (his note: Atlas, the phone, Calina)."""
+def run_omar(what, pid=None):
+    """One of Omar's jobs on one channel: daily (the numbers, a line to Atlas) or weekly (his note: Atlas, the phone, Calina)."""
+    pid = int(pid or omar.project())
     if what == "daily":
-        atlas_says("**Omar (channel):** " + omar.daily())
+        atlas_says(f"**Omar ({omar.name(pid)}):** " + omar.daily(pid))
         return
-    headline, path = omar.weekly()
+    headline, path = omar.weekly(pid)
     rel = str(path.relative_to(ROOT)).replace("\\", "/")
-    atlas_says(f"**Omar's weekly note on the channel is ready:** {headline}\n\nIt's in `{rel}`. Read it before you suggest the next batch.")
+    atlas_says(f"**Omar's weekly note on {omar.name(pid)} is ready:** {headline}\n\nIt's in `{rel}`. Read it before you suggest the next batch.")
     if rules.get("omar.phone_weekly"):
         phone.notify("📈 " + path.read_text(encoding="utf-8")[:3800])   # as text, so he reads it in the chat (long notes are split)
     if rules.get("omar.feed_calina"):
-        pid = omar.project()
         if (cp.get_project(pid, with_text=False) or {}).get("status") == "approved":
-            threading.Thread(target=run_review, args=(pid, omar.calina_stats(path)), daemon=True).start()
+            threading.Thread(target=run_review, args=(pid, omar.calina_stats(path, pid)), daemon=True).start()
 
 
-def run_youtube_connect():
+def run_youtube_connect(pid):
     try:
-        youtube.connect()
+        youtube.connect(pid)
     except Exception as e:
-        atlas_says(f"**YouTube didn't connect:** {youtube.STATE['error'] or e}")
+        atlas_says(f"**YouTube didn't connect for {omar.name(pid)}:** {youtube.STATE['error'].get(int(pid)) or e}")
         return
-    cp.log("Owner", "youtube_connected", None, {})
+    cp.log("Owner", "youtube_connected", None, {"project": pid})
     try:
-        run_omar("daily")
+        run_omar("daily", pid)
     except Exception as e:
-        atlas_says(f"**YouTube is connected,** but Omar's first look at the channel failed: {str(e)[:300]}")
+        atlas_says(f"**YouTube is connected for {omar.name(pid)},** but Omar's first look at the channel failed: {str(e)[:300]}")
+
+
+def _omar_pid(body):
+    """The channel a request is about: body/query 'project', else Omar's first channel. Only projects Omar looks after."""
+    try:
+        pid = int(body.get("project") or omar.project())
+    except (TypeError, ValueError):
+        pid = omar.project()
+    if pid not in omar.projects():
+        raise ValueError(f"Omar doesn't look after project {pid}'s channel (rule omar.projects = {rules.get('omar.projects')}).")
+    return pid
 
 
 def run_review(project_id, stats):
@@ -1848,9 +1857,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, phone.view())
         if u.path == "/api/omar":   # Omar and the YouTube connection (never the client secret or the token)
             return self._send(200, omar.view())
-        if u.path == "/api/channel-stats":   # the newest snapshot of the channel (hq channel-stats)
-            snaps = omar.snapshots(n=1)
-            return self._send(200, snaps[-1]) if snaps else self._send(404, {"error": "No snapshot yet: connect YouTube, then hq omar now."})
+        if u.path == "/api/channel-stats":   # the newest snapshot of a channel (hq channel-stats [project])
+            q = parse_qs(u.query)
+            try:
+                pid = _omar_pid({"project": (q.get("project") or [""])[0]})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            snaps = omar.snapshots(pid, n=1)
+            return self._send(200, snaps[-1]) if snaps else self._send(404, {"error": f"No snapshot of {omar.name(pid)} yet: connect it, then hq omar now {pid}."})
         if u.path == "/api/rules":   # the team's live rules (Spend & limits -> Team rules; hq rule list)
             return self._send(200, {"rules": rules.view()})
         if u.path.startswith("/api/prompt/"):   # an agent's instructions as they are now
@@ -2594,30 +2608,41 @@ class Handler(BaseHTTPRequestHandler):
         if u.path in ("/api/youtube/connect", "/api/youtube/disconnect"):   # this PC only: Google's page opens in its browser
             if not remote.is_local(self):
                 return self._send(403, {"error": "Connect YouTube on the PC itself: Google's sign-in page opens in its browser."})
+            try:
+                pid = _omar_pid(self._json_body())
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
             if u.path.endswith("disconnect"):
-                youtube.disconnect()
-                cp.log("Owner", "youtube_disconnected", None, {})
-                return self._send(200, {"ok": True, "message": "YouTube disconnected. Omar stops reading the channel."})
+                youtube.disconnect(pid)
+                cp.log("Owner", "youtube_disconnected", None, {"project": pid})
+                return self._send(200, {"ok": True, "message": f"{omar.name(pid)} disconnected. Omar stops reading that channel."})
             if not youtube.status()["client"]:
                 return self._send(409, {"error": "Add the OAuth client file first."})
             if youtube.STATE["connecting"]:
                 return self._send(409, {"error": "Google's page is already open: finish it in the browser."})
-            threading.Thread(target=run_youtube_connect, daemon=True).start()
-            return self._send(200, {"ok": True, "message": "Google's sign-in page is opening in your browser. Choose the channel's account and allow read-only access."})
-        if u.path == "/api/omar/now":   # hq omar now [weekly]: Omar runs now instead of at his hour
-            what = "weekly" if self._json_body().get("what") == "weekly" else "daily"
+            threading.Thread(target=run_youtube_connect, args=(pid,), daemon=True).start()
+            return self._send(200, {"ok": True, "message": f"Google's sign-in page is opening in your browser. Choose the account, then the "
+                                                           f"{omar.name(pid)} channel, and allow read-only access."})
+        if u.path == "/api/omar/now":   # hq omar now [weekly] [project]: Omar runs now instead of at his hour
+            body = self._json_body()
+            what = "weekly" if body.get("what") == "weekly" else "daily"
             if omar.STATUS["running"]:
                 return self._send(409, {"error": f"Omar is already on his {omar.STATUS['running']} job."})
-            if not youtube.status()["connected"]:
-                return self._send(409, {"error": "YouTube isn't connected yet (Spend & limits -> Your YouTube)."})
-            threading.Thread(target=run_omar, args=(what,), daemon=True).start()
-            return self._send(200, {"ok": True, "message": "Omar is reading the channel." if what == "daily" else
-                                    "Omar is writing his weekly note (a minute or two); it comes to you and to the chat."})
-        if u.path in ("/api/omar/watch", "/api/omar/unwatch"):   # hq omar watch|unwatch <channel>: rivals, public numbers only
+            try:
+                pid = _omar_pid(body)
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            if not youtube.status(pid)["connected"]:
+                return self._send(409, {"error": f"{omar.name(pid)} isn't connected yet (Spend & limits -> Your YouTube)."})
+            threading.Thread(target=run_omar, args=(what, pid), daemon=True).start()
+            return self._send(200, {"ok": True, "message": f"Omar is reading {omar.name(pid)}." if what == "daily" else
+                                    f"Omar is writing his weekly note on {omar.name(pid)} (a minute or two); it comes to you and to the chat."})
+        if u.path in ("/api/omar/watch", "/api/omar/unwatch"):   # hq omar watch|unwatch <channel> [--project N]: rivals, public numbers
             body = self._json_body()
             by = "Owner" if body.get("by") == "owner" else "Atlas"
             try:
-                msg = (omar.watch if u.path.endswith("/watch") else omar.unwatch)(str(body.get("ref", ""))[:300], by)
+                pid = _omar_pid(body)
+                msg = (omar.watch if u.path.endswith("/watch") else omar.unwatch)(str(body.get("ref", ""))[:300], by, pid)
             except (ValueError, LookupError) as e:
                 return self._send(400, {"error": str(e)})
             except Exception as e:

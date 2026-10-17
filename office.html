@@ -2027,19 +2027,23 @@ function youtubeHtml(om) {
       4. Credentials → Create credentials → OAuth client ID → <b>Desktop app</b> → Download JSON.<br>
       5. Choose that file here. It stays on this PC.</p>
       <div class="lrow"><label>OAuth client file<small>The JSON Google gives you for a Desktop app.</small></label><input type="file" id="ytClient" accept=".json,application/json" aria-label="OAuth client file"></div>`;
-  else if (!y.connected) body = `<p class="note">Client file saved. Press Connect: Google's page opens in this PC's browser. Choose the account that owns the channel and allow read-only access.</p>
-      ${y.error ? `<p class="note" style="color:#FDA4AF">${esc(y.error)}</p>` : ''}
-      <div><button class="btn sm" type="button" id="ytConnect" ${y.connecting ? 'disabled' : ''}>${y.connecting ? 'Waiting for Google…' : 'Connect YouTube'}</button></div>`;
-  else {
-    const ch = om.channel;
-    body = `<p class="note">Connected${y.practice ? ' (practice numbers)' : ''}. Omar looks at the channel every day at ${esc(String(om.daily_hour))}:00 and writes a note every ${esc(({mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'})[om.weekly_day] || om.weekly_day)}.</p>
-      ${ch ? `<div class="lrow"><label>${esc(ch.title)}<small>Last look: ${esc(om.taken || '')}</small></label><b style="font-family:var(--mono)">${Number(ch.subscribers).toLocaleString()} subs · ${Number(ch.views).toLocaleString()} views</b></div>` : ''}
-      ${om.line ? `<p class="note">${esc(om.line)}</p>` : ''}
-      ${om.note ? `<p class="note">Last weekly note: <span style="font-family:var(--mono)">${esc(om.note)}</span></p>` : ''}
-      <p class="note">${(om.rivals || []).length ? `Learning from: ${om.rivals.map(r => esc(r.title) + (r.subscribers ? ` (${Number(r.subscribers).toLocaleString()})` : '')).join(', ')}.` : 'Not watching other channels yet: ask Atlas to have Omar watch one (send him the channel link).'}</p>
-      ${om.error ? `<p class="note" style="color:#FDA4AF">Last problem: ${esc(om.error)}</p>` : ''}
-      <div><button class="btn sm" type="button" id="ytNow" ${om.running ? 'disabled' : ''}>${om.running ? 'Omar is reading…' : 'Look now'}</button>
-      <button class="btn sm ghost" type="button" id="ytOff">Disconnect</button></div>`;
+  else {   // 2.52.0: one block per channel Omar looks after (rule omar.projects), each with its own read-only sign-in
+    const day = ({mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'})[om.weekly_day] || om.weekly_day;
+    body = `<p class="note">Omar looks after ${(om.channels || []).length} channel${(om.channels || []).length === 1 ? '' : 's'}: every day at ${esc(String(om.daily_hour))}:00 he reads each connected one, and every ${esc(day)} he writes a note on each.${y.practice ? ' (Practice numbers.)' : ''}</p>`
+      + (om.channels || []).map(c => {
+        const cy = c.youtube || {}, ch = c.channel;
+        if (!cy.connected) return `<div class="lrow"><label>${esc(c.name)}<small>Not connected. Press Connect: Google's page opens in this PC's browser. Choose your account, then <b>this channel</b> (${esc(c.name)}) in Google's list, and allow read-only access.</small></label>
+          <button class="btn sm" type="button" data-ytc="${c.project}" ${cy.connecting ? 'disabled' : ''}>${cy.connecting ? 'Waiting for Google…' : 'Connect'}</button></div>
+          ${cy.error ? `<p class="note" style="color:#FDA4AF">${esc(cy.error)}</p>` : ''}`;
+        return `<div class="lrow"><label>${esc(c.name)}<small>${ch ? `Signed in as: ${esc(ch.title)} · last look ${esc(c.taken || '')}` : 'Connected: the first look comes soon.'}</small></label>
+          <b style="font-family:var(--mono)">${ch ? `${Number(ch.subscribers).toLocaleString()} subs · ${Number(ch.views).toLocaleString()} views` : ''}</b></div>
+          ${c.line ? `<p class="note">${esc(c.line)}</p>` : ''}
+          ${c.note ? `<p class="note">Last weekly note: <span style="font-family:var(--mono)">${esc(c.note)}</span></p>` : ''}
+          <p class="note">${(c.rivals || []).length ? `Learning from: ${c.rivals.map(r => esc(r.title) + (r.subscribers ? ` (${Number(r.subscribers).toLocaleString()})` : '')).join(', ')}.` : 'Not watching other channels for it yet: ask Atlas (send him the channel link).'}</p>
+          ${c.error ? `<p class="note" style="color:#FDA4AF">Last problem: ${esc(c.error)}</p>` : ''}
+          <div><button class="btn sm" type="button" data-ytn="${c.project}" ${om.running ? 'disabled' : ''}>${om.running ? 'Omar is reading…' : 'Look now'}</button>
+          <button class="btn sm ghost" type="button" data-yto="${c.project}" data-ytname="${esc(c.name)}">Disconnect</button></div>`;
+      }).join('');
   }
   return `<div class="lim"><strong>Your YouTube</strong>${body}</div>`;
 }
@@ -2091,10 +2095,9 @@ async function renderPhone(force) {
   box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>` + youtubeHtml(om) + remoteHtml(rm);
   const yc = $('#ytClient');
   if (yc) yc.addEventListener('change', async () => { const f = yc.files[0]; if (f) ytPost('/api/youtube/client', await f.arrayBuffer(), true); });
-  const yb = $('#ytConnect'); if (yb) yb.addEventListener('click', () => ytPost('/api/youtube/connect'));
-  const yn = $('#ytNow'); if (yn) yn.addEventListener('click', () => ytPost('/api/omar/now', {what:'daily'}));
-  const yo = $('#ytOff');
-  if (yo) yo.addEventListener('click', () => { if (confirm('Disconnect YouTube? Omar stops reading the channel until you connect again.')) ytPost('/api/youtube/disconnect'); });
+  box.querySelectorAll('[data-ytc]').forEach(b => b.addEventListener('click', () => ytPost('/api/youtube/connect', {project: +b.dataset.ytc})));
+  box.querySelectorAll('[data-ytn]').forEach(b => b.addEventListener('click', () => ytPost('/api/omar/now', {what:'daily', project: +b.dataset.ytn})));
+  box.querySelectorAll('[data-yto]').forEach(b => b.addEventListener('click', () => { if (confirm(`Disconnect ${b.dataset.ytname}? Omar stops reading that channel until you connect it again.`)) ytPost('/api/youtube/disconnect', {project: +b.dataset.yto}); }));
   const nc = $('#remoteNew');
   if (nc) nc.addEventListener('click', async () => {
     if (!confirm('Make a new access code? Every other computer is signed out and must enter the new code.')) return;

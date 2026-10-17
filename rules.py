@@ -118,7 +118,7 @@ RULES = {
     "jobs.allowance_low_percent": _r("Team & schedules", "int", 10, 0, 90, "For that check, an agent with less than this % of today's allowance left counts as out (a check only; the allowance itself is the owner's)"),
     # OMAR (2.44.0): the YouTube channel, read-only
     "omar.enabled": _r("Omar & the channel", "bool", True, None, None, "Omar reads the YouTube channel every day and writes a weekly note (needs YouTube connected in Spend & limits)"),
-    "omar.project": _r("Omar & the channel", "int", 3, 1, 999, "The project whose channel Omar watches (its snapshots go to content/project-N/channel/)"),
+    "omar.projects": _r("Omar & the channel", "text", "3,5", None, None, "The projects whose YouTube channels Omar looks after, in order (3 = POV Then History, 5 = Storygraphics); each needs its own Connect in Spend & limits -> Your YouTube, and its snapshots go to content/project-N/channel/"),
     "omar.daily_hour": _r("Omar & the channel", "int", 9, 0, 23, "Hour (PC time) of Omar's daily look at the channel"),
     "omar.weekly_day": _r("Omar & the channel", "choice", "mon", ("mon", "tue", "wed", "thu", "fri", "sat", "sun"), None, "Day of Omar's weekly note (or the first day after it the office runs)"),
     "omar.phone_weekly": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note is sent to the owner's phone"),
@@ -161,6 +161,8 @@ def parse(key, value):
             _placeholders_ok(key, s)
         if key == "video.shape":
             _shapes(s)
+        if key == "omar.projects" and not all(x.strip().isdigit() for x in s.replace(";", ",").split(",") if x.strip()):
+            raise ValueError("omar.projects must be project numbers separated by commas, like 3,5.")
         return s
     s = str(value).strip()
     if kind == "choice":

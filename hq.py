@@ -32,8 +32,8 @@ Atlas's controls for Agent HQ.
                  voice-match <project> [record [secs] | <clip file> | show | add <voice id> <owner id> "name"] | cast-voice <project> <character> <voice>
                  cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version]
                  ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
-                 omar [status | now | weekly | suggest <episode>] | channel-stats     (Omar, Social Media Manager: the YouTube channel, read-only)
-                 omar watch <channel link|@handle> | omar unwatch <channel> | omar rivals     (channels Omar learns from: public numbers only)
+                 omar [status | now [project] | weekly [project] | suggest <episode>] | channel-stats [project]     (Omar: the YouTube channels, read-only)
+                 omar watch <channel link|@handle> [--project N] | omar unwatch <channel> [--project N] | omar rivals [project]     (channels he learns from)
                  fetch <link> [link...]     (see a link the owner sent: images saved to review/refs/, YouTube title/channel/description/thumbnail)
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
@@ -397,24 +397,39 @@ def main(argv):
             if sub == "status":
                 import omar
                 show(omar.view())
-            elif sub in ("now", "weekly"):
-                code, reply = office("/api/omar/now", {"what": "weekly" if sub == "weekly" else "daily"})
+            elif sub in ("now", "weekly"):   # hq omar now [project]: each channel separately (the first one if none is named)
+                body = {"what": "weekly" if sub == "weekly" else "daily"}
+                if len(args) > 1 and args[1].isdigit():
+                    body["project"] = int(args[1])
+                code, reply = office("/api/omar/now", body)
                 show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
-            elif sub in ("watch", "unwatch"):
-                code, reply = office(f"/api/omar/{sub}", {"ref": " ".join(args[1:])})
+            elif sub in ("watch", "unwatch"):   # --project N: the channel it is for (default: Omar's first channel)
+                rest, pid = list(args[1:]), None
+                for flag in ("--project", "-p"):
+                    if flag in rest and rest.index(flag) + 1 < len(rest):
+                        i = rest.index(flag)
+                        pid = rest[i + 1]
+                        del rest[i:i + 2]
+                body = {"ref": " ".join(rest)}
+                if pid:
+                    body["project"] = pid
+                code, reply = office(f"/api/omar/{sub}", body)
                 show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
             elif sub == "rivals":
                 import omar
-                show({"watching": omar.rivals(), "latest_numbers": omar.latest_rivals() or "none yet (they come with Omar's daily look)"})
+                pid = int(args[1]) if len(args) > 1 and args[1].isdigit() else None
+                show({"for": omar.name(pid or omar.project()), "watching": omar.rivals(pid),
+                      "latest_numbers": omar.latest_rivals(pid) or "none yet (they come with Omar's daily look)"})
             elif sub == "suggest":
                 code, reply = office(f"/api/omar/suggest/{int(args[1])}", {})
                 show(reply.get("suggestion") if code < 300 else f"Not done: {reply.get('error')}")
             else:
                 show("hq omar [status | now | weekly | suggest <episode> | watch <channel> | unwatch <channel> | rivals]")
-        elif cmd == "channel-stats":   # the newest snapshot of the YouTube channel Omar took (numbers only)
+        elif cmd == "channel-stats":   # hq channel-stats [project]: the newest snapshot Omar took of a channel (numbers only)
             import omar
-            snaps = omar.snapshots(n=1)
-            show(snaps[-1] if snaps else "No snapshot yet: the owner connects YouTube in Spend & limits, then hq omar now.")
+            pid = int(args[0]) if args and args[0].isdigit() else None
+            snaps = omar.snapshots(pid, n=1)
+            show(snaps[-1] if snaps else f"No snapshot of {omar.name(pid or omar.project())} yet: the owner connects it in Spend & limits, then hq omar now.")
         elif cmd == "ghassan":   # hq ghassan [status | now | diff | ship | discard "why"]: the in-house Builder
             sub = args[0] if args else "status"
             if sub == "now":
