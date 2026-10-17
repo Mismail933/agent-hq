@@ -242,7 +242,8 @@ def write_scene(project_id, story, scene, frames, words, kit_note, folder, name,
             say(f"  Rana's file rejected ({problem[:140]}); asking again ({attempt + 1}/{repairs})")
             continue
         (folder / f"{name}.jsx").write_text(last, encoding="utf-8")
-        err = test_render(folder, name, scene, frames, words)
+        import rules
+        err = test_render(folder, name, scene, frames, words, shape=rules.video_shape(project_id))
         if not err:
             return name
         if err.startswith(EMPTY):
@@ -265,27 +266,32 @@ def drawn_share(png):
         from PIL import Image, ImageFilter
     except ImportError:
         return None
-    im = Image.open(png).convert("L").resize((270, 480))
+    im = Image.open(png).convert("L")
+    # 2.50.0: a wide frame (rule video.shape) is measured at 480x270, its captions along the bottom
+    wide = im.width > im.height
+    w, h, band = (480, 270, (210, 270)) if wide else (270, 480, (325, 400))   # vertical: y 1300-1600 is the captions' band
+    im = im.resize((w, h))
     edges = im.filter(ImageFilter.FIND_EDGES).load()
     cells = busy = 0
-    for cy in range(0, 480, 15):
-        if 325 <= cy < 400:   # y 1300-1600: the captions' band
+    for cy in range(0, h, 15):
+        if band[0] <= cy < band[1]:
             continue
-        for cx in range(0, 270, 15):
+        for cx in range(0, w, 15):
             cells += 1
-            if any(edges[x, y] > 40 for x in range(cx + 1, cx + 14) for y in range(cy + 1, min(480, cy + 14))):
+            if any(edges[x, y] > 40 for x in range(cx + 1, min(w, cx + 14)) for y in range(cy + 1, min(h, cy + 14))):
                 busy += 1
     return round(100 * busy / max(1, cells))
 
 
-def test_render(folder, name, scene, frames, words=()):
+def test_render(folder, name, scene, frames, words=(), shape="vertical"):
     """Render three frames of the scene in the sandbox, with the scene's real word timings. Returns '' if all three work, else the
     error text; EMPTY + why when the last frame (where the whole explanation should be on screen) is nearly blank (2.36.1, ep 28:
-    blank cards played while the voice explained the well; rule rana.min_drawn_percent)."""
+    blank cards played while the voice explained the well; rule rana.min_drawn_percent). shape: the project's (rule video.shape),
+    so a wide video's drawing is measured in the band that will be seen."""
     import animate
     import rules
     install(folder, [name])
-    props = {"durationInFrames": frames, "mouth": ["X"] * frames, "caption_chunks": [], "intro": None, "outro": None,
+    props = {"durationInFrames": frames, "shape": shape, "mouth": ["X"] * frames, "caption_chunks": [], "intro": None, "outro": None,
              "scenes": [{"from": 0, "frames": frames, "backdrop": "court", "generated": name, "words": list(words)}]}
     pf = folder / "_test-props.json"
     pf.write_text(json.dumps(props), encoding="utf-8")

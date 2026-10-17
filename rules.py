@@ -64,6 +64,7 @@ RULES = {
     "video.end_card_seconds": _r("Video & render", "float", 4.5, 1, 20, "The end card holds this long while the music plays out", ("animate", "OUTRO_SECONDS")),
     "video.end_hold_seconds": _r("Video & render", "float", 2.0, 0, 8, "After the last word the last shot (pushed in on the people) holds this long before the end card", ("animate", "END_HOLD")),
     "video.end_fade_seconds": _r("Video & render", "float", 1.0, 0.1, 5, "The end card fades in over the last shot this slowly (seconds)", ("animate", "END_FADE")),
+    "video.shape": _r("Video & render", "text", "3=wide", None, None, "The picture's shape per project: N=wide (1920x1080, a regular YouTube video) or N=vertical (1080x1920, a Short); several with ';' (3=wide; 6=vertical). A project not listed is vertical. Layout, captions, title and end cards, framing and Rana's drawings follow it"),
     "video.frame_margin_px": _r("Video & render", "int", 60, 0, 200, "Safe margin at the picture's edges (px of 1080): whoever speaks stays fully inside it; people half cut by the edge in a close shot are left out of it", ("animate", "FRAME_MARGIN")),
     "video.speaker_min_height": _r("Video & render", "float", 0.40, 0, 0.9, "Whoever talks fills at least this share of the picture's height (a wide shot cuts in on him; 0 = off)", ("animate", "SPEAKER_MIN_H")),
     "captions.heard_words": _r("Video & render", "bool", True, None, None, "Captions are timed to where the voice really says each word (the words and numbers are always the script's; off = the script's own timings). Words over silence are never captioned"),
@@ -158,6 +159,8 @@ def parse(key, value):
             raise ValueError(f"{key} is too long (60,000 characters at most).")
         if r["target"] and s.strip() and key.startswith("prompt.") and key.split(".")[1] in PROMPT_TARGET:
             _placeholders_ok(key, s)
+        if key == "video.shape":
+            _shapes(s)
         return s
     s = str(value).strip()
     if kind == "choice":
@@ -177,6 +180,25 @@ def parse(key, value):
     if not low <= v <= high:
         raise ValueError(f"{key} must be between {low} and {high}.")
     return v
+
+
+def _shapes(text):
+    """video.shape's text -> {project id: 'wide'|'vertical'}; a malformed entry is refused (ValueError)."""
+    out = {}
+    for part in [p.strip() for p in str(text or "").replace(",", ";").split(";") if p.strip()]:
+        pid, _, shape = part.partition("=")
+        if not pid.strip().isdigit() or shape.strip().lower() not in ("wide", "vertical"):
+            raise ValueError(f"video.shape: '{part}' must look like 3=wide or 3=vertical.")
+        out[int(pid)] = shape.strip().lower()
+    return out
+
+
+def video_shape(project_id):
+    """'wide' (1920x1080) or 'vertical' (1080x1920) for this project, from rule video.shape (2.50.0). Not listed = vertical."""
+    try:
+        return _shapes(get("video.shape")).get(int(project_id or 0), "vertical")
+    except (ValueError, TypeError):
+        return "vertical"
 
 
 def _fields(text):

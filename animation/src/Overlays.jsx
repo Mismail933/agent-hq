@@ -8,7 +8,7 @@ const STROKE = (px) => ({WebkitTextStroke: `${px}px ${C.ink}`, paintOrder: 'stro
  * Big readable captions, 2-3 words at a time, the spoken word highlighted. Sits above YouTube's bottom UI.
  * chunks: [{from, to, who, words: [{w, from, to}]}] in frames. A character's own line (not the narrator's) is tinted sky blue.
  */
-export const Captions = ({chunks, frame}) => {
+export const Captions = ({chunks, frame, w = W, h = H}) => {
   const chunk = chunks.find((c) => frame >= c.from && frame < c.to);
   if (!chunk) return null;
   const {fps} = useVideoConfig();
@@ -16,17 +16,20 @@ export const Captions = ({chunks, frame}) => {
   const pop = spring({frame: age, fps, config: {damping: 12, stiffness: 220, mass: 0.5}});
   // 2.36.1 (ep 28: captions over faces): never more than two rows (y 1310-1570); a chunk of long words gets smaller type instead of a
   // third row running down over the people standing in the bottom of the picture
-  const lens = chunk.words.map((w) => String(w.w).length);
+  // 2.50.0: a wide picture (rule video.shape) has them along its bottom edge, in type sized for 1080 px of height
+  const wide = w > h;
+  const box = wide ? w - 360 : W - 120;
+  const lens = chunk.words.map((x) => String(x.w).length);
   const widthAt = (f) => lens.reduce((s, n) => s + n * f * 0.62, 0) + 66 * Math.max(0, lens.length - 1);
-  let fs = Math.min(124, (W - 140) / (0.62 * Math.max(1, ...lens)));
-  while (fs > 64 && widthAt(fs) > 1.75 * (W - 120)) fs -= 4;
+  let fs = Math.min(wide ? 84 : 124, (box - 20) / (0.62 * Math.max(1, ...lens)));
+  while (fs > (wide ? 48 : 64) && widthAt(fs) > 1.75 * box) fs -= 4;
   return (
     <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center'}}>
       <div
         style={{
           position: 'absolute',
-          top: 1310,
-          width: W - 120,
+          ...(wide ? {bottom: 44} : {top: 1310}),
+          width: box,
           textAlign: 'center',
           fontFamily: HEAD,
           fontSize: fs,
@@ -37,14 +40,14 @@ export const Captions = ({chunks, frame}) => {
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          columnGap: 66, // a real gap between words: the 16 px outline and the spoken word's pop eat into it (2.30.0: 44 ran words together)
+          columnGap: wide ? 44 : 66, // a real gap between words: the 16 px outline and the spoken word's pop eat into it (2.30.0: 44 ran words together)
         }}
       >
         {chunk.words.map((w, i) => {
           const active = frame >= w.from && frame < w.to;
           const done = frame >= w.to;
           return (
-            <span key={i} style={{display: 'inline-block', margin: 0, color: active ? C.gold : chunk.who && chunk.who !== 'narrator' ? C.sky : C.white, transform: active ? 'scale(1.05) rotate(-2deg)' : 'none', transformOrigin: '50% 60%', opacity: done || active ? 1 : 0.92, ...STROKE(16)}}>
+            <span key={i} style={{display: 'inline-block', margin: 0, color: active ? C.gold : chunk.who && chunk.who !== 'narrator' ? C.sky : C.white, transform: active ? 'scale(1.05) rotate(-2deg)' : 'none', transformOrigin: '50% 60%', opacity: done || active ? 1 : 0.92, ...STROKE(wide ? 11 : 16)}}>
               {w.w}
             </span>
           );
@@ -55,7 +58,7 @@ export const Captions = ({chunks, frame}) => {
 };
 
 /** The opening stamp: place and year on a ribbon (no "POV": nobody's point of view is used, 2.29.0). Plays over the hook line. */
-export const TitleCard = ({intro, frame, frames = 84}) => {
+export const TitleCard = ({intro, frame, frames = 84, w = W, h = H}) => {
   const {fps} = useVideoConfig();
   if (frame > frames) return null;
   const pop = spring({frame, fps, config: {damping: 8, stiffness: 160, mass: 0.7}});
@@ -67,7 +70,7 @@ export const TitleCard = ({intro, frame, frames = 84}) => {
   const shown = text.length * fs * 0.6 > 880 ? text.slice(0, Math.floor(880 / (fs * 0.6)) - 1).trim() + '…' : text;
   const ribbonW = Math.min(W - 140, shown.length * fs * 0.6 + 90);
   return (
-    <g opacity={out} transform={`translate(${W / 2} 205) scale(${0.9 + 0.1 * out})`}>
+    <g opacity={out} transform={`translate(${w / 2} ${w > h ? 110 : 205}) scale(${0.9 + 0.1 * out})`}>
       <g transform={`translate(${(1 - ribbon) * 900} 0) rotate(-2) scale(${0.85 + 0.15 * Math.max(0, pop)})`}>
         <rect x={-ribbonW / 2} y="-52" width={ribbonW} height="104" rx="22" fill={C.parchment} stroke={C.ink} strokeWidth="10" />
         <text textAnchor="middle" y={fs * 0.33} fontFamily={HEAD} fontSize={fs} fill={C.ink}>{shown.toUpperCase()}</text>
@@ -81,45 +84,46 @@ export const TitleCard = ({intro, frame, frames = 84}) => {
  * seconds while the music carries on. Channel line, the episode's title in big type, place and year on a ribbon.
  * title: {text, place, year, frames}.
  */
-export const EpisodeTitle = ({title, frame}) => {
+export const EpisodeTitle = ({title, frame, w: SW = W, h: SH = H}) => {
   const {fps} = useVideoConfig();
   const n = title.frames || 78;
   const pop = spring({frame: frame - 2, fps, config: {damping: 11, stiffness: 150, mass: 0.7}});
   const rib = spring({frame: frame - 10, fps, config: {damping: 13, stiffness: 130}});
   const fade = 1 - easeOut(clamp01((frame - (n - 6)) / 6));
   const words = String(title.text || '').toUpperCase().split(/\s+/).filter(Boolean);
-  // wrap the title into lines of about 16 characters, then size the type to the longest line
+  // wrap the title into lines of about 16 characters (26 and at most 3 lines on a wide picture), then size the type to the longest line
+  const wide = SW > SH;
   const lines = [];
   words.forEach((w) => {
     const last = lines[lines.length - 1];
-    if (last && (last + ' ' + w).length <= 16) lines[lines.length - 1] = last + ' ' + w;
+    if (last && (last + ' ' + w).length <= (wide ? 26 : 16)) lines[lines.length - 1] = last + ' ' + w;
     else lines.push(w);
   });
-  const shown = lines.slice(0, 5);
-  const fs = Math.max(70, Math.min(132, 900 / (0.58 * Math.max(...shown.map((l) => l.length), 6))));
+  const shown = lines.slice(0, wide ? 3 : 5);
+  const fs = Math.max(70, Math.min(132, (wide ? 1500 : 900) / (0.58 * Math.max(...shown.map((l) => l.length), 6))));
   const place = [title.place, title.year].filter(Boolean).join(' · ');
   // 2.36.0 (ep 29: "...LT IN 132; THE DETECTION IS USUALLY..." ran off both sides): the ribbon's type shrinks until it fits
-  const pfs = Math.max(30, Math.min(52, (W - 290) / (0.6 * Math.max(1, place.length))));
-  const pw = Math.min(W - 200, place.length * pfs * 0.6 + 90);
-  const top = 960 - (shown.length * fs * 1.05) / 2;
+  const pfs = Math.max(30, Math.min(52, (SW - 290) / (0.6 * Math.max(1, place.length))));
+  const pw = Math.min(SW - 200, place.length * pfs * 0.6 + 90);
+  const top = SH / 2 - (shown.length * fs * 1.05) / 2 - (wide ? 50 : 0);
   const mid = top + (shown.length * fs * 1.05) / 2;
   // 2.35.0 (Israa on ep 28: the first frame overlapped): the card fades in, the title grows from its own middle (it used to scale
   // towards the top edge, onto the kicker line), and the kicker comes in once the title has settled
   const fadeIn = easeOut(clamp01(frame / 8));
   return (
     <g opacity={Math.min(fade, fadeIn)}>
-      <rect x="-200" y="-200" width={W + 400} height={H + 400} fill={C.parchment} />
-      <rect x="40" y="40" width={W - 80} height={H - 80} rx="36" fill="none" stroke={C.terracotta} strokeWidth="10" />
-      <text x={W / 2} y={top - 40 - fs * 0.35} textAnchor="middle" fontFamily={BODY} fontWeight="800" fontSize="40" fill={C.teal} opacity={clamp01((frame - 10) / 6)}>
+      <rect x="-200" y="-200" width={SW + 400} height={SH + 400} fill={C.parchment} />
+      <rect x="40" y="40" width={SW - 80} height={SH - 80} rx="36" fill="none" stroke={C.terracotta} strokeWidth="10" />
+      <text x={SW / 2} y={top - 40 - fs * 0.35} textAnchor="middle" fontFamily={BODY} fontWeight="800" fontSize="40" fill={C.teal} opacity={clamp01((frame - 10) / 6)}>
         A STORY THAT REALLY HAPPENED
       </text>
-      <g transform={`translate(${W / 2} ${mid}) scale(${Math.max(0.01, 0.85 + 0.15 * pop)}) translate(${-W / 2} ${-mid})`}>
+      <g transform={`translate(${SW / 2} ${mid}) scale(${Math.max(0.01, 0.85 + 0.15 * pop)}) translate(${-SW / 2} ${-mid})`}>
         {shown.map((l, i) => (
-          <text key={i} x={W / 2} y={top + fs * (i + 0.85) * 1.05} textAnchor="middle" fontFamily={HEAD} fontSize={fs} fill={C.ink}>{l}</text>
+          <text key={i} x={SW / 2} y={top + fs * (i + 0.85) * 1.05} textAnchor="middle" fontFamily={HEAD} fontSize={fs} fill={C.ink}>{l}</text>
         ))}
       </g>
       {place && (
-        <g transform={`translate(${W / 2 + (1 - rib) * W} ${top + shown.length * fs * 1.05 + 110}) rotate(-2)`}>
+        <g transform={`translate(${SW / 2 + (1 - rib) * SW} ${top + shown.length * fs * 1.05 + (wide ? 90 : 110)}) rotate(-2)`}>
           <rect x={-pw / 2} y="-50" width={pw} height="100" rx="22" fill={C.terracotta} stroke={C.ink} strokeWidth="8" />
           <text textAnchor="middle" y={pfs * 0.35} fontFamily={HEAD} fontSize={pfs} fill={C.parchment}>{place.toUpperCase()}</text>
         </g>
@@ -130,12 +134,12 @@ export const EpisodeTitle = ({title, frame}) => {
 
 /** The last seconds: follow card. It fades in slowly over the held last shot (`fade` frames, rule video.end_fade_seconds; 2.35.0,
  * the owner's rule "end slowly": it used to pop in). */
-export const Outro = ({outro, frame, frames, fade = 8}) => {
+export const Outro = ({outro, frame, frames, fade = 8, w = W, h = H}) => {
   const e = easeOut(clamp01(frame / Math.max(1, fade)));
   return (
     <g>
-      <rect x="-400" y="-200" width="1880" height="2300" fill={C.ink} opacity={0.55 * e} />
-      <g opacity={e} transform={`translate(${W / 2} 900) scale(${0.94 + 0.06 * e})`}>
+      <rect x="-400" y="-200" width={w + 800} height={h + 400} fill={C.ink} opacity={0.55 * e} />
+      <g opacity={e} transform={`translate(${w / 2} ${w > h ? h / 2 : 900}) scale(${0.94 + 0.06 * e})`}>
         <rect x="-420" y="-190" width="840" height="380" rx="40" fill={C.parchment} stroke={C.ink} strokeWidth="12" />
         <rect x="-398" y="-168" width="796" height="336" rx="28" fill="none" stroke={C.terracotta} strokeWidth="6" />
         <text textAnchor="middle" y="-70" fontFamily={BODY} fontSize="44" fill={C.teal} fontWeight="800">FOLLOW FOR MORE HISTORY</text>

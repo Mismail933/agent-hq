@@ -361,7 +361,7 @@ export const Card = ({frame, scene}) => {
   let y = 560 + fs * 0.8;
   return (
     <g>
-      <rect x="-400" y="-200" width="1880" height="2300" fill="#EFE3CC" />
+      <rect x="-1000" y="-200" width="3080" height="2300" fill="#EFE3CC" />
       <rect x="70" y="360" width="940" height="900" rx="40" fill="#FBF6EC" {...o} />
       {title && <text x="540" y={lines.length ? 470 : 810 + tfs * 0.35} textAnchor="middle" fontFamily={HEAD} fontSize={tfs} fill={K.terracotta}>{title}</text>}
       {lines.map((l, i) => {

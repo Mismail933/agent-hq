@@ -99,14 +99,14 @@ export const Globe = ({x = 540, y = 1000, r = 150, frame, slices = 0, sliceAt = 
 };
 
 /** Big on-screen text that pops in with a spring: numbers, names, the line to remember. */
-export const Callout = ({text, frame, y = 470, delay = 6}) => {
+export const Callout = ({text, frame, y = 470, delay = 6, k = 1}) => {   // k: drawn smaller (a wide picture magnifies the stage)
   const {fps} = useVideoConfig();
   const pop = spring({frame: frame - delay, fps, config: {damping: 8, stiffness: 150, mass: 0.7}});
   const size = text.length > 22 ? 70 : text.length > 14 ? 88 : 112;
   const wob = Math.sin(frame / 14) * 1.2;
   const w = Math.min(W - 120, text.length * size * 0.56 + 90);
   return (
-    <g transform={`translate(${W / 2} ${y}) rotate(${-3 + wob}) scale(${Math.max(0.01, pop)})`} opacity={clamp01(pop * 3)}>
+    <g transform={`translate(${W / 2} ${y}) rotate(${-3 + wob}) scale(${Math.max(0.01, pop) * k})`} opacity={clamp01(pop * 3)}>
       <rect x={-w / 2} y={-size * 0.8} width={w} height={size * 1.5} rx="26" fill={C.gold} stroke={C.ink} strokeWidth="10" />
       <rect x={-w / 2 + 12} y={-size * 0.8 + 12} width={w - 24} height={size * 1.5 - 24} rx="18" fill="none" stroke={C.parchment} strokeWidth="4" opacity="0.8" />
       <text textAnchor="middle" y={size * 0.28} fontFamily={HEAD} fontSize={size} fill={C.ink}>{text}</text>

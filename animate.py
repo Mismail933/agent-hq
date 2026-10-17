@@ -52,6 +52,11 @@ FRAME_MARGIN = 60      # px nothing a speaker needs may cross at the picture's e
 SPEAKER_MIN_H = 0.40   # whoever talks fills at least this share of the picture's height (video.speaker_min_height; 0 = off)
 SHORT_LIMIT = 178.0   # YouTube calls a vertical video of up to 3 minutes a Short: nothing is decided or refused here, the label just follows the length
 VIDEO_CAP = 960.0     # only an absurd length (16 minutes) is refused; the story decides, Israa judges whether it earns its length
+# 2.50.0 (the owner: "no dont make vertical video"): rule video.shape per project (rules.video_shape). A WIDE video (1920x1080) shows
+# a 16:9 band of the same 1080-wide stage around the people (Short.jsx); Rana's own scene drawings are told which band shows.
+WIDE_NOTE = ("\nTHIS VIDEO IS WIDE (16:9, 1920x1080), NOT VERTICAL: your 1080 x 1920 canvas is cut to the band x 0-1080, y 756-1364; "
+             "nothing outside it is seen and the captions cover y 1250-1364. Draw the whole scene inside that band and fill it edge to "
+             "edge: people with their feet at about y 1320 and scale at most 0.95, text and numbers between y 790 and 1240.\n")
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
 BACKDROPS = set(quality.BACKDROPS)
 CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"}
@@ -1541,11 +1546,12 @@ def render_episode(eid, voice=None, suffix="", test=False):
     art = assets.render_art(ep)
     d = ep["data"]
     project = cp.get_project(ep["project_id"], with_text=False)
+    shape = rules.video_shape(ep["project_id"])   # 2.50.0: wide (1920x1080) or vertical (1080x1920), rule video.shape
     folder = production.episode_folder(ep)
     folder.mkdir(parents=True, exist_ok=True)
     ffmpeg = shorts.find_ffmpeg()
     t0 = time.time()
-    say(f"Episode #{ep['id']}: {ep['title']}")
+    say(f"Episode #{ep['id']}: {ep['title']} ({shape})")
     ensure_toolchain(ep["project_id"], cast=art["wardrobe"])   # the wardrobe = the project's cast + this story's costumes
     assets.install_app(APP / "src", ep["project_id"], art["ready"])
     d = quality.sync_voice_lines(d)
@@ -1597,8 +1603,9 @@ def render_episode(eid, voice=None, suffix="", test=False):
     total_secs = end_t + OUTRO_SECONDS
     if total_secs > VIDEO_CAP:
         raise Blocked(f"This would be {total_secs:.0f} s (over 16 minutes): that is a mistake, not a story. The voice is kept, so a retry costs nothing.")
-    # nobody chooses Short or regular video: it follows from how long the finished piece is (YouTube's own rule for vertical video)
-    kind = "video" if total_secs > SHORT_LIMIT else "short"
+    # nobody chooses Short or regular video: it follows from how long the finished piece is (YouTube's own rule for vertical video);
+    # a wide video is never a Short
+    kind = "video" if total_secs > SHORT_LIMIT or shape == "wide" else "short"
     if is_video(d) != (kind == "video"):
         if kind == "video":
             d["format"] = "video"
@@ -1711,7 +1718,7 @@ def render_episode(eid, voice=None, suffix="", test=False):
         try:
             import animator
             say("Rana's drawings...")
-            _, icon_by = animator.draw_scenes(ep, d, scenes, words, folder, art=art["note"])
+            _, icon_by = animator.draw_scenes(ep, d, scenes, words, folder, art=art["note"] + (WIDE_NOTE if shape == "wide" else ""))
         except Exception as ex:  # noqa: BLE001  (never hold the video up for a drawing)
             say(f"  Rana's drawings were skipped: {str(ex)[:160]}")
     ch = (project.get("meta") or {}).get("channel") or {}
@@ -1731,6 +1738,7 @@ def render_episode(eid, voice=None, suffix="", test=False):
             sc.pop("callout_from", None)
     props = {
         "durationInFrames": total,
+        "shape": shape,
         "audio": audio_name,
         "mouth": mouth_for(folder / f"voice{suffix}.wav", words, [x["text"] for x in items] or lines, folder, total),
         "speaker": speaker_frames(segs, total),
@@ -1778,7 +1786,7 @@ def render_episode(eid, voice=None, suffix="", test=False):
     if test:
         tv = folder / "test.mp4"   # the test with its sound, to watch
         subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(gif), "-i", str(folder / audio_name), "-map", "0:v", "-map", "1:a",
-                        "-vf", "fps=5,scale=270:480", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", str(tv)],
+                        "-vf", "fps=5,scale=" + ("480:270" if shape == "wide" else "270:480"), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", str(tv)],
                        capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if faults and mode == "block":
             raise Blocked(_checks_failed(ep, folder, suffix, test, rep))

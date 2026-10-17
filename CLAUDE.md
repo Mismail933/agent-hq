@@ -585,6 +585,20 @@ Agents never spend money without the owner's explicit approval.
   named "(ep 28's ...)". Not measured: a speaker cut by the frame edge (Camera.cameraFrame's job) and where the diagram's labels
   sit (Diagram.jsx). Not yet: Ghassan running the ep 28 test render himself before "ready to ship" (ghassan.py is protected and
   Ghassan can't run renders: the Builder chat's).
+- Picture shape (2.50.0, the owner 2026-10-17: "no dont make vertical video"): rule `video.shape` (text, default "3=wide"; "N=wide|vertical;
+  ..."; not listed = vertical; `rules.video_shape(pid)`, validated by `rules._shapes`). `animate.render_episode` puts `shape` in the props
+  (Root's `calculateMetadata` makes the Short composition 1920x1080), and a wide video is always `format: "video"` (never #shorts). The kit
+  keeps drawing ONE 1080x1920 stage; a wide picture shows a 16:9 band of it (`theme.BAND_H` 607.5 tall, all 1080 across, so staging and
+  the camera work across exactly as before) with the feet at `FEET_AT` 0.9 of its height (Short.jsx `vb`; `cameraFrame` takes `cy`/`vh`,
+  vertical defaults unchanged); topLimit, callouts (`Callout k`), cutaway tags and freeze labels sit inside the band, smaller. Maps,
+  diagrams and kit cards get wider windows that hold them (`MAP_VIEW`, `DIAGRAM_VIEW`, `CARD_VIEW`; their backgrounds now reach x
+  -1000..2080; MapIntro's frame/compass follow `view`; nobody's legs under a wide card; diagram people at the sides). Captions, the
+  title ribbon, the episode title and the end card are laid out on the screen (`w`/`h` props; captions along the bottom, max 84 px).
+  Rana: bespoke scenes get `animate.WIDE_NOTE` (the band y 756-1364 = `BESPOKE_CY`; also in their cache key, so old drawings redraw) and
+  her test render is wide; story backdrops get `assets.WIDE_BACKDROP` (what shows: y 880-1490); already drawn ones are cropped to the
+  band. Checks: video_checks/`animator.drawn_share` measure wide frames at 480x270 (captions band at the bottom), review sheets get wide
+  tiles, Israa's video and stranger tasks name the shape. Not yet seen rendered (the Builder can't render): run `hq render <id> --test`
+  and read the sheets first.
 - Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
   - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
     (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`

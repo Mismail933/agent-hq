@@ -17,7 +17,8 @@ const ArrowHead = ({x, y, angle, color}) => (
  *        pins: [{label, lat, lon}], route: [pinIndexA, pinIndexB], route_label: "about 5,000 stadia",
  *        arrows: [{from: pinIndex, to: pinIndex, label, color: terracotta|gold|teal, bend}] (2.22.1: drawn on one after another) }
  */
-export const MapIntro = ({map, frame, frames}) => {
+// view: the part of the stage the picture shows [x, y, w, h] (2.50.0: a wide video's window, Short.jsx); the frame and compass follow it
+export const MapIntro = ({map, frame, frames, view = [0, 0, W, H]}) => {
   const {fps} = useVideoConfig();
   const [flat, flon] = map.focus;
   const p = easeInOut(clamp01(frame / Math.max(1, frames * 0.72)));
@@ -41,7 +42,7 @@ export const MapIntro = ({map, frame, frames}) => {
   const r = map.route && pins[map.route[0]] && pins[map.route[1]] ? [pins[map.route[0]], pins[map.route[1]]] : null;
   return (
     <g>
-      <rect x="-400" y="-200" width="1880" height="2300" fill={C.teal} />
+      <rect x="-1000" y="-200" width="3080" height="2300" fill={C.teal} />
       <g transform={`translate(${W / 2} ${H / 2}) scale(${sc}) translate(${-gx(cLon)} ${-gy(cLat)})`}>
         <g stroke={C.sky} strokeWidth="1.2" opacity="0.28" vectorEffect="non-scaling-stroke">
           {grid}
@@ -50,7 +51,7 @@ export const MapIntro = ({map, frame, frames}) => {
         <path d={RIVERS} fill="none" stroke={C.sky} strokeWidth="4" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
       </g>
       {/* wash of gold over the land edge for an old-map feel */}
-      <rect x="-400" y="-200" width="1880" height="2300" fill={C.gold} opacity="0.08" />
+      <rect x="-1000" y="-200" width="3080" height="2300" fill={C.gold} opacity="0.08" />
       {r && (
         <g>
           <line
@@ -140,9 +141,9 @@ export const MapIntro = ({map, frame, frames}) => {
         );
       })}
       {/* frame and compass */}
-      <rect x="22" y="22" width={W - 44} height={H - 44} fill="none" stroke={C.ink} strokeWidth="16" rx="6" />
-      <rect x="22" y="22" width={W - 44} height={H - 44} fill="none" stroke={C.gold} strokeWidth="5" rx="6" />
-      <g transform={`translate(${W - 150} ${H - 300}) rotate(${Math.sin(frame / 30) * 6})`}>
+      <rect x={view[0] + 22} y={view[1] + 22} width={view[2] - 44} height={view[3] - 44} fill="none" stroke={C.ink} strokeWidth="16" rx="6" />
+      <rect x={view[0] + 22} y={view[1] + 22} width={view[2] - 44} height={view[3] - 44} fill="none" stroke={C.gold} strokeWidth="5" rx="6" />
+      <g transform={`translate(${view[0] + view[2] - 150} ${view[1] + view[3] - 300}) rotate(${Math.sin(frame / 30) * 6})`}>
         <circle r="62" fill={C.parchment} stroke={C.ink} strokeWidth="7" />
         <path d="M 0 -56 L 14 0 L 0 56 L -14 0 Z" fill={C.terracotta} stroke={C.ink} strokeWidth="5" strokeLinejoin="round" />
         <path d="M -56 0 L 0 -14 L 56 0 L 0 14 Z" fill={C.gold} stroke={C.ink} strokeWidth="5" strokeLinejoin="round" />

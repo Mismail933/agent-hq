@@ -436,7 +436,7 @@ REVIEW_SCHEMA = {
     "required": ["reviews"],
 }
 
-VIDEO_TASK = """Review a finished video before the owner sees it. It is a vertical YouTube Short, {secs:.0f} s long.
+VIDEO_TASK = """Review a finished video before the owner sees it. It is a {shape} YouTube video, {secs:.0f} s long.
 
 You can SEE it and READ what is said:
 - Contact sheets (image files in your working folder; read every one): one frame every second plus one at every scene
@@ -1422,7 +1422,7 @@ def stranger_video(p, e, pack, names):
         return _skipped_stranger()
     if _sim():
         return _sim_stranger(e["id"] % 3 != 0)
-    task = (f"You watched a {pack['seconds']:.0f}-second vertical video. This is what was said, transcribed from the audio "
+    task = (f"You watched a {pack['seconds']:.0f}-second {rules.video_shape(e['project_id'])} video. This is what was said, transcribed from the audio "
             f"(the speech-to-text can misspell names):\n\n{_transcript_text(pack)}\n\nAnd these contact sheets show what was on "
             "screen (one frame a second, each with its time and the words spoken then). Read every one:\n" + "\n".join(f"- {n}" for n in names))
     got, _ = workers.run(ISRAA, p["idea_id"] if p else None, STRANGER_SYSTEM, task, tools=("Read",), schema=STRANGER_SCHEMA, max_turns=20)
@@ -1467,7 +1467,8 @@ def review_video(eid, version=0):
                 st_text = (f"Retelling: {stranger.get('retelling', '')}\nCould explain: {json.dumps(stranger.get('could_explain'))}\n"
                            f"Confused by: {json.dumps(stranger.get('confusions'), ensure_ascii=False)}\n"
                            f"Verdict: {'understood' if _stranger_ok(stranger) else 'FAILED, the video does not make sense on its own'}")
-                task = VIDEO_TASK.format(secs=secs, sheets="\n".join(f"  - {n}" for n in names), transcript=_transcript_text(pack),
+                shape = "wide (16:9)" if rules.video_shape(e["project_id"]) == "wide" else "vertical (9:16)"
+                task = VIDEO_TASK.format(shape=shape, secs=secs, sheets="\n".join(f"  - {n}" for n in names), transcript=_transcript_text(pack),
                                          facts="\n".join(facts), stranger=st_text, script=json.dumps(d, ensure_ascii=False, indent=1)[:7000])
                 system = ISRAA_BASE.format(today=_today(), style=_style_block(e["project_id"]))
                 got, _ = workers.run(ISRAA, p["idea_id"] if p else None, system, task, tools=("Read",), schema=VIDEO_SCHEMA, max_turns=30)

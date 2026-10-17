@@ -6,7 +6,7 @@ import {CharacterSheet} from './CharacterSheet';
 import {CharacterTest} from './CharacterTest';
 import {SvgStill} from './SvgStill';
 import {AssetStill} from './AssetStill';
-import {FPS, W, H} from './theme';
+import {FPS, W, H, SHAPES} from './theme';
 import sample from './sample-props.json';
 
 export const Root = () => (
@@ -19,7 +19,10 @@ export const Root = () => (
       fps={FPS}
       durationInFrames={sample.durationInFrames}
       defaultProps={sample}
-      calculateMetadata={({props}) => ({durationInFrames: props.durationInFrames || sample.durationInFrames})}
+      calculateMetadata={({props}) => {
+        const [w, h] = SHAPES[props.shape] || SHAPES.vertical;   // rule video.shape: wide = 1920x1080
+        return {durationInFrames: props.durationInFrames || sample.durationInFrames, width: w, height: h};
+      }}
     />
     <Still id="Sheet" component={Sheet} width={1920} height={1080} />
     <Still id="CharacterSheet" component={CharacterSheet} width={1920} height={1080} defaultProps={{who: 'scholar'}} />

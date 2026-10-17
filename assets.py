@@ -314,6 +314,12 @@ drawing unless the brief asks for it. True to the period and place in the brief:
 a Chinese hall, no European crown on a Han emperor, no palm beach unless the brief says so).
 Answer with ONE ```jsx code block containing the complete file and nothing else."""
 
+# 2.50.0 (rule video.shape): a wide project's video shows only a 16:9 band of the backdrop around the people (Short.jsx)
+WIDE_BACKDROP = """
+  THIS PROJECT'S VIDEOS ARE WIDE (16:9, 1920x1080): the picture shows only the band x 0-1080, y 880-1490 of your drawing (it moves
+  with the floor; people stand a little smaller, about 450-550 px tall). Draw all 1080 x 1920 as above, but put what tells the place
+  (walls, doorways, windows, stalls, the skyline) between y 880 and 1130 and the floor below it, drawn edge to edge across x 0-1080."""
+
 CONTRACT = {
     "backdrop": """THE FILE: export default function Backdrop({frame, tone}) { return <g>...</g>; }
   A full 1080 x 1920 picture (a <g>, not an <svg>). tone = 'noon' | 'sunset' | 'night' changes the light (night: a moon, never a sun).
@@ -408,7 +414,8 @@ def _ask_piece(ep, a, notes, say):
     import animator
     task = (f"THE STORY: {ep['data'].get('storyline') or ep['title']} ({ep['data'].get('place', '')}, {ep['data'].get('year', '')})\n\n"
             f"Draw the {a['kind'].upper()} '{a['id']}': {a['brief']}\n" + (f"Its animation: {a['act']}\n" if a["kind"] == "prop" else "")
-            + "\n" + CONTRACT[a["kind"]] + ("\n\nNotes on your previous drawing (fix exactly these, keep what was right):\n" + notes
+            + "\n" + CONTRACT[a["kind"]] + (WIDE_BACKDROP if a["kind"] == "backdrop" and rules.video_shape(ep["project_id"]) == "wide" else "")
+            + ("\n\nNotes on your previous drawing (fix exactly these, keep what was right):\n" + notes
                                              if notes else ""))
     problem, last = "", ""
     for attempt in range(3):

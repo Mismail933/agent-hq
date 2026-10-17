@@ -85,11 +85,21 @@ def make_sheets(ffmpeg, video, folder, secs, words, times=None, prefix="sheet"):
         small = ImageFont.truetype("arial.ttf", 13)
     except OSError:
         font = small = ImageFont.load_default()
+    # 2.50.0: a wide video (rule video.shape) gets wide tiles, so its frames aren't squeezed
+    tw, th = TILE_W, TILE_H
+    probe = folder / "_fprobe.jpg"
+    subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(video), "-frames:v", "1", "-vf", "scale=320:-2", str(probe)],
+                   capture_output=True, creationflags=NOFLAGS)
+    if probe.exists():
+        with Image.open(probe) as im:
+            if im.width > im.height:
+                tw, th = TILE_H, TILE_W
+        probe.unlink()
     tiles = []
     for t, cut in times:
         f = folder / f"_f{len(tiles):03d}.jpg"
         subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-ss", f"{t:.2f}", "-i", str(video), "-frames:v", "1",
-                        "-vf", f"scale={TILE_W}:{TILE_H}", "-q:v", "3", str(f)], capture_output=True, creationflags=NOFLAGS)
+                        "-vf", f"scale={tw}:{th}", "-q:v", "3", str(f)], capture_output=True, creationflags=NOFLAGS)
         if f.exists():
             said = " ".join(w["w"] for w in words if t - 0.6 <= (w["s"] + w["e"]) / 2 <= t + 0.6)
             tiles.append((t, cut, f, said))
@@ -97,18 +107,18 @@ def make_sheets(ffmpeg, video, folder, secs, words, times=None, prefix="sheet"):
     sheets = []
     for n in range(0, len(tiles), per):
         chunk = tiles[n:n + per]
-        sheet = Image.new("RGB", (COLS * (TILE_W + 6) + 6, ROWS * (TILE_H + TEXT_H + 6) + 6), (24, 24, 28))
+        sheet = Image.new("RGB", (COLS * (tw + 6) + 6, ROWS * (th + TEXT_H + 6) + 6), (24, 24, 28))
         d = ImageDraw.Draw(sheet)
         for i, (t, cut, f, said) in enumerate(chunk):
-            x, y = 6 + (i % COLS) * (TILE_W + 6), 6 + (i // COLS) * (TILE_H + TEXT_H + 6)
+            x, y = 6 + (i % COLS) * (tw + 6), 6 + (i // COLS) * (th + TEXT_H + 6)
             sheet.paste(Image.open(f), (x, y))
-            d.text((x + 2, y + TILE_H + 3), f"{t:5.1f}s" + ("  CUT" if cut else ""), font=font, fill=(255, 210, 90) if cut else (230, 230, 230))
-            line, ty = "", y + TILE_H + 22
+            d.text((x + 2, y + th + 3), f"{t:5.1f}s" + ("  CUT" if cut else ""), font=font, fill=(255, 210, 90) if cut else (230, 230, 230))
+            line, ty = "", y + th + 22
             for word in (said or "(silence)").split():
-                if d.textlength(line + " " + word, font=small) > TILE_W - 4:
+                if d.textlength(line + " " + word, font=small) > tw - 4:
                     d.text((x + 2, ty), line.strip(), font=small, fill=(200, 220, 255))
                     line, ty = word, ty + 15
-                    if ty > y + TILE_H + TEXT_H - 12:
+                    if ty > y + th + TEXT_H - 12:
                         line = ""
                         break
                 else:

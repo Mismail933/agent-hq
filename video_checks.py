@@ -184,7 +184,7 @@ def frame_faults(props, ffmpeg, video, work=None):
     skip.append((props.get("outro_from", 10 ** 9) / FPS - 0.5, 10 ** 9))
     low, still_max = int(rules.get("check.min_drawn_percent")), float(rules.get("check.still_max_seconds"))
     with tempfile.TemporaryDirectory(dir=work) as tmp:
-        subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(video), "-vf", "fps=1,scale=270:480", str(Path(tmp) / "f-%05d.png")],
+        subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(video), "-vf", "fps=1,scale=" + ("480:270" if props.get("shape") == "wide" else "270:480"), str(Path(tmp) / "f-%05d.png")],
                        capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         frames = sorted(Path(tmp).glob("f-*.png"))
         prev, run_from, longest, lows = None, None, (0, 0), []

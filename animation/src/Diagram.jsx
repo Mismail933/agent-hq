@@ -49,7 +49,7 @@ export const Diagram = ({diagram, frame, frames}) => {
   const ang = (v) => (v * 180) / Math.PI;
   return (
     <g>
-      <rect x="-400" y="-200" width="1880" height="2300" fill="#1B3F47" />
+      <rect x="-1000" y="-200" width="3080" height="2300" fill="#1B3F47" />
       {Array.from({length: 30}).map((_, i) => (
         <circle key={i} cx={(i * 197) % 1080} cy={(i * 331) % 1900} r="3" fill={C.parchment} opacity={0.4 + 0.4 * Math.sin(frame / 12 + i)} />
       ))}

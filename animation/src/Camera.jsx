@@ -85,9 +85,12 @@ export const SAFE = 60;
  * - keep: whoever is speaking ({left, right, topY, h} in the world): if the shot shows him smaller than minH of the picture's height
  *   (rule video.speaker_min_height) it cuts in on him, and he is always kept fully inside the margin (moved, or the shot widened);
  * - hold: the last `hold` frames of the move stand still (the ending pushes in by the last word, then holds).
+ * - cy, vh (2.50.0, rule video.shape): the middle and the height of the part of the stage the picture shows (a wide video shows a
+ *   16:9 band, BAND_H tall, around the people); topLimit is then measured on the stage too. Vertical = the whole canvas.
  */
 export const cameraFrame = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0, topY = null, topLimit = SAFE, hits = [],
-  margin = SAFE, keep = null, minH = 0, hold = 0}) => {
+  margin = SAFE, keep = null, minH = 0, hold = 0, cy = H / 2, vh = H}) => {
+  const top0 = cy - vh / 2;   // the top edge of what the picture shows
   const hs = hitsAt(hits, frame);
   const f = frame - hs.held;
   const base = cameraAt(move, Math.min(1, f / Math.max(1, frames - hold)), f);
@@ -100,17 +103,17 @@ export const cameraFrame = ({move, frame, frames, focus = [W / 2, H / 2], spread
     if (sp > 0) {
       const room = W / 2 - margin;
       let s = Math.max(1, Math.min(cam.s, room / sp));
-      if (ty !== null) s = Math.max(1, Math.min(s, (H / 2 - topLimit) / Math.max(1, H / 2 - ty))); // the top of the tallest thing too
+      if (ty !== null) s = Math.max(1, Math.min(s, (cy - topLimit) / Math.max(1, cy - ty))); // the top of the tallest thing too
       const slack = Math.max(0, room - sp * s);
       cam = {s, dx: Math.max(-slack, Math.min(slack, cam.dx)), dy: Math.max(0, cam.dy)};
     }
     return {...cam, fx: fc[0], fy: fc[1]};
   };
   let cam = fit(hs.subject, hs.z);
-  if (keep && minH > 0 && cam.s * keep.h < minH * H) {
+  if (keep && minH > 0 && cam.s * keep.h < minH * vh) {
     // too small to read while he talks: a single of him, big enough (as far as the margin and the top band allow)
     const w = (keep.right - keep.left) / 2;
-    cam = fit({focus: (keep.left + keep.right) / 2, spread: w, topY: keep.topY, minS: (minH * H) / Math.max(1, keep.h)}, 1);
+    cam = fit({focus: (keep.left + keep.right) / 2, spread: w, topY: keep.topY, minS: (minH * vh) / Math.max(1, keep.h)}, 1);
   }
   if (keep) {
     // the speaker stays fully inside the margin: move the camera if that is enough, else widen the shot
@@ -121,10 +124,10 @@ export const cameraFrame = ({move, frame, frames, focus = [W / 2, H / 2], spread
       cam.s = Math.max(0.85, (W - 2 * margin) / Math.max(1, keep.right - keep.left));
       cam.dx = -cam.s * ((keep.left + keep.right) / 2 - cam.fx);
     }
-    const top = H / 2 + cam.dy + cam.s * (keep.topY - cam.fy);
-    if (top < margin && keep.topY < cam.fy) cam.s = Math.max(0.85, Math.min(cam.s, (H / 2 + cam.dy - margin) / (cam.fy - keep.topY)));
+    const top = cy + cam.dy + cam.s * (keep.topY - cam.fy);
+    if (top < top0 + margin && keep.topY < cam.fy) cam.s = Math.max(0.85, Math.min(cam.s, (cy + cam.dy - top0 - margin) / (cam.fy - keep.topY)));
   }
-  return {...cam, dx0: cam.dx, dx: cam.dx + hs.whipDx + hs.shakeDx, dy: cam.dy + hs.shakeDy, blur: hs.blur};
+  return {...cam, dx0: cam.dx, dx: cam.dx + hs.whipDx + hs.shakeDx, dy: cam.dy + hs.shakeDy, blur: hs.blur, cy};
 };
 
 export const Camera = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0, topY = null, topLimit = SAFE, hits = [], view = null, children}) => {
@@ -133,7 +136,7 @@ export const Camera = ({move, frame, frames, focus = [W / 2, H / 2], spread = 0,
   const hs = {blur: v.blur};
   const fx = v.fx;
   const fy = v.fy;
-  const t = `translate(${W / 2 + cam.dx} ${H / 2 + cam.dy}) scale(${cam.s}) translate(${-fx} ${-fy})`;
+  const t = `translate(${W / 2 + cam.dx} ${(v.cy ?? H / 2) + cam.dy}) scale(${cam.s}) translate(${-fx} ${-fy})`;
   return (
     <CamCtx.Provider value={cam}>
       {hs.blur && (

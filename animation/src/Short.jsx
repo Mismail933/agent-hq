@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
-import {C, HEAD, W, H, easeOut, clamp01, lerp} from './theme';
+import {C, HEAD, W, H, SHAPES, BAND_H, easeOut, clamp01, lerp} from './theme';
 import {Camera, SAFE, cameraFrame} from './Camera';
 import {BACKDROPS} from './Backdrops';
 import {Character, Crowd, reach} from './Character';
@@ -37,6 +37,16 @@ const HEIGHT = 612;   // a figure's height at scale 1 (head top), before its own
 const ROD_K = 1.35;   // a rod stands about two thirds of a person's height, so its shadow reads at a glance
 // 2.36.3 (ep 28: "no visible shadow"): a stick that casts a shadow casts one you can see; 0 stays no shadow (Syene at noon)
 const shadeOf = (p) => (p.shadow === 0 ? 0 : Math.max(0.35, p.shadow ?? 0.5));
+
+// 2.50.0 (the owner: "no dont make vertical video"; rule video.shape): a WIDE video (1920x1080) shows a 16:9 band of the same
+// stage, BAND_H tall and 1080 wide (so the staging and the camera work across exactly as in a vertical video), with the people's
+// feet at FEET_AT of its height. A map or a diagram fills the whole vertical canvas, so it gets a wider window that holds it;
+// Rana's own scenes are told which band shows (animate.WIDE_NOTE). Callouts and tags are drawn smaller inside the band.
+const FEET_AT = 0.9;
+const BESPOKE_CY = 1060;
+const MAP_VIEW = [-660, 285, 2400, 1350];
+const DIAGRAM_VIEW = [-660, 30, 2400, 1350];
+const CARD_VIEW = [-571, 150, 2222, 1250];   // the whole card (y 360-1260) with its callout above it
 
 // half the width of a body at scale 1 (shoulders, cloak) and how far its hands and prop reach to the back and the front
 const bodyOf = (who, poses, noProp) => {
@@ -143,7 +153,7 @@ const walkPos = (x, st, frame) => {
 };
 
 // The freeze-frame label (OverSimplified's "Eratosthenes, overachiever"): the picture stops, tints, a ribbon slides in.
-const FreezeLabel = ({text, age, frames, pointX}) => {
+const FreezeLabel = ({text, age, frames, pointX, y = 560, k = 1}) => {
   const {fps} = useVideoConfig();
   const pop = spring({frame: age - 2, fps, config: {damping: 12, stiffness: 170, mass: 0.6}});
   const out = 1 - easeOut(clamp01((age - frames + 6) / 6));
@@ -164,9 +174,9 @@ const FreezeLabel = ({text, age, frames, pointX}) => {
   const px = Math.max(W / 2 - w / 2 + 60, Math.min(W / 2 + w / 2 - 60, pointX ?? W / 2));
   return (
     <g opacity={out}>
-      <rect x="-400" y="-200" width="1880" height="2300" fill="#8A6A45" opacity="0.32" style={{mixBlendMode: 'multiply'}} />
-      {age < 3 && <rect x="-400" y="-200" width="1880" height="2300" fill={C.white} opacity={0.7 * (1 - age / 3)} />}
-      <g transform={`translate(${W / 2 + (1 - pop) * -W} 560) rotate(-2)`}>
+      <rect x="-1000" y="-200" width="3080" height="2300" fill="#8A6A45" opacity="0.32" style={{mixBlendMode: 'multiply'}} />
+      {age < 3 && <rect x="-1000" y="-200" width="3080" height="2300" fill={C.white} opacity={0.7 * (1 - age / 3)} />}
+      <g transform={`translate(${W / 2 + (1 - pop) * -W} ${y}) rotate(-2) scale(${k})`}>
         <path d={`M ${px - W / 2 - 24} ${h / 2 - 8} L ${px - W / 2} ${h / 2 + 36} L ${px - W / 2 + 24} ${h / 2 - 8} Z`} fill={C.parchment} stroke={C.ink} strokeWidth="8" strokeLinejoin="round" />
         <rect x={-w / 2} y={-h / 2} width={w} height={h} rx="20" fill={C.parchment} stroke={C.ink} strokeWidth="9" />
         {shown.map((l, i) => (
@@ -178,7 +188,7 @@ const FreezeLabel = ({text, age, frames, pointX}) => {
 };
 
 // A cutaway's tag in the corner ("MEANWHILE...") for its first second and a half.
-const CutawayTag = ({text, frame}) => {
+const CutawayTag = ({text, frame, y = 420, k = 1}) => {
   const {fps} = useVideoConfig();
   if (frame > 50) return null;
   const pop = spring({frame: frame - 3, fps, config: {damping: 11, stiffness: 160}});
@@ -186,15 +196,17 @@ const CutawayTag = ({text, frame}) => {
   const fs = 52;
   const w = Math.min(W - 160, text.length * fs * 0.56 + 70);
   return (
-    <g opacity={out} transform={`translate(${SAFE + 20 + w / 2} 420) rotate(-4) scale(${Math.max(0.01, pop)})`}>
+    <g opacity={out} transform={`translate(${SAFE + 20 + (w * k) / 2} ${y}) rotate(-4) scale(${Math.max(0.01, pop) * k})`}>
       <rect x={-w / 2} y="-46" width={w} height="88" rx="16" fill={C.terracotta} stroke={C.ink} strokeWidth="8" />
       <text textAnchor="middle" y="18" fontFamily={HEAD} fontSize={fs} fill={C.parchment}>{text}</text>
     </g>
   );
 };
 
-const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
+const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'}) => {
   const real = useCurrentFrame();
+  const wide = shape === 'wide';
+  const [SW, SH] = SHAPES[shape] || SHAPES.vertical;
   const margin = framing.margin ?? SAFE;   // live rule video.frame_margin_px
   const minH = scene.ending ? 0 : framing.speaker_min ?? 0;   // video.speaker_min_height (the ending keeps both people in)
   // a freeze-frame gag stops the picture (everything, mouths too) while the voice goes on; then it carries on from now
@@ -205,11 +217,18 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   const cast = scene.characters || [];
   const n = cast.length;
   const beats = scene.beats || [];
-  const topLimit = index === 0 ? 410 : scene.callout && !['map', 'diagram'].includes(scene.backdrop) ? 340 : margin;
   // the staging (see `stage`): everyone on the floor, one scale, side by side with a gap, facing each other, inside the safe area
   const rodsIn = (scene.props || []).filter((p) => p.type === 'rod');
   // a rod's shadow lies on the ground, so a rod scene stands a little further back: the shadow stays above the captions
   const feet = rodsIn.length ? Math.min(FEET[scene.backdrop] ?? 1440, (FLOOR[scene.backdrop] ?? 1150) + 110) : FEET[scene.backdrop] ?? 1440;
+  // what the picture shows of the stage [x, y, w, h]: all of it (vertical), else a wide window (see FEET_AT)
+  const fitView = wide && !scene.generated && (['map', 'diagram'].includes(scene.backdrop) || (scene.backdrop === 'card' && !scene.set));
+  const vb = !wide ? [0, 0, W, H] : scene.generated ? [0, BESPOKE_CY - BAND_H / 2, W, BAND_H]
+    : fitView ? {map: MAP_VIEW, diagram: DIAGRAM_VIEW, card: CARD_VIEW}[scene.backdrop] : [0, feet - FEET_AT * BAND_H, W, BAND_H];
+  const cy = wide && !fitView ? vb[1] + BAND_H / 2 : H / 2;   // the camera's middle
+  // the top band kept for the title ribbon (first scene) and a callout; in a wide band they sit in its top 125 units
+  const topLimit = wide ? vb[1] + (scene.callout ? 125 : index === 0 ? 110 : margin * 0.6)
+    : index === 0 ? 410 : scene.callout && !['map', 'diagram'].includes(scene.backdrop) ? 340 : margin;
   const noProp = rodsIn.length > 0;   // the scene is about the rod: nobody carries a staff that could be mistaken for it
   const propsIn = (scene.props || []).filter((p) => p.type === 'asset' && ASSETS.props[p.id]);
   const castItems = cast.map((c) => {
@@ -264,7 +283,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   if (scene.backdrop === 'well_side') xs.push(370, 710);   // the well itself is the subject too: keep the shaft in the shot
   const minX = xs.length ? Math.min(...xs) : W / 2;
   const maxX = xs.length ? Math.max(...xs) : W / 2;
-  const focus = [(minX + maxX) / 2, H / 2];
+  const focus = [(minX + maxX) / 2, cy];
   const spread = xs.length ? (maxX - minX) / 2 : 0;
   const topY = chars.length ? Math.min(...chars.map((c) => c.y - c.r.top * c.scale)) : null;
   // camera hits name a character: the camera frames that one person (his own width and height, inside the safe area)
@@ -311,7 +330,8 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
       : {...box, h: 1e6};   // nobody on screen speaks: keep the stick in, never cut in on it for that
   }
   const move = scene.ending ? 'ending' : scene.backdrop === 'card' ? 'still' : scene.camera || 'push_in';
-  const view = cameraFrame({move, frame, frames: scene.frames, focus, spread, topY, topLimit, hits, margin, keep, minH, hold: scene.hold_frames || 0});
+  const view = cameraFrame({move, frame, frames: scene.frames, focus, spread, topY, topLimit, hits, margin, keep, minH, hold: scene.hold_frames || 0,
+    cy, vh: wide && !fitView ? BAND_H : H});
   // someone the shot cuts in half (a lone arm or half a body at the edge) is left out of it; walkers cross the edge on purpose
   const onScreen = (x) => W / 2 + view.dx0 + view.s * (x - view.fx);
   const hidden = chars.map((c, i) => i !== si && !live[i].walking &&
@@ -325,12 +345,12 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
   let clip = null;
   let blur = false;
   if (index > 0 && frame < TRANSITION + 1) {
-    if (kind === 'slide_left') wrap = {transform: `translate(${(1 - t) * W}px, 0px)`};
-    else if (kind === 'slide_up') wrap = {transform: `translate(0px, ${(1 - t) * H}px)`};
+    if (kind === 'slide_left') wrap = {transform: `translate(${(1 - t) * SW}px, 0px)`};
+    else if (kind === 'slide_up') wrap = {transform: `translate(0px, ${(1 - t) * SH}px)`};
     else if (kind === 'iris') clip = (1 - t) * 0 + t * 1500;
     else if (kind === 'whip') {
       const tw = easeOut(clamp01(frame / 6));
-      wrap = {transform: `translate(${(1 - tw) * W}px, 0px)`};
+      wrap = {transform: `translate(${(1 - tw) * SW}px, 0px)`};
       blur = tw < 1;
     }
   }
@@ -342,7 +362,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
     <Bespoke frame={frame} frames={scene.frames} words={scene.words || []} mouth={mouth.slice(scene.from, scene.from + scene.frames)} />
   ) : (
     <>
-      {isMap && <MapIntro map={{...(scene.map || {focus: [30, 30], zoom: 20}), ...(scene.callout ? {route_label: null} : {})}} frame={frame + off} frames={scene.frames + off} />}
+      {isMap && <MapIntro map={{...(scene.map || {focus: [30, 30], zoom: 20}), ...(scene.callout ? {route_label: null} : {})}} frame={frame + off} frames={scene.frames + off} view={vb} />}
       {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame + off} frames={scene.frames + off} />}
       {!isMap && !isDiagram && (
         <Camera move={move} frame={frame} frames={scene.frames} view={view}>
@@ -362,7 +382,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
             return <Crowd size={scene.crowd.size || 5} reaction={crowdReaction} frame={frame} seed={index + 1} y={cy} scale={cs} from={SAFE + 40} to={W - SAFE - 40} costume={scene.crowd.costume} />;
           })()}
           {chars.map((c, i) => {
-            if (hidden[i]) return null;
+            if (hidden[i] || (fitView && scene.backdrop === 'card')) return null;   // a wide card shows the card, not legs under it
             const {st, x, walking, dir} = live[i];
             const facing = (dir || c.facing || 1) * (st.turns % 2 ? -1 : 1);
             return (
@@ -381,22 +401,25 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
             const st = stateAt(c, beats, frame);
             const left = chars.length === 1 ? (c.at || 'left') !== 'right' : i === 0;
             return (
-              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression} x={left ? 200 : W - 200} y={1890}
-                scale={0.46} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} facing={left ? 1 : -1} noProp costume={c.costume} />
+              <Character key={i} who={c.who} pose={st.pose} poseTo={st.poseTo} blend={st.blend} expression={st.expression}
+                x={wide ? (left ? -330 : W + 330) : left ? 200 : W - 200} y={wide ? vb[1] + vb[3] - 30 : 1890}
+                scale={wide ? 0.62 : 0.46} mouth={mouthOf(c)} frame={frame} enterAt={10} seed={i + index} facing={left ? 1 : -1} noProp costume={c.costume} />
             );
           })}
         </g>
       )}
       {/* 2.36.3: in a diagram the close-up of Alexandria's stick takes the top of the picture: the callout makes way for it */}
       {scene.callout && frame >= (scene.callout_from ?? 0) && !(isDiagram && frame + off >= closeUpFrom(scene.diagram || {}, scene.frames + off)) && (
-        <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)} y={isDiagram ? 300 : 215} />
+        <Callout text={scene.callout} frame={frame - (scene.callout_from ?? 0)}
+          y={isDiagram ? 300 : wide ? vb[1] + (fitView ? 110 : 66) : 215} k={wide ? (fitView ? 0.9 : 0.5) : 1} />
       )}
-      {gag && gag.type === 'cutaway' && <CutawayTag text={(gag.text || 'MEANWHILE...').toUpperCase()} frame={frame} />}
+      {gag && gag.type === 'cutaway' && <CutawayTag text={(gag.text || 'MEANWHILE...').toUpperCase()} frame={frame}
+        y={wide ? vb[1] + 60 : 420} k={wide && !fitView ? 0.5 : 1} />}
     </>
   );
   const pointAt = gag && gag.who && subjects[gag.who] ? W / 2 : null;
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0, ...wrap}}>
+    <svg width={SW} height={SH} viewBox={vb.join(' ')} style={{position: 'absolute', left: 0, top: 0, ...wrap}}>
       <defs>
         {clip !== null && (
           <clipPath id={`iris-${index}`}>
@@ -406,7 +429,8 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
         {blur && <filter id={`whip-in-${index}`} x="-20%" y="0" width="140%" height="100%"><feGaussianBlur stdDeviation="30 0" /></filter>}
       </defs>
       <g clipPath={clip !== null ? `url(#iris-${index})` : undefined} filter={blur ? `url(#whip-in-${index})` : undefined}>{body}</g>
-      {frozen && gag.text && <FreezeLabel text={gag.text} age={real - gag.at} frames={gag.frames || 48} pointX={pointAt} />}
+      {frozen && gag.text && <FreezeLabel text={gag.text} age={real - gag.at} frames={gag.frames || 48} pointX={pointAt}
+        y={wide ? vb[1] + (fitView ? 300 : 150) : 560} k={wide && !fitView ? 0.55 : 1} />}
     </svg>
   );
 };
@@ -414,29 +438,30 @@ const Scene = ({scene, mouth, speaker, index, framing = {}}) => {
 export const Short = (props) => {
   const frame = useCurrentFrame();
   const {scenes, mouth = [], speaker = null, intro, outro, caption_chunks: chunks = [], outro_from: outroFrom, audio, title = null,
-    framing = {}, outro_fade: outroFade = 8} = props;
+    framing = {}, outro_fade: outroFade = 8, shape = 'vertical'} = props;
+  const [SW, SH] = SHAPES[shape] || SHAPES.vertical;   // rule video.shape: the overlays are laid out on the picture itself
   return (
     <AbsoluteFill style={{backgroundColor: C.ink}}>
       {audio && <Audio src={staticFile(audio)} />}
       {scenes.map((s, i) => (
         <Sequence key={i} from={s.from} durationInFrames={s.frames + (i < scenes.length - 1 ? TRANSITION + 2 : 0)}>
-          <Scene scene={s} mouth={mouth} speaker={speaker} index={i} framing={framing} />
+          <Scene scene={s} mouth={mouth} speaker={speaker} index={i} framing={framing} shape={shape} />
         </Sequence>
       ))}
       {!title && (
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>
-          {intro && <TitleCard intro={intro} frame={frame} />}
+        <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`} style={{position: 'absolute', left: 0, top: 0}}>
+          {intro && <TitleCard intro={intro} frame={frame} w={SW} h={SH} />}
         </svg>
       )}
-      <Captions chunks={chunks} frame={frame} />
+      <Captions chunks={chunks} frame={frame} w={SW} h={SH} />
       {title && frame >= title.from && frame < title.from + title.frames && (
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>
-          <EpisodeTitle title={title} frame={frame - title.from} />
+        <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`} style={{position: 'absolute', left: 0, top: 0}}>
+          <EpisodeTitle title={title} frame={frame - title.from} w={SW} h={SH} />
         </svg>
       )}
       {outro && frame >= outroFrom && (
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', left: 0, top: 0}}>
-          <Outro outro={outro} frame={frame - outroFrom} fade={outroFade} />
+        <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`} style={{position: 'absolute', left: 0, top: 0}}>
+          <Outro outro={outro} frame={frame - outroFrom} fade={outroFade} w={SW} h={SH} />
         </svg>
       )}
     </AbsoluteFill>

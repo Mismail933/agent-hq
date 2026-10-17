@@ -18,6 +18,10 @@ export const BODY = LOCAL_FONTS ? localFont('Nunito', LOCAL_FONTS.body, '200 100
 export const W = 1080;
 export const H = 1920;
 export const FPS = 30;
+// 2.50.0 (rule video.shape, per project): the stage is always drawn 1080 wide on a 1920 tall canvas. A WIDE video (1920x1080)
+// shows a 16:9 band of it (BAND_H tall) around the people; maps and diagrams get a wider window (Short.jsx `viewOf`).
+export const SHAPES = {vertical: [1080, 1920], wide: [1920, 1080]};
+export const BAND_H = (W * 9) / 16;
 
 // Six world colours (+ white for captions) and three skin tones.
 export const C = {
