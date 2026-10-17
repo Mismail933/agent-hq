@@ -59,7 +59,23 @@ WIDE_NOTE = ("\nTHIS VIDEO IS WIDE (16:9, 1920x1080), NOT VERTICAL: your 1080 x 
              "edge: people with their feet at about y 1320 and scale at most 0.95, text and numbers between y 790 and 1240.\n")
 DISCLOSURE_V3 = "AI-assisted: script, voice and animation made with AI; facts sourced below."
 BACKDROPS = set(quality.BACKDROPS)
-CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift"}
+CAMERAS = {"push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "drift", "still"}   # still = no move (Camera.jsx)
+# 2.51.1 (ep 31 was refused over camera "still"): a camera name never blocks a render; an unknown one becomes the nearest move
+CAMERA_NEAR = {"hold": "still", "static": "still", "none": "still", "fixed": "still", "locked": "still", "zoom_in": "push_in",
+               "push": "push_in", "zoom_out": "pull_out", "pull": "pull_out", "pan": "drift", "slow_drift": "drift"}
+
+
+def fix_cameras(d):
+    """Scene cameras the renderer doesn't know -> the nearest one it does (else drift); returns (data, notes for the log)."""
+    notes, scenes = [], []
+    for s in d.get("scenes") or []:
+        cam = s.get("camera")
+        if cam and cam not in CAMERAS:
+            new = CAMERA_NEAR.get(str(cam).strip().lower().replace(" ", "_").replace("-", "_"), "drift")
+            notes.append(f"scene {s.get('n', '?')}: camera '{cam}' -> {new}")
+            s = {**s, "camera": new}
+        scenes.append(s)
+    return {**d, "scenes": scenes}, notes
 CAST = set(quality.ON_SCREEN)   # kit v2: the narrator is a voice only, never drawn
 POSES = {"stand", "point", "explain", "amazed", "wave", "think", "present", "shrug", "cheer", "facepalm", "flinch"}
 EXPRESSIONS = {"neutral", "happy", "surprised", "worried", "determined", "thinking", "laughing", "angry", "smug", "scared"}
@@ -370,8 +386,6 @@ def checklist(ep):
             problems.append(f"Scene {n}'s voice line isn't a finished sentence (it should end with . ! or ?).")
         if s.get("backdrop") not in BACKDROPS:
             problems.append(f"Scene {n}: backdrop '{s.get('backdrop')}' isn't one of {', '.join(sorted(BACKDROPS))}.")
-        if s.get("camera") and s["camera"] not in CAMERAS:
-            problems.append(f"Scene {n}: camera '{s['camera']}' isn't one of {', '.join(sorted(CAMERAS))}.")
         for c in s.get("characters") or []:
             if c.get("who") not in CAST or c.get("pose", "stand") not in POSES:
                 problems.append(f"Scene {n}: character {c.get('who')}/{c.get('pose')} isn't in the cast.")
@@ -1567,6 +1581,9 @@ def render_episode(eid, voice=None, suffix="", test=False):
     assets.install_app(APP / "src", ep["project_id"], art["ready"])
     d = quality.sync_voice_lines(d)
     d = stage_speakers(d)   # whoever speaks is on screen; no empty rooms (render only)
+    d, cam_notes = fix_cameras(d)   # a camera name never blocks a render (2.51.1)
+    if cam_notes:
+        say("Cameras the renderer doesn't know, given the nearest: " + "; ".join(cam_notes))
     script_by = {i: p["by"] for i, s in enumerate(d["scenes"]) for p in s.get("props") or [] if (p or {}).get("type") == "rod" and (p or {}).get("by")}
     items = utterances(d, project)
     lines = [shorts.fill_placeholders(l, project) for l in narration(d)]

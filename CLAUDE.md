@@ -604,6 +604,10 @@ Agents never spend money without the owner's explicit approval.
   band. Checks: video_checks/`animator.drawn_share` measure wide frames at 480x270 (captions band at the bottom), review sheets get wide
   tiles, Israa's video and stranger tasks name the shape. Not yet seen rendered (the Builder can't render): run `hq render <id> --test`
   and read the sheets first.
+- Camera names never block a render (2.51.1, Atlas's request: ep 31's test render was refused over scene 3's camera "still"):
+  `animate.CAMERAS` includes `still` (no move; Camera.jsx draws it, stage_speakers sets it on cards); the checklist no longer
+  checks scene cameras; `render_episode` runs `fix_cameras` after `stage_speakers`: an unknown name becomes the nearest move
+  (`CAMERA_NEAR`, e.g. hold/static -> still, zoom_in -> push_in), else drift, and the render log says which.
 - Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
   - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
     (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`
