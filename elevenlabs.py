@@ -27,7 +27,18 @@ class ElevenError(Exception):
 
 
 def key():
-    return os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    k = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    if not k:   # a tool started outside the office (story_sample.py): read it from .env like the office does; never printed
+        try:
+            for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+                if line.startswith("ELEVENLABS_API_KEY="):
+                    k = line.split("=", 1)[1].strip().strip('"')
+                    if k:
+                        os.environ["ELEVENLABS_API_KEY"] = k
+                    break
+        except OSError:
+            pass
+    return k
 
 
 def configured():

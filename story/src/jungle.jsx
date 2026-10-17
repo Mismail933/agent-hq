@@ -37,8 +37,8 @@ export function Rainforest({f = 0, time = 'day', rain = false, water = false, dr
       <rect y={ground} width={W} height={H - ground} fill="#4A3420" {...ST} />
       {[...Array(28)].map((_, i) => <ellipse key={'l' + i} cx={wrap(R() * W, d3)} cy={ground + 20 + R() * (H - ground - 20)} rx={26 + R() * 20} ry={10} fill={['#6B8E3A', '#8A6A2E', '#5B7A2E'][i % 3]} {...st(3)} />)}
       {water && <g>
-        <path d={`M -20 ${ground + 40} C 400 ${ground + 20} 900 ${ground + 70} 1300 ${ground + 40} S 1800 ${ground + 30} 1940 ${ground + 50} L 1940 1100 L -20 1100 Z`} fill="#6FA8B8" {...ST} />
-        {[...Array(10)].map((_, i) => { const x = ((i * 210 + f * 3) % (W + 200)) - 100; return <path key={'w' + i} d={`M ${x} ${ground + 110 + (i % 3) * 40} q 30 -10 60 0`} stroke="#E0F2FE" strokeWidth={5} fill="none" strokeLinecap="round" opacity={0.8} />; })}
+        <path d={`M -20 ${ground + 14} C 400 ${ground + 4} 900 ${ground + 30} 1300 ${ground + 14} S 1800 ${ground + 8} 1940 ${ground + 20} L 1940 ${ground + 104} C 1500 ${ground + 116} 900 ${ground + 92} 400 ${ground + 110} L -20 ${ground + 100} Z`} fill="#6FA8B8" {...ST} />
+        {[...Array(10)].map((_, i) => { const x = ((i * 210 + f * 3) % (W + 200)) - 100; return <path key={'w' + i} d={`M ${x} ${ground + 40 + (i % 3) * 22} q 30 -10 60 0`} stroke="#E0F2FE" strokeWidth={5} fill="none" strokeLinecap="round" opacity={0.8} />; })}
       </g>}
       {TINT[time] && <rect width={W} height={H} fill={TINT[time][0]} opacity={TINT[time][1]} />}
       {time === 'night' && [...Array(24)].map((_, i) => { const x = R() * W, y = 200 + R() * 600; const on = Math.sin(f * 0.15 + i * 2.1) > 0.3;
@@ -86,7 +86,7 @@ export const Thing = ({name, f = 0}) => {
     case 'glasses': return <g fill="none" {...st(12)}><rect x={-160} y={-60} width={140} height={110} rx={40} fill="#BFE6FF" /><rect x={20} y={-60} width={140} height={110} rx={40} fill="#BFE6FF" /><path d="M -20 -10 L 20 -10" /><path d="M -60 20 L -100 -30 M 90 -40 L 130 30" stroke="#fff" strokeWidth={6} /></g>;
     case 'shoe': return <path d="M -150 40 L -140 -40 C -60 -50 0 -90 40 -80 C 100 -20 150 0 160 40 Z" fill="#3F2A1E" {...ST} />;
     case 'plane': return <g transform="scale(0.5)"><Plane f={f} /></g>;
-    case 'heli': return (<g><ellipse cx={0} cy={0} rx={120} ry={60} fill="#65A30D" {...ST} /><path d="M 110 -10 L 300 -20 L 300 10 L 110 20 Z" fill="#65A30D" {...ST} />
+    case 'heli': return (<g transform="scale(-1 1)"><ellipse cx={0} cy={0} rx={120} ry={60} fill="#65A30D" {...ST} /><path d="M 110 -10 L 300 -20 L 300 10 L 110 20 Z" fill="#65A30D" {...ST} />
       <ellipse cx={-50} cy={-10} rx={50} ry={34} fill="#BFE6FF" {...st(5)} /><path d={`M ${-220 + Math.sin(f) * 40} -80 L ${220 - Math.sin(f) * 40} -80`} stroke={INK} strokeWidth={10} strokeLinecap="round" /><rect x={-8} y={-80} width={16} height={24} fill={INK} /></g>);
     case 'vulture': return (<g transform={`scale(1 ${0.8 + Math.sin(f * 0.3) * 0.2})`}><path d="M -160 0 C -100 -60 -40 -40 0 0 C 40 -40 100 -60 160 0 C 100 -20 40 -6 0 20 C -40 -6 -100 -20 -160 0 Z" fill="#1F1B18" {...st(5)} /><circle cx={0} cy={6} r={16} fill="#E11D48" /></g>);
     case 'stingray': return (<g><path d="M -150 0 C -80 -80 80 -80 150 0 C 80 50 -80 50 -150 0 Z" fill="#78716C" {...ST} /><path d="M 140 0 L 320 30" stroke={INK} strokeWidth={8} /><circle cx={-30} cy={-20} r={8} fill={INK} /><circle cx={30} cy={-20} r={8} fill={INK} /></g>);
@@ -114,19 +114,21 @@ export const Thing = ({name, f = 0}) => {
 function Jungle({f, len, line}) {
   const p = P(line);
   const walk = ['walk', 'limp', 'run', 'push'].includes(p.pose);
+  const dir = p.dir || 1;
   const fr = frameOf(line);
-  const s = p.s || fr.s, x = p.x || fr.x, ground = p.ground || 900;
+  const s = p.s || fr.s, ground = p.ground || 900;
+  const x = (p.x || (walk ? 960 : fr.x)) + (walk ? dir * lin(f, 0, len, -300, 300, (t) => t) * (p.pose === 'limp' ? 0.6 : 1) : 0);
   const items = p.items || [];
   return (
-    <Cam f={f} len={len} from={fr.zoom[0]} to={fr.zoom[1]} x={x}>
-      <Rainforest f={f} time={p.time || 'day'} rain={p.rain} water={p.water} drift={walk ? -f * 4 : 0} seed={p.seed || 3 + (line.idx || 0) * 7} ground={ground} />
+    <Cam f={f} len={len} from={fr.zoom[0]} to={fr.zoom[1]} x={walk ? 960 : x}>
+      <Rainforest f={f} time={p.time || 'day'} rain={p.rain} water={p.water} drift={walk ? -dir * f * 1.2 : 0} seed={p.seed || 3 + (line.idx || 0) * 7} ground={ground} />
       {items.map((it, i) => { const a = at(line, it.on || '', 0.3); const s2 = clamp(pop(f, a, 140, 13), 0, 1.1);
         if (s2 <= 0.01) return null;
         if (it.name === 'plane' || it.name === 'heli') return <g key={i} transform={`translate(${lin(f, a, a + 120, -300, W + 300, (t) => t)} ${it.y || 140})`}><Thing name={it.name} f={f} /></g>;
         if (it.name === 'vulture') return <g key={i}>{[0, 1, 2].map((k) => <g key={k} transform={`translate(${960 + Math.cos(f * 0.02 + k * 2.1) * 520} ${200 + Math.sin(f * 0.02 + k * 2.1) * 90}) scale(0.6)`}><Thing name="vulture" f={f + k * 9} /></g>)}</g>;
         return <g key={i} transform={`translate(${it.x || 1500} ${it.y || 760}) scale(${s2 * (it.s || 1)})`}><Thing name={it.name} f={f} /></g>; })}
       <g transform={`translate(${x} ${ground + 160 - 1100 * s}) scale(${s})`}>
-        <Figure who={p.who || 'juliane'} pose={p.pose || 'stand'} expr={p.expr || 'worried'} f={f} dirty={p.dirty != null ? p.dirty : 0.8} oneShoe={p.oneShoe !== false} talk={p.talk} />
+        <Figure who={p.who || 'juliane'} pose={p.pose || 'stand'} expr={p.expr || 'worried'} f={f} dirty={p.dirty != null ? p.dirty : 0.8} oneShoe={p.oneShoe !== false} talk={p.talk} dir={walk ? dir : 0} />
       </g>
       {p.leaves !== false && <Leaves f={f} night={p.time === 'night'} />}
       <Labels line={line} f={f} />
@@ -307,8 +309,8 @@ function Planes({f, len, line}) {
       </g>
       <g transform={`translate(0 ${H / 2})`}>
         <rect width={W} height={H / 2} fill="#2F6B3A" />
-        <svg x={0} y={0} width={W} height={H / 2} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice"><Rainforest f={f} seed={5} /></svg>
-        <g transform="translate(960 40) scale(0.38)"><Figure who="juliane" pose="signal" expr="worried" f={f} dirty={0.8} oneShoe /></g>
+        <svg x={0} y={0} width={W} height={H / 2} viewBox={`0 ${H / 2} ${W} ${H / 2}`} preserveAspectRatio="xMidYMid slice"><Rainforest f={f} seed={5} ground={860} /></svg>
+        <g transform="translate(760 82) scale(0.36)"><Figure who="juliane" pose={p.pose || (p.heli ? 'signal' : 'shade')} expr={p.expr || 'worried'} f={f} dirty={0.8} oneShoe /></g>
       </g>
       <rect x={0} y={H / 2 - 5} width={W} height={10} fill={INK} />
       <Labels line={line} f={f} y0={60} />
@@ -334,20 +336,56 @@ function Seats3({f, len, line}) {
 }
 
 // the hut and the boat on the riverbank
+// inside the hut: plank walls, the doorway, the fuel in the corner, Juliane on the floor
+function HutInside({f, len, line, p}) {
+  const night = p.time === 'night';
+  const v = at(line, p.wake_on || 'voices', 0.6);
+  const heard = !night && f >= v;
+  return (
+    <Cam f={f} len={len} from={1.04} to={1.0}>
+      <rect width={W} height={H} fill="#6B4423" />
+      {[...Array(17)].map((_, i) => <path key={i} d={`M ${i * 120} 0 L ${i * 120} 820`} stroke="#4A2E17" strokeWidth={8} />)}
+      <rect x={1240} y={250} width={380} height={570} fill={night ? '#0B1530' : '#A7D99A'} {...st(10)} />
+      {night ? [...Array(8)].map((_, i) => Math.sin(f * 0.15 + i * 2.1) > 0.2 && <circle key={i} cx={1290 + (i * 47) % 300} cy={330 + (i * 83) % 420} r={5} fill="#FDE68A" />)
+        : <g><path d="M 1240 250 L 1620 250 L 1620 820 L 1240 820 Z" fill="#FFF7CC" opacity={0.25} /><path d={`M 1240 820 L 1620 820 L 1300 1080 L 700 1080 Z`} fill="#FFF7CC" opacity={0.22} /></g>}
+      {!night && heard && [0, 1, 2].map((k) => <path key={k} d={`M ${1400 + k * 40} ${520 - k * 50} q 30 -20 0 -40`} stroke="#fff" strokeWidth={8} fill="none" strokeLinecap="round" opacity={clamp((f - v - k * 6) / 10, 0, 1)} />)}
+      <rect y={820} width={W} height={H - 820} fill="#8B5A2B" {...ST} />
+      {[...Array(6)].map((_, i) => <path key={i} d={`M 0 ${860 + i * 40} L ${W} ${860 + i * 40}`} stroke="#6B4423" strokeWidth={4} />)}
+      <path d="M -40 0 L 1960 0 L 1960 150 C 1500 210 400 210 -40 150 Z" fill="#C8A44D" {...ST} />
+      {[...Array(14)].map((_, i) => <path key={i} d={`M ${i * 150 - 20} 120 L ${i * 150 + 30} 190`} stroke="#A8832F" strokeWidth={8} />)}
+      <g transform="translate(1820 790) scale(0.42)"><Thing name="fuel" /></g>
+      <g transform="translate(700 410) scale(0.58)"><Figure who="juliane" pose="hug" expr={heard ? 'shock' : (p.expr || (night ? 'sad' : 'worried'))} f={f} dirty={1} /></g>
+      {night && <rect width={W} height={H} fill="#0B1530" opacity={0.45} />}
+      <Labels line={line} f={f} />
+    </Cam>
+  );
+}
+
 function Hut({f, len, line}) {
   const p = P(line);
   const phase = p.phase || 'arrive';
+  if (phase === 'wait') return <HutInside f={f} len={len} line={line} p={p} />;
+  const G = 840;   // the riverbank; the river runs along the bottom
+  const walkX = phase === 'arrive' ? lin(f, 0, len, 160, 560, (t) => t) : lin(f, 0, len, 560, 900, (t) => t);
+  const walkY = phase === 'arrive' ? 0 : lin(f, 0, len, 0, -70, (t) => t);   // the path leads up
   return (
-    <Cam f={f} len={len} from={1} to={1.07}>
-      <Rainforest f={f} seed={21} time={p.time || 'day'} rain={p.rain} water ground={760} />
-      <g transform="translate(1260 470) scale(0.95)"><Thing name="hut" /></g>
-      <g transform={`translate(760 ${850 + Math.sin(f * 0.1) * 6}) scale(0.9)`}><Thing name="boat" /></g>
-      {phase !== 'men' && <g transform={`translate(${phase === 'arrive' ? lin(f, 0, len * 0.7, 300, 520) : 1060} ${phase === 'wait' ? 520 : 600}) scale(0.4)`}>
-        <Figure who="juliane" pose={phase === 'arrive' ? 'limp' : phase === 'wait' ? 'hug' : 'stand'} expr={p.expr || 'worried'} f={f} dirty={1} oneShoe />
+    <Cam f={f} len={len} from={1} to={1.06}>
+      <Rainforest f={f} seed={21} time={p.time || 'day'} rain={p.rain} ground={G - 120} />
+      <path d={`M 120 ${G + 110} C 500 ${G + 90} 800 ${G + 40} 1060 ${G - 70} L 1130 ${G - 70} C 900 ${G + 60} 600 ${G + 120} 260 ${G + 140} Z`} fill="#A07A4E" {...st(4)} />
+      <rect y={G + 120} width={W} height={H - G - 120} fill="#4F8FA6" {...ST} />
+      {[...Array(9)].map((_, i) => { const x = ((i * 230 + f * 2) % (W + 200)) - 100; return <path key={i} d={`M ${x} ${G + 160 + (i % 2) * 40} q 40 -14 80 0`} stroke="#E0F2FE" strokeWidth={6} fill="none" strokeLinecap="round" />; })}
+      <g transform={`translate(560 ${G + 150 + Math.sin(f * 0.1) * 5}) scale(0.8)`}><Thing name="boat" /></g>
+      <g transform={`translate(1360 ${G - 330}) scale(0.95)`}><Thing name="hut" /></g>
+      {[0, 1, 2, 3].map((k) => <path key={k} d={`M ${1100 + k * 22} ${G - 120 + k * 30} L ${1160 + k * 22} ${G - 120 + k * 30}`} stroke="#6B4423" strokeWidth={12} strokeLinecap="round" />)}
+      <path d={`M 1092 ${G - 130} L 1150 ${G - 10} M 1152 ${G - 130} L 1210 ${G - 10}`} stroke="#5B3A1E" strokeWidth={10} />
+      {(phase === 'arrive' || phase === 'path') && <g transform={`translate(${walkX} ${G + 70 + walkY - 1100 * 0.4}) scale(0.4)`}>
+        <Figure who="juliane" pose="limp" expr={p.expr || 'determined'} f={f} dirty={1} oneShoe dir={1} />
       </g>}
       {phase === 'men' && <g>
-        {['worker1', 'worker2', 'worker3'].map((w, i) => <g key={w} transform={`translate(${lin(f, 0, 60, 1900 + i * 140, 1250 + i * 200)} 560) scale(0.4)`}><Figure who={w} pose={f < 60 ? 'walk' : 'stand'} expr={p.expr_men || 'shock'} f={f + i * 5} seed={i + 3} /></g>)}
-        <g transform="translate(700 600) scale(0.4)"><Figure who="juliane" pose="hug" expr="waking" f={f} dirty={1} /></g>
+        <g transform={`translate(980 ${G - 10 - 800 * 0.4}) scale(0.4)`}><Figure who="juliane" pose="hug" expr={p.expr || 'worried'} f={f} dirty={1} /></g>
+        {['worker1', 'worker2', 'worker3'].map((w, i) => { const near = p.close; const x1 = near ? 1250 + i * 190 : 1460 + i * 170;
+          const xx = lin(f, 0, 70, 2050 + i * 150, x1); const moving = f < 70 && !near;
+          return <g key={w} transform={`translate(${near ? x1 : xx} ${G + 60 - 1100 * 0.4}) scale(0.4)`}><Figure who={w} pose={moving ? 'walk' : 'stand'} expr={p.expr_men || 'worried'} f={f + i * 5} seed={i + 3} dir={moving ? -1 : 0} /></g>; })}
       </g>}
       <Labels line={line} f={f} />
     </Cam>
@@ -389,9 +427,14 @@ function Hospital({f, len, line}) {
       <rect y={860} width={W} height={220} fill="#B2DFDB" {...ST} />
       <rect x={560} y={620} width={900} height={120} rx={20} fill="#fff" {...ST} />
       <rect x={560} y={740} width={20} height={160} fill="#94A3B8" {...st(5)} /><rect x={1440} y={740} width={20} height={160} fill="#94A3B8" {...st(5)} />
-      <g transform="translate(860 520) scale(0.5)"><Bust who="juliane" x={0} y={0} s={1} expr={p.father && f > fa ? 'smile' : (p.expr || 'calm')} f={f} arms="rest" seed={1} /></g>
+      <g transform={`translate(${p.hug ? 900 : 860} 520) rotate(${p.hug ? 8 : 0}) scale(0.5)`}><Bust who="juliane" x={0} y={0} s={1} expr={p.hug ? 'closed' : p.father && f > fa ? 'sad' : (p.expr || 'calm')} f={f} arms="rest" seed={1} /></g>
+      {p.hug && <g>   {/* they hold each other: he leans in from the bedside, his arm around her shoulders */}
+        <g transform="translate(1080 520) rotate(-14) scale(0.5)"><Bust who="father" x={0} y={0} s={1} expr="closed" f={f} arms="rest" seed={4} /></g>
+        <path d="M 1010 650 C 960 600 860 590 790 640 L 810 676 C 870 640 950 642 990 690 Z" fill="#B8A06A" {...st(5)} />
+        <ellipse cx={792} cy={656} rx={26} ry={20} fill="#F2C9A0" {...st(5)} />
+      </g>}
       <rect x={640} y={640} width={760} height={120} rx={30} fill="#E0E7FF" {...ST} />
-      {p.father && <g transform={`translate(${lin(f, fa, fa + 40, 2100, 1500)} 400) scale(0.48)`}><Figure who="father" pose="stand" expr={f > fa + 40 ? 'smile' : 'worried'} f={f} seed={4} /></g>}
+      {p.father && !p.hug && <g transform={`translate(${lin(f, fa, fa + 40, 2100, 1500)} 400) scale(0.48)`}><Figure who="father" pose="stand" expr={f > fa + 40 ? 'sad' : 'worried'} f={f} seed={4} /></g>}
       {p.doctor && <g transform="translate(1600 400) scale(0.48)"><Figure who="doctor" pose="hold" expr="calm" f={f} seed={6} /></g>}
       <Labels line={line} f={f} />
     </Cam>

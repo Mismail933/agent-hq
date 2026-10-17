@@ -56,7 +56,68 @@ def pace_of(ln, base):
     return base
 
 
+# ElevenLabs (2.51.0; the owner after v1: the Kokoro voice is "soooo monotone and boring, no change of tone"; he picked Owen, the
+# Voice Library voice closest to The Infographics Show's narrator by voice_match). Eleven v3 acts each line from a delivery tag:
+# the line's own `tag`, else one from its scene and face. Each line is cached on its own (a re-render costs no characters).
+TAGS = {"storm_window": "tense", "shaking": "urgent", "lightning": "dramatic", "mother": "quietly", "breakup": "intense", "falling": "intense",
+        "wake": "softly", "title": "intrigued", "planes": "urgent", "injuries": "serious", "seats3": "somber", "count": "serious",
+        "why": "curious", "end": "warm", "today": "warm", "quote": "thoughtful", "map": "conversational", "rule": "serious"}
+FACE_TAGS = {"sad": "sad", "scared": "nervous", "shock": "surprised", "worried": "concerned", "smile": "warm", "grim": "somber",
+             "determined": "determined"}
+
+
+def tag_of(ln):
+    p = ln.get("p") or {}
+    if ln.get("tag") is not None:
+        return ln["tag"]
+    if p.get("danger"):
+        return "nervous"
+    return FACE_TAGS.get(p.get("expr")) or TAGS.get(ln.get("shot")) or "conversational"
+
+
+def voice_eleven(spec, folder):
+    import hashlib
+    import elevenlabs
+    import control_plane as cp
+    vid = spec["voice"].split(":", 1)[1]
+    stab = float(spec.get("stability", 0.5))
+    elevenlabs.settings.ELEVEN_V3_STABILITY = stab
+    cache = folder / "_voice-cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    out, billed = [], 0
+    for i, ln in enumerate(spec["lines"]):
+        spoken, tag = ln.get("eleven_say") or ln["text"], tag_of(ln)   # v3 says place names well; `say` respellings are for Kokoro
+        key = hashlib.sha1(f"eleven|{vid}|{elevenlabs.model()}|{stab}|{tag}|{spoken}".encode()).hexdigest()[:16]
+        cw, cj = cache / f"e-{key}.wav", cache / f"e-{key}.json"
+        if cw.exists() and cj.exists():
+            a48, _ = sf.read(str(cw), dtype="float32")
+            out.append({"audio": a48, "words": json.loads(cj.read_text(encoding="utf-8")), "secs": len(a48) / SR})
+            say(f"  line {i + 1}: cached, {len(a48) / SR:.1f} s")
+            continue
+        a, words, n = elevenlabs.speak(vid, spoken, tag=tag)
+        billed += n
+        if not words:
+            raise SystemExit(f"ElevenLabs sent no word timings for line {i + 1}")
+        lead = max(0.0, min(0.25, words[0][1] - 0.05))   # trim the silence before the first word (and the tag's breath)
+        a = a[int(lead * 24000):]
+        words = [[w, s - lead, e - lead] for w, s, e in words]
+        tail = min(len(a) / 24000, words[-1][2] + 0.25)
+        a = a[:int(tail * 24000)]
+        a48 = np.interp(np.arange(int(len(a) * SR / 24000)) / SR, np.arange(len(a)) / 24000, a).astype("float32")
+        sf.write(str(cw), a48, SR)
+        cj.write_text(json.dumps(words), encoding="utf-8")
+        out.append({"audio": a48, "words": words, "secs": len(a48) / SR})
+        say(f"  line {i + 1}: [{tag}] {len(words)} words, {len(a48) / SR:.1f} s")
+    if billed:
+        cp.init()
+        cp.log("Calina", "voice_chars", None, {"engine": "elevenlabs", "chars": billed, "what": "story sample " + folder.name, "voice": spec["voice"]})
+        say(f"  ElevenLabs characters used: {billed}")
+    return out
+
+
 def voice_lines(spec, folder):
+    if str(spec.get("voice", "")).startswith("eleven:"):
+        return voice_eleven(spec, folder)
     from kokoro import KPipeline
     voice, speed = spec.get("voice", "am_michael"), float(spec.get("speed", 0.92))
     pipe = KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M")
@@ -97,13 +158,35 @@ def voice_lines(spec, folder):
     return out
 
 
+def text_words(text, words):
+    """The script's own words on the voice's times: the captions must show "Hans-Wilhelm", not the "Hans Vilhelm" the voice was given.
+    Matching words keep their time; a stretch said differently spreads the script's words over the time it took to say."""
+    import difflib
+    toks = text.split()
+    norm = lambda w: re.sub(r"[^a-z0-9]", "", w.lower())
+    if len(toks) == len(words):
+        return [[t, s, e] for t, (_, s, e) in zip(toks, words)]
+    out = []
+    sm = difflib.SequenceMatcher(a=[norm(w) for w, _, _ in words], b=[norm(t) for t in toks], autojunk=False)
+    for op, a0, a1, b0, b1 in sm.get_opcodes():
+        if op == "equal":
+            out += [[toks[b0 + k], words[a0 + k][1], words[a0 + k][2]] for k in range(a1 - a0)]
+        elif b1 > b0:
+            s = words[a0][1] if a1 > a0 else (out[-1][2] if out else (words[0][1] if words else 0.0))
+            e = words[a1 - 1][2] if a1 > a0 else (words[a0][1] if a0 < len(words) else s + 0.3 * (b1 - b0))
+            step = (e - s) / (b1 - b0)
+            out += [[toks[b0 + k], s + k * step, s + (k + 1) * step] for k in range(b1 - b0)]
+    return out
+
+
 def timeline(spec, voiced):
     t, lines = LEAD, []
+    gap, k = float(spec.get("gap", PAUSE)), float(spec.get("pause_scale", 1.0))   # the owner after v1: "a bit slow"
     for ln, v in zip(spec["lines"], voiced):
         start, end = t, t + v["secs"]
         lines.append({"shot": ln["shot"], "text": ln["text"], "t_start": start, "t_end": end, "p": ln.get("p") or {},
-                      "words": [[w, start + s, start + e] for w, s, e in v["words"]]})
-        t = end + PAUSE + EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))
+                      "words": [[w, start + s, start + e] for w, s, e in text_words(ln["text"], v["words"])]})
+        t = end + gap + (EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))) * k
     total = t
     for i, l in enumerate(lines):
         l["cut"] = 0 if i == 0 else int(round((l["t_start"] - LEADIN) * FPS))

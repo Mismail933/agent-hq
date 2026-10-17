@@ -61,6 +61,11 @@ def record(pid, seconds=40):
     import numpy as np
     import soundfile as sf
     warnings.filterwarnings("ignore")   # soundcard warns about discontinuities on loopback; harmless here
+    if not getattr(np, "_hq_fromstring", None):   # soundcard 0.4.5 reads its buffers with numpy.fromstring, which numpy 2 removed:
+        _old = np.fromstring                       # the device that carried the sound failed and "nothing was playing" (2026-10-17)
+        np.fromstring = lambda s, dtype=float, count=-1, sep="": (np.frombuffer(bytes(s), dtype=dtype, count=count).copy() if sep == ""
+                                                                  else _old(s, dtype=dtype, count=count, sep=sep))
+        np._hq_fromstring = True
     folder = ref_dir(pid)
     folder.mkdir(parents=True, exist_ok=True)
     try:

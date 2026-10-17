@@ -41,13 +41,13 @@ function Eyes({expr, f, seed, look = 0}) {
     <g fill="none" stroke={INK} strokeWidth={7} strokeLinecap="round"><path d="M -82 -26 Q -50 -10 -18 -26" /><path d="M 18 -26 Q 50 -10 82 -26" /></g>
   );
   const big = expr === 'scared' || expr === 'shock';
-  const half = expr === 'grim' || expr === 'waking';
+  const half = expr === 'grim' || expr === 'waking' || expr === 'sad';
   const rx = big ? 40 : 32, ry = big ? 38 : 27, pr = big ? 7 : 10;
   const blink = !big && blinkAt(f, seed);
   return [-50, 50].map((ex) => (
     <g key={ex}>
       <ellipse cx={ex} cy={-26} rx={rx} ry={blink ? 3 : ry} fill="#fff" {...ST} />
-      {!blink && <circle cx={ex + look + (big ? (ex < 0 ? 6 : -6) : 2)} cy={-24} r={pr} fill={INK} />}
+      {!blink && <circle cx={ex + look + (big ? (ex < 0 ? 6 : -6) : 2)} cy={expr === 'sad' ? -18 : -24} r={pr} fill={INK} />}
       {!blink && !big && <circle cx={ex + look + 6} cy={-29} r={3.5} fill="#fff" />}
       {half && !blink && <path d={`M ${ex - rx - 2} -28 Q ${ex} ${-26 - ry - 6} ${ex + rx + 2} -28 L ${ex + rx + 2} -60 L ${ex - rx - 2} -60 Z`} fill={SKIN.light} stroke="none" />}
       {half && !blink && <path d={`M ${ex - rx} -28 Q ${ex} -40 ${ex + rx} -28`} fill="none" {...ST} />}
@@ -63,6 +63,8 @@ function Brows({expr, color}) {
     scared: ['M -98 -80 C -72 -92 -42 -106 -18 -128', 'M 98 -80 C 72 -92 42 -106 18 -128'],
     shock: ['M -96 -96 C -72 -114 -40 -116 -18 -104', 'M 96 -96 C 72 -114 40 -116 18 -104'],
     grim: ['M -88 -66 L -18 -66', 'M 88 -66 L 18 -66'],
+    sad: ['M -88 -62 C -68 -66 -42 -76 -18 -94', 'M 88 -62 C 68 -66 42 -76 18 -94'],
+    determined: ['M -88 -84 C -66 -82 -40 -74 -18 -62', 'M 88 -84 C 66 -82 40 -74 18 -62'],
     waking: ['M -90 -70 C -66 -78 -40 -88 -18 -100', 'M 90 -70 C 66 -78 40 -88 18 -100'],
     closed: ['M -86 -62 C -66 -70 -38 -72 -16 -64', 'M 86 -62 C 66 -70 38 -72 16 -64'],
   }[expr] || ['M -86 -70 C -66 -80 -38 -82 -16 -74', 'M 86 -70 C 66 -80 38 -82 16 -74'];
@@ -78,13 +80,15 @@ function Mouth({expr, talk, f}) {
     case 'smile': return <path d="M -40 92 C -20 116 20 116 40 92" fill="none" {...st(7)} />;
     case 'worried': return <path d="M -26 110 C -12 100 12 100 26 110" fill="none" {...st(7)} />;
     case 'grim': return <path d="M -30 104 L 30 104" fill="none" {...st(7)} />;
+    case 'sad': return <path d="M -30 114 C -14 98 14 98 30 114" fill="none" {...st(7)} />;
+    case 'determined': return <path d="M -28 104 C -10 100 10 100 28 104" fill="none" {...st(7)} />;
     case 'shock': return <ellipse cx={0} cy={110} rx={22} ry={30} fill="#4A0F0F" {...st(6)} />;
     case 'scared': return (<g>
       <path d="M -34 84 C -30 66 30 66 34 84 C 44 124 30 172 0 174 C -30 172 -44 124 -34 84 Z" fill="#4A0F0F" {...ST} />
       <path d="M -28 80 C -18 72 18 72 28 80 L 27 92 C 12 86 -12 86 -27 92 Z" fill="#fff" />
       <path d="M -20 142 C -10 132 10 132 20 142 C 12 150 -12 150 -20 142 Z" fill="#E36B6B" /></g>);
     case 'closed': case 'waking': return <path d="M -18 108 C -6 104 6 104 18 108" fill="none" {...st(6)} />;
-    default: return <path d="M -30 100 C -12 108 12 108 30 100" fill="none" {...st(7)} />;
+    default: return <path d="M -26 103 C -10 105 10 105 26 103" fill="none" {...st(7)} />;   // calm: neutral, not a smile
   }
 }
 
@@ -118,7 +122,7 @@ function HairFront({c}) {
 }
 
 // a head, chin at y≈176, centred on (0,0). expr: calm smile worried scared shock grim closed waking
-export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair = 'normal', look = 0, seed = 1}) {
+export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair = 'normal', look = 0, seed = 1, turn = 0}) {
   const c = CAST[who] || CAST.passenger;
   const SKIN = SKINS[c.skin] || SKINS.light;
   return (
@@ -127,20 +131,23 @@ export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair 
       <path d="M -48 120 L -52 240 L 52 240 L 48 120 Z" fill={SKIN.shade} {...ST} />
       <path d="M -124 -40 C -128 -126 -70 -176 0 -176 C 70 -176 128 -126 124 -40 C 122 40 98 120 54 160 C 30 182 -30 182 -54 160 C -98 120 -122 40 -124 -40 Z" fill={SKIN.light} {...ST} />
       <path d="M 60 -150 C 110 -120 128 -60 120 0 C 114 70 90 130 50 164 C 80 110 96 50 92 -20 C 88 -80 76 -120 60 -150 Z" fill={SKIN.shade} />
-      <ellipse cx={-128} cy={-6} rx={18} ry={32} fill={SKIN.light} {...ST} />
-      <ellipse cx={128} cy={-6} rx={18} ry={32} fill={SKIN.shade} {...ST} />
+      {turn > -0.5 && <ellipse cx={-128} cy={-6} rx={18} ry={32} fill={SKIN.light} {...ST} />}
+      {turn < 0.5 && <ellipse cx={128} cy={-6} rx={18} ry={32} fill={SKIN.shade} {...ST} />}
       {c.beard && <path d="M -118 30 C -110 130 -60 196 0 198 C 60 196 110 130 118 30 C 90 70 60 84 30 76 C 10 70 -10 70 -30 76 C -60 84 -90 70 -118 30 Z" fill={c.hair} {...ST} />}
       <HairFront c={c} />
-      <Eyes expr={expr} f={f} seed={seed} look={look} />
+      <g transform={`translate(${turn * 34} 0)`}>
+      <Eyes expr={expr} f={f} seed={seed} look={look + turn * 8} />
       {c.glasses && <g fill="none" {...st(6)}><rect x={-92} y={-62} width={84} height={68} rx={22} /><rect x={8} y={-62} width={84} height={68} rx={22} /><path d="M -8 -34 L 8 -34" /></g>}
       <Brows expr={expr} color={c.brow} />
       <path d="M -4 0 C -14 30 -22 46 -8 54 C 2 58 14 56 18 50" fill="none" stroke={INK} strokeWidth={6} strokeLinecap="round" />
       {!c.beard && <Mouth expr={expr} talk={talk} f={f} />}
       {c.beard && <g transform="translate(0 -8)"><Mouth expr={expr} talk={talk} f={f} /></g>}
-      {c.lips && <ellipse cx={-80} cy={40} rx={22} ry={12} fill={SKIN.cheek} opacity={0.5} />}
-      {c.lips && <ellipse cx={80} cy={40} rx={22} ry={12} fill={SKIN.cheek} opacity={0.4} />}
+      {c.lips && (expr === 'smile' || expr === 'calm') && <ellipse cx={-80} cy={40} rx={22} ry={12} fill={SKIN.cheek} opacity={0.5} />}
+      {c.lips && (expr === 'smile' || expr === 'calm') && <ellipse cx={80} cy={40} rx={22} ry={12} fill={SKIN.cheek} opacity={0.4} />}
+      {expr === 'sad' && <path d="M 66 4 C 58 22 58 36 66 40 C 74 36 74 22 66 4 Z" fill="#BFE6FF" {...st(4)} />}
       {(expr === 'scared' || expr === 'worried') && <path d="M 108 -100 C 100 -84 100 -70 110 -66 C 120 -70 120 -84 108 -100 Z" fill="#BFE6FF" {...st(4)} />}
       {c.mustache && <path d="M -46 82 C -30 64 -8 70 0 78 C 8 70 30 64 46 82 C 30 86 12 84 0 82 C -12 84 -30 86 -46 82 Z" fill={c.hair} {...st(5)} />}
+      </g>
       {c.hat === 'straw' && <g><ellipse cx={0} cy={-150} rx={230} ry={46} fill="#E9C46A" {...ST} /><path d="M -110 -150 C -110 -250 110 -250 110 -150 Z" fill="#E9C46A" {...ST} /><path d="M -108 -170 L 108 -170" stroke="#9C6B30" strokeWidth={16} /></g>}
       {c.hat === 'cap' && <g><path d="M -124 -110 C -124 -220 124 -220 124 -110 Z" fill={c.dressShade} {...ST} /><path d="M 40 -116 C 120 -120 200 -110 220 -96 C 160 -88 90 -96 40 -100 Z" fill={c.dressShade} {...ST} /></g>}
     </g>
@@ -265,13 +272,14 @@ export function Canopy({y0 = 700, f = 0, drift = 0, seed = 5, rows = 5, river = 
 
 // ───────────────── a whole person, front view (2.50.0) ─────────────────
 // head centre at (0,0) like Head; feet at y≈1100 (sitting/hugging: ≈800). pose: stand walk limp run wade signal shade hold push hug lie
-export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, oneShoe = false}) {
+export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, oneShoe = false, dir = 0}) {
   const c = CAST[who] || CAST.passenger;
   const sk = SKINS[c.skin] || SKINS.light;
   const walk = pose === 'walk' || pose === 'limp' || pose === 'run' || pose === 'push';
   const sw = Math.sin((f + seed * 7) * (pose === 'run' ? 0.5 : 0.26));
-  const legL = walk ? sw * (pose === 'run' ? 24 : 14) : 0;
-  const legR = pose === 'limp' ? -sw * 4 : -legL;
+  const side = walk && dir !== 0;   // a walk shown side-on: legs and arms swing forward and back, the body turned
+  const legL = walk ? (side ? -dir : 1) * sw * (pose === 'run' ? 30 : side ? 22 : 14) : 0;
+  const legR = pose === 'limp' ? (side ? dir : -1) * sw * 6 : -legL;
   const bob = walk ? -Math.abs(sw) * (pose === 'limp' ? 16 : 9) : Math.sin(f * 0.07 + seed) * 3;
   const arms = {
     stand: [6, -6], walk: [-sw * 18 + 6, sw * 18 - 6], limp: [-sw * 10 + 10, sw * 6 - 30], run: [-sw * 40, sw * 40], wade: [40, -40],
@@ -311,6 +319,19 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
         <path d="M -170 300 C -200 420 -150 500 0 500 C 150 500 200 420 170 300" fill="none" stroke={sk.light} strokeWidth={56} strokeLinecap="round" />
         <path d="M -170 300 C -200 420 -150 500 0 500 C 150 500 200 420 170 300" fill="none" stroke={INK} strokeWidth={70} strokeLinecap="round" opacity={0} />
         <g transform="translate(0 60) rotate(-4)"><Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} /></g>
+      </g>
+    );
+  }
+  if (side) {
+    const aw = sw * (pose === 'run' ? 34 : 20);
+    return (
+      <g transform={`translate(0 ${bob}) rotate(${dir * (pose === 'run' ? 6 : 3)})`}>
+        <ellipse cx={0} cy={1090 - bob} rx={150} ry={26} fill="#000" opacity={0.18} />
+        {arm(-dir * 40, dir * aw * -1 + dir * 4, 'far')}
+        {leg(-dir * 22, legR, !oneShoe)}{leg(dir * 22, legL, true)}
+        <g transform="scale(0.74 1)">{dress}</g>
+        {arm(dir * 40, dir * aw + dir * 4, 'near')}
+        <Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} turn={dir} />
       </g>
     );
   }

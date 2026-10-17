@@ -312,7 +312,42 @@ const DayLayer = ({lines}) => {
   );
 };
 
-export const Opening = ({lines = [], audio}) => (
+// the spoken words along the bottom: a phrase at a time (breaks at punctuation, at most 6 words), the word being said in yellow.
+// Times are the voice's own word times, so the words never run ahead of or behind the narrator.
+const chunksOf = (l) => {
+  const ws = l.words || [], out = [];
+  let cur = [];
+  ws.forEach((w, i) => {
+    cur.push(i);
+    const end = /[.,!?;:\u2014]$/.test(w[0]) || /["\u201d]$/.test(w[0]);
+    if (end || cur.length >= 6) { out.push(cur); cur = []; }
+  });
+  if (cur.length) out.push(cur);
+  // a lone word left at the end joins the phrase before it
+  if (out.length > 1 && out[out.length - 1].length === 1 && out[out.length - 2].length < 6) out[out.length - 2].push(...out.pop());
+  return out;
+};
+const CaptionLayer = ({lines}) => {
+  const frame = useCurrentFrame();
+  const li = lines.findIndex((l, i) => (l.words || []).length && frame >= l.words[0][1] && frame < (lines[i + 1] && (lines[i + 1].words || []).length ? Math.min(lines[i + 1].words[0][1], l.end + 12) : l.end + 12));
+  if (li < 0) return null;
+  const l = lines[li], ws = l.words;
+  const chunks = chunksOf(l);
+  const ci = chunks.findIndex((c, k) => frame >= ws[c[0]][1] && (k + 1 >= chunks.length || frame < ws[chunks[k + 1][0]][1]));
+  if (ci < 0) return null;
+  const c = chunks[ci];
+  const now = c.reduce((a, i) => (ws[i][1] <= frame ? i : a), c[0]);
+  return (
+    <AbsoluteFill style={{justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 46}}>
+      <div style={{background: 'rgba(10,12,20,0.72)', borderRadius: 18, padding: '10px 26px', maxWidth: 1500, textAlign: 'center',
+        fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 54, lineHeight: 1.18, letterSpacing: 1, textTransform: 'uppercase'}}>
+        {c.map((i, k) => <span key={i} style={{color: i === now ? '#FDE047' : '#FFFFFF', marginRight: k + 1 < c.length ? 16 : 0}}>{ws[i][0].replace(/^["\u201c]|["\u201d]$/g, (m) => m)}</span>)}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+export const Opening = ({lines = [], audio, captions = true}) => (
   <AbsoluteFill style={{backgroundColor: '#000'}}>
     <style>{FONT_CSS}</style>
     {audio && <Audio src={staticFile(audio)} />}
@@ -328,5 +363,6 @@ export const Opening = ({lines = [], audio}) => (
       );
     })}
     <DayLayer lines={lines} />
+    {captions && <CaptionLayer lines={lines} />}
   </AbsoluteFill>
 );
