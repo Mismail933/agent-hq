@@ -1136,10 +1136,17 @@ def comedy_and_pacing(d, items, segs, words, bounds, beats, own=False, script_cu
         # pacing: whatever is planned to change on screen; a long gap gets a camera beat (on whoever is speaking then)
         moving = s.get("backdrop") in ("map", "diagram") or bool(s.get("generated")) or i == len(d["scenes"]) - 1
         marks = sorted({0, n} | {h["at"] for h in hits} | {bt["at"] for bt in beats[i]} | ({out_gag["at"], out_gag["at"] + FREEZE_FRAMES} if out_gag and "at" in out_gag else set()))
+        # 2.53.1 (ep 31's test, scenes 8 and 9: three and two people talked 8 and 10 s in one shot): in a conversation only a real cut
+        # counts. A pose or face beat, or a long line from one speaker, used to fill the gap, so no cut came; now the gaps are
+        # measured between camera cuts only, and cut at least as often as rule check.dialogue_cut_seconds allows
+        every = REFRAME_EVERY
+        if len({w for _it, (_a, _b, w) in lines_of[i] if w in here}) >= 2:
+            every = min(REFRAME_EVERY, 0.8 * float(rules.get("check.dialogue_cut_seconds")))
+            marks = sorted({0, n} | {h["at"] for h in hits if h["cam"] in ("punch_in", "release", "whip")})
         if not moving:
             fill = []
             for x, y in zip(marks, marks[1:]):
-                k = int((y - x) / FPS // REFRAME_EVERY)
+                k = int((y - x) / FPS // every)
                 before = [h["cam"] for h in sorted(hits, key=lambda h: h["at"]) if h["at"] <= x and h["cam"] in ("punch_in", "release", "whip")]
                 zoomed = bool(before) and before[-1] == "punch_in"   # each beat does the opposite of where the camera is
                 for j in range(1, k + 1):
@@ -2009,8 +2016,12 @@ def render_episode(eid, voice=None, suffix="", test=False):
         faults = video_checks.data_faults(props, d, items, CAST, script_by) + video_checks.staging_faults(props, d, CAST) + \
             video_checks.sound_faults(props, items, ffmpeg, folder / f"voice{suffix}.wav", folder / audio_name) + \
             video_checks.caption_faults(props, items)
-        if faults and mode == "block":
+        # a test render goes on and draws anyway, so its contact sheets show everything else before the next run (2.53.1, Atlas:
+        # "hq frames 31 test" had none); it is stopped after the sheets, below, with every fault
+        if faults and mode == "block" and not test:
             raise Blocked(_checks_failed(ep, folder, suffix, test, video_checks.report(faults, {}, test, d)))
+        if faults and test:
+            say(f"  {len(faults)} fault(s) already; the test is drawn anyway for its contact sheets.")
     out = folder / f"short{suffix}.mp4"
     if test:   # a frame a second at a quarter size: minutes, not half an hour
         say("Test render: a frame a second at a quarter size...")

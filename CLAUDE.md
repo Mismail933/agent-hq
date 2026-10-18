@@ -634,6 +634,10 @@ Agents never spend money without the owner's explicit approval.
   - Test sheets: `animate.test_sheets` -> <ep folder>/review-test/sheet-NN.png + transcript.json (script words at voice times);
     `hq frames <id> test` copies them to Atlas-HQ/review/ep-NNN-test/; the test result carries `sheets`, the announcement says read them.
   - Not done: why ep 31's 4 slips happened (no episode data here); a check for people's size against the room.
+  2.53.1 (ep 31's test, scenes 8 and 9 talked 8 and 10 s uncut): in a scene where 2+ on-screen people speak, `comedy_and_pacing`
+  measures the fill gaps between camera cuts only (pose/face beats and one long line used to count as a change, so no cut came) and
+  cuts at least every min(REFRAME_EVERY, 0.8 x rule check.dialogue_cut_seconds). A test render that fails the data/sound/caption
+  checks is still drawn, its contact sheets made, and only then stopped with every fault (the full render still stops before Remotion).
 - Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
   - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
     (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`
