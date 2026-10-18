@@ -650,6 +650,11 @@ Agents never spend money without the owner's explicit approval.
   test's review-test/transcript.json carries `heard_text`/`heard_words`. No re-voicing (LINE_CHECK unchanged, so the cached voice is
   reused). Rule `rana.redraw` ("31:22=note"; `rules.redraw_notes`): `animator.draw_scenes` redraws that scene once with her old file
   and the note (marker `<name>.redraw.txt`; a failed redraw puts the old file back). Not seen: ep 31's data (not in Ghassan's copy).
+  2.53.4 (ep 31's test on 2.53.2 still heard "repaid raid" and "Literally. Literally."): `drop_repeats` now runs on the FINISHED
+  voice{suffix}.wav (after shape_timeline + normalise_voice), the exact audio `voice_faults` listens to (on the raw, pre-tempo track
+  faster-whisper heard other words, so nothing was cut); it listens again after a cut (`DROP_ROUNDS` 2), cuts at the quietest 20 ms
+  around the extra word (`_quiet_at`), and returns `mv` so the title card's `from_s` moves too. `slips` also catches a repeat whose
+  extra copy the matcher put BEFORE the script's word (its twin is right after the insert). Still free: no re-voicing.
   2.53.1 (ep 31's test, scenes 8 and 9 talked 8 and 10 s uncut): in a scene where 2+ on-screen people speak, `comedy_and_pacing`
   measures the fill gaps between camera cuts only (pose/face beats and one long line used to count as a change, so no cut came) and
   cuts at least every min(REFRAME_EVERY, 0.8 x rule check.dialogue_cut_seconds). A test render that fails the data/sound/caption

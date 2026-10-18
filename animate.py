@@ -604,17 +604,28 @@ def slips(script, heard):
         # 2.53.3: only numbers in the script NEAR this spot excuse a heard number (one number anywhere in a whole episode's script
         # used to switch the stray-number check off for the whole voice track: ep 31's "1324. 4." stayed in)
         has_num = any(x.isdigit() or x in NUMBER_WORDS for x in script[max(0, i1 - 2):i2 + 2])
-        j = max(1, j1)
+        def like(w, p):   # (a number's last digits said again count too: "1324 4")
+            return bool(w and p) and (w == p or (len(w) >= 3 and p.endswith(w)) or (w.isdigit() and p.isdigit() and p.endswith(w))
+                                      or (len(w) >= 4 and difflib.SequenceMatcher(None, w, p).ratio() >= 0.8))
+        j = j1
         while j < j2:
-            w, p = heard[j], heard[j - 1]
-            # (a number's last digits said again count too: "1324 4")
-            if w and (w == p or (len(w) >= 3 and p.endswith(w)) or (w.isdigit() and p.isdigit() and p.endswith(w))
-                      or (len(w) >= 4 and difflib.SequenceMatcher(None, w, p).ratio() >= 0.8)):
-                out.append((j, j + 1, f"\"{p} {w}\""))
+            w = heard[j]
+            if j >= 1 and like(w, heard[j - 1]):
+                out.append((j, j + 1, f"\"{heard[j - 1]} {w}\""))
                 j += 1
                 continue
             if j >= 2 and j + 2 <= len(heard) and heard[j:j + 2] == heard[j - 2:j] and all(heard[j:j + 2]):
                 out.append((j, j + 2, "\"" + " ".join(heard[j - 2:j + 2]) + "\""))
+                j += 2
+                continue
+            # 2.53.4 (ep 31's "Literally. Literally."): the matcher may pair the script's word with the SECOND copy, so the extra
+            # one is the last inserted word and its twin comes right after the insert
+            if j == j2 - 1 and j2 < len(heard) and w == heard[j2] and w:
+                out.append((j, j + 1, f"\"{w} {heard[j2]}\""))
+                j += 1
+                continue
+            if j == j2 - 2 and j2 + 2 <= len(heard) and heard[j:j2] == heard[j2:j2 + 2] and all(heard[j:j2]):
+                out.append((j, j2, "\"" + " ".join(heard[j:j2 + 2]) + "\""))
                 j += 2
                 continue
             j += 1
@@ -830,38 +841,71 @@ def drop_repeats(raw, starts, words, end, segs):
     """Eleven v3 now and then says a word twice inside a line ("my feet are are", "heads. heads."; Israa on ep 29). Not the joins:
     each line is its own request and v3 gets no previous/next text. faster-whisper listens to the voice track; a word heard twice in
     a row where the script has it once is cut out (with the pause before it) and every later time moves up. Nothing is made again,
-    so it costs no characters. Rule voice.drop_repeats. Returns (raw, starts, words, end, segs)."""
-    import difflib
+    so it costs no characters. Rule voice.drop_repeats. 2.53.4: run on the finished voice track, listened to again after a cut
+    (up to DROP_ROUNDS), each cut placed at the quietest 20 ms around the extra word so no tail of it stays.
+    Returns (raw, starts, words, end, segs, mv) where mv(t) moves an old time to the cut track (None = nothing cut)."""
     import numpy as np
     import soundfile as sf
     if not rules.get("voice.drop_repeats") or not words:
-        return raw, starts, words, end, segs
-    try:
-        heard = listen(raw)
-    except Exception as ex:  # noqa: BLE001  (never hold the video up for this check)
-        say(f"  Repeated words: couldn't listen to the voice ({str(ex)[:100]}); not checked.")
-        return raw, starts, words, end, segs
-    a, b = [_norm(w[0]) for w in words], [h[0] for h in heard]
-    cuts = []
-    # 2.53.0 (ep 31): also a repeated pair ("a load a load" = "Alode. Alode."), a near repeat ("repaid raid") and a stray number
-    for j0, j1, what in slips(a, b):
-        if j0 >= 1 and 0 < heard[j1 - 1][2] - heard[j0 - 1][2] < 2.5:   # 2.53.3: 2.5 s (a repeat after a full stop has a pause in it)
-            cuts.append((heard[j0 - 1][2], heard[j1 - 1][2], what))
-    if not cuts:
-        return raw, starts, words, end, segs
-    au, sr = sf.read(str(raw), dtype="float32")
-    parts, last = [], 0.0
-    for s0, s1, _ in cuts:
-        parts.append(au[int(last * sr):int(s0 * sr)])
-        last = s1
-    parts.append(au[int(last * sr):])
-    sf.write(str(raw), np.concatenate(parts), sr)
+        return raw, starts, words, end, segs, None
+    a = [_norm(w[0]) for w in words]
+    a = [x for x in a if x]
+    done, moves = [], []
+    for _ in range(DROP_ROUNDS):
+        try:
+            heard = listen(raw)
+        except Exception as ex:  # noqa: BLE001  (never hold the video up for this check)
+            say(f"  Repeated words: couldn't listen to the voice ({str(ex)[:100]}); not checked.")
+            break
+        b = [h[0] for h in heard]
+        au, sr = sf.read(str(raw), dtype="float32")
+        cuts = []
+        # 2.53.0 (ep 31): also a repeated pair ("a load a load" = "Alode. Alode."), a near repeat ("repaid raid") and a stray number
+        for j0, j1, what in slips(a, b):
+            if j0 >= 1 and 0 < heard[j1 - 1][2] - heard[j0 - 1][2] < 2.5:   # 2.53.3: 2.5 s (a repeat after a full stop has a pause in it)
+                s0 = _quiet_at(au, sr, heard[j0 - 1][2] - 0.06, max(heard[j0 - 1][2], heard[j0][1]) + 0.06)
+                nxt = heard[j1][1] if j1 < len(heard) else heard[j1 - 1][2] + 0.25
+                s1 = _quiet_at(au, sr, heard[j1 - 1][2] - 0.04, max(heard[j1 - 1][2], nxt) + 0.04)
+                if s1 > s0 and (not cuts or s0 >= cuts[-1][1]):
+                    cuts.append((s0, s1, what))
+        if not cuts:
+            break
+        parts, last = [], 0.0
+        for s0, s1, _ in cuts:
+            parts.append(au[int(last * sr):int(s0 * sr)])
+            last = s1
+        parts.append(au[int(last * sr):])
+        sf.write(str(raw), np.concatenate(parts), sr)
+        moves.append(cuts)
+        done += [c[2] for c in cuts]
+
+    if not moves:
+        return raw, starts, words, end, segs, None
 
     def mv(t):
-        return t - sum(min(max(0.0, t - s0), s1 - s0) for s0, s1, _ in cuts)
-    say(f"  Voice: cut {len(cuts)} word(s) the voice said twice by mistake ({', '.join(c[2] for c in cuts[:6])}).")
+        for cuts in moves:   # each round's cuts are on the track the round before left
+            t = t - sum(min(max(0.0, t - s0), s1 - s0) for s0, s1, _ in cuts)
+        return t
+    say(f"  Voice: cut {len(done)} word(s) the voice said twice by mistake ({', '.join(done[:6])}).")
     return (raw, [mv(t) for t in starts], [[w[0], mv(w[1]), mv(w[2])] + list(w[3:]) for w in words], mv(end),
-            [(mv(x), mv(y), w) for x, y, w in segs])
+            [(mv(x), mv(y), w) for x, y, w in segs], mv)
+
+
+DROP_ROUNDS = 2   # drop_repeats listens again after a cut (a second word it hears differently once the first is gone)
+
+
+def _quiet_at(au, sr, t0, t1):
+    """The quietest 20 ms point of the track between t0 and t1 (seconds); a cut there never splits a sound."""
+    import numpy as np
+    n = max(1, int(0.02 * sr))
+    i0, i1 = max(0, int(t0 * sr)), min(len(au), int(t1 * sr))
+    if i1 - i0 < 2 * n:
+        return max(0.0, (t0 + t1) / 2)
+    x = np.asarray(au[i0:i1], dtype="float32")
+    if x.ndim > 1:
+        x = x.mean(axis=1)
+    e = np.convolve(x ** 2, np.ones(n, dtype="float32"), mode="valid")
+    return (i0 + int(np.argmin(e)) + n // 2) / sr
 
 
 def cold_open_scenes(d):
@@ -1869,11 +1913,16 @@ def render_episode(eid, voice=None, suffix="", test=False):
             say(f"  ElevenLabs: {chars} characters used for the voices.")
     title = None
     if not own:
-        raw, starts, words, voice_end, segs = drop_repeats(raw, starts, words, voice_end, segs)
         raw, starts, words, voice_end, segs, title = shape_timeline(ffmpeg, raw, starts, words, voice_end, segs, d, ep, folder)
         wpm = wpm * NARR_TEMPO
     normalise_voice(ffmpeg, raw, folder / f"voice{suffix}.wav")
     raw.unlink(missing_ok=True)
+    if not own:
+        # 2.53.4 (ep 31): repeats are cut from the FINISHED voice track, the audio voice_faults listens to. Cut from the raw track
+        # (before the 1.08 tempo) faster-whisper heard other words, so "repaid raid" and "Literally. Literally." were never cut.
+        _, starts, words, voice_end, segs, mv = drop_repeats(folder / f"voice{suffix}.wav", starts, words, voice_end, segs)
+        if title and mv:
+            title["from_s"] = mv(title["from_s"])
     voice_secs = shorts.probe_seconds(ffmpeg, folder / f"voice{suffix}.wav")
     end_t = max(voice_secs, voice_end)
     end_t = end_t + (END_HOLD if not own else 0)
