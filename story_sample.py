@@ -66,13 +66,17 @@ FACE_TAGS = {"sad": "sad", "scared": "nervous", "shock": "surprised", "worried":
              "determined": "determined"}
 
 
+# a scene's music mood also sets the delivery (2.53.5: the sea scenes aren't in TAGS, so most of #2 was read "conversational")
+MOOD_TAGS = {"tense": "tense", "sad": "somber", "hope": "warm", "facts": "conversational", "night": "quietly"}
+
+
 def tag_of(ln):
     p = ln.get("p") or {}
     if ln.get("tag") is not None:
         return ln["tag"]
     if p.get("danger"):
         return "nervous"
-    return FACE_TAGS.get(p.get("expr")) or TAGS.get(ln.get("shot")) or "conversational"
+    return FACE_TAGS.get(p.get("expr")) or TAGS.get(ln.get("shot")) or MOOD_TAGS.get(p.get("mood")) or "conversational"
 
 
 PASSAGE_CHARS = 420   # one ElevenLabs take holds a few lines, so the delivery runs on across them
