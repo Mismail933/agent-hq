@@ -634,6 +634,12 @@ Agents never spend money without the owner's explicit approval.
   - Test sheets: `animate.test_sheets` -> <ep folder>/review-test/sheet-NN.png + transcript.json (script words at voice times);
     `hq frames <id> test` copies them to Atlas-HQ/review/ep-NNN-test/; the test result carries `sheets`, the announcement says read them.
   - Not done: why ep 31's 4 slips happened (no episode data here); a check for people's size against the room.
+  2.53.2 (Atlas's frame review of ep 31's 2.52.3 test): `place_from_words` also turns a card insert or a scene with a drawn `set`
+  into the Nile when its words name it (the street's `set` copied by card_inserts hid it), unless the set's asset brief is itself a
+  Nile/river; the crowd in a WIDE picture stands at a share of the cast's size (`crowdAt` in Short.jsx: it was clamped to 0.35, taller
+  than the 0.55 cast, so cut-ins cut the back row's heads), its tallest head counts in the camera's `topY` and in the
+  check.heads_in_frame probe; the freeze-frame label's white flash (3 frames, near-white in the test) is off unless rule
+  video.freeze_flash (framing.freeze_flash).
   2.53.1 (ep 31's test, scenes 8 and 9 talked 8 and 10 s uncut): in a scene where 2+ on-screen people speak, `comedy_and_pacing`
   measures the fill gaps between camera cuts only (pose/face beats and one long line used to count as a change, so no cut came) and
   cuts at least every min(REFRAME_EVERY, 0.8 x rule check.dialogue_cut_seconds). A test render that fails the data/sound/caption

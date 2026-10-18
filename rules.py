@@ -57,6 +57,7 @@ RULES = {
     "video.card_insert_seconds": _r("Video & render", "float", 4.0, 1, 15, "Each line of a card insert stays up at most this long (or until the next line)"),
     "video.wide_person_height": _r("Video & render", "float", 0.55, 0, 0.9, "In a wide (16:9) picture everyone stands at this share of the picture's height, the same in every room, so the room shows above them and a cut to the speaker cuts in (0 = the old way: as tall as fits)"),
     "video.place_from_words": _r("Video & render", "bool", True, None, None, "A kit scene whose words name the Nile is shown at the Nile; a narrated line about travel to a far place (Europe, Cairo, Mecca...) is shown on a map"),
+    "video.freeze_flash": _r("Video & render", "bool", False, None, None, "A freeze-frame label starts with a short white flash (off = no flash: on ep 31 it read as blank, washed-out frames)"),
     "rana.bespoke_dialogue": _r("Review & quality", "bool", False, None, None, "Rana may draw scenes where two or more people talk (off = the kit draws them: it cuts to each speaker and only his mouth moves)"),
     "render.browser_timeout_s": _r("Video & render", "int", 120, 30, 900, "Seconds the cartoon's headless browser may take to start", ("animate", "BROWSER_TIMEOUT_MS"), 1000),
     "voice.words_per_minute": _r("Video & render", "int", 130, 90, 200, "Narration pace the voice is fitted to", ("animate", "TARGET_WPM")),

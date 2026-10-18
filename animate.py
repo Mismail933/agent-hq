@@ -1681,14 +1681,21 @@ def place_from_words(d):
     if not rules.get("video.place_from_words"):
         return d, []
     scenes, notes = [dict(s) for s in d.get("scenes") or []], []
+    # 2.53.2 (Atlas on ep 31's test: "the caravan crossed the Nile into Cairo" still showed the market street): that scene was a card
+    # made an insert over the street before us (card_inserts copies the street's drawn `set`), and both were skipped. The Nile now wins
+    # over a kit scene, an insert and a drawn place that isn't itself a river (its brief doesn't say Nile/river)
+    river = {str(a.get("id")) for a in d.get("assets") or [] if isinstance(a, dict) and re.search(r"\b(nile|river)\b", f"{a.get('id')} {a.get('brief')}", re.I)}
     for i, s in enumerate(scenes):
-        if s.get("set") or s.get("insert") or s.get("generated") or (s.get("bespoke") or "").strip() or s.get("backdrop") in ("map", "diagram", "card", "nile"):
+        if s.get("generated") or (s.get("bespoke") or "").strip() or s.get("backdrop") in ("map", "diagram", "card", "nile"):
             continue
         text = " ".join(str((l or {}).get("text") or "") for l in s.get("lines") or []) or str(s.get("voice_line") or "")
         talk = any((l.get("who") or "narrator") != "narrator" for l in s.get("lines") or [])
-        if re.search(r"\bnile\b", text, re.I):
-            notes.append(f"scene {i + 1}: '{s.get('backdrop')}' -> nile (its words name the Nile)")
+        if re.search(r"\bnile\b", text, re.I) and not (s.get("set") and str(s.get("set")) in river):
+            notes.append(f"scene {i + 1}: '{s.get('set') or s.get('backdrop')}' -> nile (its words name the Nile)")
             s["backdrop"] = "nile"
+            s.pop("set", None)
+            continue
+        if s.get("set") or s.get("insert"):
             continue
         far = next((p for p in PLACES if re.search(rf"\b{p}\b", text, re.I)), None)
         if far and not talk and TRAVEL.search(text):
@@ -2000,7 +2007,8 @@ def render_episode(eid, voice=None, suffix="", test=False):
         "caption_chunks": caption_chunks(heard),
         # person_h (2.53.0, the owner on ep 31: people "not proportional to the room and the screen"): in a wide picture everyone stands
         # at this share of the picture's height, so the room shows above them and a cut to the speaker really cuts in
-        "framing": {"margin": int(FRAME_MARGIN), "speaker_min": float(SPEAKER_MIN_H), "person_h": float(rules.get("video.wide_person_height"))},
+        "framing": {"margin": int(FRAME_MARGIN), "speaker_min": float(SPEAKER_MIN_H), "person_h": float(rules.get("video.wide_person_height")),
+                    "freeze_flash": bool(rules.get("video.freeze_flash"))},   # 2.53.2: the freeze-frame's white flash (off: near-white frames)
         # the test render marks a frame where someone's head is cut by the picture's edge (video_checks.frame_faults reads the mark)
         **({"probe": True} if test and rules.get("check.heads_in_frame") else {}),
         "outro_fade": max(1, round(END_FADE * FPS)),

@@ -157,7 +157,7 @@ const walkPos = (x, st, frame) => {
 };
 
 // The freeze-frame label (OverSimplified's "Eratosthenes, overachiever"): the picture stops, tints, a ribbon slides in.
-const FreezeLabel = ({text, age, frames, pointX, y = 560, k = 1}) => {
+const FreezeLabel = ({text, age, frames, pointX, y = 560, k = 1, flash = false}) => {
   const {fps} = useVideoConfig();
   const pop = spring({frame: age - 2, fps, config: {damping: 12, stiffness: 170, mass: 0.6}});
   const out = 1 - easeOut(clamp01((age - frames + 6) / 6));
@@ -179,7 +179,8 @@ const FreezeLabel = ({text, age, frames, pointX, y = 560, k = 1}) => {
   return (
     <g opacity={out}>
       <rect x="-1000" y="-200" width="3080" height="2300" fill="#8A6A45" opacity="0.32" style={{mixBlendMode: 'multiply'}} />
-      {age < 3 && <rect x="-1000" y="-200" width="3080" height="2300" fill={C.white} opacity={0.7 * (1 - age / 3)} />}
+      {/* 2.53.2 (Atlas on ep 31's test: near-white frames at 84.1 s): the white flash is off unless rule video.freeze_flash */}
+      {flash && age < 3 && <rect x="-1000" y="-200" width="3080" height="2300" fill={C.white} opacity={0.7 * (1 - age / 3)} />}
       <g transform={`translate(${W / 2 + (1 - pop) * -W} ${y}) rotate(-2) scale(${k})`}>
         <path d={`M ${px - W / 2 - 24} ${h / 2 - 8} L ${px - W / 2} ${h / 2 + 36} L ${px - W / 2 + 24} ${h / 2 - 8} Z`} fill={C.parchment} stroke={C.ink} strokeWidth="8" strokeLinejoin="round" />
         <rect x={-w / 2} y={-h / 2} width={w} height={h} rx="20" fill={C.parchment} stroke={C.ink} strokeWidth="9" />
@@ -297,7 +298,19 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical', 
   const maxX = xs.length ? Math.max(...xs) : W / 2;
   const focus = [(minX + maxX) / 2, cy];
   const spread = xs.length ? (maxX - minX) / 2 : 0;
-  const topY = chars.length ? Math.min(...chars.map((c) => c.y - c.r.top * c.scale)) : null;
+  // the crowd: further back, on the floor just in front of the wall; heads a little under the cast's eye line (perspective).
+  // 2.53.2 (Atlas on ep 31's wide test: the back row's heads cut by the top of the frame at 70-77 s): with the small wide cast the
+  // old floor of 0.35 made the crowd taller than the cast, so a cut-in on a speaker cut their heads. In a wide picture the crowd now
+  // stands a little behind the cast at a share of ITS size, and its tallest head counts for the framing and the head check.
+  const crowdAt = scene.crowd ? (() => {
+    const floor = FLOOR[scene.backdrop] ?? feet - 280;
+    const y = wide ? Math.max(floor + 50, feet - 210 * sc) : floor + 50;
+    const castHead = feet - HEIGHT * sc;
+    const s = Math.max(wide ? sc * 0.45 : 0.35, Math.min(sc * 0.8, (y - castHead - 40) / HEIGHT));
+    return {y, s, top: y - reach('citizen', 'stand', true).top * s * 1.08};   // Crowd sizes each person up to 1.08x
+  })() : null;
+  const tops = [...chars.map((c) => c.y - c.r.top * c.scale), ...(crowdAt ? [crowdAt.top] : [])];
+  const topY = tops.length ? Math.min(...tops) : null;
   // camera hits name a character: the camera frames that one person (his own width and height, inside the safe area)
   const subjects = {};
   chars.forEach((c) => {
@@ -386,14 +399,8 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical', 
             if (p.type === 'asset' && p.scale) return <Asset key={i} id={p.id} x={p.x} y={p.y} scale={p.scale} frame={frame} at={p.at ?? null} />;
             return null;
           })}
-          {scene.crowd && (() => {
-            // further back, on the floor just in front of the wall; heads a little under the cast's eye line (perspective)
-            const floor = FLOOR[scene.backdrop] ?? feet - 280;
-            const cy = floor + 50;
-            const castHead = feet - HEIGHT * sc;
-            const cs = Math.max(0.35, Math.min(sc * 0.8, (cy - castHead - 40) / HEIGHT));
-            return <Crowd size={scene.crowd.size || 5} reaction={crowdShown} frame={frame} seed={index + 1} y={cy} scale={cs} from={SAFE + 40} to={W - SAFE - 40} costume={scene.crowd.costume} />;
-          })()}
+          {crowdAt && <Crowd size={scene.crowd.size || 5} reaction={crowdShown} frame={frame} seed={index + 1} y={crowdAt.y} scale={crowdAt.s}
+            from={SAFE + 40} to={W - SAFE - 40} costume={scene.crowd.costume} />}
           {chars.map((c, i) => {
             if (hidden[i] || (fitView && scene.backdrop === 'card')) return null;   // a wide card shows the card, not legs under it
             const {st, x, walking, dir} = live[i];
@@ -433,8 +440,10 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical', 
   const pointAt = gag && gag.who && subjects[gag.who] ? W / 2 : null;
   // 2.53.0 (Israa on ep 31: Musa's head cut by the frame's edge): the test render marks every frame where a head on screen (not a
   // walker crossing in, not someone left out of the shot) goes past the top of the picture; video_checks reads the mark
-  const cutHead = probe && !Bespoke && !isMap && !isDiagram && !fitView && chars.some((c, i) => !hidden[i] && !live[i].walking &&
-    view.cy + view.dy + view.s * (c.y - reach(c.who, 'stand', true).top * c.scale - view.fy) < vb[1] - 4);
+  // 2.53.2: the crowd's heads too (ep 31's back row was cut and this check passed)
+  const offTop = (y) => view.cy + view.dy + view.s * (y - view.fy) < vb[1] - 4;
+  const cutHead = probe && !Bespoke && !isMap && !isDiagram && !fitView && (chars.some((c, i) => !hidden[i] && !live[i].walking &&
+    offTop(c.y - reach(c.who, 'stand', true).top * c.scale)) || (crowdAt && offTop(crowdAt.top)));
   return (
     <>
     <svg width={SW} height={SH} viewBox={vb.join(' ')} style={{position: 'absolute', left: 0, top: 0, ...wrap}}>
@@ -448,7 +457,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical', 
       </defs>
       <g clipPath={clip !== null ? `url(#iris-${index})` : undefined} filter={blur ? `url(#whip-in-${index})` : undefined}>{body}</g>
       {frozen && gag.text && <FreezeLabel text={gag.text} age={real - gag.at} frames={gag.frames || 48} pointX={pointAt}
-        y={wide ? vb[1] + (fitView ? 300 : 150) : 560} k={wide && !fitView ? 0.55 : 1} />}
+        y={wide ? vb[1] + (fitView ? 300 : 150) : 560} k={wide && !fitView ? 0.55 : 1} flash={!!framing.freeze_flash} />}
       {cutHead && <rect x={vb[0]} y={vb[1]} width={vb[2] * 0.04} height={vb[2] * 0.04} fill={PROBE} />}
     </svg>
     {scene.insert && real < scene.frames && (
