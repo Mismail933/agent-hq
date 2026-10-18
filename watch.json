@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.302",
-   "checked": "2026-10-17"
+   "checked": "2026-10-18"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-15 Opus 5.5 fast mode GA; 10-14 OpenTelemetry beta",
-   "checked": "2026-10-17"
+   "last_seen": "2026-10-15 Opus 5.5 fast mode GA; nothing newer",
+   "checked": "2026-10-18"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-15 independent evaluators update; no new models",
-   "checked": "2026-10-17"
+   "checked": "2026-10-18"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -74,6 +74,11 @@
    "url": "https://support.google.com/youtube/answer/1311392",
    "last_seen": "last dated change July 15, 2025",
    "checked": "2026-10-17"
+  },
+  "youtube-inauthentic-content": {
+   "url": "https://support.google.com/youtube/answer/1311392",
+   "last_seen": "Generic or repetitive content; three categories clarified 2026-07-16 (TechCrunch)",
+   "checked": "2026-10-18"
   }
  },
  "repos": {
@@ -146,6 +151,13 @@
    "verdict": "skip",
    "checked": "2026-10-17",
    "note": "MIT spec-driven coding harness; not needed."
+  },
+  "munder-difflin": {
+   "stars": 8856,
+   "last_commit": "2026-10-17",
+   "verdict": "watch",
+   "checked": "2026-10-18",
+   "note": "local office of agents on subscriptions; only seen in search listing, repo not opened"
   }
  },
  "issues": {
