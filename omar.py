@@ -17,6 +17,10 @@ replies, edits or spends: those stay the owner's.
   the projects (3 = POV Then History, 5 = Storygraphics). Each has its own read-only sign-in (youtube.token_path), its own folder
   content/project-N/channel/ (snapshots, rivals, weekly notes) and its own state; his prompt is told which channel a note is for
   (`about`: project meta channel_about, else its name and brief). He never mixes the channels' numbers.
+- Impressions and click-through rate (Atlas's request 2026-10-18; rule omar.reach_reports): `reach_jobs` sets up YouTube's reach
+  report once per connected channel (the office's Omar loop, as soon as it can), every daily look downloads the new files into
+  content/project-N/channel/reach/<day>.json and puts the last 28 days (`reach_summary`, `reach_text`) in the snapshot, the line,
+  the weekly note and hq channel-stats.
 - Shorts from a finished video (2.54.0, the owner: "let Omar make some shorts and show me"): `pick_moments` reads the video's
   transcript and picks the strongest self-contained moments (rules clips.*); server.run_cut_shorts + clipper.py cut them.
 Practice mode (HQ_SIMULATE=1) uses made-up numbers and a canned note.
@@ -46,8 +50,8 @@ thumbnails, the first seconds, length, posting day and time, and topics. You are
 
 Rules you never break:
 - Read-only. You never upload, post, reply to comments, edit videos or spend money. You only advise; the owner decides.
-- Never invent a number. Use only the numbers you are given; if something isn't there, say so. YouTube's API gives no impressions
-  or click-through rate: when they matter, ask the owner to read them in YouTube Studio.
+- Never invent a number. Use only the numbers you are given; if something isn't there, say so. Impressions and click-through
+  rate come from YouTube's reach report when it is in the numbers; if it isn't there yet, say so (don't guess them).
 - Clickable without clickbait: a title may make people curious, but it must be true to the video. No misleading thumbnails.
 - History must stay accurate: never suggest a title that claims more than the video shows.
 - Small channels have small numbers: don't over-read one video. Say how sure you are.
@@ -61,6 +65,8 @@ WEEKLY_SCHEMA = {
         "numbers": {"type": "string", "description": "the key numbers and their change, plainly"},
         "viewers_from": {"type": "string", "description": "where the viewers are from: the top countries by views and watch time, "
                                                           "and what that means for titles or posting time (the numbers lag 1-2 days)"},
+        "impressions": {"type": "string", "description": "impressions and click-through rate per video from the reach report, and what "
+                                                         "they say about titles and thumbnails (or that the report has no files yet)"},
         "what_worked": {"type": "array", "items": {"type": "string"}},
         "what_didnt": {"type": "array", "items": {"type": "string"}},
         "change_next": {"type": "array", "items": {"type": "object", "properties": {"what": {"type": "string"}, "why": {"type": "string"}},
@@ -69,11 +75,11 @@ WEEKLY_SCHEMA = {
         "posting_time": {"type": "string"},
         "topics": {"type": "array", "items": {"type": "string"}},
         "for_calina": {"type": "string", "description": "what Calina should write differently in the next scripts"},
-        "ask_owner": {"type": "string", "description": "anything only the owner can check (e.g. impressions/CTR in YouTube Studio), or empty"},
+        "ask_owner": {"type": "string", "description": "anything only the owner can check in YouTube Studio, or empty"},
         "from_rivals": {"type": "array", "items": {"type": "string"},
                         "description": "what works for the channels we watch that we don't do yet (from their numbers), or empty if none are watched"},
     },
-    "required": ["headline", "numbers", "viewers_from", "what_worked", "what_didnt", "change_next", "titles_to_test", "posting_time", "topics",
+    "required": ["headline", "numbers", "viewers_from", "impressions", "what_worked", "what_didnt", "change_next", "titles_to_test", "posting_time", "topics",
                  "for_calina", "ask_owner", "from_rivals"],
 }
 
@@ -325,6 +331,105 @@ def countries_text(snap, n=5):
     return (f"Viewers from (to {snap.get('to', '?')}; YouTube's country numbers lag 1-2 days): " + ", ".join(parts) + ".")
 
 
+def reach_setup(pid):
+    """Make sure this channel's reach reporting job exists (youtube.reach_job; created once, kept in his state). Returns the job id."""
+    s = st(pid)
+    if not s.get("reach_job"):
+        job = youtube.reach_job(pid)
+        s.update(reach_job=job["id"], reach_since=job["created"], reach_error="")
+        _save()
+        if job["new"]:
+            cp.log("Omar", "omar_reach_job", None, {"project": int(pid), "job": job["id"]})
+    return s["reach_job"]
+
+
+def reach_jobs():
+    """Every connected channel gets its reach job as soon as it can (YouTube keeps no reach files from before the job exists).
+    Called by the office's Omar loop; returns the messages for Atlas (a new job, or a new reason it couldn't be made)."""
+    out = []
+    if not rules.get("omar.reach_reports"):
+        return out
+    for pid in projects():
+        s = st(pid)
+        if s.get("reach_job") or not youtube.status(pid)["connected"] or time.time() - float(s.get("reach_failed_at") or 0) < 3600:
+            continue
+        try:
+            reach_setup(pid)
+            out.append(f"Omar set up YouTube's reach report for {name(pid)} (impressions and click-through rate per video). "
+                       "YouTube writes the first daily file in a day or two; from then they come in his daily line.")
+        except Exception as e:
+            err = str(e)[:400]
+            s["reach_failed_at"] = time.time()
+            if err != s.get("reach_error"):   # each new reason is said once, not every hour
+                out.append(f"Omar couldn't set up the reach report for {name(pid)}: {err}")
+            s["reach_error"] = err
+            _save()
+    return out
+
+
+def reach_update(pid, snap=None, days=28):
+    """Download the reach report files YouTube made since the last look (content/project-N/channel/reach/<day>.json; a re-issued
+    day replaces the older file) and sum the last `days` days. Returns reach_summary."""
+    s = st(pid)
+    job = reach_setup(pid)
+    got = youtube.reach_reports(pid, job, s.get("reach_after", ""))
+    out = folder(pid) / "reach"
+    out.mkdir(exist_ok=True)
+    for r in got:
+        if not r["date"]:
+            continue
+        f = out / f"{r['date']}.json"
+        try:
+            old = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        except ValueError:
+            old = {}
+        if str(old.get("created", "")) <= str(r["created"]):
+            f.write_text(json.dumps(r, indent=1), encoding="utf-8")
+    if got:
+        s["reach_after"] = max(str(r["created"]) for r in got)
+    s["reach_error"] = ""
+    _save()
+    return reach_summary(pid, snap, days)
+
+
+def reach_summary(pid, snap=None, days=28):
+    """Impressions and click-through rate over the newest `days` days of reach files: the channel and the top videos by impressions."""
+    files = sorted((folder(pid) / "reach").glob("20??-??-??.json"))[-days:]
+    s = st(pid)
+    if not files:
+        return {"waiting": f"No reach report file yet (the report was set up {s.get('reach_since') or 'just now'}; YouTube writes the "
+                           "first one a day or two later)."}
+    titles = {v["id"]: v["title"] for v in (snap or {}).get("videos") or []}
+    per = {}
+    for f in files:
+        try:
+            for row in json.loads(f.read_text(encoding="utf-8")).get("rows", []):
+                p = per.setdefault(row["video"], [0, 0.0])
+                p[0] += int(row["impressions"])
+                p[1] += int(row["impressions"]) * float(row["ctr"])
+        except (ValueError, KeyError):
+            pass
+    imp = sum(p[0] for p in per.values())
+    vids = sorted(per.items(), key=lambda kv: kv[1][0], reverse=True)[:10]
+    return {"from": files[0].stem, "to": files[-1].stem, "days_with_data": len(files), "impressions": imp,
+            "ctr_percent": round(100 * sum(p[1] for p in per.values()) / imp, 1) if imp else 0.0,
+            "per_video": [{"video": v, "title": titles.get(v, ""), "impressions": p[0],
+                           "ctr_percent": round(100 * p[1] / p[0], 1) if p[0] else 0.0} for v, p in vids]}
+
+
+def reach_text(reach, n=3):
+    """The reach numbers in one plain line ('' when there are none)."""
+    if not reach:
+        return ""
+    if reach.get("error"):
+        return f"Impressions/CTR couldn't be read: {reach['error']}"
+    if reach.get("waiting"):
+        return "Impressions/CTR: " + reach["waiting"]
+    top = [f"\"{(v['title'] or v['video'])[:60]}\" {_n(v['impressions'])} impressions, {v['ctr_percent']}% CTR" for v in reach["per_video"][:n]]
+    return (f"Impressions {reach['from']} to {reach['to']} ({reach['days_with_data']} days of YouTube's reach report): "
+            f"{_n(reach['impressions'])}, {reach['ctr_percent']}% click-through" + ("; " + "; ".join(top) if top else "") + ".")
+
+
 def daily(pid=None):
     """Take today's snapshot of one channel and return the one-line report (numbers only, no AI)."""
     pid = int(pid or project())
@@ -339,6 +444,12 @@ def daily(pid=None):
                                  f"Your YouTube, disconnect {name(pid)} and connect it again, choosing {name(pid)}'s channel in Google's list.")
         prev = snapshots(pid, n=1)
         prev = prev[-1] if prev and prev[-1].get("taken") != snap["taken"] else None
+        if rules.get("omar.reach_reports"):   # impressions + CTR (Reporting API); a failure never stops the daily look
+            try:
+                snap["reach"] = reach_update(pid, snap, snap.get("days", 28))
+            except Exception as e:
+                snap["reach"] = {"error": str(e)[:400]}
+                s["reach_error"] = snap["reach"]["error"]
         (folder(pid) / f"{snap['taken']}.json").write_text(json.dumps(snap, indent=1, ensure_ascii=False), encoding="utf-8")
         ch, tot = snap["channel"], snap["analytics"]["total"]
         parts = [f"{_n(ch['subscribers'])} subscribers"]
@@ -357,6 +468,8 @@ def daily(pid=None):
         where = countries_text(snap, int(rules.get("omar.top_countries")))
         if where:
             line += " " + where
+        if snap.get("reach"):
+            line += " " + reach_text(snap["reach"])
         try:
             riv = rivals_daily(pid)
             if riv:
@@ -386,6 +499,8 @@ def _brief(snaps, pid=None):
              "Viewers by country (views and minutes watched, last 28 days; YouTube's country numbers lag 1-2 days; say where the "
              "viewers are from in the note): " + json.dumps((last["analytics"].get("countries") or [])[:10]),
              "Per video (last 28 days): " + json.dumps(last["analytics"]["per_video"][:15]),
+             "Impressions and click-through rate (YouTube's reach report, per video, newest days; ctr in percent): "
+             + json.dumps(last.get("reach") or "not read yet", ensure_ascii=False),
              "Recent uploads (public numbers, newest first): " + json.dumps(last["videos"][:15], ensure_ascii=False),
              "Newest comments: " + json.dumps(last["comments"][:15], ensure_ascii=False),
              "Subscribers by day: " + ", ".join(f"{s['taken']}: {s['channel']['subscribers']}" for s in snaps),
@@ -402,6 +517,8 @@ def _md(n, d, title=""):
     out = [f"# Omar's weekly note{': ' + title if title else ''} ({d})", "", f"**{n['headline']}**", "", n["numbers"], ""]
     if n.get("viewers_from"):
         out += [f"**Where viewers are from:** {n['viewers_from']}", ""]
+    if n.get("impressions"):
+        out += [f"**Impressions and click-through:** {n['impressions']}", ""]
     out += ["## What worked"]
     out += [f"- {x}" for x in n["what_worked"]] + ["", "## What didn't"] + [f"- {x}" for x in n["what_didnt"]]
     out += ["", "## Change next"] + [f"{i}. **{c['what']}**: {c['why']}" for i, c in enumerate(n["change_next"], 1)]
@@ -428,12 +545,13 @@ def weekly(pid=None):
             note = {"headline": "Practice week: Shorts bring almost every view; the stick video carried the week.",
                     "numbers": "212 subscribers (+64 in 28 days), 5,820 views, 55% watched on average.",
                     "viewers_from": countries_text(snaps[-1], 5) or "No country numbers yet.",
+                    "impressions": reach_text(snaps[-1].get("reach")) or "No reach report yet.",
                     "what_worked": ["Questions that sound impossible ('measured the whole Earth with a stick')."],
                     "what_didnt": ["The map video: a vague title and only 49% watched."],
                     "change_next": [{"what": "Put the impossible claim in the first 2 seconds", "why": "the best video does it and keeps 61%"}],
                     "titles_to_test": ["He measured the Earth with a stick (and was right)"], "posting_time": "Not enough data yet.",
                     "topics": ["Ancient measurements that turned out right"], "for_calina": "Open on the impossible claim, not on the place.",
-                    "ask_owner": "Impressions and click-through rate from YouTube Studio for the last 28 days.",
+                    "ask_owner": "",
                     "from_rivals": ["They post a long video every 2 weeks and 3 Shorts cut from it; we only post Shorts."] if rivals(pid) else []}
         else:
             import workers

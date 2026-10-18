@@ -1578,6 +1578,11 @@ def omar_loop():
     time.sleep(45)
     while True:
         rules.apply_all()
+        try:   # reach reports (impressions/CTR) are set up as soon as a channel is connected: YouTube keeps nothing from before
+            for msg in ([] if RESTARTING["on"] or cp.STOP_FILE.exists() else omar.reach_jobs()):
+                atlas_says(f"**Omar:** {msg}")
+        except Exception as e:
+            print("Omar reach:", repr(e)[:300], flush=True)
         try:   # a channel that failed waits an hour (omar.due); the other channels go on (2.52.0)
             job = None if RESTARTING["on"] or cp.STOP_FILE.exists() else omar.due()
             if job:

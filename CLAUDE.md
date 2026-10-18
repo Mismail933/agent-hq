@@ -878,6 +878,17 @@ Agents never spend money without the owner's explicit approval.
     ISO code; share of views, hours watched; says the numbers lag 1-2 days) goes on the daily line (rule omar.top_countries, 5; 0 =
     off), the weekly brief has the top 10 and the note a required `viewers_from` ("Where viewers are from"), `hq channel-stats`
     puts `viewers_from` first. Practice mode has made-up countries.
+  - Impressions and click-through rate (Atlas's request 2026-10-18, the owner: "why cant omar access those"): not in the Analytics
+    API; the Reporting API's bulk report `channel_reach_basic_a1` (video_thumbnail_impressions, _ctr per video per day; same
+    yt-analytics.readonly scope, no reconnect). The owner must turn on "YouTube Reporting API" in his Cloud project once (else the
+    error `youtube.REACH_OFF` says where to click; it goes to Atlas once per new reason). `youtube.reach_job(pid)` finds/creates the
+    reporting job, `reach_reports(pid, job, after)` lists + downloads new files (AuthorizedSession on downloadUrl; rows summed per
+    video, CTR weighted by impressions). `omar.reach_jobs()` (server.omar_loop, every 5 min, until each connected channel has its
+    job; a failure waits an hour) -> state `reach_job`/`reach_since`/`reach_after`/`reach_error` in omar.json; `daily` ->
+    `reach_update` -> content/project-N/channel/reach/<day>.json (a re-issued day replaces the older) -> `snap["reach"]`
+    (`reach_summary`: last 28 days, top 10 videos) -> `reach_text` on the daily line, the weekly brief + the note's required
+    `impressions`, `hq channel-stats`'s `impressions_ctr`. Rule omar.reach_reports (off = not read, no job made). YouTube writes the
+    first file a day or two after the job exists. Not tested against the real API (the Builder can't).
 - Shorts from a finished video (2.54.0, Atlas's request 2026-10-18; the owner: "let Omar make some shorts and show me", first for
   Storygraphics' juliane-v4.mp4): `hq shorts <project> <video file under content/|episode id> [count]` = `POST /api/shorts {project,
   video, count}` (`server.shorts_source`, one at a time `CUTTING`) -> journaled job `shorts_cut` (`run_cut_shorts`): `clipper.py

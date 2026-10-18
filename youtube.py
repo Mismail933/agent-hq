@@ -14,6 +14,9 @@ Setup, once, by the owner (the Builder never sees the values):
 3. "Connect YouTube": Google's consent page opens in his browser on this PC; he signs in with the account that owns the
    channel, picks the channel and allows read-only access. The token is kept in ~/.agent-hq/youtube-token-p<project>.json,
    never logged or shown.
+Impressions and click-through rate (Atlas's request 2026-10-18): not in the Analytics API, but in the Reporting API's
+`channel_reach_basic_a1` bulk report (same yt-analytics.readonly scope; the owner must turn on "YouTube Reporting API" in his Cloud
+project once: REACH_OFF says how). `reach_job` creates the reporting job once, `reach_reports` downloads its daily files.
 2.52.0 (the owner: "let Omar handle both"): one sign-in per channel, each tied to its project (one Google client file for all).
 The single youtube-token.json of 2.44.0 belongs to the first project Omar watches and is renamed once (`migrate`).
 Practice mode (HQ_SIMULATE=1) returns made-up numbers and needs none of this.
@@ -218,7 +221,104 @@ def snapshot(pid, days=28):
             "videos": videos, "analytics": {"total": total[0] if total else {}, "per_video": per_video, "sources": sources,
                                             "countries": countries},
             "comments": comments,
-            "not_available": "YouTube's API gives no impressions or click-through rate; read them in YouTube Studio when needed."}
+            "not_available": "The Analytics API gives no impressions or click-through rate; they come from the Reporting API's reach "
+                             "report (`reach`, when Omar has it)."}
+
+
+REACH_TYPE = "channel_reach_basic_a1"   # Reporting API: thumbnail impressions + their click-through rate, per video per day
+REACH_OFF = ("The YouTube Reporting API isn't turned on in the owner's Google Cloud project. He turns it on once: "
+             "console.cloud.google.com -> the same project as the YouTube client -> APIs & Services -> Library -> search "
+             "'YouTube Reporting API' -> Enable. No reconnect is needed (it uses the read-only analytics permission he already gave).")
+REACH_SCOPE = ("Google refused the reach report for this sign-in (missing permission). Disconnect this channel in Spend & limits -> "
+               "Your YouTube and Connect it again, allowing read-only access.")
+
+
+def _reach_error(e):
+    """A Reporting API refusal in plain words (the API switched off in his Cloud project, or a sign-in without the permission)."""
+    t = str(e)
+    if "accessNotConfigured" in t or "SERVICE_DISABLED" in t or "has not been used in project" in t or "is disabled" in t:
+        return RuntimeError(REACH_OFF)
+    if "insufficient" in t.lower() and "scope" in t.lower() or "ACCESS_TOKEN_SCOPE_INSUFFICIENT" in t:
+        return RuntimeError(REACH_SCOPE)
+    return e
+
+
+def reach_job(pid):
+    """The channel's reporting job for the reach report: found, else created (once; YouTube starts writing daily report files a day
+    or two later). Read-only: a reporting job only asks YouTube to prepare reports; it changes nothing on the channel.
+    Returns {id, created, new}."""
+    if _sim():
+        return {"id": f"job-practice-{int(pid)}", "created": (date.today() - timedelta(days=6)).isoformat(), "new": False}
+    from googleapiclient.discovery import build
+    try:
+        yr = build("youtubereporting", "v1", credentials=_creds(pid), cache_discovery=False)
+        for j in yr.jobs().list().execute().get("jobs", []) or []:
+            if j.get("reportTypeId") == REACH_TYPE:
+                return {"id": j["id"], "created": str(j.get("createTime", ""))[:10], "new": False}
+        j = yr.jobs().create(body={"reportTypeId": REACH_TYPE, "name": "Agent HQ - Omar reach"}).execute()
+        return {"id": j["id"], "created": str(j.get("createTime", ""))[:10] or date.today().isoformat(), "new": True}
+    except Exception as e:
+        raise _reach_error(e)
+
+
+def reach_reports(pid, job_id, after=""):
+    """The job's report files created after `after` (RFC 3339, '' = all YouTube still keeps, ~60 days), downloaded:
+    [{id, date (the data's day), created, rows: [{video, impressions, ctr}]}]. Rows of one video (split by country, subscribed, ...)
+    are summed: impressions added, the click-through rate weighted by impressions."""
+    if _sim():
+        return _fake_reach(after)
+    import csv
+    import io
+    from google.auth.transport.requests import AuthorizedSession
+    from googleapiclient.discovery import build
+    try:
+        creds = _creds(pid)
+        yr = build("youtubereporting", "v1", credentials=creds, cache_discovery=False)
+        found, token = [], None
+        while True:
+            args = {"jobId": job_id, **({"createdAfter": after} if after else {}), **({"pageToken": token} if token else {})}
+            got = yr.jobs().reports().list(**args).execute()
+            found += got.get("reports", []) or []
+            token = got.get("nextPageToken")
+            if not token:
+                break
+        web = AuthorizedSession(creds)
+        out = []
+        for r in sorted(found, key=lambda r: r.get("createTime", "")):
+            res = web.get(r["downloadUrl"], timeout=120)
+            res.raise_for_status()
+            per = {}
+            for row in csv.DictReader(io.StringIO(res.text)):
+                vid = row.get("video_id") or ""
+                imp = float(row.get("video_thumbnail_impressions") or 0)
+                ctr = float(row.get("video_thumbnail_impressions_ctr") or 0)
+                if not vid:
+                    continue
+                p = per.setdefault(vid, [0.0, 0.0, 0.0])   # impressions, impressions x ctr, largest ctr (percent or ratio?)
+                p[0] += imp
+                p[1] += imp * ctr
+                p[2] = max(p[2], ctr)
+            pct = any(p[2] > 1 for p in per.values())   # documented as a ratio; if YouTube ever sends percents, read them as such
+            rows = [{"video": v, "impressions": int(p[0]), "ctr": round((p[1] / p[0]) / (100 if pct else 1), 5) if p[0] else 0.0}
+                    for v, p in per.items()]
+            out.append({"id": r["id"], "date": str(r.get("startTime", ""))[:10], "created": r.get("createTime", ""), "rows": rows})
+        return out
+    except Exception as e:
+        raise _reach_error(e)
+
+
+def _fake_reach(after):
+    today = date.today()
+    out = []
+    for i in range(1, 6):
+        d = (today - timedelta(days=i + 1)).isoformat()
+        created = d + "T12:00:00Z"
+        if after and created <= after:
+            continue
+        out.append({"id": f"rep{i}", "date": d, "created": created,
+                    "rows": [{"video": "vid0", "impressions": 900 + 40 * i, "ctr": 0.071},
+                             {"video": "vid1", "impressions": 420, "ctr": 0.038}]})
+    return out
 
 
 def seconds(iso):
@@ -328,4 +428,5 @@ def _fake(days, pid=3):
                           "countries": [{"country": c, "views": v, "estimatedMinutesWatched": v * 1.2} for c, v in
                                         [("US", 2380), ("IN", 720), ("GB", 610), ("LB", 340), ("CA", 300), ("DE", 210)]]},
             "comments": [{"video": vids[0]["title"], "text": "Wait, he did this with a STICK?", "likes": 12, "when": vids[0]["published"]}],
-            "not_available": "YouTube's API gives no impressions or click-through rate; read them in YouTube Studio when needed."}
+            "not_available": "The Analytics API gives no impressions or click-through rate; they come from the Reporting API's reach "
+                             "report (`reach`, when Omar has it)."}
