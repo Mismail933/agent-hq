@@ -34,6 +34,7 @@ Atlas's controls for Agent HQ.
                  ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
                  omar [status | now [project] | weekly [project] | suggest <episode>] | channel-stats [project]     (Omar: the YouTube channels, read-only)
                  omar watch <channel link|@handle> [--project N] | omar unwatch <channel> [--project N] | omar rivals [project]     (channels he learns from)
+                 shorts <project> <video file|episode> [count]     (Omar picks the best moments of a finished video; the office cuts 1080x1920 Shorts and sends them to the owner's phone; he uploads)
                  fetch <link> [link...]     (see a link the owner sent: images saved to review/refs/, YouTube title/channel/description/thumbnail)
 
 Reading comes straight from hq.db. Actions go through the running office, so they show up live there and pass the
@@ -437,6 +438,15 @@ def main(argv):
                 show(reply.get("suggestion") if code < 300 else f"Not done: {reply.get('error')}")
             else:
                 show("hq omar [status | now | weekly | suggest <episode> | watch <channel> | unwatch <channel> | rivals]")
+        elif cmd == "shorts":   # hq shorts <project> <video file|episode> [count]: Omar picks moments, the office cuts Shorts
+            if len(args) < 2 or not args[0].isdigit():
+                show("Use: hq shorts <project> <video file under content/ | episode id> [count]   (rules clips.* set length, captions, end card)")
+                return
+            body = {"project": int(args[0]), "video": args[1]}
+            if len(args) > 2 and args[2].isdigit():
+                body["count"] = int(args[2])
+            code, reply = office("/api/shorts", body)
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "channel-stats":   # hq channel-stats [project]: the newest snapshot Omar took of a channel (numbers only)
             import omar
             pid = int(args[0]) if args and args[0].isdigit() else None

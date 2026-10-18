@@ -17,10 +17,13 @@ replies, edits or spends: those stay the owner's.
   the projects (3 = POV Then History, 5 = Storygraphics). Each has its own read-only sign-in (youtube.token_path), its own folder
   content/project-N/channel/ (snapshots, rivals, weekly notes) and its own state; his prompt is told which channel a note is for
   (`about`: project meta channel_about, else its name and brief). He never mixes the channels' numbers.
+- Shorts from a finished video (2.54.0, the owner: "let Omar make some shorts and show me"): `pick_moments` reads the video's
+  transcript and picks the strongest self-contained moments (rules clips.*); server.run_cut_shorts + clipper.py cut them.
 Practice mode (HQ_SIMULATE=1) uses made-up numbers and a canned note.
 """
 import json
 import os
+import re
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -483,6 +486,87 @@ def suggest(eid):
     cp.update_episode(int(eid), data=d)
     cp.log("Omar", "omar_suggested", None, {"episode": int(eid), "title": got["titles"][0][:120] if got.get("titles") else ""})
     return got
+
+
+MOMENTS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "moments": {"type": "array", "items": {"type": "object", "properties": {
+            "start": {"type": "number", "description": "seconds: the first word of the moment (its hook)"},
+            "end": {"type": "number", "description": "seconds: the end of the moment's last word"},
+            "title": {"type": "string", "description": "the Short's title, under 70 characters, true to the clip"},
+            "hook": {"type": "string", "description": "the words heard in the first 2 seconds"},
+            "why": {"type": "string", "description": "why this moment stands on its own and makes people want the full story"}},
+            "required": ["start", "end", "title", "hook", "why"]}},
+    },
+    "required": ["moments"],
+}
+
+
+def _timed_lines(words):
+    """A transcript as sentences, each with its start time: '[123.4] text'."""
+    out, cur = [], []
+    for w in words:
+        cur.append(w)
+        if re.search(r"[.!?]$", str(w["w"])) or len(cur) >= 30:
+            out.append(f"[{cur[0]['s']:.1f}-{cur[-1]['e']:.1f}] " + " ".join(str(x["w"]) for x in cur))
+            cur = []
+    if cur:
+        out.append(f"[{cur[0]['s']:.1f}-{cur[-1]['e']:.1f}] " + " ".join(str(x["w"]) for x in cur))
+    return "\n".join(out)
+
+
+def _fit(m, words, low, high):
+    """Snap a picked moment to whole words and to the length rules; None if it can't fit."""
+    starts = [w for w in words if w["s"] >= float(m["start"]) - 0.4]
+    if not starts:
+        return None
+    s = starts[0]["s"]
+    inside = [w for w in words if s <= w["s"] and w["e"] <= min(float(m["end"]) + 0.4, s + high)]
+    if not inside:
+        return None
+    end = inside[-1]["e"] + 0.25
+    if end - s < low:
+        return None
+    return {**m, "start": round(max(0.0, s - 0.1), 2), "end": round(end, 2)}
+
+
+def pick_moments(pid, transcript, count, low, high, what=""):
+    """Shorts from a finished video (2.54.0): Omar reads its transcript and picks `count` self-contained moments of low-high seconds
+    (a hook in the first 2 s, an ending that leaves people wanting the full story), with a title each. Returns [{n, start, end,
+    title, hook, why}], snapped to whole words."""
+    words = transcript["words"]
+    if not words:
+        raise ValueError("Nothing is said in that video (the transcript is empty), so there is nothing to pick from.")
+    if _sim():   # practice mode: evenly spaced moments
+        span = words[-1]["e"]
+        got = {"moments": [{"start": span * (i + 0.5) / (count + 1), "end": span * (i + 0.5) / (count + 1) + high, "title": f"Practice moment {i + 1}",
+                            "hook": "", "why": "Practice mode."} for i in range(count)]}
+    else:
+        import workers
+        task = (f"A finished video{' (' + what + ')' if what else ''} of this channel. Cut Shorts from it to bring viewers to the full video.\n"
+                f"Pick the {count} strongest moments. Each one must:\n"
+                f"- last {low:.0f} to {high:.0f} seconds (start and end on the transcript's times; the clip is cut exactly there),\n"
+                "- open on a hook: the first 2 seconds alone make someone stop scrolling (a striking fact, a danger, a question), never on "
+                "'and', 'so', 'but' or a name nobody knows yet,\n"
+                "- make sense to someone who never saw the video (no 'she' or 'it' without saying who or what),\n"
+                "- end on a cliffhanger or a turn that makes people want the full story (never mid-sentence),\n"
+                "- not overlap another pick; prefer different parts of the story.\n"
+                "Give each a Short title (true to the clip, no clickbait it doesn't deliver).\n\n"
+                "The transcript, sentence by sentence with [start-end] seconds:\n" + _timed_lines(words))
+        got, _ = workers.run("Omar", None, system(pid), task, tools=(), schema=MOMENTS_SCHEMA, max_turns=6)
+    out = []
+    for m in sorted(got.get("moments") or [], key=lambda x: float(x.get("start", 0))):
+        f = _fit(m, words, low, high)
+        if f and all(f["start"] >= o["end"] or f["end"] <= o["start"] for o in out):
+            out.append(f)
+    if not out:
+        raise ValueError(f"Omar found no moment of {low:.0f}-{high:.0f} s that stands on its own in that video.")
+    out = out[:count]
+    for i, m in enumerate(out, 1):
+        m["n"] = i
+    cp.log("Omar", "shorts_picked", None, {"project": int(pid), "moments": [{"start": m["start"], "end": m["end"], "title": m["title"][:80]} for m in out]})
+    return out
 
 
 def due(now=None):

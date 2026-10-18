@@ -453,7 +453,8 @@ def job_label(kind, a):
             "israa_video": "Israa's review of video #{0}", "design": "Rana's {0} options", "cast_draw": "Rana's new cast for project {0}",
             "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}",
             "style_frames": "Rana's style frames for project {0}",
-            "mv_render": "The music video {1} {2} of project {0}", "render_test": "The test render of video #{0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "mv_render": "The music video {1} {2} of project {0}", "render_test": "The test render of video #{0}",
+            "shorts_cut": "Omar's Shorts from {1}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -490,7 +491,7 @@ JOBS = {"cast_draw": "run_cast_draw", "cast_check": "run_cast_check","design": "
         "animator_test": "run_animator_test", "voice_match": "run_voice_match", "library_add": "run_library_add",
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
         "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video", "assets": "run_assets",
-        "style_frames": "run_style_frames", "mv_render": "run_mv_render", "render_test": "run_test_render"}
+        "style_frames": "run_style_frames", "mv_render": "run_mv_render", "render_test": "run_test_render", "shorts_cut": "run_cut_shorts"}
 
 
 LOGO_BRIEF = ("The logo of Agent HQ: the owner's AI company, a small team of AI agents (each with a name and a job) run by a manager, "
@@ -1018,7 +1019,7 @@ def allowance_short(agents):
 
 JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "cast_check": ("Israa",),"design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
              "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",), "assets": ("Rana", "Israa"),
-             "style_frames": ("Rana", "Israa")}   # the agents a long job can't finish without
+             "style_frames": ("Rana", "Israa"), "shorts_cut": ("Omar",)}   # the agents a long job can't finish without
 
 
 def cast_watch():
@@ -1219,6 +1220,85 @@ def run_mv_render(pid, idea, version, about="", quick=False, vertical=False, by=
         atlas_says(f"The music video ({name}, {idea}, {version}) didn't render: {ex}")
     finally:
         MVRENDER["on"] = ""
+
+
+CUTTING = {"on": ""}   # one set of Shorts is cut at a time
+
+
+def shorts_source(ref):
+    """The video `hq shorts` cuts from: an episode id (its finished video) or a file under content/. Returns (project id or None,
+    path relative to the program folder)."""
+    ref = str(ref or "").strip().strip('"')
+    if ref.isdigit():
+        e = cp.get_episode(int(ref))
+        if not e or not e.get("video_path"):
+            raise ValueError(f"Episode {ref} has no finished video yet.")
+        return e.get("project_id"), Path(e["video_path"]).as_posix()
+    p = Path(ref)
+    p = (p if p.is_absolute() else ROOT / p).resolve()
+    if (ROOT / "content").resolve() not in p.parents or p.suffix.lower() not in (".mp4", ".mov", ".mkv", ".webm") or not p.is_file():
+        raise ValueError("Give an episode number or a video file under content/ (e.g. content/project-5/samples/juliane-v4.mp4).")
+    m = re.match(r"content/project-(\d+)/", p.relative_to(ROOT).as_posix())
+    return (int(m.group(1)) if m else None), p.relative_to(ROOT).as_posix()
+
+
+def run_cut_shorts(pid, video, count, by="Atlas"):
+    """2.54.0 (Atlas's request; the owner: "let Omar make some shorts and show me"): Shorts cut from a finished video. The video's
+    words are transcribed from its audio (clipper.py, once per video), Omar picks the strongest self-contained moments
+    (omar.pick_moments, rules clips.*), clipper.py cuts them to 1080x1920 (the picture over a blurred copy, big captions, the
+    video's own sound, an end card) into <video folder>/shorts/<video>/<time>/, and they go to the owner's phone for his OK.
+    He uploads them himself."""
+    src = ROOT / video
+    CUTTING["on"] = src.name
+    try:
+        base = src.parent / "shorts" / src.stem
+        tr = base / "transcript.json"
+        if not tr.exists():
+            _tool("clipper.py", "transcript", video, base.relative_to(ROOT).as_posix(), timeout=3 * 3600)
+        transcript = json.loads(tr.read_text(encoding="utf-8"))
+        low, high = float(rules.get("clips.min_seconds")), float(rules.get("clips.max_seconds"))
+        moments = checkpoint.get("moments picked")
+        if moments is None:
+            moments = omar.pick_moments(pid, transcript, int(count), low, max(low + 5, high), src.stem)
+            checkpoint.done("moments picked", moments)
+        run_dir = checkpoint.get("folder") or (base / time.strftime("%Y%m%d-%H%M")).relative_to(ROOT).as_posix()
+        checkpoint.done("folder", run_dir)
+        out = ROOT / run_dir
+        out.mkdir(parents=True, exist_ok=True)
+        style = {"captions": rules.get("clips.captions"), "words": int(rules.get("clips.caption_words")),
+                 "size": int(rules.get("clips.caption_size")), "highlight": bool(rules.get("clips.caption_highlight")),
+                 "end_seconds": float(rules.get("clips.end_card_seconds")), "end_text": str(rules.get("clips.end_card_text")),
+                 "channel": omar.name(pid) if pid else ""}
+        plan = out / "plan.json"
+        plan.write_text(json.dumps({"video": video, "words": tr.relative_to(ROOT).as_posix(), "moments": moments, "style": style},
+                                   indent=1, ensure_ascii=False), encoding="utf-8")
+        res = _tool("clipper.py", "cut", plan.relative_to(ROOT).as_posix(), timeout=2 * 3600)
+        clips = res["clips"]
+        for c in clips:
+            m = next((x for x in moments if x["n"] == c["n"]), {})
+            c.update(hook=m.get("hook", ""), why=m.get("why", ""))
+        (out / "clips.json").write_text(json.dumps(clips, indent=1, ensure_ascii=False), encoding="utf-8")
+        sent = 0
+        if rules.get("clips.phone") and phone.owner_chat():
+            for c in clips:
+                try:
+                    phone.send_file(c["file"], f"Short {c['n']} of {len(clips)} from {src.name} (Omar's pick, "
+                                    f"{int(c['start'] // 60)}:{int(c['start'] % 60):02d}-{int(c['end'] // 60)}:{int(c['end'] % 60):02d})\n"
+                                    f"Title: {c['title']}\n\nOK it? You upload it yourself.")
+                    sent += 1
+                except Exception as ex:
+                    cp.log("Omar", "shorts_phone_failed", None, {"file": c["file"], "error": str(ex)[:200]})
+        cp.log("Omar", "shorts_ready", None, {"project": pid, "video": video, "folder": run_dir, "clips": len(clips), "sent": sent, "by": by})
+        atlas_says(f"**{len(clips)} Shorts cut from {src.name}** (Omar picked the moments; {run_dir}/):\n"
+                   + "\n".join(f"- {c['n']}. \"{c['title']}\" ({c['seconds']:.0f} s, from {c['start']:.0f} s): {c['file']}" for c in clips)
+                   + (f"\n{sent} sent to the owner's phone for his OK." if sent else
+                      "\nNot sent to the phone (rule clips.phone off, or no phone paired): send them with `hq send-phone <file>`.")
+                   + " Uploads stay the owner's.")
+    except Exception as ex:
+        cp.log("Omar", "shorts_failed", None, {"project": pid, "video": video, "reason": str(ex)[:300]})
+        atlas_says(f"The Shorts from {src.name} couldn't be made: {ex}")
+    finally:
+        CUTTING["on"] = ""
 
 
 def animator_test_view(p):
@@ -1670,7 +1750,7 @@ def save_uploads(items):
 # chat, never to the phone (he sends the owner something himself only when it matters). Rules in atlas/CLAUDE.md.
 WAKE_KINDS = ("video_ready", "video_reviewed", "video_failed", "batch_ready", "script_reviewed", "halted", "bespoke_failed",
               "ready_to_ship", "ghassan_shipped", "job_given_up", "assets_ready", "assets_failed", "studio_ready", "studio_failed",
-              "mv_ready", "mv_failed")
+              "mv_ready", "mv_failed", "shorts_ready", "shorts_failed")
 AUTOPILOT = {"last_wake": 0.0, "last_event": 0, "wakes": 0}
 
 
@@ -2652,6 +2732,24 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(502, {"error": f"YouTube didn't answer: {type(e).__name__}: {str(e)[:200]}"})
             return self._send(200, {"ok": True, "message": msg})
+        if u.path == "/api/shorts":   # hq shorts <project> <video file|episode> [count]: Omar picks moments, the office cuts Shorts
+            body = self._json_body()
+            if CUTTING["on"]:
+                return self._send(409, {"error": f"Shorts are being cut already (from {CUTTING['on']}). One at a time."})
+            try:
+                found, video = shorts_source(body.get("video"))
+                pid = int(body.get("project") or found or omar.project())
+                count = int(body.get("count") or rules.get("clips.count"))
+                if not 1 <= count <= 8:
+                    raise ValueError("Between 1 and 8 Shorts at a time.")
+            except (ValueError, TypeError) as e:
+                return self._send(400, {"error": str(e)})
+            if not shorts_python():
+                return self._send(409, {"error": "The video tools aren't set up on this computer, so nothing can be cut."})
+            by = "Owner" if body.get("by") == "owner" else "Atlas"
+            threading.Thread(target=run_cut_shorts, args=(pid, video, count, by), daemon=True).start()
+            return self._send(202, {"ok": True, "message": f"Omar is picking {count} moments from {Path(video).name} and the office cuts them "
+                                    "(transcribing first if needed: about 5-20 minutes). You'll be told when they're ready."})
         if u.path.startswith("/api/omar/suggest/"):   # hq omar suggest <episode>: packaging ideas before an upload
             try:
                 eid = int(u.path.rsplit("/", 1)[1])

@@ -873,6 +873,18 @@ Agents never spend money without the owner's explicit approval.
     ISO code; share of views, hours watched; says the numbers lag 1-2 days) goes on the daily line (rule omar.top_countries, 5; 0 =
     off), the weekly brief has the top 10 and the note a required `viewers_from` ("Where viewers are from"), `hq channel-stats`
     puts `viewers_from` first. Practice mode has made-up countries.
+- Shorts from a finished video (2.54.0, Atlas's request 2026-10-18; the owner: "let Omar make some shorts and show me", first for
+  Storygraphics' juliane-v4.mp4): `hq shorts <project> <video file under content/|episode id> [count]` = `POST /api/shorts {project,
+  video, count}` (`server.shorts_source`, one at a time `CUTTING`) -> journaled job `shorts_cut` (`run_cut_shorts`): `clipper.py
+  transcript` (shorts venv; `review_tools.transcribe`, once per video: `<video folder>/shorts/<stem>/transcript.json`) ->
+  `omar.pick_moments` (workers.run, `MOMENTS_SCHEMA`: start/end/title/hook/why; snapped to whole words by `_fit`, overlaps dropped;
+  checkpoint "moments picked") -> plan.json -> `clipper.py cut` (FFmpeg: the picture fitted in the middle of 1080x1920 over a
+  blurred, darkened copy; ASS captions from the transcript under it, the spoken word yellow; the video's own sound, faded; an end
+  card = a blurred frame + rule text + the channel's name, Pillow) -> `shorts/<stem>/<YYYYMMDD-HHMM>/clip-N.mp4` + clips.json ->
+  `phone.send_file` each (rule clips.phone) -> `shorts_ready`/`shorts_failed` (WAKE_KINDS). Rules group "Shorts from a video":
+  clips.count, min/max_seconds, end_card_seconds, end_card_text, captions (auto = wide sources only), caption_words, caption_size,
+  caption_highlight, phone. No re-voicing, no ElevenLabs. The owner uploads by hand. Not yet: an OK button for the clips on the phone
+  (phone.py is protected; he answers Atlas), a Today card, rendered by the Builder (not seen yet: check the first clip's frames).
 - Atlas's notes (2.37.0): `atlas_engine.allow()` adds his journal and requests by absolute path (Edit + Write). The "./" rules are
   read against the shell's current folder; after Atlas cd'd into the program folder (2026-10-12) every edit was refused.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as

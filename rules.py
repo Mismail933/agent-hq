@@ -138,6 +138,17 @@ RULES = {
     "omar.weekly_day": _r("Omar & the channel", "choice", "mon", ("mon", "tue", "wed", "thu", "fri", "sat", "sun"), None, "Day of Omar's weekly note (or the first day after it the office runs)"),
     "omar.phone_weekly": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note is sent to the owner's phone"),
     "omar.feed_calina": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note goes into Calina's next learning note (what to write differently)"),
+    # SHORTS CUT FROM A FINISHED VIDEO (2.54.0: hq shorts; Omar picks, the office cuts, the owner uploads by hand)
+    "clips.count": _r("Shorts from a video", "int", 3, 1, 8, "How many Shorts Omar cuts from a video when Atlas doesn't say"),
+    "clips.min_seconds": _r("Shorts from a video", "float", 30.0, 5, 170, "A picked moment shorter than this is left out"),
+    "clips.max_seconds": _r("Shorts from a video", "float", 55.0, 10, 175, "A picked moment is cut to at most this long (the end card comes on top; keep the total under 180 s for a Short)"),
+    "clips.end_card_seconds": _r("Shorts from a video", "float", 2.0, 0, 8, "Length of the end card after each clip (0 = no end card)"),
+    "clips.end_card_text": _r("Shorts from a video", "text", "Full story on the channel", None, None, "The end card's words (the channel's name goes under them)"),
+    "clips.captions": _r("Shorts from a video", "choice", "auto", ("auto", "on", "off"), None, "Big captions from the video's audio: auto = only for a wide video (a vertical one has its own)"),
+    "clips.caption_words": _r("Shorts from a video", "int", 3, 1, 8, "Words shown at a time in the captions"),
+    "clips.caption_size": _r("Shorts from a video", "int", 92, 40, 160, "Caption size (pixels on the 1080x1920 picture)"),
+    "clips.caption_highlight": _r("Shorts from a video", "bool", True, None, None, "The word being spoken is yellow in the captions"),
+    "clips.phone": _r("Shorts from a video", "bool", True, None, None, "The finished clips are sent to the owner's phone for his OK (he uploads them himself)"),
     # PHONE
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,
                      "What reaches the phone at once: decisions (things that need the owner + finished videos), everything, or nothing"),
