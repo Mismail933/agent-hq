@@ -56,6 +56,8 @@ WEEKLY_SCHEMA = {
     "properties": {
         "headline": {"type": "string", "description": "one sentence: how the channel did this week"},
         "numbers": {"type": "string", "description": "the key numbers and their change, plainly"},
+        "viewers_from": {"type": "string", "description": "where the viewers are from: the top countries by views and watch time, "
+                                                          "and what that means for titles or posting time (the numbers lag 1-2 days)"},
         "what_worked": {"type": "array", "items": {"type": "string"}},
         "what_didnt": {"type": "array", "items": {"type": "string"}},
         "change_next": {"type": "array", "items": {"type": "object", "properties": {"what": {"type": "string"}, "why": {"type": "string"}},
@@ -68,7 +70,7 @@ WEEKLY_SCHEMA = {
         "from_rivals": {"type": "array", "items": {"type": "string"},
                         "description": "what works for the channels we watch that we don't do yet (from their numbers), or empty if none are watched"},
     },
-    "required": ["headline", "numbers", "what_worked", "what_didnt", "change_next", "titles_to_test", "posting_time", "topics",
+    "required": ["headline", "numbers", "viewers_from", "what_worked", "what_didnt", "change_next", "titles_to_test", "posting_time", "topics",
                  "for_calina", "ask_owner", "from_rivals"],
 }
 
@@ -300,6 +302,26 @@ def _n(x):
     return f"{int(x):,}"
 
 
+COUNTRY_NAMES = {"US": "United States", "GB": "United Kingdom", "CA": "Canada", "AU": "Australia", "IN": "India", "PK": "Pakistan",
+                 "PH": "Philippines", "ID": "Indonesia", "DE": "Germany", "FR": "France", "NL": "Netherlands", "IT": "Italy", "ES": "Spain",
+                 "BR": "Brazil", "MX": "Mexico", "LB": "Lebanon", "AE": "UAE", "SA": "Saudi Arabia", "EG": "Egypt", "TR": "Turkey",
+                 "NG": "Nigeria", "ZA": "South Africa", "KE": "Kenya", "BD": "Bangladesh", "MY": "Malaysia", "SG": "Singapore",
+                 "NZ": "New Zealand", "IE": "Ireland", "SE": "Sweden", "PL": "Poland", "RU": "Russia", "JP": "Japan", "KR": "South Korea",
+                 "VN": "Vietnam", "TH": "Thailand", "MA": "Morocco", "JO": "Jordan", "IQ": "Iraq", "SY": "Syria", "GR": "Greece"}
+
+
+def countries_text(snap, n=5):
+    """Where a snapshot's viewers are from: the top n countries by views, with watch time and share of views, one plain line.
+    '' when there are none (a new channel, or the API refused)."""
+    rows = [r for r in (snap.get("analytics") or {}).get("countries") or [] if r.get("country")]
+    if not rows or n <= 0:
+        return ""
+    total = sum(int(r.get("views", 0)) for r in rows) or 1
+    parts = [f"{COUNTRY_NAMES.get(r['country'], r['country'])} {round(100 * int(r.get('views', 0)) / total)}% "
+             f"({_n(r.get('views', 0))} views, {float(r.get('estimatedMinutesWatched', 0)) / 60:.1f} h)" for r in rows[:n]]
+    return (f"Viewers from (to {snap.get('to', '?')}; YouTube's country numbers lag 1-2 days): " + ", ".join(parts) + ".")
+
+
 def daily(pid=None):
     """Take today's snapshot of one channel and return the one-line report (numbers only, no AI)."""
     pid = int(pid or project())
@@ -329,6 +351,9 @@ def daily(pid=None):
         if best:
             parts.append(f"best recent upload: \"{best['title']}\" ({_n(best['views'])} views)")
         line = f"{ch['title'].strip()}: " + "; ".join(parts) + "."
+        where = countries_text(snap, int(rules.get("omar.top_countries")))
+        if where:
+            line += " " + where
         try:
             riv = rivals_daily(pid)
             if riv:
@@ -355,6 +380,8 @@ def _brief(snaps, pid=None):
     lines = [f"Channel now ({last['taken']}): {json.dumps(last['channel'])}",
              f"Last {last['days']} days, channel totals: {json.dumps(last['analytics']['total'])}",
              "Traffic sources: " + json.dumps(last["analytics"]["sources"][:8]),
+             "Viewers by country (views and minutes watched, last 28 days; YouTube's country numbers lag 1-2 days; say where the "
+             "viewers are from in the note): " + json.dumps((last["analytics"].get("countries") or [])[:10]),
              "Per video (last 28 days): " + json.dumps(last["analytics"]["per_video"][:15]),
              "Recent uploads (public numbers, newest first): " + json.dumps(last["videos"][:15], ensure_ascii=False),
              "Newest comments: " + json.dumps(last["comments"][:15], ensure_ascii=False),
@@ -369,7 +396,10 @@ def _brief(snaps, pid=None):
 
 
 def _md(n, d, title=""):
-    out = [f"# Omar's weekly note{': ' + title if title else ''} ({d})", "", f"**{n['headline']}**", "", n["numbers"], "", "## What worked"]
+    out = [f"# Omar's weekly note{': ' + title if title else ''} ({d})", "", f"**{n['headline']}**", "", n["numbers"], ""]
+    if n.get("viewers_from"):
+        out += [f"**Where viewers are from:** {n['viewers_from']}", ""]
+    out += ["## What worked"]
     out += [f"- {x}" for x in n["what_worked"]] + ["", "## What didn't"] + [f"- {x}" for x in n["what_didnt"]]
     out += ["", "## Change next"] + [f"{i}. **{c['what']}**: {c['why']}" for i, c in enumerate(n["change_next"], 1)]
     out += ["", "## Titles to test"] + [f"- {t}" for t in n["titles_to_test"]]
@@ -394,6 +424,7 @@ def weekly(pid=None):
         if _sim():
             note = {"headline": "Practice week: Shorts bring almost every view; the stick video carried the week.",
                     "numbers": "212 subscribers (+64 in 28 days), 5,820 views, 55% watched on average.",
+                    "viewers_from": countries_text(snaps[-1], 5) or "No country numbers yet.",
                     "what_worked": ["Questions that sound impossible ('measured the whole Earth with a stick')."],
                     "what_didnt": ["The map video: a vague title and only 49% watched."],
                     "change_next": [{"what": "Put the impossible claim in the first 2 seconds", "why": "the best video does it and keeps 61%"}],

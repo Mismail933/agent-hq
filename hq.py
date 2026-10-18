@@ -441,7 +441,8 @@ def main(argv):
             import omar
             pid = int(args[0]) if args and args[0].isdigit() else None
             snaps = omar.snapshots(pid, n=1)
-            show(snaps[-1] if snaps else f"No snapshot of {omar.name(pid or omar.project())} yet: the owner connects it in Spend & limits, then hq omar now.")
+            show({"viewers_from": omar.countries_text(snaps[-1], 5) or "No country numbers in this snapshot (taken before Omar read countries, or none yet).",
+                  **snaps[-1]} if snaps else f"No snapshot of {omar.name(pid or omar.project())} yet: the owner connects it in Spend & limits, then hq omar now.")
         elif cmd == "ghassan":   # hq ghassan [status | now | diff | ship | discard "why"]: the in-house Builder
             sub = args[0] if args else "status"
             if sub == "now":

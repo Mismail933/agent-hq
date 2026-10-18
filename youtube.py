@@ -196,6 +196,11 @@ def snapshot(pid, days=28):
     per_video = _rows(ya.reports().query(metrics=METRICS, dimensions="video", sort="-views", maxResults=25, **span).execute())
     sources = _rows(ya.reports().query(metrics="views,estimatedMinutesWatched", dimensions="insightTrafficSourceType",
                                        sort="-views", **span).execute())
+    try:   # where viewers are from (same yt-analytics.readonly scope; YouTube's country numbers lag 1-2 days)
+        countries = _rows(ya.reports().query(metrics="views,estimatedMinutesWatched", dimensions="country", sort="-views",
+                                             maxResults=25, **span).execute())
+    except Exception as e:   # never stops the rest of the snapshot
+        countries = [{"error": f"{type(e).__name__}: {str(e)[:160]}"}]
     comments = []
     for v in videos[:3]:
         try:
@@ -210,7 +215,8 @@ def snapshot(pid, days=28):
     return {"taken": date.today().isoformat(), "days": days, "from": start.isoformat(), "to": end.isoformat(),
             "channel": {"id": ch["id"], "title": ch["snippet"]["title"], "subscribers": int(st.get("subscriberCount", 0)),
                         "views": int(st.get("viewCount", 0)), "videos": int(st.get("videoCount", 0))},
-            "videos": videos, "analytics": {"total": total[0] if total else {}, "per_video": per_video, "sources": sources},
+            "videos": videos, "analytics": {"total": total[0] if total else {}, "per_video": per_video, "sources": sources,
+                                            "countries": countries},
             "comments": comments,
             "not_available": "YouTube's API gives no impressions or click-through rate; read them in YouTube Studio when needed."}
 
@@ -318,6 +324,8 @@ def _fake(days, pid=3):
             "analytics": {"total": {"views": 5820, "estimatedMinutesWatched": 6984, "averageViewDuration": 72, "averageViewPercentage": 55.2,
                                     "subscribersGained": 64, "subscribersLost": 4, "likes": 232, "comments": 47, "shares": 29},
                           "per_video": per, "sources": [{"insightTrafficSourceType": "SHORTS", "views": 4900, "estimatedMinutesWatched": 5600},
-                                                        {"insightTrafficSourceType": "YT_SEARCH", "views": 520, "estimatedMinutesWatched": 800}]},
+                                                        {"insightTrafficSourceType": "YT_SEARCH", "views": 520, "estimatedMinutesWatched": 800}],
+                          "countries": [{"country": c, "views": v, "estimatedMinutesWatched": v * 1.2} for c, v in
+                                        [("US", 2380), ("IN", 720), ("GB", 610), ("LB", 340), ("CA", 300), ("DE", 210)]]},
             "comments": [{"video": vids[0]["title"], "text": "Wait, he did this with a STICK?", "likes": 12, "when": vids[0]["published"]}],
             "not_available": "YouTube's API gives no impressions or click-through rate; read them in YouTube Studio when needed."}
