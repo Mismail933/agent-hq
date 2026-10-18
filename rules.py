@@ -104,6 +104,8 @@ RULES = {
     "check.card_max_seconds": _r("Review & quality", "float", 6.0, 2, 60, "The automatic checks stop a video where a text card fills the whole picture for longer than this (seconds)"),
     "check.dialogue_cut_seconds": _r("Review & quality", "float", 8.0, 2, 60, "The automatic checks stop a video where two or more people talk in one shot with no cut to the speaker for longer than this (seconds)"),
     "check.heads_in_frame": _r("Review & quality", "bool", True, None, None, "The test render marks every frame where someone's head is cut by the top of the picture, and the checks stop on it"),
+    "check.voice_repeats": _r("Review & quality", "bool", True, None, None, "The automatic checks listen to the finished voice track (test and full render, the same audio) and stop on a word it says twice or adds ('Literally. Literally.', 'repaid raid', '1324. 4.'); the test's transcript then shows what is really heard"),
+    "rana.redraw": _r("Review & quality", "text", "", None, None, "Rana redraws one of her scenes with a note, once, at the next render (test or full): episode:scene=note, several with ';' (31:22=the quill draws the king, throne and crown in clean separate strokes). She gets her old drawing and the note; the new drawing then replaces the old one for good, so clear the line after"),
     "check.opening_character": _r("Review & quality", "bool", True, None, None, "The automatic checks require the very first frame to show a character (not a title or an empty set)"),
     "render.test_first": _r("Video & render", "bool", True, None, None, "Every full render of an animated video runs the quick test render first (a frame a second, same audio, the automatic checks) and stops if it fails; skipped when a test already passed on this version and these scenes"),
     "check.stranger_script": _r("Review & quality", "bool", True, None, None, "The stranger test on scripts (off = not run)"),
@@ -174,6 +176,8 @@ def parse(key, value):
             _placeholders_ok(key, s)
         if key == "video.shape":
             _shapes(s)
+        if key == "rana.redraw":
+            _redraws(s)
         if key == "omar.projects" and not all(x.strip().isdigit() for x in s.replace(";", ",").split(",") if x.strip()):
             raise ValueError("omar.projects must be project numbers separated by commas, like 3,5.")
         return s
@@ -214,6 +218,26 @@ def video_shape(project_id):
         return _shapes(get("video.shape")).get(int(project_id or 0), "vertical")
     except (ValueError, TypeError):
         return "vertical"
+
+
+def _redraws(text):
+    """rana.redraw's text -> {(episode, scene number from 1): note}; a malformed entry is refused (ValueError)."""
+    out = {}
+    for part in [p.strip() for p in str(text or "").split(";") if p.strip()]:
+        where, _, note = part.partition("=")
+        ep, _, sc = where.partition(":")
+        if not (ep.strip().isdigit() and sc.strip().isdigit() and note.strip()):
+            raise ValueError(f"rana.redraw: '{part[:60]}' must look like 31:22=what to draw differently (no ';' inside a note).")
+        out[(int(ep), int(sc))] = note.strip()
+    return out
+
+
+def redraw_notes(episode_id):
+    """{scene number from 1: note} for this episode, from rule rana.redraw (2.53.3)."""
+    try:
+        return {sc: n for (ep, sc), n in _redraws(get("rana.redraw")).items() if ep == int(episode_id)}
+    except (ValueError, TypeError):
+        return {}
 
 
 def _fields(text):

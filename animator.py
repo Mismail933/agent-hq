@@ -337,6 +337,7 @@ def draw_scenes(ep, d, scenes, words, folder, art=""):
     project = cp.get_project(ep["project_id"], with_text=False)
     idea = project["idea_id"] if project else None
     names, authors = [], set()
+    notes = rules.redraw_notes(ep["id"])   # 2.53.3: rule rana.redraw, "31:22=note": redraw that scene once with the note
     for i, s in enumerate(d["scenes"]):
         brief = (s.get("bespoke") or "").strip()
         if not brief or i >= len(scenes):
@@ -355,8 +356,25 @@ def draw_scenes(ep, d, scenes, words, folder, art=""):
         code_file = out / f"{name}.jsx"
         kit_note = f"a '{s.get('backdrop')}' scene" + ((", characters: " + ", ".join(c["who"] for c in s.get("characters") or [])) if s.get("characters") else "")
         kit_note += art
+        note, done = notes.get(i + 1), out / f"{name}.redraw.txt"
+        redo = bool(note) and code_file.exists() and not (done.exists() and done.read_text(encoding="utf-8") == note)
         try:
-            if code_file.exists() and not validate(code_file.read_text(encoding="utf-8")):
+            if redo:
+                # the owner's or Atlas's note on this drawing (ep 31: the Catalan Atlas's quill drawing looked messy). She gets her old
+                # file and the note; if the new one fails, the old one is put back (never the kit for a scene that had a drawing)
+                old = code_file.read_text(encoding="utf-8")
+                keep = out / f"{name}.before-redraw.jsx"
+                shutil.copy2(code_file, keep)
+                say(f"  Scene {i + 1}: Rana redraws her drawing with the note \"{note[:70]}\" (rule rana.redraw)...")
+                try:
+                    write_scene(ep["project_id"], story, {**s, "bespoke": brief + "\n\nREDRAW: your earlier drawing of this scene is below. "
+                                                          f"Keep what works and change exactly this: {note}\n```jsx\n{old}\n```"},
+                                n, sw, kit_note, out, name, idea)
+                except Blocked as e:
+                    shutil.copy2(keep, code_file)
+                    say(f"  Scene {i + 1}: the redraw didn't work out ({str(e)[:120]}); her earlier drawing is kept (change the note to try again).")
+                done.write_text(note, encoding="utf-8")   # once per note
+            elif code_file.exists() and not validate(code_file.read_text(encoding="utf-8")):
                 say(f"  Scene {i + 1}: reusing Rana's drawing.")
             else:
                 say(f"  Scene {i + 1}: Rana is drawing \"{brief[:70]}\"...")

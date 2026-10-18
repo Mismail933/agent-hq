@@ -640,6 +640,16 @@ Agents never spend money without the owner's explicit approval.
   than the 0.55 cast, so cut-ins cut the back row's heads), its tallest head counts in the camera's `topY` and in the
   check.heads_in_frame probe; the freeze-frame label's white flash (3 frames, near-white in the test) is off unless rule
   video.freeze_flash (framing.freeze_flash).
+  2.53.3 (Atlas's request on ep 31's 12:59 full render; the owner narrowed it to the voice glitches and the Catalan Atlas drawing,
+  no money): the test and the full render build the SAME voice (dialogue_cached + drop_repeats); the test's transcript was the
+  script's words at the voice's times, so it could never show a repeat. `animate.listen` = faster-whisper heard like
+  review_tools.transcribe (VAD on); `drop_repeats` uses it (it listened without VAD and missed "much much", "repaid raid", "Literally.
+  Literally.", "1324. 4.") and cuts a repeat up to 2.5 s apart; `slips` judges a stray number by the script words near it (one number
+  anywhere in the script used to switch that off) and counts a number's last digits said again ("1324 4"). `voice_faults` (rule
+  check.voice_repeats) listens to the finished voice{suffix}.wav and makes each slip a fault (render_episode, check_episode); the
+  test's review-test/transcript.json carries `heard_text`/`heard_words`. No re-voicing (LINE_CHECK unchanged, so the cached voice is
+  reused). Rule `rana.redraw` ("31:22=note"; `rules.redraw_notes`): `animator.draw_scenes` redraws that scene once with her old file
+  and the note (marker `<name>.redraw.txt`; a failed redraw puts the old file back). Not seen: ep 31's data (not in Ghassan's copy).
   2.53.1 (ep 31's test, scenes 8 and 9 talked 8 and 10 s uncut): in a scene where 2+ on-screen people speak, `comedy_and_pacing`
   measures the fill gaps between camera cuts only (pose/face beats and one long line used to count as a change, so no cut came) and
   cuts at least every min(REFRAME_EVERY, 0.8 x rule check.dialogue_cut_seconds). A test render that fails the data/sound/caption

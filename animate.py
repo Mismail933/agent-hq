@@ -598,14 +598,18 @@ def slips(script, heard):
     heard words j0..j1-1 are the extra ones. Only words heard IN ADDITION to the script count (a misheard name is never a slip)."""
     import difflib
     out = []
-    has_num = any(x.isdigit() or x in NUMBER_WORDS for x in script)
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, script, heard, autojunk=False).get_opcodes():
         if op == "equal" or (op == "replace" and j2 - j1 <= i2 - i1) or op == "delete":
             continue
+        # 2.53.3: only numbers in the script NEAR this spot excuse a heard number (one number anywhere in a whole episode's script
+        # used to switch the stray-number check off for the whole voice track: ep 31's "1324. 4." stayed in)
+        has_num = any(x.isdigit() or x in NUMBER_WORDS for x in script[max(0, i1 - 2):i2 + 2])
         j = max(1, j1)
         while j < j2:
             w, p = heard[j], heard[j - 1]
-            if w and (w == p or (len(w) >= 3 and p.endswith(w)) or (len(w) >= 4 and difflib.SequenceMatcher(None, w, p).ratio() >= 0.8)):
+            # (a number's last digits said again count too: "1324 4")
+            if w and (w == p or (len(w) >= 3 and p.endswith(w)) or (w.isdigit() and p.isdigit() and p.endswith(w))
+                      or (len(w) >= 4 and difflib.SequenceMatcher(None, w, p).ratio() >= 0.8)):
                 out.append((j, j + 1, f"\"{p} {w}\""))
                 j += 1
                 continue
@@ -791,6 +795,37 @@ def dialogue_cached(items, voices, folder):
     return out
 
 
+def listen(wav):
+    """faster-whisper's words for a voice track, [(normalised word, start, end)], heard exactly the way Israa's review hears the
+    finished video (review_tools.transcribe: voice filter on, no carried-over context). 2.53.3 (ep 31): drop_repeats used to listen
+    without the voice filter and missed "much much", "repaid raid", "Literally. Literally." and "1324. 4." that the review heard."""
+    from faster_whisper import WhisperModel
+    model = WhisperModel("base.en", device="cpu", compute_type="int8")
+    got, _ = model.transcribe(str(wav), word_timestamps=True, language="en", vad_filter=True,
+                              vad_parameters={"min_silence_duration_ms": 300}, condition_on_previous_text=False)
+    return [(_norm(w.word), w.start, w.end, w.word.strip()) for s in got for w in (s.words or [])]
+
+
+def voice_faults(wav, items):
+    """2.53.3 (Atlas's request on ep 31's full render): the finished voice track (voice.wav / voice-test.wav, the same audio in the
+    test and the full render) is listened to like the review does, and every word it says twice or adds (`slips` against the script)
+    is a fault with its time, so the test render shows it before a full render. Rule check.voice_repeats. Returns (faults, heard
+    words [{w, s, e}] for the test's transcript, or None if it couldn't listen)."""
+    if not rules.get("check.voice_repeats"):
+        return [], None
+    try:
+        heard = listen(wav)
+    except Exception as ex:  # noqa: BLE001  (a missing faster-whisper never stops a render; it is said)
+        say(f"  The voice couldn't be listened to for repeated words ({str(ex)[:100]}).")
+        return [], None
+    script = [_norm(x) for it in items for x in str(it.get("text") or "").split()]
+    b = [h[0] for h in heard]
+    out = []
+    for j0, j1, what in slips([x for x in script if x], b):
+        out.append((round(heard[j0][1], 1), f"the voice says {what} where the script says it once (the voice track, not the captions)"))
+    return out, [{"w": h[3], "s": round(h[1], 2), "e": round(h[2], 2)} for h in heard]
+
+
 def drop_repeats(raw, starts, words, end, segs):
     """Eleven v3 now and then says a word twice inside a line ("my feet are are", "heads. heads."; Israa on ep 29). Not the joins:
     each line is its own request and v3 gets no previous/next text. faster-whisper listens to the voice track; a word heard twice in
@@ -802,10 +837,7 @@ def drop_repeats(raw, starts, words, end, segs):
     if not rules.get("voice.drop_repeats") or not words:
         return raw, starts, words, end, segs
     try:
-        from faster_whisper import WhisperModel
-        model = WhisperModel("base.en", device="cpu", compute_type="int8")
-        got, _ = model.transcribe(str(raw), word_timestamps=True, language="en", condition_on_previous_text=False)
-        heard = [(_norm(w.word), w.start, w.end) for s in got for w in (s.words or [])]
+        heard = listen(raw)
     except Exception as ex:  # noqa: BLE001  (never hold the video up for this check)
         say(f"  Repeated words: couldn't listen to the voice ({str(ex)[:100]}); not checked.")
         return raw, starts, words, end, segs
@@ -813,7 +845,7 @@ def drop_repeats(raw, starts, words, end, segs):
     cuts = []
     # 2.53.0 (ep 31): also a repeated pair ("a load a load" = "Alode. Alode."), a near repeat ("repaid raid") and a stray number
     for j0, j1, what in slips(a, b):
-        if j0 >= 1 and 0 < heard[j1 - 1][2] - heard[j0 - 1][2] < 1.5:
+        if j0 >= 1 and 0 < heard[j1 - 1][2] - heard[j0 - 1][2] < 2.5:   # 2.53.3: 2.5 s (a repeat after a full stop has a pause in it)
             cuts.append((heard[j0 - 1][2], heard[j1 - 1][2], what))
     if not cuts:
         return raw, starts, words, end, segs
@@ -2018,12 +2050,15 @@ def render_episode(eid, voice=None, suffix="", test=False):
     (folder / f"scene-props{suffix}.json").write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
     # 2.49.0: the automatic checks (no AI, no cost). The script's data, the sound and the captions before anything is drawn...
     mode = rules.get("check.video")
-    faults = []
+    faults, voice_heard = [], None
     if mode != "off":
         say("Checking the script's staging, the sound and the captions...")
         faults = video_checks.data_faults(props, d, items, CAST, script_by) + video_checks.staging_faults(props, d, CAST) + \
             video_checks.sound_faults(props, items, ffmpeg, folder / f"voice{suffix}.wav", folder / audio_name) + \
             video_checks.caption_faults(props, items)
+        if not own:   # 2.53.3: words the voice says twice or adds (ep 31's "Literally. Literally."), heard on the finished voice track
+            more, voice_heard = voice_faults(folder / f"voice{suffix}.wav", items)
+            faults += more
         # a test render goes on and draws anyway, so its contact sheets show everything else before the next run (2.53.1, Atlas:
         # "hq frames 31 test" had none); it is stopped after the sheets, below, with every fault
         if faults and mode == "block" and not test:
@@ -2054,7 +2089,7 @@ def render_episode(eid, voice=None, suffix="", test=False):
         subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(gif), "-i", str(folder / audio_name), "-map", "0:v", "-map", "1:a",
                         "-vf", "fps=5,scale=" + ("480:270" if shape == "wide" else "270:480"), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", str(tv)],
                        capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        sheets = test_sheets(ffmpeg, tv, folder, heard)   # 2.53.0: Atlas reads the test before any full render (hq frames <id> test)
+        sheets = test_sheets(ffmpeg, tv, folder, heard, voice_heard)   # 2.53.0: Atlas reads the test before any full render (hq frames <id> test)
         if faults and mode == "block":
             raise Blocked(_checks_failed(ep, folder, suffix, test, rep) + (f" Contact sheets of the test: hq frames {ep['id']} test." if sheets else ""))
         _save_checks(ep, folder, suffix, test, rep)
@@ -2104,19 +2139,26 @@ def render_episode(eid, voice=None, suffix="", test=False):
             "wpm": round(wpm), "voice": used, "checks": video_checks.summary(rep)}
 
 
-def test_sheets(ffmpeg, video, folder, heard):
+def test_sheets(ffmpeg, video, folder, heard, voice_heard=None):
     """2.53.0 (Atlas's request 2026-10-17 23:15; the owner: "review the video yourself before rendering"): contact sheets of the test
     render, a frame a second plus every cut, with the words spoken then under each (the script's words at the voice's times), in
-    <episode folder>/review-test/. `hq frames <id> test` copies them to Atlas. Returns the sheet paths ([] if they couldn't be made)."""
+    <episode folder>/review-test/. `hq frames <id> test` copies them to Atlas. Returns the sheet paths ([] if they couldn't be made).
+    voice_heard (2.53.3): what faster-whisper really hears on the voice track (`voice_faults`), kept as `heard_text` / `heard_words`:
+    ep 31's test transcript was the script's words only, so it couldn't show the repeats the full render's review heard."""
     try:
         import review_tools
         out = folder / "review-test"
         out.mkdir(exist_ok=True)
         secs = shorts.probe_seconds(ffmpeg, video)
         words = [{"w": w[0], "s": w[1], "e": w[2]} for w in heard]
-        (out / "transcript.json").write_text(json.dumps({"text": " ".join(w["w"] for w in words), "words": words, "seconds": round(secs, 1),
-                                                         "note": "the script's words at the voice's times (a test render is not transcribed)"},
-                                                        ensure_ascii=False), encoding="utf-8")
+        data = {"text": " ".join(w["w"] for w in words), "words": words, "seconds": round(secs, 1),
+                "note": "text/words = the script's words at the voice's times (what the sheets show); heard_text = what the voice "
+                        "really says, transcribed like the full render's review" if voice_heard is not None else
+                        "the script's words at the voice's times (the voice wasn't transcribed: rule check.voice_repeats off or no faster-whisper)"}
+        if voice_heard is not None:
+            data["heard_text"] = " ".join(w["w"] for w in voice_heard)
+            data["heard_words"] = voice_heard
+        (out / "transcript.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         sheets, n = review_tools.make_sheets(ffmpeg, video, out, secs, words)
         say(f"  Contact sheets of the test: {len(sheets)} sheet(s), {n} frames (hq frames <id> test).")
         return sheets
@@ -2176,6 +2218,7 @@ def check_episode(eid, test=False):
         video_checks.caption_faults(props, items)
     if voice.exists():
         faults += video_checks.sound_faults(props, items, ffmpeg, voice, folder / props.get("audio", voice.name))
+        faults += voice_faults(voice, items)[0]   # 2.53.3: words the voice says twice or adds
     more, measured = video_checks.frame_faults(props, ffmpeg, video, work=folder)
     rep = video_checks.report(faults + more, measured, test, d)
     _save_checks(ep, folder, suffix, test, rep)

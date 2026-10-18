@@ -299,6 +299,14 @@ Every render ends with a **Measured:** line and **Warnings** (speed of every fra
 - How it looks (rules you may change): `video.card_as_insert` + `video.card_insert_seconds` (cards are short inserts over a scene
   with people), `video.wide_person_height` (people's size in a wide picture), `video.place_from_words` (the Nile shown at the Nile,
   travel to Europe on a map), `rana.bespoke_dialogue` (off: the kit draws dialogue scenes, so it cuts to each speaker).
+- Repeated words (2.53.3, ep 31): the test and the full render use the SAME voice track. The test's review-test/transcript.json
+  now has `heard_text` = what the voice really says (transcribed the way Israa's review does); its `text` is the script's words. A
+  word said twice or added ("Literally. Literally.", "repaid raid", "1324. 4.") is cut out of the voice for free (`voice.drop_repeats`,
+  no new ElevenLabs characters) and, if any is left, stops the render (`check.voice_repeats`). Compare heard_text with the script
+  before a full render.
+- `rana.redraw` (2.53.3): have Rana redraw ONE of her scenes with a note, once, at the next render (test or full; subscription, no
+  money): `hq rule set rana.redraw "31:22=what to change" "why"` (episode:scene number as the render log says "Scene 22";
+  several with ';', no ';' inside a note). She gets her old drawing; if the redraw fails the old one stays. Clear the rule after.
 - Rules: `check.video` block|warn|off, `check.still_max_seconds`, `check.min_drawn_percent`, `check.opening_character`, `render.test_first`.
 - After a renderer change from Ghassan: ship, then `hq render 28 --test` and read the result before any full render.
 
