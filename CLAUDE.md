@@ -608,6 +608,32 @@ Agents never spend money without the owner's explicit approval.
   `animate.CAMERAS` includes `still` (no move; Camera.jsx draws it, stage_speakers sets it on cards); the checklist no longer
   checks scene cameras; `render_episode` runs `fix_cameras` after `stage_speakers`: an unknown name becomes the nearest move
   (`CAMERA_NEAR`, e.g. hold/static -> still, zoom_in -> push_in), else drift, and the render log says which.
+- Ep 31's picture faults (2.53.0, Atlas's request; Israa 5.5 redo + the owner's two; Ghassan had no episode data, so causes are
+  read from the code; folds in the silent-line request and the test-render contact sheets):
+  - Cards: `animate.card_inserts` (after stage_speakers; rule video.card_as_insert) turns a card scene into the last scene with people
+    (else the next) with `insert` {title, lines}; Short.jsx `Insert` shows one line at a time, big, on its word, each up for at most
+    rule video.card_insert_seconds; camera hits inside an insert window become a release (no face under it). A card or insert split
+    in parts is one group (frame_offset; card_steps over the group; `Back` gets frame+offset): ep 31's gold card rebuilt itself at 185.5 s.
+  - Wide size: rule video.wide_person_height (0.55): in a wide picture `stage()` uses that fixed scale (people were as tall as the
+    band, so a punch-in couldn't zoom: the "uncut" shot, and no room above them). Camera.cameraFrame's cut-in keeps the tallest head.
+  - Dialogue: rule rana.bespoke_dialogue (off): a scene where 2+ on-screen people talk is drawn by the kit (`animate.dialogue_bespoke`,
+    animator.draw_scenes skips it). Rana's scenes get `speaker` (who talks per frame); her API says only the speaker's mouth moves and
+    `validate` refuses a file giving several characters mouth[frame] without `speaker` (DRAW_RULES 3: her drawings are redrawn once).
+  - Crowd: Short.jsx shows a talking crowd reaction (cheer/laugh/murmur/angry) as idle while anyone talks or `CROWD_CHATTER` frames
+    after it (done in Short.jsx because a project's cast file replaces Character.jsx).
+  - Places: `animate.place_from_words` (rule video.place_from_words): a kit scene naming the Nile -> nile; a narrated travel line to a
+    `PLACES` name (Europe, Cairo, Mecca...) -> a map with a pin. Rana's, own-set, map/diagram/card/insert scenes untouched.
+  - Checks (`video_checks.staging_faults`, also in `hq check`): a full-screen card over rule check.card_max_seconds; 2+ talkers with no
+    framing change over rule check.dialogue_cut_seconds (the still check missed 23.5 s: mouths and drift change pixels). Heads: the test
+    render's props carry `probe`; Short.jsx draws a magenta square (`PROBE`) top-left on a frame where a drawn, non-walking head is above
+    the picture; `frame_faults` reads it (`_probe_mark`; rule check.heads_in_frame). Not measured: heads in Rana's drawings, size vs room.
+  - Voice: `LineEar` in synth_dialogue (rules voice.line_check, voice.silent_level, voice.line_retakes): each line is measured; silent =
+    an older take of the same words (l- cache json now keeps `said`), else re-voiced; a slip (`slips`: a word or a pair said twice, a near
+    repeat "repaid raid", a stray number, only words heard IN ADDITION to the script) gets one more ElevenLabs take, the better kept;
+    still silent = Blocked naming scene/speaker/line. `LINE_CHECK` is in the dialogue cache key. `drop_repeats` uses `slips` too.
+  - Test sheets: `animate.test_sheets` -> <ep folder>/review-test/sheet-NN.png + transcript.json (script words at voice times);
+    `hq frames <id> test` copies them to Atlas-HQ/review/ep-NNN-test/; the test result carries `sheets`, the announcement says read them.
+  - Not done: why ep 31's 4 slips happened (no episode data here); a check for people's size against the room.
 - Ep 28's last fixes (2.36.1, Atlas's request; Israa 4.5 redo for render problems only):
   - Blank pictures: Rana's test render now uses the scene's real word timings and measures the last frame
     (`animator.drawn_share`: share of small squares outside the caption band with any edge); under rule `rana.min_drawn_percent`

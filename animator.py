@@ -38,7 +38,8 @@ BANNED = [r"\brequire\s*\(", r"\bimport\s*\(", r"\bfetch\b", r"XMLHttpRequest", 
           r"\bsetInterval\b", r"requestAnimationFrame", r"Math\.random", r"Date\.now", r"new Date", r"\bperformance\b", r"<foreignObject",
           r"<script", r"<iframe", r"dangerouslySetInnerHTML", r"https?://", r"\bchild_process\b", r"\bfs\b", r"<image", r"<img"]
 MAX_BYTES = 40000
-DRAW_RULES = 2   # part of a drawing's cache key: raised when her rules change, so drawings made under the old rules are drawn again
+DRAW_RULES = 3   # part of a drawing's cache key: raised when her rules change, so drawings made under the old rules are drawn again
+# (3 = 2.53.0: only the speaker's mouth moves, from `speaker`)
 
 API = """THE KIT YOU MAY IMPORT (nothing else, no other packages, no other files):
   import React from 'react';
@@ -52,16 +53,18 @@ API = """THE KIT YOU MAY IMPORT (nothing else, no other packages, no other files
      <Character who="scholar|ruler|citizen|woman|elder|merchant|guard|worker" pose="stand|point|explain|amazed|wave|think|present" poseTo="..." blend={0..1}
         expression="neutral|happy|surprised|worried|determined|thinking" look={[dx, dy]} mouth={letter A-H or X} noProp
         x={feet x} y={feet y} scale={0.6-1.3} frame={frame} enterAt={0} seed={0} walking />
-     The figure is about 560 units tall at scale 1 (feet at y); use mouth={mouth[frame]} for the speaking character.
+     The figure is about 560 units tall at scale 1 (feet at y). ONLY the one speaking moves his mouth:
+     mouth={speaker[frame] === 'ruler' ? mouth[frame] : 'X'} (with his own who); everyone else keeps mouth="X". Never give two
+     characters mouth[frame] at once.
   import {BACKDROPS} from './Backdrops';  // BACKDROPS.court | library | nile | well | study | street | desert, each <Back frame={frame} tone="noon|sunset|night" />
   import {Rod, Globe, Callout} from './Extras';  // <Rod x y shadow={0..1} frame /> <Globe x y r frame /> <Callout text frame y />
 
-YOUR FILE MUST: export default function Scene({frame, frames, words, mouth}) { return <g>...</g>; }
+YOUR FILE MUST: export default function Scene({frame, frames, words, mouth, speaker}) { return <g>...</g>; }
   frame = the frame inside THIS scene (0 .. frames-1, 30 per second); frames = this scene's length; words = [{w, k, from, to}] frame
   offsets inside the scene of each spoken word (sync to them); w is the word as written ("Syene's," "39,250"), k the same word in
   lower case without punctuation ("syenes", "39250"): find words by k, e.g. words.find((x) => x.k === 'shadow'), and give
   everything a fallback time (a share of `frames`) in case the word isn't there; mouth = an array with one Rhubarb mouth letter
-  per scene frame.
+  per scene frame; speaker = an array with who is talking at each scene frame ('' = nobody, 'narrator' = the voice only).
   Return SVG elements for a 1080 x 1920 canvas (a <g>, not an <svg>). The caller adds captions and the title card.
 """
 
@@ -200,6 +203,12 @@ def validate(code):
     for pat in BANNED:
         if re.search(pat, code):
             problems.append(f"It uses something that isn't allowed ({pat.strip(chr(92)).strip('b')}).")
+    # 2.53.0 (the owner on ep 31: "when the people gathered together they're all moving their mouth"): only the speaker talks
+    talking = len(re.findall(r"mouth\s*=\s*\{\s*mouth\s*\[", code))
+    in_map = re.search(r"\.map\s*\((?:(?!\.map\s*\().){0,600}?<Character\b[^>]*?mouth\s*=\s*\{\s*mouth\s*\[", code, re.S)
+    if (talking >= 2 or in_map) and not re.search(r"\bspeaker\b", code):
+        problems.append("Every character gets mouth[frame], so they all talk at once. Only the one speaking moves his mouth: "
+                        "mouth={speaker[frame] === '<his who>' ? mouth[frame] : 'X'}; everyone else mouth=\"X\".")
     return problems
 
 
@@ -321,6 +330,7 @@ def draw_scenes(ep, d, scenes, words, folder, art=""):
     jar in every shot); a drawing made before that art existed is drawn again. Returns (names installed, icon authors to credit)."""
     import hashlib
     import animate
+    import rules
     out = folder / "_rana"
     out.mkdir(exist_ok=True)
     story = d.get("storyline") or ep["title"]
@@ -330,6 +340,11 @@ def draw_scenes(ep, d, scenes, words, folder, art=""):
     for i, s in enumerate(d["scenes"]):
         brief = (s.get("bespoke") or "").strip()
         if not brief or i >= len(scenes):
+            continue
+        if animate.dialogue_bespoke(s) and not rules.get("rana.bespoke_dialogue"):
+            # 2.53.0 (Israa on ep 31: two dialogue scenes were one uncut shot, 18 and 23.5 s): a drawing can't cut to each speaker,
+            # the kit does (a single on whoever talks, only his mouth moving)
+            say(f"  Scene {i + 1}: two or more people talk in it, so the kit draws it (cuts to each speaker; rule rana.bespoke_dialogue).")
             continue
         sc = scenes[i]
         a, n = sc["from"], sc["frames"]

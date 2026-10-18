@@ -289,6 +289,16 @@ Every render ends with a **Measured:** line and **Warnings** (speed of every fra
   test.mp4 to watch). Run it before any full render. With rule `render.test_first` on, `hq render <id>` runs it first by itself and
   starts the full render only if it passes (skipped when a test already passed on this program version and these scenes).
 - `hq check <id> [--test]`: the checks again on the last video (or test render), without rendering.
+- `hq frames <id> test` (2.53.0): the test render's contact sheets (a frame a second + every cut, the words under each) copied to
+  review/ep-NNN-test/. The owner's order: READ THEM and write your comments before you order any full render.
+- Also checked since 2.53.0 (ep 31): a text card filling the picture over `check.card_max_seconds`, two or more people talking with
+  no cut to the speaker over `check.dialogue_cut_seconds`, and (test render only) a head cut by the top of the picture
+  (`check.heads_in_frame`). Before animating, every voiced line is measured (`voice.line_check`, `voice.silent_level`,
+  `voice.line_retakes`): a silent line or one where the voice says a word twice is voiced again once; still silent = the render stops
+  and names the line.
+- How it looks (rules you may change): `video.card_as_insert` + `video.card_insert_seconds` (cards are short inserts over a scene
+  with people), `video.wide_person_height` (people's size in a wide picture), `video.place_from_words` (the Nile shown at the Nile,
+  travel to Europe on a map), `rana.bespoke_dialogue` (off: the kit draws dialogue scenes, so it cuts to each speaker).
 - Rules: `check.video` block|warn|off, `check.still_max_seconds`, `check.min_drawn_percent`, `check.opening_character`, `render.test_first`.
 - After a renderer change from Ghassan: ship, then `hq render 28 --test` and read the result before any full render.
 

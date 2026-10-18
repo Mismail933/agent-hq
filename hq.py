@@ -30,7 +30,7 @@ Atlas's controls for Agent HQ.
                  refs <project id> [--links <url> <url> | --none] ["notes"] | board <project id> | approve-board <project id> <A/B/C> ["his words"] | israa <episode id>
                  voice-samples <project id> | voice <project id> <voice id>     (animated Shorts; `render <episode id>` makes the Short)
                  voice-match <project> [record [secs] | <clip file> | show | add <voice id> <owner id> "name"] | cast-voice <project> <character> <voice>
-                 cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version]
+                 cast-samples <project> | music <project> <track id | none> | frames <episode id> [voice version | test]
                  ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
                  omar [status | now [project] | weekly [project] | suggest <episode>] | channel-stats [project]     (Omar: the YouTube channels, read-only)
                  omar watch <channel link|@handle> [--project N] | omar unwatch <channel> [--project N] | omar rivals [project]     (channels he learns from)
@@ -291,10 +291,22 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "frames":   # eyes and ears: contact sheets + transcript of a finished video, for Atlas to read
             import quality
-            version = int(args[1]) if len(args) > 1 else 0   # hq frames <episode> [voice version]
-            pack = quality.review_pack(int(args[0]), version)
             import shutil
-            out = Path(__import__("atlas_engine").HOME) / "review" / (f"ep-{int(args[0]):03d}" + (f"-v{version}" if version else ""))
+            test = len(args) > 1 and args[1] == "test"   # hq frames <episode> test: the sheets the last test render made (2.53.0)
+            version = int(args[1]) if len(args) > 1 and not test else 0   # hq frames <episode> [voice version]
+            if test:
+                import production
+                ep = cp.get_episode(int(args[0]))
+                rv = production.episode_folder(ep) / "review-test" if ep else None
+                found = sorted(rv.glob("sheet-*.png")) if rv and rv.exists() else []
+                if not found:
+                    show(f"No contact sheets of a test render for episode {args[0]} yet. Run: hq render {args[0]} --test")
+                    return
+                pack = {"sheets": [p.relative_to(ROOT).as_posix() for p in found], "transcript": (rv / "transcript.json").relative_to(ROOT).as_posix(),
+                        "seconds": json.loads((rv / "transcript.json").read_text(encoding="utf-8")).get("seconds"), "frames": "a frame a second + every cut"}
+            else:
+                pack = quality.review_pack(int(args[0]), version)
+            out = Path(__import__("atlas_engine").HOME) / "review" / (f"ep-{int(args[0]):03d}" + (f"-v{version}" if version else "") + ("-test" if test else ""))
             shutil.rmtree(out, ignore_errors=True)
             out.mkdir(parents=True, exist_ok=True)
             sheets = []

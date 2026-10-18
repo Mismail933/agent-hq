@@ -97,7 +97,8 @@ export const cameraFrame = ({move, frame, frames, focus = [W / 2, H / 2], spread
   const fit = (sub, z) => {
     const fc = sub ? [lerp(focus[0], sub.focus, z), focus[1]] : focus;
     const sp = sub ? lerp(spread, sub.spread, z) : spread;
-    const ty = sub && topY !== null ? lerp(topY, sub.topY, z) : topY;
+    // 2.53.0 (Israa on ep 31: Musa's head cut by the frame's edge): a cut-in on one person still keeps the tallest head in the shot
+    const ty = sub && topY !== null ? Math.min(topY, lerp(topY, sub.topY, z)) : topY;
     let cam = {...base, s: base.s * (1 + (sub ? 0.5 : 0.22) * z)};
     if (sub && sub.minS) cam.s = Math.max(cam.s, sub.minS);
     if (sp > 0) {

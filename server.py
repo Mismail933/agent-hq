@@ -1359,8 +1359,12 @@ def run_test_render(eid):
             if not py:
                 raise RuntimeError("the video tools aren't set up on this computer (see SHORTS_PYTHON in settings.py)")
             r = animate_run(py, ["render", eid, "--test"])
+            # 2.53.0 (the owner: "review the video yourself before rendering"): Atlas reads the test's contact sheets first
+            look = (f"Read its {len(r['sheets'])} contact sheet(s) first: `hq frames {eid} test`." if r.get("sheets")
+                    else "No contact sheets were made: watch it before a full render.")
             atlas_says(f"**Test render of video #{eid} {'passed the checks' if r['ok'] else 'has faults (rule check.video is warn)'}** "
-                       f"({r['seconds'] / 60:.1f} min; {r['checks']}). Watch it: {r.get('video') or 'test.mp4'}. A full render (`hq render {eid}`) may go now.")
+                       f"({r['seconds'] / 60:.1f} min; {r['checks']}). Watch it: {r.get('video') or 'test.mp4'}. {look} "
+                       f"Then a full render (`hq render {eid}`) may go.")
         except Exception as ex:
             cp.log("Calina", "video_failed", None, {"episode": eid, "reason": str(ex)[:300], "test": True})
             atlas_says(f"**Test render of video #{eid} failed:** {ex}")

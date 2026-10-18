@@ -578,6 +578,128 @@ def utterances(d, project):
     return out
 
 
+LINE_CHECK = 1   # raised when the line check changes, so cached voice tracks are checked again (their lines are still reused)
+
+
+def voiced_seconds(a, sr, level_db):
+    """How many seconds of a line are louder than level_db (20 ms windows)."""
+    import numpy as np
+    n = max(1, int(0.02 * sr))
+    if len(a) < n:
+        return 0.0
+    fr = np.asarray(a[:len(a) // n * n], dtype="float32").reshape(-1, n)
+    db = 10 * np.log10((fr ** 2).mean(axis=1) + 1e-12)
+    return float((db > level_db).sum() * 0.02)
+
+
+def slips(script, heard):
+    """Where the heard words say something the script says once (ep 31: "Literally. Literally.", "Alode. Alode." heard as "a load a
+    load", "repaid raid") or add a stray number (ep 31's "4"). script / heard: normalised words (_norm). Returns [(j0, j1, what)]:
+    heard words j0..j1-1 are the extra ones. Only words heard IN ADDITION to the script count (a misheard name is never a slip)."""
+    import difflib
+    out = []
+    has_num = any(x.isdigit() or x in NUMBER_WORDS for x in script)
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, script, heard, autojunk=False).get_opcodes():
+        if op == "equal" or (op == "replace" and j2 - j1 <= i2 - i1) or op == "delete":
+            continue
+        j = max(1, j1)
+        while j < j2:
+            w, p = heard[j], heard[j - 1]
+            if w and (w == p or (len(w) >= 3 and p.endswith(w)) or (len(w) >= 4 and difflib.SequenceMatcher(None, w, p).ratio() >= 0.8)):
+                out.append((j, j + 1, f"\"{p} {w}\""))
+                j += 1
+                continue
+            if j >= 2 and j + 2 <= len(heard) and heard[j:j + 2] == heard[j - 2:j] and all(heard[j:j + 2]):
+                out.append((j, j + 2, "\"" + " ".join(heard[j - 2:j + 2]) + "\""))
+                j += 2
+                continue
+            j += 1
+        if op == "insert" and not has_num:
+            for j in range(j1, j2):
+                if heard[j].isdigit() and not any(x <= j < y for x, y, _ in out):
+                    out.append((j, j + 1, f"a stray \"{heard[j]}\""))
+    return sorted(out)
+
+
+class LineEar:
+    """2.53.0 (Atlas's silent-line request 2026-10-17, ep 28's silent ending lines; ep 31's doubled words): every voiced line is
+    measured before anything is animated. Silent (rule voice.silent_level) = an earlier take of the same words is used, else it is
+    voiced again (rule voice.line_retakes, ElevenLabs only); still silent = the render stops and names the line. A line where
+    faster-whisper hears a word twice or a stray number gets one more take too, and the better one is kept (drop_repeats later cuts
+    whatever is left)."""
+
+    def __init__(self):
+        self.level = float(rules.get("voice.silent_level"))
+        self.tries = int(rules.get("voice.line_retakes"))
+        self.model, self.notes, self.retakes = None, [], 0
+        try:
+            from faster_whisper import WhisperModel
+            self.model = WhisperModel("base.en", device="cpu", compute_type="int8")
+        except Exception as ex:  # noqa: BLE001  (the silence check works without it)
+            self.notes.append(f"repeated words not listened for per line ({str(ex)[:80]})")
+
+    def problems(self, a, text):
+        out = []
+        need = max(0.25, 0.08 * len(text.split()))
+        if voiced_seconds(a, Speaker.SR, self.level) < need:
+            out.append("silent")
+        elif self.model is not None:
+            try:
+                got, _ = self.model.transcribe(_resample(a, Speaker.SR, 16000), language="en", condition_on_previous_text=False)
+                heard = [_norm(x) for s in got for x in s.text.split()]
+                out += [what for _, _, what in slips([_norm(x) for x in text.split()], [h for h in heard if h])]
+            except Exception:  # noqa: BLE001
+                pass
+        return out
+
+    def older_take(self, cdir, text):
+        """A take of exactly these words kept from an earlier render (another voice setting's key), if it isn't silent."""
+        import soundfile as sf
+        said = respell(text)
+        for j in sorted(cdir.glob("l-*.json"), key=lambda p: p.stat().st_mtime, reverse=True) if cdir and cdir.exists() else []:
+            try:
+                d = json.loads(j.read_text(encoding="utf-8"))
+                if d.get("said") == said and j.with_suffix(".wav").exists():
+                    a = sf.read(str(j.with_suffix(".wav")), dtype="float32")[0]
+                    if "silent" not in self.problems(a, text):
+                        return a, d["words"]
+            except (OSError, ValueError, KeyError):
+                continue
+        return None
+
+    def settle(self, it, a, w, remake, cdir):
+        """Returns (audio, words, changed)."""
+        text = it["text"]
+        probs = self.problems(a, text)
+        if not probs:
+            return a, w, False
+        where = f"scene {it['scene'] + 1}, {it['who']}: \"{text[:70]}\""
+        changed = False
+        if "silent" in probs:
+            old = self.older_take(cdir, text)
+            if old:
+                a, w = old
+                probs, changed = self.problems(a, text), True
+                self.notes.append(f"{where} was silent: an earlier take of the same words is used")
+        for _ in range(self.tries if remake and probs else 0):
+            self.retakes += 1
+            a2, w2 = remake()
+            p2 = self.problems(a2, text)
+            if ("silent" in probs and "silent" not in p2) or len(p2) < len(probs):
+                a, w, probs, changed = a2, w2, p2, True
+            if not probs:
+                break
+        if "silent" in probs:
+            raise Blocked(f"A spoken line comes out silent, {where} (measured before animating; tried again "
+                          f"{self.tries if remake else 0} time(s)). Nothing was animated. Check the line's words and tag, then render again.")
+        self.notes.append(f"{where}: " + (("voiced again, now clean" if changed else "") if not probs else
+                                          f"still heard {', '.join(probs)} (cut out of the voice below if it is a repeat)"))
+        return a, w, changed
+
+    def summary(self, n):
+        return (f"Line check: {n} line(s) measured, {self.retakes} voiced again" + (": " + "; ".join(x for x in self.notes if x)[:600] if self.notes else "") + ".")
+
+
 def synth_dialogue(items, voices, folder):
     """Voice every line in its speaker's voice, with a breath between lines (a longer one between scenes). Returns (audio path,
     per-scene starts, words [[word, start, end, who]], end time, words per minute, billed characters, segments [(start, end, who)])."""
@@ -587,6 +709,7 @@ def synth_dialogue(items, voices, folder):
     audio, words, segs, starts = [np.zeros(int(LEAD * Speaker.SR), dtype="float32")], [], [], {}
     t = LEAD
     cdir = folder / "_voice-cache"
+    ear = LineEar() if rules.get("voice.line_check") else None   # 2.53.0: every line measured before anything is animated
     for k, it in enumerate(items):
         vid = voices.get(it["who"]) or voices["narrator"]
         eleven = voice_spec(vid)[0] == "eleven"
@@ -595,11 +718,8 @@ def synth_dialogue(items, voices, folder):
         lkey = hashlib.sha1(json.dumps([vid, it["who"], respell(it["text"]), it.get("tag") or "", elevenlabs.model(), ELEVEN_START_SPEED,
                                         str(getattr(settings, "ELEVEN_V3_STABILITY", ""))]).encode("utf-8")).hexdigest()[:16]
         lw, lj = cdir / f"l-{lkey}.wav", cdir / f"l-{lkey}.json"
-        if eleven and lw.exists() and lj.exists():
-            a = sf.read(str(lw), dtype="float32")[0]
-            w = json.loads(lj.read_text(encoding="utf-8"))["words"]
-            reused += 1
-        else:
+
+        def make(it=it, k=k, vid=vid, eleven=eleven):
             if vid not in speakers:
                 speakers[vid] = Speaker(vid, 1.0 if eleven else 0.92)
             sp = speakers[vid]
@@ -611,10 +731,22 @@ def synth_dialogue(items, voices, folder):
                 sf.write(str(tmp), a, Speaker.SR)
                 w = whisper_words(tmp, it["text"].split(), len(a) / Speaker.SR)
                 tmp.unlink(missing_ok=True)
-            if eleven:
-                cdir.mkdir(exist_ok=True)
-                sf.write(str(lw), a, Speaker.SR)
-                lj.write_text(json.dumps({"words": [list(x) for x in w]}), encoding="utf-8")
+            return a, w
+        fresh = not (eleven and lw.exists() and lj.exists())
+        if not fresh:
+            a = sf.read(str(lw), dtype="float32")[0]
+            w = json.loads(lj.read_text(encoding="utf-8"))["words"]
+            reused += 1
+        else:
+            a, w = make()
+        if ear:
+            # Kokoro and Piper read the same words the same way every time: only ElevenLabs gets a second take
+            a, w, changed = ear.settle(it, a, w, make if eleven else None, cdir if eleven else None)
+            fresh = fresh or changed
+        if eleven and fresh:
+            cdir.mkdir(exist_ok=True)
+            sf.write(str(lw), a, Speaker.SR)
+            lj.write_text(json.dumps({"words": [list(x) for x in w], "said": respell(it["text"])}), encoding="utf-8")
         starts.setdefault(it["scene"], t)
         dur = len(a) / Speaker.SR
         words += [[x[0], t + x[1], t + x[2], it["who"]] for x in w]
@@ -627,6 +759,8 @@ def synth_dialogue(items, voices, folder):
     chars = sum(s.chars for s in speakers.values())
     if reused:
         say(f"  Reused {reused} of {len(items)} line(s) already voiced (no ElevenLabs characters for those).")
+    if ear:
+        say("  " + ear.summary(len(items)))
     wpm = sum(len(x["text"].split()) for x in items) / max(1e-6, (t - LEAD) / 60)
     wav = folder / "_voice_raw.wav"
     sf.write(str(wav), np.concatenate(audio), Speaker.SR)
@@ -639,8 +773,9 @@ def synth_dialogue(items, voices, folder):
 
 def dialogue_cached(items, voices, folder):
     """synth_dialogue, but the voices made once for these exact lines, voices and model are reused: a retry costs no characters."""
+    # LINE_CHECK in the key (2.53.0): a voice track made before the line check is checked line by line once (each line still reused)
     key = hashlib.sha1(json.dumps([[voices.get(x["who"]) or voices["narrator"], x["who"], respell(x["text"]), x.get("tag") or ""] for x in items]
-                                  + [elevenlabs.model()]).encode("utf-8")).hexdigest()[:16]
+                                  + [elevenlabs.model()] + ([f"line-check-{LINE_CHECK}"] if rules.get("voice.line_check") else [])).encode("utf-8")).hexdigest()[:16]
     cdir = folder / "_voice-cache"
     wav_c, js_c = cdir / f"d-{key}.wav", cdir / f"d-{key}.json"
     raw = folder / "_voice_raw.wav"
@@ -676,12 +811,10 @@ def drop_repeats(raw, starts, words, end, segs):
         return raw, starts, words, end, segs
     a, b = [_norm(w[0]) for w in words], [h[0] for h in heard]
     cuts = []
-    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
-        if op != "insert":
-            continue
-        for j in range(max(1, j1), j2):
-            if b[j] and b[j] == b[j - 1] and 0 < heard[j][2] - heard[j - 1][2] < 1.5:
-                cuts.append((heard[j - 1][2], heard[j][2], b[j]))
+    # 2.53.0 (ep 31): also a repeated pair ("a load a load" = "Alode. Alode."), a near repeat ("repaid raid") and a stray number
+    for j0, j1, what in slips(a, b):
+        if j0 >= 1 and 0 < heard[j1 - 1][2] - heard[j0 - 1][2] < 1.5:
+            cuts.append((heard[j0 - 1][2], heard[j1 - 1][2], what))
     if not cuts:
         return raw, starts, words, end, segs
     au, sr = sf.read(str(raw), dtype="float32")
@@ -1498,6 +1631,72 @@ def stage_speakers(d):
     return {**d, "scenes": scenes}
 
 
+def card_inserts(d):
+    """2.53.0 (Israa on ep 31: "100 CAMELS (SO THEY SAY)" alone for 18 s, a list card for 21 s too small to read in wide, and in wide
+    a card hides the people): a card is a short readable insert OVER a scene, never the whole scene (rule video.card_as_insert). The
+    scene shows the last place with people (else the next one), the same people, and the card's lines come up one at a time on their
+    words, each for at most rule video.card_insert_seconds (Short.jsx `Insert`). Only a video with no scene of people keeps a
+    full-screen card (and check.card_max_seconds stops it when it is long). Render only; the episode isn't changed."""
+    if not rules.get("video.card_as_insert"):
+        return d
+    scenes = [dict(s) for s in d.get("scenes") or []]
+    people = lambda x: bool(x.get("characters")) and x.get("backdrop") not in ("map", "diagram", "card") and not x.get("insert")  # noqa: E731
+    for i, s in enumerate(scenes):
+        card = s.get("card") or {}
+        if s.get("backdrop") != "card" or s.get("generated") or (s.get("bespoke") or "").strip() or not any(str((l or {}).get("text") or "").strip() for l in card.get("lines") or []):
+            continue
+        base = next((x for x in reversed(scenes[:i]) if people(x)), None) or next((x for x in scenes[i + 1:] if people(x)), None)
+        if not base:
+            continue
+        s["insert"] = {"title": card.get("title") or "", "lines": [l for l in card.get("lines") or [] if str((l or {}).get("text") or "").strip()]}
+        s.pop("card", None)
+        s["backdrop"] = base["backdrop"]
+        s["characters"] = [{k: v for k, v in c.items() if k != "action"} for c in base["characters"]]
+        for k in ("set", "crowd", "tone"):
+            if base.get(k):
+                s[k] = base[k]
+        s["camera"] = "push_in"
+        s.pop("callout", None)   # the insert says it
+    return {**d, "scenes": scenes}
+
+
+PLACES = {   # 2.53.0: places a narration names that the picture must show (rule video.place_from_words); lat, lon, zoom
+    "europe": (48.0, 10.0, 20), "venice": (45.4, 12.3, 60), "genoa": (44.4, 8.9, 60), "spain": (40.2, -3.7, 40), "italy": (42.5, 12.5, 40),
+    "france": (46.6, 2.4, 40), "mecca": (21.4, 39.8, 60), "cairo": (30.0, 31.2, 60), "arabia": (23.9, 45.1, 25), "timbuktu": (16.8, -3.0, 60)}
+TRAVEL = re.compile(r"\b(reach(ed|es)?|spread|travel(l?ed)?|arriv(ed|es)|sail(ed)?|crossed|journey(ed)?|across|all the way to|news)\b", re.I)
+
+
+def place_from_words(d):
+    """2.53.0 (Israa on ep 31: "crossing the Nile" over a crowd in a street, "news reached Europe" over two men in a desert): when the
+    words of a scene drawn by the kit name the Nile, it is shown by the Nile; a narrated scene (nobody on screen speaks) about travel
+    to a far place on the map (PLACES) becomes a map of it. Scenes with their own drawn place, Rana's scenes, maps, diagrams and cards
+    are left alone. Rule video.place_from_words. Returns (script, notes)."""
+    if not rules.get("video.place_from_words"):
+        return d, []
+    scenes, notes = [dict(s) for s in d.get("scenes") or []], []
+    for i, s in enumerate(scenes):
+        if s.get("set") or s.get("insert") or s.get("generated") or (s.get("bespoke") or "").strip() or s.get("backdrop") in ("map", "diagram", "card", "nile"):
+            continue
+        text = " ".join(str((l or {}).get("text") or "") for l in s.get("lines") or []) or str(s.get("voice_line") or "")
+        talk = any((l.get("who") or "narrator") != "narrator" for l in s.get("lines") or [])
+        if re.search(r"\bnile\b", text, re.I):
+            notes.append(f"scene {i + 1}: '{s.get('backdrop')}' -> nile (its words name the Nile)")
+            s["backdrop"] = "nile"
+            continue
+        far = next((p for p in PLACES if re.search(rf"\b{p}\b", text, re.I)), None)
+        if far and not talk and TRAVEL.search(text):
+            lat, lon, zoom = PLACES[far]
+            notes.append(f"scene {i + 1}: '{s.get('backdrop')}' -> a map of {far.title()} (a narrated line about travel there)")
+            s.update({"backdrop": "map", "map": {"focus": [lat, lon], "zoom": zoom, "pins": [{"label": far.upper(), "lat": lat, "lon": lon}]}})
+            s.pop("callout", None)
+    return {**d, "scenes": scenes}, notes
+
+
+def dialogue_bespoke(s):
+    """True when two or more people on screen talk in this scene (Rana's own drawings can't cut to each speaker; the kit can)."""
+    return len({l.get("who") for l in s.get("lines") or [] if l.get("who") in CAST}) >= 2
+
+
 # ---- 3. the whole job -------------------------------------------------------------------
 def voice_choice(project):
     meta = (project or {}).get("meta") or {}
@@ -1581,6 +1780,10 @@ def render_episode(eid, voice=None, suffix="", test=False):
     assets.install_app(APP / "src", ep["project_id"], art["ready"])
     d = quality.sync_voice_lines(d)
     d = stage_speakers(d)   # whoever speaks is on screen; no empty rooms (render only)
+    d = card_inserts(d)     # 2.53.0: a card is a short insert over a scene with people, never the whole scene
+    d, place_notes = place_from_words(d)   # 2.53.0: the Nile is shown by the Nile, "news reached Europe" on a map
+    if place_notes:
+        say("Pictures that follow the words: " + "; ".join(place_notes))
     d, cam_notes = fix_cameras(d)   # a camera name never blocks a render (2.51.1)
     if cam_notes:
         say("Cameras the renderer doesn't know, given the nearest: " + "; ".join(cam_notes))
@@ -1655,8 +1858,10 @@ def render_episode(eid, voice=None, suffix="", test=False):
     drawn = set()   # the diagram steps already drawn earlier in the video (a later diagram scene starts with them)
     for i, s in enumerate(d["scenes"]):
         prev = d["scenes"][i - 1] if i else None
-        same = bool(prev) and s.get("backdrop") in ("diagram", "map") and prev.get("backdrop") == s.get("backdrop") and \
+        same = bool(prev) and s.get("backdrop") in ("diagram", "map", "card") and prev.get("backdrop") == s.get("backdrop") and \
             (prev.get(s["backdrop"]) or {}) == (s.get(s["backdrop"]) or {})
+        # 2.53.0 (ep 31's gold-price card "erased itself back to 25+ and rebuilt" at 185.5 s): a card split in parts is one card too
+        same = same or (bool(prev) and bool(s.get("insert")) and prev.get("insert") == s.get("insert"))
         grp = grp if same else bounds[i]
         sc = {k: v for k, v in s.items() if k not in ("voice_line", "source_note", "n", "shows", "callout_word", "lines", "sfx", "link", "step_claim", "gag")}
         sc["from"] = bounds[i]
@@ -1698,7 +1903,17 @@ def render_episode(eid, voice=None, suffix="", test=False):
                 sc["hits"] = sorted(sc.get("hits", []) + [{"at": beam, "cam": "punch_in", "who": "rod"},
                                                           {"at": min(sc["frames"] - 1, beam + 150), "cam": "release"}], key=lambda h: h["at"])
         if s.get("backdrop") == "card" and (s.get("card") or {}).get("lines"):
-            sc["card"] = {**s["card"], "at": card_steps(s, words, bounds[i], bounds[i + 1])}
+            sc["card"] = {**s["card"], "at": card_steps(s, words, grp, bounds[i + 1])}   # frames from the group's start (frame_offset)
+        if s.get("insert"):
+            # each line on its word, counted over the whole card (a split part carries on), each up for at most N seconds
+            at = card_steps({"card": {"lines": s["insert"]["lines"]}}, words, grp, bounds[i + 1])
+            sc["insert"] = {**s["insert"], "at": [a - (bounds[i] - grp) for a in at],
+                            "hold": max(FPS, round(float(rules.get("video.card_insert_seconds")) * FPS))}
+            # while a line is up the camera stays on the group shot (a cut-in would put a face under the insert)
+            ins_at, hold = sc["insert"]["at"], sc["insert"]["hold"]
+            wins = [(a, min(ins_at[k + 1] if k + 1 < len(ins_at) else 10 ** 9, a + hold)) for k, a in enumerate(ins_at)]
+            sc["hits"] = sorted([h for h in sc["hits"] if not any(x <= h["at"] < y for x, y in wins)] +
+                                [{"at": max(0, a), "cam": "release"} for a, y in wins if y > 0], key=lambda h: h["at"])
         if any((p or {}).get("type") == "globe" for p in s.get("props") or []):
             sc["props"] = [globe_steps(p, s, words, bounds[i], bounds[i + 1]) if (p or {}).get("type") == "globe" else p for p in sc.get("props") or s.get("props") or []]
         # 2.36.0: this story's own art. Its place (the scene's `set`, else the asset standing in for this kit backdrop), its props (one
@@ -1776,7 +1991,11 @@ def render_episode(eid, voice=None, suffix="", test=False):
         **({"title": {"from": round(title["from_s"] * FPS), "frames": round(title["secs"] * FPS), "text": title["text"],
                       "place": short_place(title["place"]), "year": short_year(title["year"])}} if title else {}),
         "caption_chunks": caption_chunks(heard),
-        "framing": {"margin": int(FRAME_MARGIN), "speaker_min": float(SPEAKER_MIN_H)},
+        # person_h (2.53.0, the owner on ep 31: people "not proportional to the room and the screen"): in a wide picture everyone stands
+        # at this share of the picture's height, so the room shows above them and a cut to the speaker really cuts in
+        "framing": {"margin": int(FRAME_MARGIN), "speaker_min": float(SPEAKER_MIN_H), "person_h": float(rules.get("video.wide_person_height"))},
+        # the test render marks a frame where someone's head is cut by the picture's edge (video_checks.frame_faults reads the mark)
+        **({"probe": True} if test and rules.get("check.heads_in_frame") else {}),
         "outro_fade": max(1, round(END_FADE * FPS)),
         "scenes": scenes,
         "pacing": pacing,
@@ -1787,7 +2006,7 @@ def render_episode(eid, voice=None, suffix="", test=False):
     faults = []
     if mode != "off":
         say("Checking the script's staging, the sound and the captions...")
-        faults = video_checks.data_faults(props, d, items, CAST, script_by) + \
+        faults = video_checks.data_faults(props, d, items, CAST, script_by) + video_checks.staging_faults(props, d, CAST) + \
             video_checks.sound_faults(props, items, ffmpeg, folder / f"voice{suffix}.wav", folder / audio_name) + \
             video_checks.caption_faults(props, items)
         if faults and mode == "block":
@@ -1816,12 +2035,14 @@ def render_episode(eid, voice=None, suffix="", test=False):
         subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(gif), "-i", str(folder / audio_name), "-map", "0:v", "-map", "1:a",
                         "-vf", "fps=5,scale=" + ("480:270" if shape == "wide" else "270:480"), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", str(tv)],
                        capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        sheets = test_sheets(ffmpeg, tv, folder, heard)   # 2.53.0: Atlas reads the test before any full render (hq frames <id> test)
         if faults and mode == "block":
-            raise Blocked(_checks_failed(ep, folder, suffix, test, rep))
+            raise Blocked(_checks_failed(ep, folder, suffix, test, rep) + (f" Contact sheets of the test: hq frames {ep['id']} test." if sheets else ""))
         _save_checks(ep, folder, suffix, test, rep)
         say(f"Test render done in {time.time() - t0:.0f}s: " + video_checks.summary(rep))
         return {"episode": ep["id"], "title": ep["title"], "test": True, "ok": rep["ok"], "checks": video_checks.summary(rep),
-                "faults": rep["faults"], "video": tv.relative_to(ROOT).as_posix() if tv.exists() else None, "seconds": round(total_secs, 1)}
+                "faults": rep["faults"], "video": tv.relative_to(ROOT).as_posix() if tv.exists() else None, "seconds": round(total_secs, 1),
+                "sheets": [p.relative_to(ROOT).as_posix() for p in sheets]}
     if faults and mode == "block":
         failed = folder / f"short{suffix}.failed-checks.mp4"
         drawn.replace(failed)
@@ -1862,6 +2083,27 @@ def render_episode(eid, voice=None, suffix="", test=False):
     say(f"Done in {time.time() - t0:.0f}s: {rel}")
     return {"episode": ep["id"], "title": ep["title"], "video": rel, "seconds": round(total_secs, 1), "images": len(scenes),
             "wpm": round(wpm), "voice": used, "checks": video_checks.summary(rep)}
+
+
+def test_sheets(ffmpeg, video, folder, heard):
+    """2.53.0 (Atlas's request 2026-10-17 23:15; the owner: "review the video yourself before rendering"): contact sheets of the test
+    render, a frame a second plus every cut, with the words spoken then under each (the script's words at the voice's times), in
+    <episode folder>/review-test/. `hq frames <id> test` copies them to Atlas. Returns the sheet paths ([] if they couldn't be made)."""
+    try:
+        import review_tools
+        out = folder / "review-test"
+        out.mkdir(exist_ok=True)
+        secs = shorts.probe_seconds(ffmpeg, video)
+        words = [{"w": w[0], "s": w[1], "e": w[2]} for w in heard]
+        (out / "transcript.json").write_text(json.dumps({"text": " ".join(w["w"] for w in words), "words": words, "seconds": round(secs, 1),
+                                                         "note": "the script's words at the voice's times (a test render is not transcribed)"},
+                                                        ensure_ascii=False), encoding="utf-8")
+        sheets, n = review_tools.make_sheets(ffmpeg, video, out, secs, words)
+        say(f"  Contact sheets of the test: {len(sheets)} sheet(s), {n} frames (hq frames <id> test).")
+        return sheets
+    except Exception as ex:  # noqa: BLE001  (the sheets are for reading; never fail the test over them)
+        say(f"  The test's contact sheets couldn't be made: {str(ex)[:160]}")
+        return []
 
 
 def _version():
@@ -1911,7 +2153,8 @@ def check_episode(eid, test=False):
     items = utterances(d, project)
     ffmpeg = shorts.find_ffmpeg()
     voice = folder / f"voice{suffix}.wav"
-    faults = video_checks.data_faults(props, d, items, CAST, script_by) + video_checks.caption_faults(props, items)
+    faults = video_checks.data_faults(props, d, items, CAST, script_by) + video_checks.staging_faults(props, d, CAST) + \
+        video_checks.caption_faults(props, items)
     if voice.exists():
         faults += video_checks.sound_faults(props, items, ffmpeg, voice, folder / props.get("audio", voice.name))
     more, measured = video_checks.frame_faults(props, ffmpeg, video, work=folder)

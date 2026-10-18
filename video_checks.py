@@ -13,11 +13,14 @@ check.min_drawn_percent, check.opening_character):
 - the sound: every caption is over voice (no silent captions), every scene with words has voice, the sound lasts to the end card;
 - the captions: the words and numbers are exactly the script's (no "7 .2", no extra or missing words);
 - the picture, a frame a second: no blank or near-blank frame (a lone title is blank), no still stretch over N seconds.
+- 2.53.0 (ep 31): no text card filling the picture over check.card_max_seconds, no dialogue scene without a cut to the speaker over
+  check.dialogue_cut_seconds (`staging_faults`), and on the test render no head cut by the top of the picture (check.heads_in_frame:
+  Short.jsx draws a magenta mark in the corner of such a frame, `_probe_mark` reads it).
 REGRESSION: the faults found on ep 28 (blank Syene card, silent ending, broken numbers, empty opening, the wrong person planting the
-stick, the 7.2 degree label twice) each have a check here, named in its fault text, so they can't come back unseen.
-Not measured here: whether a speaker is cut by the frame's edge. That is enforced by the camera code (Camera.cameraFrame keeps the
-speaker's box inside rule video.frame_margin_px); this checks that he is in the scene at all. Where labels sit on the diagram is
-Diagram.jsx's (2.36.3); this checks only that the callout can hide when the close-up comes up.
+stick, the 7.2 degree label twice) and ep 31 (long cards, uncut dialogue, Musa's head) each have a check here, named in its fault text.
+Not measured here: a speaker cut by the frame's SIDE edge (Camera.cameraFrame keeps the speaker's box inside rule
+video.frame_margin_px), heads in Rana's own drawings, people's size against the room (set by rule video.wide_person_height, not
+measured). Where labels sit on the diagram is Diagram.jsx's (2.36.3); this checks only that the callout can hide.
 """
 import difflib
 import hashlib
@@ -96,6 +99,59 @@ def data_faults(props, d, items, cast, script_by=None):
             label = re.findall(r"\d+(?:\.\d+)?", str((sc.get("diagram") or {}).get("angle_label") or ""))
             if label and label[0] in re.findall(r"\d+(?:\.\d+)?", sc["callout"]):
                 out.append((t0, f"scene {i + 1}: the {label[0]} label would show twice (callout and diagram, no step timings; ep 28's overlapping labels)"))
+    return out
+
+
+def staging_faults(props, d, cast):
+    """2.53.0 (Israa on ep 31, 5.5 redo; faults the checks missed):
+    - a text card that IS the picture for longer than rule check.card_max_seconds (ep 31: "100 CAMELS" alone 18 s, the gold-price
+      card 21 s); a card should be a short insert over a scene with people (animate.card_inserts), so this only fires when it couldn't be;
+    - a scene where two or more people on screen talk with no cut for longer than rule check.dialogue_cut_seconds (ep 31: the
+      ground-kissing and treasurer scenes, 18 and 23.5 s in one shot). The frame check's still bar never saw them: mouths, nods and
+      the camera's drift change the picture a little every second, so it wasn't "still". A cut = the camera changing to another
+      framing (a cut-in on a speaker, back out, a whip); a scene Rana drew has none."""
+    out = []
+    scenes = props.get("scenes") or []
+    card_max, cut_max = float(rules.get("check.card_max_seconds")), float(rules.get("check.dialogue_cut_seconds"))
+    k = 0
+    while k < len(scenes):
+        if scenes[k].get("backdrop") != "card" or scenes[k].get("generated"):
+            k += 1
+            continue
+        j = k
+        while j + 1 < len(scenes) and scenes[j + 1].get("backdrop") == "card" and not scenes[j + 1].get("generated"):
+            j += 1
+        secs = sum(s["frames"] for s in scenes[k:j + 1]) / FPS
+        if secs > card_max:
+            out.append((_t(scenes[k]["from"]), f"a text card fills the picture for {secs:.0f} s (scene {k + 1}" + (f"-{j + 1}" if j > k else "")
+                        + f"; the bar is {card_max:.0f} s): a card should be a short insert over a scene with people (ep 31's 100 CAMELS card)"))
+        k = j + 1
+    spk = props.get("speaker") or []
+    src = d.get("scenes") or []
+    for i, sc in enumerate(scenes):
+        if sc.get("ending") or sc.get("backdrop") in CAST_FREE:
+            continue
+        a, n = sc["from"], sc["frames"]
+        if sc.get("generated"):   # Rana's people aren't in the cast list: whoever has lines in the script
+            talkers = {l.get("who") for l in (src[i] if i < len(src) else {}).get("lines") or [] if l.get("who") in cast}
+        else:
+            here = {c.get("who") for c in sc.get("characters") or []}
+            talkers = {w for w in spk[a:a + n] if w in cast and w in here}
+        if len(talkers) < 2:
+            continue
+        marks, state = [0], None
+        for h in sorted([] if sc.get("generated") else sc.get("hits") or [], key=lambda h: h["at"]):
+            if h.get("cam") not in ("punch_in", "release", "whip"):
+                continue
+            now = ("in", h.get("who")) if h["cam"] == "punch_in" else ("out", None)
+            if now != state or h["cam"] == "whip":
+                marks.append(min(n, max(0, h["at"])))
+                state = now
+        marks = sorted(set(marks + [n]))
+        gap, at = max((y - x, x) for x, y in zip(marks, marks[1:]))
+        if gap / FPS > cut_max:
+            out.append((_t(a + at), f"scene {i + 1}: {', '.join(sorted(talkers))} talk for {gap / FPS:.0f} s in one shot with no cut to the speaker"
+                        + (" (Rana's drawing)" if sc.get("generated") else "") + f" (the bar is {cut_max:.0f} s; ep 31's treasurer scene)"))
     return out
 
 
@@ -187,12 +243,15 @@ def frame_faults(props, ffmpeg, video, work=None):
         subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(video), "-vf", "fps=1,scale=" + ("480:270" if props.get("shape") == "wide" else "270:480"), str(Path(tmp) / "f-%05d.png")],
                        capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         frames = sorted(Path(tmp).glob("f-*.png"))
-        prev, run_from, longest, lows = None, None, (0, 0), []
+        prev, run_from, longest, lows, heads = None, None, (0, 0), [], []
         for k, png in enumerate(frames):
             t = float(k)
             ok_skip = any(a <= t <= b for a, b in skip)
             share = animator.drawn_share(png)
-            im = Image.open(png).convert("L")
+            rgb = Image.open(png).convert("RGB")
+            if props.get("probe") and _probe_mark(rgb):
+                heads.append(t)
+            im = rgb.convert("L")
             if not ok_skip and share is not None and share < low:
                 lows.append(t)
             if prev is not None and not ok_skip and ImageStat.Stat(ImageChops.difference(im, prev)).mean[0] < STILL_DIFF:
@@ -211,7 +270,23 @@ def frame_faults(props, ffmpeg, video, work=None):
             out.append((t, f"blank or near-blank picture from {_mmss(t)} to {_mmss(end + 1)} (under {low}% drawn; ep 28's blank card)"))
     if longest[0] > still_max:
         out.append((longest[1], f"nothing changes on screen for {longest[0]:.0f} s (the bar is {still_max:.0f} s)"))
-    return out, {"frames": len(frames), "blank_seconds": len(lows), "longest_still_s": longest[0], "longest_still_at": _mmss(longest[1])}
+    # 2.53.0: the test render marks (Short.jsx `cutHead`) every frame where a head on screen is cut by the top of the picture
+    for k, t in enumerate(heads):
+        if k == 0 or t - heads[k - 1] > 1.5:
+            end = t
+            while end + 1 in heads:
+                end += 1
+            out.append((t, f"a head is cut by the top of the picture from {_mmss(t)} to {_mmss(end + 1)} (ep 31's Musa)"))
+    return out, {"frames": len(frames), "blank_seconds": len(lows), "longest_still_s": longest[0], "longest_still_at": _mmss(longest[1]),
+                 **({"head_cut_seconds": len(heads)} if props.get("probe") else {})}
+
+
+def _probe_mark(im):
+    """True if the top-left corner carries the test render's magenta mark (Short.jsx PROBE), at any size it was scaled to."""
+    w = im.width
+    box = max(2, int(w * 0.004)), max(2, int(w * 0.004)), max(4, int(w * 0.018)), max(4, int(w * 0.018))
+    r, g, b = [sum(c) / len(c) for c in zip(*im.crop(box).getdata())]
+    return r > 180 and g < 90 and b > 180
 
 
 # ---- the whole check -------------------------------------------------------------------------

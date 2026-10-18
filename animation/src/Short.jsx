@@ -23,6 +23,9 @@ const TRANSITION = 9; // frames the next scene takes to arrive
 const WALK = 28;      // frames a walk in or out takes
 const OFF = 420;      // how far off the picture a character waits before walking in
 const PACE = 70;      // frames a 'pace' action walks on the spot (the bematist's "step, step, step")
+const CROWD_CHATTER = 45;   // frames a crowd's mouths move after its reaction (only while nobody talks)
+const TALKING_CROWD = ['cheer', 'laugh', 'murmur', 'angry'];   // the reactions whose mouths move (Character.jsx REACT)
+const PROBE = '#FF00FF';    // the test render's mark for "a head is cut by the picture's edge" (video_checks.frame_faults)
 
 // Staging (2.29.0, the owner's "people overlap, the sizes and the perspective are wrong" after ep 22; studied on OverSimplified):
 // - the cast stands ON the floor, in front of the back wall: feet at FEET[backdrop] (each backdrop's floor starts at FLOOR);
@@ -59,10 +62,11 @@ const bodyOf = (who, poses, noProp) => {
 };
 
 // Lays the scene's people (and a rod, which is staged like a person) out in a row: returns [{x, facing}] and the shared scale.
-const stage = (items, feet, topLimit, margin = SAFE) => {
+// fixed (2.53.0, wide pictures, rule video.wide_person_height): everyone's scale, the same in every room (shrunk only to fit)
+const stage = (items, feet, topLimit, margin = SAFE, fixed = null) => {
   if (!items.length) return {scale: 1, placed: []};
   const n = items.filter((it) => !it.prop).length;
-  let s = BASE_SCALE[Math.min(n, BASE_SCALE.length - 1)];
+  let s = fixed || BASE_SCALE[Math.min(n, BASE_SCALE.length - 1)];
   s = Math.min(s, ...items.filter((it) => !it.prop).map((it) => (feet - topLimit) / it.b.top));
   // facing: the left half looks right, the right half looks left (towards each other); a lone person faces his `facing` or right
   const order = items.map((it, i) => ({...it, i})).sort((a, b) => a.want - b.want);
@@ -203,7 +207,7 @@ const CutawayTag = ({text, frame, y = 420, k = 1}) => {
   );
 };
 
-const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'}) => {
+const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical', probe = false}) => {
   const real = useCurrentFrame();
   const wide = shape === 'wide';
   const [SW, SH] = SHAPES[shape] || SHAPES.vertical;
@@ -251,7 +255,10 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'})
     ...propsIn.map((p) => ({prop: true, facing0: 1, want: p.x ?? 540,
       b: {half: 180 * (p.size ?? 1), back: 200 * (p.size ?? 1), front: 200 * (p.size ?? 1), top: 400 * (p.size ?? 1)}})),
   ];
-  const {scale: sc, placed} = stage(items, feet, topLimit, margin);
+  // 2.53.0 (the owner on ep 31: people "not proportional to the room and the screen"): in a wide picture they used to grow until
+  // their heads touched the top band (as tall as the picture: no room above them, and a cut to the speaker couldn't cut in)
+  const personS = wide && (framing.person_h || 0) > 0 ? (framing.person_h * BAND_H) / HEIGHT : null;
+  const {scale: sc, placed} = stage(items, feet, topLimit, margin, personS);
   if (scene.backdrop === 'well_side') items.forEach((it, i) => { if (!it.prop || it.fixed) placed[i].x = it.want; });   // keep them (and a placed stick) off the shaft
   const chars = cast.map((c, i) => {
     const {back, front, top} = items[i].b;
@@ -271,6 +278,11 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'})
   const lookOf = (c) => (speakingChar && speakingChar !== c ? [Math.sign(speakingChar.x - c.x) * 7, 0] : [0, 0]);
   const crowdBeat = [...beats].reverse().find((b) => b.who === 'crowd' && b.at <= frame);
   const crowdReaction = (crowdBeat && crowdBeat.reaction) || (scene.crowd && scene.crowd.reaction) || 'idle';
+  // 2.53.0 (the owner on ep 31: "when the people gathered together they're all moving their mouth"): the crowd's mouths move only
+  // for a moment after its reaction and never while anyone (the narrator too) is talking
+  // (done here, not in Crowd: a project's own cast file replaces Character.jsx): a talking reaction settles to idle
+  const crowdHush = !!who || frame - (crowdBeat ? crowdBeat.at : 0) > CROWD_CHATTER;
+  const crowdShown = crowdHush && TALKING_CROWD.includes(crowdReaction) ? 'idle' : crowdReaction;
   // the props that matter (the rod and its shadow) count too; a rod is staged in the row like a person, at the cast's scale
   const rodShadow = (p) => (60 + 360 * shadeOf(p)) * sc * ROD_K;
   let rk = 0;
@@ -359,14 +371,15 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'})
   const off = scene.frame_offset || 0;   // a split part of one map / diagram: carry on, don't start the drawing again
   const isDiagram = scene.backdrop === 'diagram';
   const body = Bespoke ? (
-    <Bespoke frame={frame} frames={scene.frames} words={scene.words || []} mouth={mouth.slice(scene.from, scene.from + scene.frames)} />
+    <Bespoke frame={frame} frames={scene.frames} words={scene.words || []} mouth={mouth.slice(scene.from, scene.from + scene.frames)}
+      speaker={speaker ? speaker.slice(scene.from, scene.from + scene.frames) : Array(scene.frames).fill('')} />
   ) : (
     <>
       {isMap && <MapIntro map={{...(scene.map || {focus: [30, 30], zoom: 20}), ...(scene.callout ? {route_label: null} : {})}} frame={frame + off} frames={scene.frames + off} view={vb} />}
       {isDiagram && <Diagram diagram={scene.diagram || {}} frame={frame + off} frames={scene.frames + off} />}
       {!isMap && !isDiagram && (
         <Camera move={move} frame={frame} frames={scene.frames} view={view}>
-          {Back && <Back frame={frame} tone={scene.tone} scene={scene} />}
+          {Back && <Back frame={frame + off} tone={scene.tone} scene={scene} />}
           {props.map((p, i) => {
             if (p.type === 'rod') return <Rod key={i} frame={frame} x={p.x} y={p.y} shadow={shadeOf(p)} scale={p.scale} revealAt={p.reveal_at ?? 0} beamAt={p.beam_at ?? null} label={p.angle_label || null} plantAt={p.plant_at ?? null} />;
             if (p.type === 'globe') return <Globe key={i} frame={frame} x={p.x ?? 540} y={p.y ?? 1000} r={p.r ?? 150} slices={p.slices || 0} sliceAt={p.slice_at ?? null} />;
@@ -379,7 +392,7 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'})
             const cy = floor + 50;
             const castHead = feet - HEIGHT * sc;
             const cs = Math.max(0.35, Math.min(sc * 0.8, (cy - castHead - 40) / HEIGHT));
-            return <Crowd size={scene.crowd.size || 5} reaction={crowdReaction} frame={frame} seed={index + 1} y={cy} scale={cs} from={SAFE + 40} to={W - SAFE - 40} costume={scene.crowd.costume} />;
+            return <Crowd size={scene.crowd.size || 5} reaction={crowdShown} frame={frame} seed={index + 1} y={cy} scale={cs} from={SAFE + 40} to={W - SAFE - 40} costume={scene.crowd.costume} />;
           })()}
           {chars.map((c, i) => {
             if (hidden[i] || (fitView && scene.backdrop === 'card')) return null;   // a wide card shows the card, not legs under it
@@ -418,7 +431,12 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'})
     </>
   );
   const pointAt = gag && gag.who && subjects[gag.who] ? W / 2 : null;
+  // 2.53.0 (Israa on ep 31: Musa's head cut by the frame's edge): the test render marks every frame where a head on screen (not a
+  // walker crossing in, not someone left out of the shot) goes past the top of the picture; video_checks reads the mark
+  const cutHead = probe && !Bespoke && !isMap && !isDiagram && !fitView && chars.some((c, i) => !hidden[i] && !live[i].walking &&
+    view.cy + view.dy + view.s * (c.y - reach(c.who, 'stand', true).top * c.scale - view.fy) < vb[1] - 4);
   return (
+    <>
     <svg width={SW} height={SH} viewBox={vb.join(' ')} style={{position: 'absolute', left: 0, top: 0, ...wrap}}>
       <defs>
         {clip !== null && (
@@ -431,21 +449,75 @@ const Scene = ({scene, mouth, speaker, index, framing = {}, shape = 'vertical'})
       <g clipPath={clip !== null ? `url(#iris-${index})` : undefined} filter={blur ? `url(#whip-in-${index})` : undefined}>{body}</g>
       {frozen && gag.text && <FreezeLabel text={gag.text} age={real - gag.at} frames={gag.frames || 48} pointX={pointAt}
         y={wide ? vb[1] + (fitView ? 300 : 150) : 560} k={wide && !fitView ? 0.55 : 1} />}
+      {cutHead && <rect x={vb[0]} y={vb[1]} width={vb[2] * 0.04} height={vb[2] * 0.04} fill={PROBE} />}
     </svg>
+    {scene.insert && real < scene.frames && (
+      <svg width={SW} height={SH} viewBox={`0 0 ${SW} ${SH}`} style={{position: 'absolute', left: 0, top: 0}}>
+        <Insert ins={scene.insert} frame={frame} w={SW} h={SH} />
+      </svg>
+    )}
+    </>
+  );
+};
+
+// 2.53.0 (Israa on ep 31: a card stood in for the scene for 18 and 21 s, too small to read in wide): a card is a short insert over
+// the scene. One line at a time, big, on its word (animate.card_steps over the whole card, so a split part carries on), each up for
+// at most `hold` frames (rule video.card_insert_seconds) or until the next line; the title small above it.
+const wrapRows = (t, n) => {
+  const rows = [];
+  String(t || '').split(/\s+/).filter(Boolean).forEach((wd) => {
+    const last = rows[rows.length - 1];
+    if (last && (last + ' ' + wd).length <= n) rows[rows.length - 1] = last + ' ' + wd;
+    else rows.push(wd);
+  });
+  return rows;
+};
+
+const Insert = ({ins, frame, w, h}) => {
+  const {fps} = useVideoConfig();
+  const lines = ins.lines || [];
+  const at = ins.at || lines.map((_, i) => 10 + i * 60);
+  let k = -1;
+  at.forEach((a, i) => { if (a <= frame) k = i; });
+  if (k < 0 || !lines[k]) return null;
+  const next = k + 1 < at.length ? at[k + 1] : Infinity;
+  const until = Math.min(next, at[k] + (ins.hold || 120));
+  if (frame >= until) return null;
+  const wide = w > h;
+  const rows = wrapRows(lines[k].text, wide ? 22 : 16).slice(0, wide ? 2 : 3);
+  const longest = Math.max(5, ...rows.map((r) => r.length));
+  const pw = wide ? w * 0.56 : w * 0.86;
+  const fs = Math.min(wide ? 84 : 104, (pw - 90) / (0.6 * longest));
+  const title = String(ins.title || '').toUpperCase();
+  const tfs = Math.max(30, Math.min(fs * 0.5, (pw - 80) / (0.6 * Math.max(6, title.length))));
+  const ph = 36 + (title ? tfs * 1.35 : 0) + rows.length * fs * 1.12 + 24;
+  const x = (w - pw) / 2;
+  const y = wide ? h * 0.04 : 250;
+  const pop = spring({frame: frame - at[k], fps, config: {damping: 13, stiffness: 190, mass: 0.6}});
+  const out = until === next ? 1 : 1 - easeOut(clamp01((frame - (until - 8)) / 8));
+  return (
+    <g opacity={out} transform={`translate(${w / 2} ${y + ph / 2}) scale(${0.9 + 0.1 * Math.min(1, pop)}) translate(${-w / 2} ${-(y + ph / 2)})`}>
+      <rect x={x} y={y} width={pw} height={ph} rx="26" fill={C.parchment} stroke={C.ink} strokeWidth="8" />
+      {title && <text x={w / 2} y={y + 30 + tfs} textAnchor="middle" fontFamily={HEAD} fontSize={tfs} fill={C.terracotta}>{title}</text>}
+      {rows.map((r, i) => (
+        <text key={i} x={w / 2} y={y + 30 + (title ? tfs * 1.35 : 0) + fs * 0.9 + i * fs * 1.12} textAnchor="middle" fontFamily={HEAD}
+          fontSize={fs} fill={C.ink}>{r}</text>
+      ))}
+    </g>
   );
 };
 
 export const Short = (props) => {
   const frame = useCurrentFrame();
   const {scenes, mouth = [], speaker = null, intro, outro, caption_chunks: chunks = [], outro_from: outroFrom, audio, title = null,
-    framing = {}, outro_fade: outroFade = 8, shape = 'vertical'} = props;
+    framing = {}, outro_fade: outroFade = 8, shape = 'vertical', probe = false} = props;
   const [SW, SH] = SHAPES[shape] || SHAPES.vertical;   // rule video.shape: the overlays are laid out on the picture itself
   return (
     <AbsoluteFill style={{backgroundColor: C.ink}}>
       {audio && <Audio src={staticFile(audio)} />}
       {scenes.map((s, i) => (
         <Sequence key={i} from={s.from} durationInFrames={s.frames + (i < scenes.length - 1 ? TRANSITION + 2 : 0)}>
-          <Scene scene={s} mouth={mouth} speaker={speaker} index={i} framing={framing} shape={shape} />
+          <Scene scene={s} mouth={mouth} speaker={speaker} index={i} framing={framing} shape={shape} probe={probe} />
         </Sequence>
       ))}
       {!title && (
