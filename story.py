@@ -409,7 +409,10 @@ def ensure_app():
 def remotion(args, timeout=4 * 3600):
     cli = animate.APP / "node_modules" / "@remotion" / "cli" / "remotion-cli.js"
     p = subprocess.run([str(animate.NODE_EXE), str(cli), *args, f"--timeout={animate.BROWSER_TIMEOUT_MS}"], cwd=APP, env=animate.node_env(),
-                       capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0))
+    # below-normal priority (2.53.1): the render's browser and encoder inherit it, so the owner's Chrome (the music-video chat's Gemini
+    # tab) keeps running while a story renders; on a Mac or Linux the flag doesn't exist and nothing changes
     if p.returncode != 0:
         text = re.sub(r"\x1b\[[0-9;]*m", "", (p.stderr or "") + (p.stdout or "")).strip()
         k = text.find("Error")
