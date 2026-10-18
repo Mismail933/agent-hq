@@ -4,6 +4,7 @@ import React from 'react';
 import {AbsoluteFill} from 'remotion';
 import {W, H, rng} from './kit';
 import {FONT_CSS} from './fonts';
+import {PiscesArt} from './ocean';
 
 const INK = '#141414';
 const OSWALD = "'Oswald', 'Impact', sans-serif";
@@ -145,7 +146,7 @@ export function JulianeArt({boxes = true}) {
   );
 }
 
-const STORIES = {juliane: JulianeArt};
+const STORIES = {juliane: JulianeArt, pisces: PiscesArt};
 
 export const Thumb = ({id = 'juliane'}) => {
   const S = STORIES[id] || JulianeArt;

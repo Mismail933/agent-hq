@@ -185,7 +185,8 @@ function Count({f, len, line}) {
   const s = clamp(pop(f, a, 110, 12), 0, 1);
   const n = Number(String(p.value).replace(/[^0-9.]/g, '')) || 0;
   const pre = (String(p.value).match(/^[^0-9]*/) || [''])[0], suf = (String(p.value).match(/[^0-9.,]*$/) || [''])[0];
-  const shown = pre + Math.round(lin(f, a, a + 36, 0, n)).toLocaleString('en-US') + suf;
+  const dec = ((String(p.value).match(/\.(\d+)/) || ['', ''])[1]).length;   // 84.5 stays 84.5
+  const shown = pre + lin(f, a, a + 36, 0, n).toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec}) + suf;
   return (
     <g>
       <rect width={W} height={H} fill="#0B1F3A" />
@@ -226,7 +227,10 @@ function Quote({f, len, line}) {
 
 // the map of Peru: Lima, Pucallpa, Panguana, the crash site; a route draws on its word
 const PLACES = {lima: [-77.04, -12.05, 'LIMA', -1], pucallpa: [-74.55, -8.38, 'PUCALLPA', 1], panguana: [-74.94, -9.61, 'PANGUANA', -1], crash: [-74.8, -9.3, 'CRASH SITE', 1],
-  puerto_inca: [-74.96, -9.38, 'PUERTO INCA', -1], tournavista: [-74.70, -8.93, 'TOURNAVISTA', 1], kiel: [10.13, 54.32, 'KIEL, GERMANY', 1]};
+  puerto_inca: [-74.96, -9.38, 'PUERTO INCA', -1], tournavista: [-74.70, -8.93, 'TOURNAVISTA', 1], kiel: [10.13, 54.32, 'KIEL, GERMANY', 1],
+  // Storygraphics #2 (Pisces III)
+  britain: [-4.6, 50.8, 'BRITAIN', 1], canada: [-63.6, 44.7, 'CANADA', -1], cork: [-8.47, 51.9, 'CORK', 1], site: [-8.6, 49.8, 'PISCES III', -1],
+  california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1]};
 function Map({f, len, line}) {
   const p = P(line);
   const [clon, clat] = p.center || [-75.6, -10.2];
@@ -244,7 +248,7 @@ function Map({f, len, line}) {
         <path d={LAND} fill="#9BC88B" stroke={INK} strokeWidth={5} vectorEffect="non-scaling-stroke" />
         <path d={RIVERS} fill="none" stroke="#3B82F6" strokeWidth={4} vectorEffect="non-scaling-stroke" />
       </g>
-      <text x={sx(-75.2)} y={sy(-11.4)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={90} fill="#fff" opacity={0.55} stroke={INK} strokeWidth={4} paintOrder="stroke">PERU</text>
+      {(p.country || [['PERU', -75.2, -11.4]]).map(([nm, lo, la], i) => <text key={i} x={sx(lo)} y={sy(la)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={90} fill="#fff" opacity={0.55} stroke={INK} strokeWidth={4} paintOrder="stroke">{nm}</text>)}
       {route && (() => { const [a, b] = route; const x1 = sx(a[0]), y1 = sy(a[1]), x2 = sx(b[0]), y2 = sy(b[1]); const len2 = Math.hypot(x2 - x1, y2 - y1); const d = lin(f, ra, ra + 50, 0, len2);
         return <path d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#E3232C" strokeWidth={10} strokeDasharray={`${d} ${len2}`} strokeLinecap="round" />; })()}
       {pins.map((pl, i) => { const a = at(line, (p.pin_on || [])[i] || '', 0.15 + i * 0.15); const s = clamp(pop(f, a, 150, 12), 0, 1.15);

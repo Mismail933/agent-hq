@@ -5,6 +5,7 @@ import {AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate}
 import {W, H, INK, ST, st, clamp, lin, pop, rng, ease, Box, Label, Head, Bust, SeatBack, Plane, Bolt, Cloud, Canopy} from './tis';
 import {JulianeArt} from './Thumb';
 import {STORY_SHOTS, DayCard, DayCorner} from './jungle';
+import {OCEAN_SHOTS} from './ocean';
 import {FONT_CSS} from './fonts';
 
 // the frame (inside the line) where a word is said; fallback = a fraction of the line
@@ -281,7 +282,7 @@ function Title({f, len, line}) {
 }
 
 const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
-  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS};
+  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS};
 
 const ShotLayer = ({line, len}) => {
   const f = useCurrentFrame();

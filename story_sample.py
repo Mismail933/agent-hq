@@ -42,7 +42,7 @@ def say(m):
 # ---- voice ------------------------------------------------------------------------------
 # the owner (2026-10-17): the even 0.92 read was "a bit boring"; he picked the sample read faster in action and calmer in sad
 # moments. A line's pace: p.speed if given, else by its scene: action > base > emotional.
-ACTION = {"lightning", "breakup", "falling", "shaking", "storm_window", "planes", "injuries"}
+ACTION = {"lightning", "breakup", "falling", "shaking", "storm_window", "planes", "injuries", "snag", "flood", "sink"}
 
 
 def pace_of(ln, base):
@@ -383,95 +383,98 @@ def make_sound(lines, total):
                 return s
         return l["t_start"] + (l["t_end"] - l["t_start"]) * frac
 
-    # music: a calm minor pad, tension from the storm, nothing but wind in the fall, a lonely figure in the jungle, a hit on the title
-    calm = [(50, 53, 57, 62), (46, 50, 53, 58), (48, 52, 55, 60), (45, 49, 52, 57)]
-    storm = T("storm_window") or total
-    bed(music, 0.0, storm + 1.0, calm, 4.0, 0.10)
-    tense = [(50, 53, 56, 62), (49, 52, 56, 61)]
-    t, k = storm, 0
-    breakup = T("breakup") or total
-    bed(music, storm - 0.6, breakup + 0.3, tense, 2.0, 0.12)
-    while t < breakup:
-        n = int(0.5 * SR)
-        for b in np.arange(t, min(breakup, t + 2.0), 0.5):   # a low pulse, like a heartbeat
-            put(music, b, np.sin(2 * np.pi * 55 * np.arange(n) / SR) * np.exp(-np.arange(n) / SR * 7), 0.22)
-        t += 2.0
-        k += 1
-    wake = T("wake") or total
-    if T("wake"):
-        for j, m in enumerate([74, 77, 81, 79, 77, 74]):
-            n = int(1.6 * SR)
+    if any(l["shot"] in OPENING for l in lines):   # Juliane's opening (2.49.0); another story starts with its own scenes
+        # music: a calm minor pad, tension from the storm, nothing but wind in the fall, a lonely figure in the jungle, a hit on the title
+        calm = [(50, 53, 57, 62), (46, 50, 53, 58), (48, 52, 55, 60), (45, 49, 52, 57)]
+        storm = T("storm_window") or total
+        bed(music, 0.0, storm + 1.0, calm, 4.0, 0.10)
+        tense = [(50, 53, 56, 62), (49, 52, 56, 61)]
+        t, k = storm, 0
+        breakup = T("breakup") or total
+        bed(music, storm - 0.6, breakup + 0.3, tense, 2.0, 0.12)
+        while t < breakup:
+            n = int(0.5 * SR)
+            for b in np.arange(t, min(breakup, t + 2.0), 0.5):   # a low pulse, like a heartbeat
+                put(music, b, np.sin(2 * np.pi * 55 * np.arange(n) / SR) * np.exp(-np.arange(n) / SR * 7), 0.22)
+            t += 2.0
+            k += 1
+        wake = T("wake") or total
+        if T("wake"):
+            for j, m in enumerate([74, 77, 81, 79, 77, 74]):
+                n = int(1.6 * SR)
+                tt = np.arange(n) / SR
+                put(music, wake + 0.6 + j * 0.8, np.sin(2 * np.pi * midi(m) * tt) * np.exp(-tt * 2.4), 0.06)
+            pad(music, wake, T("title") or total, (50, 57, 62), 0.05)
+        if T("title"):
+            ti = T("title")
+            n = int(1.8 * SR)
             tt = np.arange(n) / SR
-            put(music, wake + 0.6 + j * 0.8, np.sin(2 * np.pi * midi(m) * tt) * np.exp(-tt * 2.4), 0.06)
-        pad(music, wake, T("title") or total, (50, 57, 62), 0.05)
-    if T("title"):
-        ti = T("title")
-        n = int(1.8 * SR)
-        tt = np.arange(n) / SR
-        put(music, word_t("title", "survived") or ti, np.sin(2 * np.pi * (50 - 20 * tt) * tt) * np.exp(-tt * 2.5), 0.6)
-        idx = [l["shot"] for l in lines].index("title")
-        title_end = lines[idx + 1]["t_start"] - 0.2 if idx + 1 < len(lines) else total + 0.5
-        pad(music, ti, title_end, (50, 54, 57, 62), 0.12)
-    # sound effects
-    eng_end = breakup
-    n = int(eng_end * SR)
-    if n > 0:
-        hum = band(noise(eng_end), 60, 400) * 0.06 + np.sin(2 * np.pi * 96 * np.arange(n) / SR) * 0.02
-        put(sfx, 0, hum * env(n, SR, int(0.3 * SR)))
-    rain0 = T("storm_window")
-    if rain0:
-        r_end = T("falling") or total
-        n = int((r_end - rain0) * SR)
-        put(sfx, rain0, band(noise(r_end - rain0), 1500, 7000) * env(n, int(2 * SR), int(0.5 * SR)), 0.05)
-        for tt0 in (rain0 + 2.0, (T("shaking") or rain0) + 0.3):   # thunder
+            put(music, word_t("title", "survived") or ti, np.sin(2 * np.pi * (50 - 20 * tt) * tt) * np.exp(-tt * 2.5), 0.6)
+            idx = [l["shot"] for l in lines].index("title")
+            title_end = lines[idx + 1]["t_start"] - 0.2 if idx + 1 < len(lines) else total + 0.5
+            pad(music, ti, title_end, (50, 54, 57, 62), 0.12)
+        # sound effects
+        eng_end = breakup
+        n = int(eng_end * SR)
+        if n > 0:
+            hum = band(noise(eng_end), 60, 400) * 0.06 + np.sin(2 * np.pi * 96 * np.arange(n) / SR) * 0.02
+            put(sfx, 0, hum * env(n, SR, int(0.3 * SR)))
+        rain0 = T("storm_window")
+        if rain0:
+            r_end = T("falling") or total
+            n = int((r_end - rain0) * SR)
+            put(sfx, rain0, band(noise(r_end - rain0), 1500, 7000) * env(n, int(2 * SR), int(0.5 * SR)), 0.05)
+            for tt0 in (rain0 + 2.0, (T("shaking") or rain0) + 0.3):   # thunder
+                m = int(3 * SR)
+                put(sfx, tt0, band(noise(3), 20, 180) * np.exp(-np.arange(m) / SR * 1.2) * env(m, int(0.15 * SR), 0), 0.9)
+        if T("shaking"):
+            s0 = T("shaking")
+            for j, dt in enumerate([0.5, 0.9, 1.4, 1.8, 2.3, 2.8]):   # bags and presents landing
+                m = int(0.25 * SR)
+                put(sfx, s0 + dt, band(noise(0.25), 60, 900) * np.exp(-np.arange(m) / SR * 25), 0.5)
+        fl = word_t("lightning", "flash")
+        if fl:
+            m = int(0.6 * SR)
+            put(sfx, fl, band(noise(0.6), 2000, 12000) * np.exp(-np.arange(m) / SR * 9), 0.9)
+            m = int(4 * SR)
+            put(sfx, fl + 0.15, band(noise(4), 20, 160) * np.exp(-np.arange(m) / SR * 0.9), 1.2)
+        br = word_t("breakup", "breaks")
+        if br:
+            m = int(1.2 * SR)
+            tt = np.arange(m) / SR
+            tear = np.sin(2 * np.pi * np.cumsum(300 - 200 * tt / 1.2 + 40 * np.sin(2 * np.pi * 13 * tt)) / SR) * env(m, 800, int(0.3 * SR))
+            put(sfx, br - 0.2, tear, 0.25)
             m = int(3 * SR)
-            put(sfx, tt0, band(noise(3), 20, 180) * np.exp(-np.arange(m) / SR * 1.2) * env(m, int(0.15 * SR), 0), 0.9)
-    if T("shaking"):
-        s0 = T("shaking")
-        for j, dt in enumerate([0.5, 0.9, 1.4, 1.8, 2.3, 2.8]):   # bags and presents landing
-            m = int(0.25 * SR)
-            put(sfx, s0 + dt, band(noise(0.25), 60, 900) * np.exp(-np.arange(m) / SR * 25), 0.5)
-    fl = word_t("lightning", "flash")
-    if fl:
-        m = int(0.6 * SR)
-        put(sfx, fl, band(noise(0.6), 2000, 12000) * np.exp(-np.arange(m) / SR * 9), 0.9)
-        m = int(4 * SR)
-        put(sfx, fl + 0.15, band(noise(4), 20, 160) * np.exp(-np.arange(m) / SR * 0.9), 1.2)
-    br = word_t("breakup", "breaks")
-    if br:
-        m = int(1.2 * SR)
-        tt = np.arange(m) / SR
-        tear = np.sin(2 * np.pi * np.cumsum(300 - 200 * tt / 1.2 + 40 * np.sin(2 * np.pi * 13 * tt)) / SR) * env(m, 800, int(0.3 * SR))
-        put(sfx, br - 0.2, tear, 0.25)
-        m = int(3 * SR)
-        put(sfx, br, band(noise(3), 20, 300) * np.exp(-np.arange(m) / SR * 1.4), 1.4)
-    if T("falling"):
-        f0, f1 = T("falling"), T("falling", "t_end") + EXTRA["falling"]
-        m = int((f1 - f0) * SR)
-        wind = band(noise(f1 - f0), 200, 2500) * np.linspace(0.4, 1.0, m) * env(m, int(0.4 * SR), int(0.2 * SR))
-        put(sfx, f0 - 0.3, wind, 0.35)
-    if T("wake"):
-        w0, w1 = T("wake"), (T("title") or total)
-        m = int((w1 - w0) * SR)
-        put(sfx, w0, band(noise(w1 - w0), 4000, 9000) * (0.5 + 0.5 * np.sin(2 * np.pi * 6 * np.arange(m) / SR)) * env(m, SR, SR), 0.012)
-        for j in range(3):   # a few birds, far away
-            c = w0 + 0.8 + j * 1.6 + rng.uniform(0, 0.4)
-            m2 = int(0.18 * SR)
-            tt = np.arange(m2) / SR
-            put(sfx, c, band(np.sin(2 * np.pi * np.cumsum(2600 + 1400 * np.sin(2 * np.pi * 9 * tt)) / SR), None, 3500) * env(m2, 400, 3000), 0.025)
-    if T("title"):
-        for wd in ("survived", "fall"):
-            tw = word_t("title", wd)
-            if tw:
-                m = int(0.5 * SR)
-                tt = np.arange(m) / SR
-                put(sfx, tw - 0.15, band(noise(0.5), 400, 4000) * np.sin(np.pi * tt / 0.5) ** 2, 0.25)
+            put(sfx, br, band(noise(3), 20, 300) * np.exp(-np.arange(m) / SR * 1.4), 1.4)
+        if T("falling"):
+            f0, f1 = T("falling"), T("falling", "t_end") + EXTRA["falling"]
+            m = int((f1 - f0) * SR)
+            wind = band(noise(f1 - f0), 200, 2500) * np.linspace(0.4, 1.0, m) * env(m, int(0.4 * SR), int(0.2 * SR))
+            put(sfx, f0 - 0.3, wind, 0.35)
+        if T("wake"):
+            w0, w1 = T("wake"), (T("title") or total)
+            m = int((w1 - w0) * SR)
+            put(sfx, w0, band(noise(w1 - w0), 4000, 9000) * (0.5 + 0.5 * np.sin(2 * np.pi * 6 * np.arange(m) / SR)) * env(m, SR, SR), 0.012)
+            for j in range(3):   # a few birds, far away
+                c = w0 + 0.8 + j * 1.6 + rng.uniform(0, 0.4)
+                m2 = int(0.18 * SR)
+                tt = np.arange(m2) / SR
+                put(sfx, c, band(np.sin(2 * np.pi * np.cumsum(2600 + 1400 * np.sin(2 * np.pi * 9 * tt)) / SR), None, 3500) * env(m2, 400, 3000), 0.025)
+        if T("title"):
+            for wd in ("survived", "fall"):
+                tw = word_t("title", wd)
+                if tw:
+                    m = int(0.5 * SR)
+                    tt = np.arange(m) / SR
+                    put(sfx, tw - 0.15, band(noise(0.5), 400, 4000) * np.sin(np.pi * tt / 0.5) ** 2, 0.25)
     scene_sound(lines, total, music, sfx)
     return music, sfx
 
 
 OPENING = {"aerial", "cabin", "father", "storm_window", "shaking", "lightning", "mother", "breakup", "falling", "wake", "title"}
 JUNGLE = {"jungle", "wade", "seats3", "hut", "planes", "today", "close", "quote"}
+OCEAN_SURFACE = {"sea_open", "hoist", "snag"}             # Storygraphics #2 (ocean.jsx): waves, no gulls
+OCEAN_DEEP = {"cabin_ball", "flood", "sink", "trapped"}   # under the water: a deep rumble
 MOODS = {"tense": [(48, 51, 55, 60), (46, 50, 53, 58)], "night": [(45, 48, 52, 57), (44, 47, 50, 56)], "sad": [(45, 48, 52, 57), (41, 45, 48, 53)],
          "hope": [(48, 52, 55, 60), (53, 57, 60, 65), (50, 53, 57, 62), (55, 59, 62, 67)], "facts": [(50, 53, 57, 62), (48, 52, 55, 60)]}
 
@@ -548,6 +551,36 @@ def scene_sound(lines, total, music, sfx):
                 m2 = int(0.16 * SR)
                 t2 = np.arange(m2) / SR
                 put(sfx, t0 + dur * 0.5 + rng.uniform(-0.5, 0.5), band(np.sin(2 * np.pi * np.cumsum(2400 + 1200 * np.sin(2 * np.pi * 8 * t2)) / SR), None, 3500) * env(m2, 400, 3000), 0.015)
+        if l["shot"] in OCEAN_SURFACE:   # the open sea: a low wash of waves
+            put(sfx, t0, band(noise(dur), 90, 900) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.15 * tt)) * fade, 0.03)
+        if l["shot"] in OCEAN_DEEP:   # under the water: a deep, slow rumble
+            put(sfx, t0, band(noise(dur), 25, 160) * (0.8 + 0.2 * np.sin(2 * np.pi * 0.1 * tt)) * fade, 0.06)
+        wt = lambda w: next((s for x, s, e in l["words"] if re.sub(r"[^a-z0-9]", "", x.lower()).startswith(w)), None)
+        if l["shot"] == "snag" and wt("rips") is not None:   # metal tearing, and a thump
+            m = int(0.5 * SR)
+            th = np.arange(m) / SR
+            put(sfx, wt("rips"), band(noise(0.5), 700, 6000) * np.exp(-th * 9), 0.25)
+            put(sfx, wt("rips"), band(noise(0.5), 30, 220) * np.exp(-th * 6), 0.5)
+        if l["shot"] == "flood" and wt("floods") is not None:   # the water rushing in
+            s0 = wt("floods")
+            d = max(0.5, min(dur - (s0 - t0), 3.5))
+            put(sfx, s0, band(noise(d), 200, 2600) * env(int(d * SR), int(0.3 * SR), int(0.8 * SR)), 0.1)
+        if l["shot"] == "sink":
+            for c in np.arange(0.3, dur - 0.3, 0.45):   # bubbles
+                m2 = int(0.08 * SR)
+                t2 = np.arange(m2) / SR
+                put(sfx, t0 + c + rng.uniform(0, 0.2), np.sin(2 * np.pi * (500 + 900 * t2 / 0.08) * t2) * env(m2, 60, 600), 0.015)
+            hb = wt("bottom")
+            if hb is not None:   # the hit on the seabed
+                m = int(1.4 * SR)
+                th = np.arange(m) / SR
+                put(sfx, hb, band(noise(1.4), 20, 180) * np.exp(-th * 2.6), 0.9)
+                put(sfx, hb + 0.05, band(noise(1.4), 300, 2500) * np.exp(-th * 4), 0.08)
+        if l["shot"] == "trapped":   # a slow drip in the dark
+            for c in np.arange(0.6, dur - 0.2, 1.7):
+                m2 = int(0.12 * SR)
+                t2 = np.arange(m2) / SR
+                put(sfx, t0 + c, np.sin(2 * np.pi * 1700 * t2) * np.exp(-t2 * 40), 0.02)
         if l["shot"] in ("wade", "canoe", "hut") or p.get("water"):
             put(sfx, t0, band(noise(dur), 300, 2200) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.4 * tt)) * env(n, int(0.8 * SR), int(0.8 * SR)), 0.025)
         if p.get("rain"):

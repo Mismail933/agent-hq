@@ -104,6 +104,10 @@ export const CAST = {
   worker3: {hair: '#2A1A10', hairLight: '#4A3020', brow: '#1A0F08', dress: '#B45309', dressShade: '#8A3F07', style: 'short', mustache: true, skin: 'tan'},
   doctor: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#F8FAFC', dressShade: '#DDE3EA', style: 'short', glasses: true},
   juliane_now: {hair: '#8A7A6A', hairLight: '#A89888', brow: '#5A4A3A', dress: '#3F6E5A', dressShade: '#2E5444', style: 'bob', glasses: true, lips: true},
+  chapman: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#1F3A5F', dressShade: '#16293F', style: 'short'},   // Storygraphics #2 (Pisces III)
+  mallinson: {hair: '#6B4423', hairLight: '#8A5A30', brow: '#4A2E17', dress: '#7C2D12', dressShade: '#5C210D', style: 'short', mustache: true},
+  chapman_old: {hair: '#9CA3AF', hairLight: '#D1D5DB', brow: '#6B7280', dress: '#1F3A5F', dressShade: '#16293F', style: 'short'},
+  mallinson_old: {hair: '#D1D5DB', hairLight: '#F3F4F6', brow: '#9CA3AF', dress: '#7C2D12', dressShade: '#5C210D', style: 'short', mustache: true, glasses: true},
   pilot: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#E5E7EB', dressShade: '#C9CDD3', style: 'short', hat: 'cap', mustache: true},
 };
 
