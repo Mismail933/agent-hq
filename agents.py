@@ -1346,6 +1346,15 @@ def apply_edits(data, edits):
             continue
         _path_set(data, ed["field"], s.replace(ed["find"], ed.get("replace", ""), 1))
         applied.append(ed)
+
+    def drop_blanks(x):   # an entry emptied by an edit (a cut number) goes, instead of staying as a blank card
+        if isinstance(x, list):
+            return [drop_blanks(v) for v in x if not (isinstance(v, str) and not v.strip())]
+        if isinstance(x, dict):
+            return {k: drop_blanks(v) for k, v in x.items()}
+        return x
+    for k in list(data):
+        data[k] = drop_blanks(data[k])
     return applied, failed
 
 
