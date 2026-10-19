@@ -376,8 +376,8 @@ def bed(bus, t0, t1, chords, step, gain, fade=1.6):
 
 def make_sound(lines, total):
     N = int((total + 1) * SR)
-    music, sfx = np.zeros(N), np.zeros(N)
-    AMB[0] = np.zeros(N)   # the calm beds (2.55.2), mixed at a steady level under the narrator
+    music, sfx = np.zeros(N, dtype=np.float32), np.zeros(N, dtype=np.float32)   # float32: a 20-minute track is 230 MB a bus, not 460
+    AMB[0] = np.zeros(N, dtype=np.float32)   # the calm beds (2.55.2), mixed at a steady level under the narrator
     by = {l["shot"]: l for l in lines}
     T = lambda shot, k="t_start": by[shot][k] if shot in by else None
 
@@ -779,6 +779,9 @@ GAP_MAX_DB = -10.0       # accents in a pause (was -6: the 2.55.1 opening's hits
 AMB_UNDER_DB = -28.0     # the background beds, steady, all the time (2.55.2: "background noises who are relaxing")
 
 
+BLK = SR // 100   # 2.59.1: every level is measured on 10 ms blocks (a 20-minute mix at 48 kHz ran out of memory sample by sample)
+
+
 def _avg(x, win):
     """A centred moving average in O(n) (running sum); np.convolve is O(n*win) and takes hours on a 10-minute track."""
     win = max(1, int(win))
@@ -789,33 +792,56 @@ def _avg(x, win):
     return (c[b] - c[a]) / np.maximum(1, b - a)
 
 
+def _ms(x):
+    """The mean square of every 10 ms block, read in chunks (no full-length float64 copy of the track)."""
+    n = -(-len(x) // BLK)
+    out = np.empty(n)
+    step = BLK * 10000
+    for i in range(0, len(x), step):
+        seg = np.asarray(x[i:i + step], dtype=np.float64)
+        k = -(-len(seg) // BLK)
+        if k * BLK > len(seg):
+            seg = np.concatenate([seg, np.zeros(k * BLK - len(seg))])
+        out[i // BLK:i // BLK + k] = np.mean((seg * seg).reshape(k, BLK), 1)
+    return out
+
+
 def _rms(x, win):
-    return np.sqrt(_avg(x * x, win) + 1e-12)
+    """The RMS over `win` samples, one value per 10 ms block."""
+    return np.sqrt(_avg(_ms(x), max(1, win // BLK)) + 1e-12)
 
 
 def _smooth_gain(g, win):
-    """The gain a moment needs, applied early enough: the lowest gain within half a window either side (in 10 ms blocks), so a
+    """The gain a moment needs (one per 10 ms block), applied early enough: the lowest gain within half a window either side, so a
     sudden sound is already turned down when it starts (an average let the day-change hit through at +2.3 dB), then 30 ms smoothing."""
-    block = int(0.01 * SR)
-    n = len(g)
-    nb = -(-n // block)
-    gp = np.concatenate([g, np.ones(nb * block - n)])
-    gb = gp.reshape(nb, block).min(1)
-    k = max(1, (win // block) // 2)
-    pad = np.concatenate([np.ones(k), gb, np.ones(k)])
-    m = gb.copy()
+    nb = len(g)
+    k = max(1, (win // BLK) // 2)
+    pad = np.concatenate([np.ones(k), g, np.ones(k)])
+    m = np.array(g, dtype=np.float64)
     for s in range(1, k + 1):
         m = np.minimum(m, np.minimum(pad[k - s:k - s + nb], pad[k + s:k + s + nb]))
-    m = np.minimum(m, _avg(m, 3))
-    return np.repeat(m, block)[:n]
+    return np.minimum(m, _avg(m, 3))
+
+
+def _apply(bus, gb):
+    """bus *= the block gains (eased from block to block), in place and in chunks."""
+    n = len(bus)
+    xs = (np.arange(len(gb)) + 0.5) * BLK
+    step = BLK * 10000
+    for i in range(0, n, step):
+        j = min(n, i + step)
+        bus[i:j] *= np.interp(np.arange(i, j, dtype=np.float64), xs, gb).astype(bus.dtype)
+    return bus
 
 
 def _held_level(voice, block=0.1, thr=0.02):
-    """The narrator's speech level (RMS over 1.5 s of voiced 100 ms blocks only), carried through every pause unchanged."""
-    w = int(block * SR)
-    n = -(-len(voice) // w)
-    x = np.concatenate([voice, np.zeros(n * w - len(voice))]).reshape(n, w)
-    r = np.sqrt(np.mean(x * x, 1) + 1e-12)
+    """The narrator's speech level (RMS over 1.5 s of voiced 100 ms blocks only), carried through every pause unchanged; one value
+    per 10 ms block."""
+    ms = _ms(voice)
+    w = max(1, int(block * SR) // BLK)
+    n = -(-len(ms) // w)
+    x = np.concatenate([ms, np.zeros(n * w - len(ms))]).reshape(n, w)
+    r = np.sqrt(np.mean(x, 1) + 1e-12)
     on = r > thr
     lvl = np.zeros(n)
     k = max(1, int(1.5 / block))
@@ -829,26 +855,26 @@ def _held_level(voice, block=0.1, thr=0.02):
         lvl[i] = last
     first = np.argmax(on) if on.any() else n
     lvl[:first] = lvl[first] if first < n else 0.0   # before he first speaks: his first line's level
-    return np.repeat(lvl, w)[:len(voice)]
+    return np.repeat(lvl, w)[:len(ms)]
 
 
 def hold_under(bus, voice_rms, speaking, voice_level, under_db, gap_db, win):
     r = _rms(bus, win)
     cap = np.where(speaking, voice_rms * 10 ** (under_db / 20), voice_level * 10 ** (gap_db / 20))
     g = np.minimum(1.0, cap / r)
-    return bus * _smooth_gain(g, win)
+    return _apply(bus, _smooth_gain(g, win))
 
 
 def loudness_report(voice, music, sfx, win):
     """Per 0.4 s window: the effects (and music) against the voice, in dB. The worst moments, so 'never louder' is measured."""
-    hop = win
+    hop = max(1, win // BLK)
     rows = []
     vr, mr, sr_ = _rms(voice, win), _rms(music, win), _rms(sfx, win)
     level = np.percentile(vr[vr > 1e-3], 70) if np.any(vr > 1e-3) else 1e-3
-    for i in range(0, len(voice), hop):
+    for i in range(0, len(vr), hop):
         v = vr[i]
         ref = v if v > level * 0.25 else level   # in a pause, compare with the narrator's usual level
-        rows.append((i / SR, 20 * np.log10((sr_[i] + 1e-9) / ref), 20 * np.log10((mr[i] + 1e-9) / ref), v > level * 0.25))
+        rows.append((i * BLK / SR, 20 * np.log10((sr_[i] + 1e-9) / ref), 20 * np.log10((mr[i] + 1e-9) / ref), v > level * 0.25))
     worst_sfx = max(rows, key=lambda r: r[1])
     worst_music = max(rows, key=lambda r: r[2])
     return {"effects_max_db_vs_voice": round(float(worst_sfx[1]), 1), "effects_max_at_s": round(worst_sfx[0], 1),
@@ -858,13 +884,13 @@ def loudness_report(voice, music, sfx, win):
 
 def mix(lines, voiced, music, sfx, folder):
     N = len(music)
-    voice = np.zeros(N)
+    voice = np.zeros(N, dtype=np.float32)
     for l, v in zip(lines, voiced):
         put(voice, l["t_start"], v["audio"])
     voice *= 0.7 / (np.max(np.abs(voice)) + 1e-9)   # ONE gain for the narration: each line used to be levelled on its own, so inside
     #                                                  a take a soft line jumped up to a loud one's level (it didn't sound continuous)
     win = int(0.4 * SR)
-    vr = _rms(voice, win)
+    vr = _rms(voice, win)   # 2.59.1: levels are one value per 10 ms block (BLK); gains are applied to the buses in place
     speaking = vr > 0.02
     level = float(np.percentile(vr[speaking], 70)) if np.any(speaking) else 0.1
     # music: a STEADY level under his usual voice (it rose in every pause and dropped when he spoke: it pumped), slow gain only
@@ -875,22 +901,23 @@ def mix(lines, voiced, music, sfx, folder):
     # held through the pauses: the music stays steady between lines.
     gm = np.minimum(1.0, level * 10 ** (MUSIC_UNDER_DB / 20) / mr)
     gm = np.minimum(gm, np.where(vs > 0.02, vs * 10 ** (-12.0 / 20) / mr, 1.0))
-    music = music * _avg(_smooth_gain(gm, int(1.0 * SR)), int(1.5 * SR))
+    _apply(music, _avg(_smooth_gain(gm, int(1.0 * SR)), int(1.5 * SR) // BLK))
     if SOUND.get("music_gain_db"):   # the sound agent's nudge (only down: the steady -18 dB is the ceiling)
-        music = music * 10 ** (min(0.0, float(SOUND["music_gain_db"])) / 20)
+        music *= np.float32(10 ** (min(0.0, float(SOUND["music_gain_db"])) / 20))
     # and a guard for short notes (the wake-up melody) that a 1.5 s average doesn't see: never within 9 dB of the voice while he
     # speaks (his level over 1 s, so it doesn't follow every syllable) nor above his usual level -8 dB in a pause
     v1 = _rms(voice, int(1.0 * SR))
-    music = hold_under(music, v1, v1 > 0.02, level, -9.0, -8.0, win)
-    sfx = hold_under(sfx, vr, speaking, level, float(SOUND.get("accent_under_db", UNDER_VOICE_DB)), float(SOUND.get("accent_gap_db", GAP_MAX_DB)), win)
-    amb = AMB[0] if AMB[0] is not None and len(AMB[0]) == N else np.zeros(N)
+    hold_under(music, v1, v1 > 0.02, level, -9.0, -8.0, win)
+    hold_under(sfx, vr, speaking, level, float(SOUND.get("accent_under_db", UNDER_VOICE_DB)), float(SOUND.get("accent_gap_db", GAP_MAX_DB)), win)
+    amb = AMB[0] if AMB[0] is not None and len(AMB[0]) == N else np.zeros(N, dtype=np.float32)
     amb_under = float(SOUND.get("bed_under_db", AMB_UNDER_DB))
-    on = np.abs(amb) > 1e-7
+    ams = _ms(amb)
+    on = ams > 1e-14
     amb_db = None
     if on.any():   # one steady gain: the beds sit AMB_UNDER_DB under his usual level whether he speaks or not (no swelling)
-        amb = amb * (level * 10 ** (amb_under / 20) / float(np.sqrt(np.mean(amb[on] ** 2))))
-        amb = hold_under(amb, vr, speaking, level, amb_under + 6, amb_under + 6, win)   # and no loud moment in a recording
-        amb_db = round(20 * np.log10(float(np.sqrt(np.mean(amb[on] ** 2))) / level), 1)
+        amb *= np.float32(level * 10 ** (amb_under / 20) / float(np.sqrt(np.mean(ams[on]))))
+        hold_under(amb, vr, speaking, level, amb_under + 6, amb_under + 6, win)   # and no loud moment in a recording
+        amb_db = round(20 * np.log10(float(np.sqrt(np.mean(_ms(amb)[on]))) / level), 1)
     report = loudness_report(voice, music, sfx, win)
     report["background_db_vs_voice"] = amb_db
     report["accents"] = len(ACCENTS)
@@ -901,7 +928,7 @@ def mix(lines, voiced, music, sfx, folder):
     (folder / "placed.json").write_text(json.dumps({"level_rms": round(level, 5), "accents_at": ACCENTS, "placed": PLACED, "settings": SOUND},
                                                    indent=1), encoding="utf-8")
     out = voice + music + sfx + amb
-    out /= np.max(np.abs(out)) / 0.9
+    out *= np.float32(0.9 / np.max(np.abs(out)))
     raw = folder / "_mix_raw.wav"
     sf.write(str(raw), np.stack([out, out], 1).astype("float32"), SR)
     wav = folder / "mix.wav"

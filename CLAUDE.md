@@ -881,6 +881,10 @@ Agents never spend money without the owner's explicit approval.
   `ShotGrid` (Showcase.jsx, Root): contact sheets of many lines' scenes, one page per frame (`--sequence`), so a whole video's
   drawings are checked before any voice (scratchpad meg_grid.py: estimated word times, cells at a fraction of each line). Keep
   everything that matters above y 920: the captions cover the bottom band.
+  2.59.1: the mixer measures levels on 10 ms blocks (`BLK`; `_ms`, `_rms`, `_smooth_gain`, `_held_level` are block-rate) and applies
+  gains to float32 buses in place (`_apply`): the 20-minute Megalodon mix stopped with an ArrayMemoryError (several 460 MB float64
+  copies on this 8 GB PC). Same numbers as before on the Megalodon opening. A `quote` line needs `bg` other than jungle, or it gets
+  the rainforest bed (bed_kind treats quote as a jungle scene). Kokoro on this PC: ~20 s of compute per line; 118 lines took ~40 min.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes
