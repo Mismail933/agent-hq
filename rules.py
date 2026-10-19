@@ -21,12 +21,13 @@ import time
 
 import control_plane as cp
 
-AGENTS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana", "Omar")
+AGENTS = ("Doulya", "Sage", "Vera", "Serge", "Calina", "Scout", "Israa", "Rana", "Omar", "Sound")
 # The agents' own instructions: the code's text, replaceable as a whole (`hq prompt <agent> set --file ...`)
 PROMPT_TARGET = {"Doulya": ("agents", "DOULYA_SYSTEM"), "Sage": ("agents", "SAGE_SYSTEM"), "Vera": ("agents", "VERA_SYSTEM"),
                  "Serge": ("agents", "SERGE_SYSTEM"), "Calina": ("agents", "CALINA_SYSTEM_V3"), "Scout": ("quality", "SCOUT_SYSTEM"),
-                 "Israa": ("quality", "ISRAA_BASE"), "Rana": ("animator", "SYSTEM"), "Omar": ("omar", "OMAR_SYSTEM")}
-NOT_FORMATTED = {"Rana"}   # used as is (its braces are code examples, not placeholders)
+                 "Israa": ("quality", "ISRAA_BASE"), "Rana": ("animator", "SYSTEM"), "Omar": ("omar", "OMAR_SYSTEM"),
+                 "Sound": ("sound_agent", "SYSTEM")}
+NOT_FORMATTED = {"Rana", "Sound"}   # used as is (its braces are code examples, not placeholders)
 
 
 def _r(group, kind, default, low, high, label, target=None, scale=1):
@@ -111,6 +112,9 @@ RULES = {
     "check.stranger_script": _r("Review & quality", "bool", True, None, None, "The stranger test on scripts (off = not run)"),
     "check.stranger_video": _r("Review & quality", "bool", True, None, None, "The stranger test on finished videos (off = not run)"),
     "review.video": _r("Review & quality", "bool", True, None, None, "Israa reviews every finished video before the owner sees it"),
+    # THE SOUND & VOICE DIRECTOR (2.56.0, sound_agent.py)
+    "sound.rounds": _r("Sound & voice", "int", 2, 1, 4, "Times the sound director listens, fixes the mix by its settings and listens again", ("sound_agent", "ROUNDS")),
+    "sound.fix": _r("Sound & voice", "bool", True, None, None, "The sound director fixes the mix himself (levels, recordings, accents; off = notes only)"),
     "review.design": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's design options before the owner sees them (off = straight to the owner)"),
     "review.style_frames": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's style frames for a client's music video before the owner sees them (off = straight to the owner)"),
     "review.voice_versions": _r("Review & quality", "bool", True, None, None, "Israa reviews voice versions before the owner compares them"),

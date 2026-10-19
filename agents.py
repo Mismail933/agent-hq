@@ -47,6 +47,9 @@ REGISTRY = [
     ("Israa",  "Judgment",  "Quality reviewer",   "israa",  ["web_fetch", "web_search", "read_files"]),
     ("Ghassan", "Dev",      "In-house Builder",   "ghassan", ["edit_program"]),
     ("Omar",   "Marketing", "Social Media Manager", "omar", ["youtube_read"]),   # 2.44.0: read-only; never uploads or posts
+    # 2.56.0: the sound & voice director (sound_agent.py; "Sound" is a placeholder until the owner names him). Listens through
+    # Earshot and the narrator's numbers, fixes a story's mix by settings, gives voice notes; never re-voices, never spends.
+    ("Sound",  "Content",   "Sound & Voice Director", "sound", ["listen", "mix_settings"]),
     # Richard runs as a daily cloud routine (richard/RICHARD.md) and only proposes; lnd.py brings his ideas in.
     ("Richard", "Learning & Dev", "L&D Lead",     "richard", []),
 ]

@@ -506,6 +506,8 @@ def mood_of(l):
 # soundlib) and the music (Scott Buckley, CC BY 4.0) are on this PC, scenes get recorded sounds and real tracks; anything not found
 # falls back to the old made-up sound. USED lists every file a video used (credits.txt, and no sound twice in a row).
 USED = []
+PLACED = []        # every recorded sound placed: {t, dur, role bed|accent, for (what it was searched for), file} (2.56.0: the sound agent's map)
+SOUND = {}         # the spec's "sound" settings (2.56.0): the sound agent's fixes, read by scene_sound and mix
 MOOD_TRACK = {}
 TRACK_POS = {}
 SEED = [0]
@@ -583,6 +585,7 @@ def real(bus, t, queries, dur=None, gain=0.3, fade_in=0.02, fade_out=0.3, loop=F
     n = len(seg)
     put(bus, t, seg * env(n, int(fade_in * SR), int(fade_out * SR)), gain)
     USED.append(r["f"])
+    PLACED.append({"t": round(t, 2), "dur": round(n / SR, 2), "role": "accent" if hit else "bed", "for": queries[0], "file": r["f"]})
     return True
 
 
@@ -677,6 +680,9 @@ def scene_sound(lines, total, music, sfx):
             kinds.append([t0, t1, k])
     for r0, r1, k in kinds:
         q, lo, hi = BEDS[k]
+        if k in (SOUND.get("no_beds") or []):
+            continue
+        q = (SOUND.get("beds") or {}).get(k) or q   # the sound agent may ask for another recording for a place
         a0 = max(0.0, r0 - 0.8)
         real(AMB[0], a0, q, min(total, r1 + 0.8) - a0, 1.0, 2.0, 2.0, loop=True, level=0.1, keep=True, band_hz=(lo, hi))
     last = -9.0
@@ -701,12 +707,27 @@ def scene_sound(lines, total, music, sfx):
             acc = (t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.7, {"k": 1})
         elif l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
             acc = (t0 + 0.3, ["helicopter"] if any(it.get("name") == "heli" for it in (p.get("items") or [])) else ["airplane", "propeller"], min(4.0, dur), 0.6, {})
+        if acc and (SOUND.get("accents") or {}).get(l["shot"]):   # another search for this scene's accent
+            acc = (acc[0], SOUND["accents"][l["shot"]], acc[2], acc[3], acc[4])
+        if acc and any(abs(acc[0] - float(d)) < 0.6 for d in (SOUND.get("drop_accents") or []) if not isinstance(d, str)):
+            acc = None
+        if acc and l["shot"] in [d for d in (SOUND.get("drop_accents") or []) if isinstance(d, str)]:
+            acc = None
         if acc and acc[0] - last >= 2.0:
-            if real(sfx, acc[0], acc[1], acc[2], acc[3], hit=True, **acc[4]):
+            if real(sfx, acc[0], acc[1], acc[2], acc[3] * float(SOUND.get("accent_gain", 1.0)), hit=True, **acc[4]):
                 last = acc[0]
                 ACCENTS.append(round(acc[0], 2))
         if p.get("day") not in (None,):
             day = p.get("day")
+    for x in SOUND.get("add_accents") or []:   # accents the sound agent adds: {line (1-based), word, for, gain}
+        try:
+            l = lines[int(x["line"]) - 1]
+        except (KeyError, ValueError, IndexError):
+            continue
+        w = re.sub(r"[^a-z0-9]", "", str(x.get("word", "")).lower())
+        at_ = next((s for wd, s, e in l["words"] if w and re.sub(r"[^a-z0-9]", "", wd.lower()).startswith(w)), l["t_start"] + 0.2)
+        if real(sfx, at_ - 0.03, [x.get("for") or "impact"], float(x.get("dur", 2.0)), float(x.get("gain", 0.7)), hit=True):
+            ACCENTS.append(round(at_, 2))
 
 
 # the calm beds: kind of place -> (searches, softening band in Hz). "deep" is the sea's own sound muffled, as it is under water.
@@ -813,21 +834,30 @@ def mix(lines, voiced, music, sfx, folder):
     gm = np.minimum(1.0, level * 10 ** (MUSIC_UNDER_DB / 20) / mr)
     gm = np.minimum(gm, np.where(vs > 0.02, vs * 10 ** (-12.0 / 20) / mr, 1.0))
     music = music * _avg(_smooth_gain(gm, int(1.0 * SR)), int(1.5 * SR))
+    if SOUND.get("music_gain_db"):   # the sound agent's nudge (only down: the steady -18 dB is the ceiling)
+        music = music * 10 ** (min(0.0, float(SOUND["music_gain_db"])) / 20)
     # and a guard for short notes (the wake-up melody) that a 1.5 s average doesn't see: never within 9 dB of the voice while he
     # speaks (his level over 1 s, so it doesn't follow every syllable) nor above his usual level -8 dB in a pause
     v1 = _rms(voice, int(1.0 * SR))
     music = hold_under(music, v1, v1 > 0.02, level, -9.0, -8.0, win)
-    sfx = hold_under(sfx, vr, speaking, level, UNDER_VOICE_DB, GAP_MAX_DB, win)
+    sfx = hold_under(sfx, vr, speaking, level, float(SOUND.get("accent_under_db", UNDER_VOICE_DB)), float(SOUND.get("accent_gap_db", GAP_MAX_DB)), win)
     amb = AMB[0] if AMB[0] is not None and len(AMB[0]) == N else np.zeros(N)
+    amb_under = float(SOUND.get("bed_under_db", AMB_UNDER_DB))
     on = np.abs(amb) > 1e-7
     amb_db = None
     if on.any():   # one steady gain: the beds sit AMB_UNDER_DB under his usual level whether he speaks or not (no swelling)
-        amb = amb * (level * 10 ** (AMB_UNDER_DB / 20) / float(np.sqrt(np.mean(amb[on] ** 2))))
-        amb = hold_under(amb, vr, speaking, level, AMB_UNDER_DB + 6, AMB_UNDER_DB + 6, win)   # and no loud moment in a recording
+        amb = amb * (level * 10 ** (amb_under / 20) / float(np.sqrt(np.mean(amb[on] ** 2))))
+        amb = hold_under(amb, vr, speaking, level, amb_under + 6, amb_under + 6, win)   # and no loud moment in a recording
         amb_db = round(20 * np.log10(float(np.sqrt(np.mean(amb[on] ** 2))) / level), 1)
     report = loudness_report(voice, music, sfx, win)
     report["background_db_vs_voice"] = amb_db
     report["accents"] = len(ACCENTS)
+    stems = folder / "stems"   # 2.56.0: each layer on its own, so the sound agent can listen to one at a time
+    stems.mkdir(exist_ok=True)
+    for name, x in (("voice", voice), ("music", music), ("beds", amb), ("accents", sfx)):
+        sf.write(str(stems / f"{name}.wav"), np.clip(x, -1, 1).astype("float32"), SR, subtype="PCM_16")
+    (folder / "placed.json").write_text(json.dumps({"level_rms": round(level, 5), "accents_at": ACCENTS, "placed": PLACED, "settings": SOUND},
+                                                   indent=1), encoding="utf-8")
     out = voice + music + sfx + amb
     out /= np.max(np.abs(out)) / 0.9
     raw = folder / "_mix_raw.wav"
@@ -874,6 +904,10 @@ def run(a, spec, folder):
     lines, total = timeline(spec, voiced)
     say(f"   {sum(len(l['words']) for l in lines)} words, {total:.1f} s")
     say("2. sound")
+    SOUND.clear()
+    SOUND.update(spec.get("sound") or {})
+    if SOUND:
+        say("   the sound agent's settings: " + json.dumps(SOUND)[:300])
     SEED[0] = int(hashlib.md5(str(spec.get("title", folder.name)).encode()).hexdigest()[:6], 16)
     music, sfx = make_sound(lines, total)
     for c in credits(folder):

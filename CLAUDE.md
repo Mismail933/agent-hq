@@ -958,6 +958,30 @@ Agents never spend money without the owner's explicit approval.
     (Stability Community Licence: free under $1M revenue, needs his Hugging Face login + registration + "Powered by Stability AI"),
     Freesound CC0 (needs his free account and API key), turning Gemini/FLUX pictures into flat SVG with vtracer (MIT; a look change:
     show him first).
+- The sound & voice director (2.56.0; the owner 2026-10-19: "can u get a professional sound and voice agent search github for that
+  to critic or give advises or make it himself", then "Yes, hire him and download Earshot"; he hasn't named him yet: "Sound" is a
+  placeholder; rename = `sound_agent.AGENT` + agents.REGISTRY + settings (MODELS key, WORKER_ENGINE/MODELS, allowance) + cp.WORKERS +
+  rules.AGENTS/PROMPT_TARGET, with agents.RETIRED mapping the old row). `sound_agent.py`:
+  - Ears = Earshot (github.com/Leonxlnx/earshot, MIT; models CLAP Apache-2.0 + AST BSD-3, ~1.1 GB; CPU only), cloned into
+    ~/.agent-hq-anim/earshot with its own venv (`.venv`, torch CPU; models in its `.cache/hf`). `earshot_probe.py` runs in that venv,
+    one process: measure + listening transcript of the finished video (synced to its cuts) + an annotated sheet PNG, a timeline of
+    each layer (stems/beds.wav, stems/accents.wav) and, for every placed sound, Earshot `match` of that moment against what it was
+    searched for. Plus `voice_numbers` (shorts venv): per line wpm, level, pitch range in semitones (flat < 3.5 st), level jumps,
+    cut-off starts/ends, and the script words Whisper can't hear in the finished mix.
+  - story_sample.py (2.56.0) saves `stems/` (voice, music, beds, accents), `placed.json` (each sound: time, role, what it was
+    searched for, file) and reads a spec's `"sound"` settings: bed_under_db, accent_under_db, accent_gap_db, accent_gain,
+    music_gain_db (down only), no_beds, beds {place: searches}, accents {shot: searches}, drop_accents [s or shot], add_accents
+    [{line, word, for}]. `sound_agent.clean_settings` keeps only those keys, in range.
+  - Judge: `SYSTEM` (the owner's sound taste in his own words + broadcast levels: voice first, Whisper 95%+, music 16-20 dB under,
+    beds 26-32 under, rare accents 14-18 under, nothing harsh 2-6 kHz) + `SCHEMA` (verdict, plain summary, problems with evidence,
+    settings, voice_notes with an Eleven v3 tag); Opus on the subscription ($4/day), Read on the sheet. `review()`: listen -> judge
+    -> merge his settings into the spec -> story_sample --prep (free) -> remux the video's audio -> listen again; rules
+    sound.rounds (2) and sound.fix. Never re-voices (credits), never touches the picture. Output: <sample folder>/listen/
+    (report.json/txt, earshot.json, sheet.png, review-N.json) + sound-review.md.
+  - Office: journaled job `sound_review` (`run_sound_review`, one at a time `SOUNDING`), `POST /api/sound {sample, video}`,
+    `hq sound <sample.json> [video.mp4]`, events sound_ready/sound_failed (WAKE_KINDS). Registry: dept Content.
+  - Earshot also has 201 code-made effects (`earshot sfx list/render`, a `calm` kit preset) and `skills/real-sound` (a full
+    professional soundtrack process); not wired in yet.
 - Atlas's notes (2.37.0): `atlas_engine.allow()` adds his journal and requests by absolute path (Edit + Write). The "./" rules are
   read against the shell's current folder; after Atlas cd'd into the program folder (2026-10-12) every edit was refused.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as
