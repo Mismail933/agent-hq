@@ -506,6 +506,7 @@ def mood_of(l):
 # soundlib) and the music (Scott Buckley, CC BY 4.0) are on this PC, scenes get recorded sounds and real tracks; anything not found
 # falls back to the old made-up sound. USED lists every file a video used (credits.txt, and no sound twice in a row).
 USED = []
+NEED = [None]      # what the next placed sound must sound like, in plain words (Tarek checks it with Earshot), set by its caller
 PLACED = []        # every recorded sound placed: {t, dur, role bed|accent, for (what it was searched for), file} (2.56.0: the sound agent's map)
 SOUND = {}         # the spec's "sound" settings (2.56.0): the sound agent's fixes, read by scene_sound and mix
 MOOD_TRACK = {}
@@ -585,7 +586,9 @@ def real(bus, t, queries, dur=None, gain=0.3, fade_in=0.02, fade_out=0.3, loop=F
     n = len(seg)
     put(bus, t, seg * env(n, int(fade_in * SR), int(fade_out * SR)), gain)
     USED.append(r["f"])
-    PLACED.append({"t": round(t, 2), "dur": round(n / SR, 2), "role": "accent" if hit else "bed", "for": queries[0], "file": r["f"]})
+    PLACED.append({"t": round(t, 2), "dur": round(n / SR, 2), "role": "accent" if hit else "bed", "for": queries[0], "file": r["f"],
+                   "need": NEED[0] or queries[0]})
+    NEED[0] = None
     return True
 
 
@@ -684,6 +687,7 @@ def scene_sound(lines, total, music, sfx):
             continue
         q = (SOUND.get("beds") or {}).get(k) or q   # the sound agent may ask for another recording for a place
         a0 = max(0.0, r0 - 0.8)
+        NEED[0] = NEEDS.get("bed:" + k)
         real(AMB[0], a0, q, min(total, r1 + 0.8) - a0, 1.0, 2.0, 2.0, loop=True, level=0.1, keep=True, band_hz=(lo, hi))
     last = -9.0
     for i, l in enumerate(lines):
@@ -714,6 +718,7 @@ def scene_sound(lines, total, music, sfx):
         if acc and l["shot"] in [d for d in (SOUND.get("drop_accents") or []) if isinstance(d, str)]:
             acc = None
         if acc and acc[0] - last >= 2.0:
+            NEED[0] = NEEDS.get("day" if (p.get("day") not in (None, "") and l["shot"] not in NEEDS) else l["shot"])
             if real(sfx, acc[0], acc[1], acc[2], acc[3] * float(SOUND.get("accent_gain", 1.0)), hit=True, **acc[4]):
                 last = acc[0]
                 ACCENTS.append(round(acc[0], 2))
@@ -726,10 +731,17 @@ def scene_sound(lines, total, music, sfx):
             continue
         w = re.sub(r"[^a-z0-9]", "", str(x.get("word", "")).lower())
         at_ = next((s for wd, s, e in l["words"] if w and re.sub(r"[^a-z0-9]", "", wd.lower()).startswith(w)), l["t_start"] + 0.2)
+        NEED[0] = x.get("need") or NEEDS.get(l["shot"])
         if real(sfx, at_ - 0.03, [x.get("for") or "impact"], float(x.get("dur", 2.0)), float(x.get("gain", 0.7)), hit=True):
             ACCENTS.append(round(at_, 2))
 
 
+# what each sound must SOUND like, in plain words (2.56.2: Tarek's Earshot check; file-name searches like "StairWellDoor" scored low
+# against themselves even when the sound was right)
+NEEDS = {"snag": "a metal hatch being ripped open", "flood": "water rushing in", "sink": "a heavy metal object hitting the seabed",
+         "p_title": "a deep cinematic hit", "title": "a deep cinematic hit", "day": "a deep cinematic hit", "planes": "a plane flying overhead",
+         "bed:sea": "calm ocean waves", "bed:deep": "a deep calm underwater ambience", "bed:jungle": "a calm rainforest ambience",
+         "bed:night": "crickets at night", "bed:river": "a calm river", "bed:rain": "steady rain", "bed:cabin": "inside a plane in flight"}
 # the calm beds: kind of place -> (searches, softening band in Hz). "deep" is the sea's own sound muffled, as it is under water.
 BEDS = {"sea": (["ocean waves", "sea waves", "water lapping"], 120, 5000), "deep": (["underwater", "ocean waves"], 30, 300),
         "jungle": (["jungle", "rainforest", "forest birds"], 150, 6000), "night": (["jungle night", "crickets", "night insects"], 150, 6000),
@@ -793,6 +805,28 @@ def _smooth_gain(g, win):
     return np.repeat(m, block)[:n]
 
 
+def _held_level(voice, block=0.1, thr=0.02):
+    """The narrator's speech level (RMS over 1.5 s of voiced 100 ms blocks only), carried through every pause unchanged."""
+    w = int(block * SR)
+    n = -(-len(voice) // w)
+    x = np.concatenate([voice, np.zeros(n * w - len(voice))]).reshape(n, w)
+    r = np.sqrt(np.mean(x * x, 1) + 1e-12)
+    on = r > thr
+    lvl = np.zeros(n)
+    k = max(1, int(1.5 / block))
+    last = 0.0
+    hist = []
+    for i in range(n):
+        if on[i]:
+            hist.append(r[i])
+            hist = hist[-k:]
+            last = float(np.sqrt(np.mean(np.square(hist))))
+        lvl[i] = last
+    first = np.argmax(on) if on.any() else n
+    lvl[:first] = lvl[first] if first < n else 0.0   # before he first speaks: his first line's level
+    return np.repeat(lvl, w)[:len(voice)]
+
+
 def hold_under(bus, voice_rms, speaking, voice_level, under_db, gap_db, win):
     r = _rms(bus, win)
     cap = np.where(speaking, voice_rms * 10 ** (under_db / 20), voice_level * 10 ** (gap_db / 20))
@@ -830,7 +864,10 @@ def mix(lines, voiced, music, sfx, folder):
     level = float(np.percentile(vr[speaking], 70)) if np.any(speaking) else 0.1
     # music: a STEADY level under his usual voice (it rose in every pause and dropped when he spoke: it pumped), slow gain only
     mr = _rms(music, int(1.5 * SR))
-    vs = _rms(voice, int(1.5 * SR))   # a quiet line (the mother's words) takes the music down with it, slowly
+    vs = _held_level(voice)   # a quiet line (the mother's words) takes the music down with it, slowly
+    # 2.56.2 (Tarek's catch on the Pisces opening): this used a 1.5 s average of the voice, so every line's end and pause looked like a
+    # "quiet line" and the music dropped 4-9 dB in every pause ("the narration may feel chopped"). Now the level of SPEECH only,
+    # held through the pauses: the music stays steady between lines.
     gm = np.minimum(1.0, level * 10 ** (MUSIC_UNDER_DB / 20) / mr)
     gm = np.minimum(gm, np.where(vs > 0.02, vs * 10 ** (-12.0 / 20) / mr, 1.0))
     music = music * _avg(_smooth_gain(gm, int(1.0 * SR)), int(1.5 * SR))

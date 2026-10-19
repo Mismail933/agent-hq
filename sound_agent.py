@@ -179,7 +179,8 @@ def listen(sample, video=None):
         job = {"mix": str(video) if video else str(folder / "mix.wav"), "video": str(video) if video else None, "sheet": str(out / "sheet.png"),
                "stems": {k: str(stems / f"{k}.wav") for k in ("beds", "accents") if (stems / f"{k}.wav").exists()},
                "match": [{"file": str(stems / ("accents.wav" if p_["role"] == "accent" else "beds.wav")), "start": max(0.0, p_["t"]),
-                          "end": p_["t"] + min(p_["dur"], 6.0), "query": p_["for"], "tag": f"{p_['role']} at {p_['t']:.1f} s"}
+                          "end": p_["t"] + min(p_["dur"], 6.0), "query": p_.get("need") or p_["for"],
+                          "tag": f"{p_['role']} at {p_['t']:.1f} s (searched for \"{p_['for']}\")"}
                          for p_ in placed.get("placed", []) if p_["dur"] > 0.2]}
         (out / "job.json").write_text(json.dumps(job), encoding="utf-8")
         try:
@@ -275,6 +276,8 @@ Judge the mix and the narration. Then fix what the sound settings can fix (you m
 - beds: {place: [searches]} another recording for a place; accents: {shot: [searches]} another sound for that scene's accent
 - drop_accents: [seconds or shot names]; add_accents: [{line (1-based), word (the spoken word it lands on), for (a search)}]
 Searches must use words that are in the library's sound names (the list in the task); a search that finds nothing places nothing.
+Earshot checks each placed sound against what the scene NEEDS in plain words (e.g. "a metal hatch being ripped open"), not against
+your search words, so judge the sound by that check.
 Never ask for a re-voice (it costs credits): voice problems go in voice_notes, each with the line, what is wrong, and the Eleven v3
 delivery tag you would use (e.g. [tense], [somber], [warm], [quietly], [conversational], [excited], [whispers], [sighs]).
 Write the summary for the owner in plain, short words (no jargon): what you heard, what you changed, what still needs him.
@@ -324,6 +327,15 @@ def clean_settings(s):
         out["add_accents"] = [{"line": int(a["line"]), "word": str(a["word"])[:30], "for": str(a["for"])[:60]}
                               for a in s["add_accents"] if isinstance(a, dict) and a.get("line") and a.get("word") and a.get("for")][:6]
     return {k: v for k, v in out.items() if v not in ({}, [], None)}
+
+
+def merge_settings(old, new):
+    """A later round's fixes on top of the earlier ones: per place / per scene for beds and accents (a round that changes the rip's
+    sound must not undo the seabed's), lists kept unless the round gives its own."""
+    out = dict(old)
+    for k, v in new.items():
+        out[k] = {**(old.get(k) or {}), **v} if k in ("beds", "accents") and isinstance(v, dict) else v
+    return out
 
 
 def library_names():
@@ -385,7 +397,7 @@ def review(sample, video=None, fix=True, rounds=None):
         if not fix or r["verdict"] == "good" or not r["settings"] or n == rounds:
             break
         spec = json.loads(sample.read_text(encoding="utf-8"))
-        merged = {**(spec.get("sound") or {}), **r["settings"]}
+        merged = merge_settings(spec.get("sound") or {}, r["settings"])
         spec["sound"] = merged
         sample.write_text(json.dumps(spec, indent=1, ensure_ascii=False), encoding="utf-8")
         say(f"round {n}: rebuilding the mix with {json.dumps(r['settings'])[:300]}")
