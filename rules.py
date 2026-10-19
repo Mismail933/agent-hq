@@ -83,6 +83,12 @@ RULES = {
     "sound.music_volume": _r("Pacing & sound", "float", 0.16, 0, 1, "Music volume under the voices (0-1; it also ducks while anyone speaks)", ("animate", "MUSIC_VOLUME")),
     # REVIEW & QUALITY
     "review.rounds": _r("Review & quality", "int", 2, 0, 6, "Times Israa may send a script back to Calina", ("quality", "REVIEW_ROUNDS")),
+    # THE SCRIPT GATE (2.58.0, the owner: "you and israa both review it; ill only receive when you both give it 8 at least; when any of you
+    # return with note she fixes those notes and not re-write it completely")
+    "script.min_score": _r("Review & quality", "int", 8, 5, 10, "A long story script reaches the owner only when Israa AND the Builder both give it at least this (out of 10)"),
+    "script.builder_review": _r("Review & quality", "bool", True, None, None, "The Builder chat reviews every long story script too, after Israa (off = Israa's score alone opens the gate)"),
+    "script.fix_mode": _r("Review & quality", "choice", "notes", ("notes", "rewrite"), None, "When a reviewer sends a story script back: notes = Calina fixes only what the notes say (edits; every other sentence stays as it was), rewrite = she writes it again"),
+    "script.gate_rounds": _r("Review & quality", "int", 4, 1, 8, "Fix rounds a story script may take before the gate stops and tells Atlas it is stuck (it never goes to the owner under the score)"),
     "check.spine": _r("Review & quality", "bool", True, None, None, "The story-spine check blocks a script (off = advice only)"),
     "check.ear": _r("Review & quality", "bool", True, None, None, "The ear check (hard-to-say lines) blocks a script (off = advice only)"),
     "check.length": _r("Review & quality", "bool", True, None, None, "The word/scene limits block a script (off = advice only)"),

@@ -454,7 +454,7 @@ def job_label(kind, a):
             "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}",
             "style_frames": "Rana's style frames for project {0}",
             "mv_render": "The music video {1} {2} of project {0}", "render_test": "The test render of video #{0}",
-            "shorts_cut": "Omar's Shorts from {1}", "sound_review": "Tarek's sound review of {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "shorts_cut": "Omar's Shorts from {1}", "sound_review": "Tarek's sound review of {0}", "script_fix": "Calina's fixes to script #{0} ({1}'s notes)"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -492,7 +492,7 @@ JOBS = {"cast_draw": "run_cast_draw", "cast_check": "run_cast_check","design": "
         "voice_add": "run_voice_add", "cast_samples": "run_cast_samples", "samples": "run_samples", "batch": "run_batch",
         "scout_refs": "run_scout_refs", "review": "run_review", "plan": "run_plan", "israa_video": "run_israa_video", "assets": "run_assets",
         "style_frames": "run_style_frames", "mv_render": "run_mv_render", "render_test": "run_test_render", "shorts_cut": "run_cut_shorts",
-        "sound_review": "run_sound_review"}
+        "sound_review": "run_sound_review", "script_fix": "run_script_fix"}
 
 
 LOGO_BRIEF = ("The logo of Agent HQ: the owner's AI company, a small team of AI agents (each with a name and a job) run by a manager, "
@@ -1020,7 +1020,7 @@ def allowance_short(agents):
 
 JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "cast_check": ("Israa",),"design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
              "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",), "assets": ("Rana", "Israa"),
-             "style_frames": ("Rana", "Israa"), "shorts_cut": ("Omar",), "sound_review": ("Tarek",)}   # the agents a long job can't finish without
+             "style_frames": ("Rana", "Israa"), "shorts_cut": ("Omar",), "sound_review": ("Tarek",), "script_fix": ("Calina", "Israa")}   # the agents a long job can't finish without
 
 
 def cast_watch():
@@ -1244,6 +1244,33 @@ def shorts_source(ref):
 
 
 SOUNDING = {"on": None}
+
+
+def run_script_fix(eid, by="Builder"):
+    """2.58.0 (the owner: "when any of you return with note she fixes those notes and not re-write it completely"): Calina fixes only
+    the reviewer's notes (agents.fix_notes), Israa reviews the new version (her own notes go the same way), then the gate: both at
+    rule script.min_score -> the owner sees it; else it waits for the next review. After rule script.gate_rounds fixes it stops."""
+    e = cp.get_episode(eid)
+    p = agents._project_context(e["project_id"])
+    if len((e["data"] or {}).get("fix_history") or []) >= int(rules.get("script.gate_rounds")):
+        cp.log("Calina", "script_stuck", None, {"episode": eid, "rounds": len(e["data"].get("fix_history") or [])})
+        atlas_says(f"**Script #{eid} is stuck under the owner's score** after {rules.get('script.gate_rounds')} rounds of fixes. It stays hidden "
+                   "from the owner; the Builder decides what next.")
+        return
+    notes = ((e["data"].get("builder_review") or {}).get("notes") or []) if by == "Builder" else ((e["data"].get("review") or {}).get("problems") or [])
+    if not agents.fix_notes(eid, notes, by):
+        cp.log("Calina", "script_stuck", None, {"episode": eid, "why": "no edit landed"})
+        atlas_says(f"**Calina couldn't apply fixes to script #{eid}** ({by}'s notes): none of her edits matched the text. The Builder looks at it.")
+        return
+    quality.review_batch(p, [eid], lambda i, r: agents.fix_notes(i, r.get("problems") or [], "Israa"))
+    st = agents.gate_check(eid)
+    e = cp.get_episode(eid)
+    if st["open"]:
+        atlas_says(f"**Script #{eid} passed the gate** (Israa {st['israa']}/10, the Builder {st['builder']}/10, version {st['version']}): it is now "
+                   "with the owner for approval.")
+    else:
+        atlas_says(f"**Calina fixed script #{eid}** ({by}'s notes; version {st['version']}). Israa now gives it {st['israa'] if st['israa'] is not None else 'no pass'}; "
+                   + ("it waits for the Builder's review." if st["israa"] is not None and st["israa"] >= st["need"] else "it goes round again."))
 
 
 def run_sound_review(sample, video=None, by="Atlas"):
@@ -1780,7 +1807,7 @@ def save_uploads(items):
 # chat, never to the phone (he sends the owner something himself only when it matters). Rules in atlas/CLAUDE.md.
 WAKE_KINDS = ("video_ready", "video_reviewed", "video_failed", "batch_ready", "script_reviewed", "halted", "bespoke_failed",
               "ready_to_ship", "ghassan_shipped", "job_given_up", "assets_ready", "assets_failed", "studio_ready", "studio_failed",
-              "mv_ready", "mv_failed", "shorts_ready", "shorts_failed", "sound_ready", "sound_failed")
+              "mv_ready", "mv_failed", "shorts_ready", "shorts_failed", "sound_ready", "sound_failed", "script_ready", "script_stuck")
 AUTOPILOT = {"last_wake": 0.0, "last_event": 0, "wakes": 0}
 
 
@@ -2636,6 +2663,28 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(409, {"error": str(ex)[:600]})
                 return self._send(200, {"ok": True, "message": ("Passed every check." if r["ok"] else f"{len(r['faults'])} fault(s): {r['checks']}"),
                                         "faults": r["faults"], "measured": r.get("measured")})
+            if action == "builder-review":   # 2.58.0: hq script-review <id> <score> "note"...: the Builder's score + notes on a story script
+                body = self._json_body()
+                e = cp.get_episode(eid)
+                if not e or not production.is_story(e):
+                    return self._send(409, {"error": "The script gate is for long story scripts."})
+                try:
+                    score = float(body.get("score"))
+                    if not 0 <= score <= 10:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    return self._send(400, {"error": "score must be a number from 0 to 10"})
+                notes = [clip(n, "note")[0] for n in (body.get("notes") or []) if str(n).strip()][:20]
+                agents.builder_review(eid, score, notes)
+                need = float(rules.get("script.min_score"))
+                if score >= need:
+                    st = agents.gate_check(eid)
+                    return self._send(200, {"ok": True, "gate": st, "message": ("The gate is open: the owner sees it now." if st["open"] else
+                                            f"Saved. Waiting for Israa's pass on version {st['version']} (she gives {st['israa']}).")})
+                if not notes:
+                    return self._send(400, {"error": f"Under {need:g} the notes are what Calina fixes: give at least one."})
+                threading.Thread(target=run_script_fix, args=(eid, "Builder"), daemon=True).start()
+                return self._send(202, {"ok": True, "message": f"Calina is fixing {len(notes)} note(s) on script #{eid} (only those); Israa looks again after."})
             if action == "israa":   # ask Israa to review the video again
                 e = cp.get_episode(eid)
                 if not e or not e["video_path"]:

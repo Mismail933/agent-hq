@@ -34,6 +34,7 @@ Atlas's controls for Agent HQ.
                  ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
                  omar [status | now [project] | weekly [project] | suggest <episode>] | channel-stats [project]     (Omar: the YouTube channels, read-only)
                  omar watch <channel link|@handle> [--project N] | omar unwatch <channel> [--project N] | omar rivals [project]     (channels he learns from)
+                 script-review <episode> <score> "note"... | script-gate <episode>     (the story-script gate: Israa + the Builder, 8+)
                  sound <sample.json> [video.mp4]     (Tarek, sound & voice: listens through Earshot, fixes the mix, voice notes)
                  shorts <project> <video file|episode> [count]     (Omar picks the best moments of a finished video; the office cuts 1080x1920 Shorts and sends them to the owner's phone; he uploads)
                  fetch <link> [link...]     (see a link the owner sent: images saved to review/refs/, YouTube title/channel/description/thumbnail)
@@ -348,6 +349,15 @@ def main(argv):
         elif cmd == "lnd-focus":   # a topic for Richard's next morning run: hq lnd-focus "how can Calina write better?"
             import lnd
             show(lnd.set_focus(" ".join(args)))
+        elif cmd == "script-review":   # 2.58.0: hq script-review <episode> <score> "note" ["note"...]: the Builder's review (the gate)
+            if len(args) < 2:
+                show("Use: hq script-review <episode> <score 0-10> \"note\" [\"note\" ...]   (under rule script.min_score the notes go to Calina)")
+                return
+            code, reply = office(f"/api/episode/{int(args[0])}/builder-review", {"score": float(args[1]), "notes": args[2:]})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "script-gate":   # hq script-gate <episode>: both reviewers' scores on the current version
+            import agents
+            show(agents.gate_check(int(args[0])))
         elif cmd == "israa":   # Israa reviews a finished video again
             order(f"/api/episode/{int(args[0])}/israa", {}, "Israa is looking at the video. Her verdict lands on the episode in the project's Episodes page.")
         elif cmd == "episodes":

@@ -1017,6 +1017,7 @@ def _store_review(eid, review, rnd, reworked):
     e = cp.get_episode(eid)
     d = e["data"]
     d["review"] = {"stranger": review.get("stranger"), "by": ISRAA, "verdict": review["verdict"], "score": review.get("score"), "summary": review.get("summary", ""),
+                   "version": d.get("version", 1),
                    "strengths": review.get("strengths", []), "problems": review.get("problems", []), "rounds": rnd + (1 if reworked else 0),
                    "reworked": bool(reworked)}
     cp.update_episode(eid, data=d)
@@ -1051,6 +1052,11 @@ def review_batch(p, eids, rewrite):
                 if not r:   # she skipped one: ask again next round, or flag it
                     nxt.append(i)
                     continue
+                e_ = cp.get_episode(i)
+                if (e_["data"] or {}).get("sections") and float(r.get("score") or 0) < float(rules.get("script.min_score")):
+                    # 2.58.0: a long story passes only at the owner's score (8), not Israa's usual 7
+                    r["verdict"] = "rework"
+                    r["summary"] = f"Score {r.get('score')} is under the owner's {rules.get('script.min_score')}. " + r.get("summary", "")
                 if r["verdict"] == "pass":   # the stranger test: can someone who knows nothing retell it?
                     try:
                         st = stranger_script(p, cp.get_episode(i))
