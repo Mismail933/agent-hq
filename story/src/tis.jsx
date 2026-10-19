@@ -109,6 +109,9 @@ export const CAST = {
   chapman_old: {hair: '#9CA3AF', hairLight: '#D1D5DB', brow: '#6B7280', dress: '#1F3A5F', dressShade: '#16293F', style: 'short'},
   mallinson_old: {hair: '#D1D5DB', hairLight: '#F3F4F6', brow: '#9CA3AF', dress: '#7C2D12', dressShade: '#5C210D', style: 'short', mustache: true, glasses: true},
   pilot: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#E5E7EB', dressShade: '#C9CDD3', style: 'short', hat: 'cap', mustache: true},
+  fisher1: {hair: '#3A2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#3E5468', dressShade: '#2E4052', style: 'short', hat: 'cap', beard: true, skin: 'tan'},   // Storygraphics #3: the 1918 crayfish crew
+  fisher2: {hair: '#6B4423', hairLight: '#8A5A30', brow: '#4A2E17', dress: '#8A6A44', dressShade: '#6E5234', style: 'short', hat: 'cap', mustache: true},
+  stead: {hair: '#4A3628', hairLight: '#6A5040', brow: '#33241A', dress: '#2F3140', dressShade: '#22232F', style: 'short', mustache: true, glasses: true},   // David G. Stead, ichthyologist
 };
 
 function HairBack({c, mode}) {
