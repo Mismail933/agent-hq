@@ -231,6 +231,7 @@ const PLACES = {lima: [-77.04, -12.05, 'LIMA', -1], pucallpa: [-74.55, -8.38, 'P
   puerto_inca: [-74.96, -9.38, 'PUERTO INCA', -1], tournavista: [-74.70, -8.93, 'TOURNAVISTA', 1], kiel: [10.13, 54.32, 'KIEL, GERMANY', 1],
   // Storygraphics #2 (Pisces III)
   britain: [-4.6, 50.8, 'BRITAIN', 1], canada: [-63.6, 44.7, 'CANADA', -1], cork: [-8.47, 51.9, 'CORK', 1], site: [-8.6, 49.8, 'PISCES III', -1],
+  na: [-100, 42, 'NORTH AMERICA', 1], sa: [-60, -12, 'SOUTH AMERICA', 1], eu: [12, 48, 'EUROPE', 1], af: [20, 4, 'AFRICA', 1], asia: [95, 38, 'ASIA', 1], au: [134, -24, 'AUSTRALIA', -1],   // Storygraphics #3
   california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1]};
 function Map({f, len, line}) {
   const p = P(line);
@@ -246,8 +247,8 @@ function Map({f, len, line}) {
     <g>
       <rect width={W} height={H} fill="#5BA4D4" />
       <g transform={`translate(${W / 2} ${H / 2}) scale(${sc}) translate(${-gx(clon)} ${-gy(clat)})`}>
-        <path d={LAND} fill="#9BC88B" stroke={INK} strokeWidth={5} vectorEffect="non-scaling-stroke" />
-        <path d={RIVERS} fill="none" stroke="#3B82F6" strokeWidth={4} vectorEffect="non-scaling-stroke" />
+        <path d={LAND} fill="#9BC88B" stroke={INK} strokeWidth={p.stroke || 5} vectorEffect="non-scaling-stroke" />
+        {p.rivers !== false && <path d={RIVERS} fill="none" stroke="#3B82F6" strokeWidth={4} vectorEffect="non-scaling-stroke" />}
       </g>
       {(p.country || [['PERU', -75.2, -11.4]]).map(([nm, lo, la], i) => <text key={i} x={sx(lo)} y={sy(la)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={90} fill="#fff" opacity={0.55} stroke={INK} strokeWidth={4} paintOrder="stroke">{nm}</text>)}
       {route && (() => { const [a, b] = route; const x1 = sx(a[0]), y1 = sy(a[1]), x2 = sx(b[0]), y2 = sy(b[1]); const len2 = Math.hypot(x2 - x1, y2 - y1); const d = lin(f, ra, ra + 50, 0, len2);

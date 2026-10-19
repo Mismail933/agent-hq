@@ -6,6 +6,7 @@ import {W, H, INK, OSWALD} from './tis';
 import {Mover, motionSpeed} from './motion';
 import {Emoji} from './emoji';
 import {FONT_CSS} from './fonts';
+import {SHOTS} from './Opening';
 
 const T = ({x, y, children, size = 40, anchor = 'middle'}) => (
   <text x={x} y={y} textAnchor={anchor} fontFamily={OSWALD} fontWeight={700} fontSize={size} fill="#fff" stroke={INK} strokeWidth={size * 0.14} paintOrder="stroke">{children}</text>
@@ -67,3 +68,23 @@ export const EmojiSheet = ({names = PROPS}) => (
     </svg>
   </AbsoluteFill>
 );
+
+// a contact sheet of story shots (2.59.0): many lines' scenes on one still, each at its own frame, so a whole video's drawings can be
+// checked in a few renders before any voice exists. props: cells [{line, f, len}], cols.
+export const ShotGrid = ({cells: all = [], cols = 4, per = 16}) => {
+  const page = useCurrentFrame();
+  const cells = all.slice(page * per, page * per + per);
+  const rows = Math.ceil(cells.length / cols) || 1, cw = W / cols, ch = cw * H / W;
+  return (
+    <AbsoluteFill style={{backgroundColor: '#111'}}>
+      <style>{FONT_CSS}</style>
+      <svg width="100%" height="100%" viewBox={`0 0 ${W} ${Math.max(H, ch * rows)}`}>
+        {cells.map((c, i) => { const S = SHOTS[c.line.shot]; if (!S) return null;
+          return (<svg key={i} x={cw * (i % cols)} y={ch * Math.floor(i / cols)} width={cw - 4} height={ch - 4} viewBox={`0 0 ${W} ${H}`}>
+            <S f={c.f} len={c.len} line={c.line} />
+            <text x={20} y={H - 30} fontFamily={OSWALD} fontWeight={700} fontSize={70} fill="#fff" stroke={INK} strokeWidth={10} paintOrder="stroke">{c.label || ''}</text>
+          </svg>); })}
+      </svg>
+    </AbsoluteFill>
+  );
+};

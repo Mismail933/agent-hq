@@ -7,6 +7,9 @@ import {JulianeArt} from './Thumb';
 import {STORY_SHOTS, DayCard, DayCorner} from './jungle';
 import {OCEAN_SHOTS} from './ocean';
 import {MEG_SHOTS} from './meg';
+import {MEG2_SHOTS} from './meg2';
+import {MEG3_SHOTS} from './meg3';
+import {MEG4_SHOTS} from './meg4';
 import {FONT_CSS} from './fonts';
 import {CameraMotionBlur} from '@remotion/motion-blur';
 
@@ -283,8 +286,8 @@ function Title({f, len, line}) {
   );
 }
 
-const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
-  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS, ...MEG_SHOTS};
+export const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
+  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS, ...MEG_SHOTS, ...MEG2_SHOTS, ...MEG3_SHOTS, ...MEG4_SHOTS};
 
 // fast shots get a film camera's motion blur (2.55.0, @remotion/motion-blur: each frame is the average of a few moments within the
 // shutter time). Only these shots: it multiplies the rendering time of the frames it covers. line.p.blur forces it on (or off: false).

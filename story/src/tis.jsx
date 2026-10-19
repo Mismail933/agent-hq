@@ -112,6 +112,11 @@ export const CAST = {
   fisher1: {hair: '#3A2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#3E5468', dressShade: '#2E4052', style: 'short', hat: 'cap', beard: true, skin: 'tan'},   // Storygraphics #3: the 1918 crayfish crew
   fisher2: {hair: '#6B4423', hairLight: '#8A5A30', brow: '#4A2E17', dress: '#8A6A44', dressShade: '#6E5234', style: 'short', hat: 'cap', mustache: true},
   stead: {hair: '#4A3628', hairLight: '#6A5040', brow: '#33241A', dress: '#2F3140', dressShade: '#22232F', style: 'short', mustache: true, glasses: true},   // David G. Stead, ichthyologist
+  shimada: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#334155', dressShade: '#1E293B', style: 'short', glasses: true},   // the 2025 size study, the 2022 zinc study
+  tsch: {hair: '#9CA3AF', hairLight: '#C4C9D0', brow: '#6B7280', dress: '#6B5B45', dressShade: '#4F4232', style: 'short', glasses: true, mustache: true},   // W. Tschernezky, 1959
+  actor: {hair: '#4A3628', hairLight: '#6A5040', brow: '#33241A', dress: '#7A8B5A', dressShade: '#5E6D44', style: 'short', hat: 'cap', beard: true},   // the 2013 film's 'marine biologist'
+  wilcox: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#0F766E', dressShade: '#0B5A54', style: 'long', lips: true},   // science writer
+  bernard: {hair: '#7A4A26', hairLight: '#9A6236', brow: '#5A3418', dress: '#7C3AED', dressShade: '#5B21B6', style: 'bob', glasses: true, lips: true},   // museum curator
 };
 
 function HairBack({c, mode}) {

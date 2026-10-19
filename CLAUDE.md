@@ -867,6 +867,20 @@ Agents never spend money without the owner's explicit approval.
   hauling = motion capture `drag`, m_rise, m_take, m_size, m_flee, m_stead, m_tooth, m_title) + `Shark` (side view; pale/grey/dark,
   mouth, glow), `Jaws` (front), `Boat` (1918, sail), `MegArt` (title + thumbnail: Thumb id "meg"). CAST fisher1, fisher2, stead.
   The opening: samples/megalodon-opening.json (free voice am_michael, paced), Tarek reviews its sound.
+  The full video (2.59.0; the owner approved Calina's v6 script, episode 34, after the gate: Israa 8, Builder 8.5): samples/
+  megalodon-full.json = 118 lines, every sentence of v6 in order (built by the scratchpad make_meg_full.py from the numbered
+  sentences; only the last line changed: the Thai cave video doesn't exist, it points to the Pisces video), `say` respells numbers
+  and names for Kokoro, `sound` starts from Tarek's Pisces findings (no sea/deep beds, music -6 dB, accents -18 dB). New scenes:
+  `meg2.jsx` MEG2_SHOTS (m_card big words, m_plan, m_scale lane|weight|shape|hide|bus|rival (true scale, `Silhouette`), m_jaws_car,
+  m_bite dials, m_whalebone, m_nursery lagoon|note|resort, m_timeline band|stop|empty, m_thermo warm|fuel, m_two, m_hide, `Gauge`),
+  `meg3.jsx` MEG3_SHOTS (m_challenger sail|dredge, m_crust kettle|date|rate|rewind|buried|exposed|worn|stopwatch, m_cave, m_wharf
+  tell|measure300|measure115|crew|tapes, m_above, m_tv show|fake|poll|static|actor|disclaimer, m_globe, m_navy catch|megamouth,
+  m_exhibits), `meg4.jsx` MEG4_SHOTS (m_gauges six|one (n, fail, fail_on), m_depth descend|whale, m_teeth belt|sand|rain, m_whalecheck,
+  m_cool world|shelf|whales, m_ledger meals|budget, m_rivals arrive|zinc, m_recap, m_verdict gone|white). CAST shimada, tsch, actor,
+  wilcox, bernard. Map: `rivers: false`, `stroke`, continent PLACES (na sa eu af asia au). MTooth `hand: false`.
+  `ShotGrid` (Showcase.jsx, Root): contact sheets of many lines' scenes, one page per frame (`--sequence`), so a whole video's
+  drawings are checked before any voice (scratchpad meg_grid.py: estimated word times, cells at a fraction of each line). Keep
+  everything that matters above y 920: the captions cover the bottom band.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

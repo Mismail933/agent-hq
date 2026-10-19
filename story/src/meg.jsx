@@ -17,7 +17,7 @@ const Cam = ({f, len, a = 1, b = 1.06, x = W / 2, y = H / 2, shake = 0, hand = 0
   const [sx, sy] = camShake(f, shake, hand);
   return <g transform={`translate(${W / 2 + sx} ${H / 2 + sy}) scale(${z}) translate(${-x} ${-y})`}>{children}</g>;
 };
-const SKY = ({id = 'msky'}) => (<g>
+export const SKY = ({id = 'msky'}) => (<g>
   <linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6FA8D8" /><stop offset="1" stopColor="#E3EEF5" /></linearGradient>
   <rect width={W} height={H} fill={`url(#${id})`} /></g>);
 
@@ -93,7 +93,7 @@ export function Boat({f = 0, sail = 0}) {
 }
 
 // a crayfish trap: a little wire cage
-const Trap = ({x, y, s = 1, tilt = 0}) => (
+export const Trap = ({x, y, s = 1, tilt = 0}) => (
   <g transform={`translate(${x} ${y}) rotate(${tilt}) scale(${s})`}>
     <path d="M -70 0 C -70 -70 70 -70 70 0 L 70 50 L -70 50 Z" fill="#6B4F35" opacity={0.85} {...st(5)} />
     {[-40, 0, 40].map((x2) => <path key={x2} d={`M ${x2} -52 L ${x2} 50`} stroke="#3B2A1A" strokeWidth={4} />)}
@@ -101,7 +101,7 @@ const Trap = ({x, y, s = 1, tilt = 0}) => (
   </g>
 );
 
-const Coast = ({y = 640, side = 'left'}) => side === 'left'
+export const Coast = ({y = 640, side = 'left'}) => side === 'left'
   ? <path d={`M -40 ${y} L -40 ${y - 70} C 120 ${y - 110} 260 ${y - 60} 420 ${y - 80} C 520 ${y - 90} 600 ${y - 40} 680 ${y} Z`} fill="#5E7F55" {...st(5)} />
   : <g><path d={`M 1240 ${y} C 1340 ${y - 60} 1500 ${y - 120} 1700 ${y - 110} C 1820 ${y - 104} 1900 ${y - 90} 1960 ${y - 80} L 1960 ${y} Z`} fill="#6E8F5F" {...st(5)} />
       {[1480, 1560, 1640].map((x, i) => <g key={x}><rect x={x} y={y - 150 - i * 6} width={56} height={46} fill="#F3EAD6" {...st(4)} /><path d={`M ${x - 6} ${y - 150 - i * 6} L ${x + 28} ${y - 182 - i * 6} L ${x + 62} ${y - 150 - i * 6} Z`} fill="#B5543C" {...st(4)} /></g>)}
@@ -249,7 +249,7 @@ function MStead({f, len, line}) {
 }
 
 // 7. the real thing: a megalodon tooth, as long as a human hand
-const Tooth = () => (
+export const Tooth = () => (
   <g>
     <path d="M -230 -40 C -240 -110 -150 -170 0 -172 C 150 -170 240 -110 230 -40 C 150 -60 60 -64 0 -60 C -60 -64 -150 -60 -230 -40 Z" fill="#5A4636" {...ST} />
     <path d="M -230 -40 L 0 420 L 230 -40 C 150 -60 60 -64 0 -60 C -60 -64 -150 -60 -230 -40 Z" fill="#6E6A66" {...ST} />
@@ -259,7 +259,7 @@ const Tooth = () => (
       <path d={`M ${230 - 230 * t} ${-40 + 460 * t} l 12 4`} stroke={INK} strokeWidth={4} /></g>; })}
   </g>
 );
-const Hand = () => (
+export const Hand = () => (
   <g>
     <path d="M -110 420 C -130 300 -140 200 -150 110 C -156 60 -100 50 -92 100 L -80 190 L -90 -20 C -94 -70 -36 -74 -32 -24 L -20 160 L -20 -90 C -20 -140 40 -140 40 -90 L 44 150 L 66 -40 C 72 -90 128 -84 122 -34 L 104 180 L 140 90 C 160 46 210 66 194 112 C 160 220 130 320 110 420 Z" fill="#F3C9A8" {...ST} />
     <path d="M -20 300 C 20 290 60 300 90 320" fill="none" {...st(4)} opacity={0.5} />
@@ -275,8 +275,8 @@ function MTooth({f, len, line}) {
       <rect width={W} height={H} fill="#0F2A44" />
       <circle cx={960} cy={500} r={520} fill="#1E4466" opacity={0.6} />
       <g transform={`translate(760 360) scale(${ts}) rotate(-4)`}><Tooth /></g>
-      <g transform={`translate(${hx} 330) rotate(4)`}><Hand /></g>
-      {f > hd && <g opacity={clamp((f - hd) / 10, 0, 1)}>
+      {p.hand !== false && <g transform={`translate(${hx} 330) rotate(4)`}><Hand /></g>}
+      {p.hand !== false && f > hd && <g opacity={clamp((f - hd) / 10, 0, 1)}>
         <path d="M 560 860 L 960 860" stroke="#FDE047" strokeWidth={8} /><path d="M 560 840 L 560 880 M 960 840 L 960 880" stroke="#FDE047" strokeWidth={8} />
       </g>}
     </Cam>
