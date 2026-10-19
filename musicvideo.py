@@ -366,7 +366,7 @@ def place_image(name, year, size):
     sp_b, sp_s = size * 0.08, size * 0.12
     wb = sum(big.getlength(c) + sp_b for c in name) - sp_b
     ws = sum(small.getlength(c) + sp_s for c in year) - sp_s
-    pad = int(size * 0.7)
+    pad = int(size * 2.2)            # room for the wide soft shadow to fade out inside the layer (no box edge)
     rule_y = pad + int(size * 1.18)
     Wd = int(max(wb, ws, size * 2)) + pad * 2
     Hd = rule_y + int(size * 0.95) + pad
@@ -385,8 +385,12 @@ def place_image(name, year, size):
     core_t = np.asarray(text, np.float32) / 255
     core_r = np.asarray(rule, np.float32) / 255
     core = np.maximum(core_t, core_r)
-    shadow = np.asarray(Image.fromarray((core * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(size * 0.3)),
-                        np.float32) / 255 * 0.8
+    m = Image.fromarray((core * 255).astype(np.uint8))
+    # a tight shadow plus a wide soft one, so the label reads on a bright sky (the Caucasus' snow) as well as a dark one
+    k = max(3, int(size * 0.5) | 1)     # thicken the letters' shape first, so the soft cushion behind them is dense enough
+    cushion = np.asarray(m.filter(ImageFilter.MaxFilter(k)).filter(ImageFilter.GaussianBlur(size * 0.75)), np.float32) / 255
+    shadow = np.maximum(np.asarray(m.filter(ImageFilter.GaussianBlur(size * 0.22)), np.float32) / 255,
+                        np.clip(cushion * 1.1, 0, 0.6))
     alpha = np.clip(core + shadow * (1 - core), 0, 1)
     rgb = np.zeros((Hd, Wd, 3), np.float32)
     lit = core / np.maximum(alpha, 1e-4)
@@ -411,7 +415,9 @@ def draw_places(img, layers, t, x, y):
         if op <= 0.01:
             continue
         h, w = L["a"].shape
-        yy = int(y + (1 - inn) * L["size"] * 0.2)
+        off = int(L["size"] * 1.5)       # pad 2.2 x size inside the layer; the text stays 0.7 x size from (x, y)
+        x = x - off
+        yy = int(y - off + (1 - inn) * L["size"] * 0.2)
         y0, y1, x0, x1 = max(0, yy), min(H, yy + h), max(0, x), min(W, x + w)
         if y1 <= y0 or x1 <= x0:
             continue
