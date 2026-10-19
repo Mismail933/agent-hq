@@ -21,7 +21,7 @@ MODELS = {
     "richard": "cloud routine (Sonnet 5.5)",   # Richard runs in Anthropic's cloud, not through this program
     "ghassan": "claude-opus-5-5",   # a label: Ghassan runs through Claude Code on the subscription
     "omar": "claude-sonnet-5-5",   # Social Media Manager (2.44.0): reads the YouTube channel, advises; never posts
-    "sound": "claude-opus-5-5",    # Sound & Voice Director (2.56.0): listens through Earshot, fixes a story's mix, voice notes
+    "sound": "claude-opus-5-5",    # Tarek, Sound & Voice Director (2.56.0): listens through Earshot, fixes a story's mix, voice notes
 }
 
 # ---- Where the workers run ----------------------------------------------------
@@ -31,13 +31,13 @@ MODELS = {
 WORKER_ENGINE = {"Doulya": "claude_code", "Sage": "claude_code", "Vera": "claude_code", "Serge": "claude_code",
                  "Calina": "claude_code",
                  "Scout": "claude_code", "Israa": "claude_code", "Rana": "claude_code", "Ghassan": "claude_code",
-                 "Omar": "claude_code", "Sound": "claude_code"}   # Scout, Israa, Omar and Sound only run through Claude Code
+                 "Omar": "claude_code", "Tarek": "claude_code"}   # Scout, Israa, Omar and Tarek only run through Claude Code
 WORKER_MODELS = {"Doulya": "sonnet", "Sage": "sonnet", "Vera": "sonnet", "Serge": "sonnet", "Calina": "sonnet",
-                 "Scout": "sonnet", "Israa": "opus", "Rana": "opus", "Ghassan": "opus", "Omar": "sonnet", "Sound": "opus"}   # or "opus"
+                 "Scout": "sonnet", "Israa": "opus", "Rana": "opus", "Ghassan": "opus", "Omar": "sonnet", "Tarek": "opus"}   # or "opus"
 # Daily allowance per agent on the subscription, measured as what the same work would cost on the API
 # (the only meter Claude Code reports). Protects your plan's limits for you, the Builder and Atlas.
 SUBSCRIPTION_DAILY_VALUE_USD = {"Doulya": 2.00, "Sage": 6.00, "Vera": 2.00, "Serge": 3.00, "Calina": 6.00,
-                                 "Scout": 5.00, "Israa": 6.00, "Rana": 6.00, "Ghassan": 10.00, "Omar": 2.00, "Sound": 4.00}
+                                 "Scout": 5.00, "Israa": 6.00, "Rana": 6.00, "Ghassan": 10.00, "Omar": 2.00, "Tarek": 4.00}
 # Ghassan, the in-house Builder (2.21.0): builds Atlas's requests on the subscription only (no API fallback); his checked change
 # waits for the owner's Ship click in the office before anything reaches GitHub.
 GHASSAN_ON = True

@@ -34,7 +34,7 @@ Atlas's controls for Agent HQ.
                  ghassan [status | now]     (the in-house Builder: builds your requests; the owner ships each change in the office)
                  omar [status | now [project] | weekly [project] | suggest <episode>] | channel-stats [project]     (Omar: the YouTube channels, read-only)
                  omar watch <channel link|@handle> [--project N] | omar unwatch <channel> [--project N] | omar rivals [project]     (channels he learns from)
-                 sound <sample.json> [video.mp4]     (the sound director: listens through Earshot, fixes the mix, voice notes)
+                 sound <sample.json> [video.mp4]     (Tarek, sound & voice: listens through Earshot, fixes the mix, voice notes)
                  shorts <project> <video file|episode> [count]     (Omar picks the best moments of a finished video; the office cuts 1080x1920 Shorts and sends them to the owner's phone; he uploads)
                  fetch <link> [link...]     (see a link the owner sent: images saved to review/refs/, YouTube title/channel/description/thumbnail)
 
@@ -448,7 +448,7 @@ def main(argv):
                 body["count"] = int(args[2])
             code, reply = office("/api/shorts", body)
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
-        elif cmd == "sound":   # hq sound <sample.json> [video.mp4]: the sound director listens, fixes the mix, gives voice notes
+        elif cmd == "sound":   # hq sound <sample.json> [video.mp4]: Tarek listens, fixes the mix, gives voice notes
             if not args:
                 show("Use: hq sound <content/.../samples/<name>.json> [the finished video .mp4]   (rules sound.rounds, sound.fix)")
                 return

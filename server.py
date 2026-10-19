@@ -454,7 +454,7 @@ def job_label(kind, a):
             "cast_check": "Israa's check of Rana's cast v{1} for project {0}", "assets": "Rana's art for video #{0}",
             "style_frames": "Rana's style frames for project {0}",
             "mv_render": "The music video {1} {2} of project {0}", "render_test": "The test render of video #{0}",
-            "shorts_cut": "Omar's Shorts from {1}", "sound_review": "The sound director's review of {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
+            "shorts_cut": "Omar's Shorts from {1}", "sound_review": "Tarek's sound review of {0}"}.get(kind, kind).format(*[x if x is not None else "" for x in a])
 
 
 def journaled(kind, fn):
@@ -1020,7 +1020,7 @@ def allowance_short(agents):
 
 JOB_NEEDS = {"cast_draw": ("Rana", "Israa"), "cast_check": ("Israa",),"design": ("Rana", "Israa"), "char_review": ("Israa",), "israa_video": ("Israa",),
              "batch": ("Calina", "Israa"), "scout_refs": ("Scout",), "plan": ("Serge",), "assets": ("Rana", "Israa"),
-             "style_frames": ("Rana", "Israa"), "shorts_cut": ("Omar",), "sound_review": ("Sound",)}   # the agents a long job can't finish without
+             "style_frames": ("Rana", "Israa"), "shorts_cut": ("Omar",), "sound_review": ("Tarek",)}   # the agents a long job can't finish without
 
 
 def cast_watch():
@@ -1248,7 +1248,7 @@ SOUNDING = {"on": None}
 
 def run_sound_review(sample, video=None, by="Atlas"):
     """2.56.0 (the owner: "can u get a professional sound and voice agent ... to critic or give advises or make it himself"): the
-    sound director listens to a story sample's mix through Earshot and the narrator's numbers, fixes what the sound settings can
+    sound & voice director Tarek listens to a story sample's mix through Earshot and the narrator's numbers, fixes what the sound settings can
     fix (levels, recordings, accents; rule sound.fix), rebuilds the mix and listens again (rule sound.rounds), and gives voice
     notes. Never re-voices, never touches the picture. The review: <sample folder>/sound-review.md (+ listen/review-N.json)."""
     import sound_agent
@@ -1258,11 +1258,11 @@ def run_sound_review(sample, video=None, by="Atlas"):
         rel = (ROOT / sample).with_suffix("").relative_to(ROOT).as_posix() + "/sound-review.md"
         cp.log(sound_agent.AGENT, "sound_ready", None, {"sample": sample, "video": video, "verdict": (r or {}).get("verdict"), "review": rel, "by": by})
         notes = "".join(f"\n- line {v['line']}: {v['note']}" for v in (r or {}).get("voice_notes", [])[:6])
-        atlas_says(f"**The sound director reviewed {Path(sample).name}** ({(r or {}).get('verdict')}): {(r or {}).get('summary', '')}"
+        atlas_says(f"**Tarek reviewed the sound of {Path(sample).name}** ({(r or {}).get('verdict')}): {(r or {}).get('summary', '')}"
                    + (f"\nVoice notes:{notes}" if notes else "") + f"\nThe full review: `{rel}`.")
     except Exception as ex:  # noqa: BLE001
-        cp.log("Sound", "sound_failed", None, {"sample": sample, "reason": str(ex)[:300]})
-        atlas_says(f"**The sound director couldn't review {Path(sample).name}:** {str(ex)[:300]}")
+        cp.log(sound_agent.AGENT, "sound_failed", None, {"sample": sample, "reason": str(ex)[:300]})
+        atlas_says(f"**Tarek couldn't review the sound of {Path(sample).name}:** {str(ex)[:300]}")
     finally:
         SOUNDING["on"] = None
 
@@ -2762,10 +2762,10 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(502, {"error": f"YouTube didn't answer: {type(e).__name__}: {str(e)[:200]}"})
             return self._send(200, {"ok": True, "message": msg})
-        if u.path == "/api/sound":   # hq sound <sample.json> [video.mp4]: the sound director listens, fixes the mix, gives voice notes
+        if u.path == "/api/sound":   # hq sound <sample.json> [video.mp4]: Tarek listens, fixes the mix, gives voice notes
             body = self._json_body()
             if SOUNDING["on"]:
-                return self._send(409, {"error": f"The sound director is already on {SOUNDING['on']}. One at a time."})
+                return self._send(409, {"error": f"Tarek is already on {SOUNDING['on']}. One at a time."})
             try:
                 sample = str(body.get("sample") or "").replace("\\", "/")
                 video = str(body.get("video") or "").replace("\\", "/") or None
@@ -2779,7 +2779,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": str(e)})
             by = "Owner" if body.get("by") == "owner" else "Atlas"
             threading.Thread(target=run_sound_review, args=(sample, video, by), daemon=True).start()
-            return self._send(202, {"ok": True, "message": f"The sound director is listening to {Path(sample).name} (Earshot, then his judgement, "
+            return self._send(202, {"ok": True, "message": f"Tarek is listening to {Path(sample).name} (Earshot, then his judgement, "
                                     "then a rebuilt mix and a second listen: about 10-20 minutes). You'll be told when his review is ready."})
         if u.path == "/api/shorts":   # hq shorts <project> <video file|episode> [count]: Omar picks moments, the office cuts Shorts
             body = self._json_body()

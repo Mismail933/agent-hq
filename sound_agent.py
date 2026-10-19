@@ -1,6 +1,7 @@
 """The sound & voice agent (2.56.0; the owner 2026-10-19: "can u get a professional sound and voice agent search github for that to
-critic or give advises or make it himself"; he said yes to hiring him with Earshot. NAME: a placeholder ("Sound") until the owner
-names him; renaming = AGENT below + agents.REGISTRY + settings + cp.WORKERS + rules.AGENTS, and agents.RETIRED maps the old row).
+critic or give advises or make it himself"; he said yes to hiring him with Earshot and named him Tarek: "cll him tarek". Not
+the music-video client of project 4, who is also called Tarek. Renaming = AGENT below + agents.REGISTRY + settings + cp.WORKERS +
+rules.AGENTS/PROMPT_TARGET, and agents.RETIRED maps the old row; his first runs were logged as "Sound").
 
 He can't hear, so he listens through measurements:
 - Earshot (github.com/Leonxlnx/earshot, MIT, CPU only; in ~/.agent-hq-anim/earshot with its own venv; earshot_probe.py): the mix
@@ -30,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-AGENT = "Sound"
+AGENT = "Tarek"
 HOME = Path.home() / ".agent-hq-anim"
 EARSHOT = HOME / "earshot"
 EPY = EARSHOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
@@ -242,7 +243,7 @@ def report_text(rep):
 
 
 # ───────────────────────── judging and fixing (office Python, Claude on the subscription) ─────────────────────────
-SYSTEM = """You are the sound and voice director of Storygraphics, a YouTube channel of narrated, animated true stories (survival,
+SYSTEM = """You are Tarek, the sound and voice director of Storygraphics, a YouTube channel of narrated, animated true stories (survival,
 rescues, disasters) in the style of The Infographics Show. You work for the owner of Agent HQ. You cannot hear, so you listen
 through measurements: Earshot's listening transcript and layer timelines (events, levels, tags, sync to the picture's cuts), its
 check of whether each placed sound sounds like what it was meant to be, the mix report, and the narrator's numbers per line.
