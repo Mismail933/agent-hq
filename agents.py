@@ -1375,9 +1375,10 @@ def fix_notes(eid, notes, by="Israa"):
     d.setdefault("fix_history", []).append({"version": d["version"], "by": by, "notes": notes, "applied": applied, "failed": failed,
                                             "not_fixed": got.get("not_fixed") or [], "summary": got.get("summary", ""), "at": time.time()})
     story_script(d)
-    status = e["status"]
-    if not cp.update_episode_if(eid, status, data=d, status="in_review"):
+    if not cp.update_episode_if(eid, e["status"], data=d):   # (only if nobody decided it meanwhile)
         return False
+    if e["status"] != "in_review":   # a fixed script goes back behind the gate until both reviewers score the new version
+        cp.update_episode(eid, status="in_review")
     folder = CONTENT / f"project-{p['id']}" / f"batch-{e['batch']:02d}"
     folder.mkdir(parents=True, exist_ok=True)
     (folder / f"ep-{eid:03d}.json").write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
