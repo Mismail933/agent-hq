@@ -91,14 +91,15 @@ function MTeeth({f, len, line}) {
   const mode = p.mode || 'belt';
   const R = rng(21);
   if (mode === 'belt') {
-    const n = Math.round(lin(f, at(line, p.on || '40,000', 0.6) - 4, at(line, p.on || '40,000', 0.6) + 34, 0, 40000));
+    const a = at(line, p.on || '40,000', 0.6);
+    const n = Math.round(lin(f, a - 4, a + 34, 0, 40000));
     return (
       <g><Cam f={f} len={len} a={1} b={1.04}>
         <BG c="#3B0D12" />
         <path d="M -40 300 C 400 200 1500 200 1960 300 L 1960 -40 L -40 -40 Z" fill="#AEBBC7" {...ST} />
         {[0, 1, 2, 3].map((r) => [...Array(16)].map((_, i) => { const x = ((i * 130 + f * (2 + r) + r * 60) % 2200) - 140, y = 330 + r * 90;
           return <g key={r + '-' + i} transform={`translate(${x} ${y}) scale(${0.14 - r * 0.018}) rotate(${r === 0 ? 0 : 180 * 0})`} opacity={1 - r * 0.2}><Tooth /></g>; }))}
-        <g transform="translate(960 800)"><Box x={-330} y={-70} w={660} h={140} text={`${n.toLocaleString('en-US')} TEETH`} fill="#FDE047" /></g>
+        {f > a - 6 && <g transform={`translate(960 800) scale(${clamp(pop(f, a - 6, 150, 12), 0, 1.05)})`}><Box x={-330} y={-70} w={660} h={140} text={`${n.toLocaleString('en-US')} TEETH`} fill="#FDE047" /></g>}
       </Cam>
         <Labels line={line} f={f} x0={100} y0={90} /></g>
     );
