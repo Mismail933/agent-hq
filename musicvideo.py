@@ -41,6 +41,7 @@ FPS = 24
 CODE = "mv-1"   # in every cache key: raise it when the look of a shot changes
 WARM, COLD = (255, 214, 150), (215, 228, 255)
 FONT_URL = "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald%5Bwght%5D.ttf"   # SIL Open Font Licence
+PLACE_FONT_URL = "https://raw.githubusercontent.com/google/fonts/main/ofl/cinzel/Cinzel%5Bwght%5D.ttf"   # SIL OFL
 FONTS = Path.home() / ".agent-hq-anim" / "fonts"
 MAX_SLOW, MAX_FAST, MAX_OVERLAP = 1.6, 0.5, 2.5
 
@@ -245,9 +246,10 @@ def shot_key(s, base, W, H, quick):
 
 
 # ---- lyrics ---------------------------------------------------------------------------------------------------------
-def font_file():
+def font_file(name="Oswald-wght.ttf", url=None):
     FONTS.mkdir(parents=True, exist_ok=True)
-    f = FONTS / "Oswald-wght.ttf"
+    url = url or FONT_URL
+    f = FONTS / name
     if not f.exists():
         try:
             import certifi
@@ -255,7 +257,7 @@ def font_file():
         except Exception:   # noqa: BLE001
             ctx = None
         try:
-            with urllib.request.urlopen(FONT_URL, timeout=60, context=ctx) as r:
+            with urllib.request.urlopen(url, timeout=60, context=ctx) as r:
                 data = r.read()
             if data[:4] in (b"\x00\x01\x00\x00", b"true", b"OTTO"):
                 f.write_bytes(data)
@@ -344,6 +346,80 @@ def draw_lyrics(img, layers, t, W, H, bottom):
     return img
 
 
+# ---- place labels ---------------------------------------------------------------------------------------------------
+# edit.json "places": [{"in": 92.3, "out": 94.4, "name": "Western Xia", "year": "1209"}, ...] -> top left of the picture: the name
+# in Cinzel capitals (warm white), a thin gold rule, the year under it; a soft dark shadow; fades in (0.6 s, a slight rise) and out.
+PLACE_INK = np.array([246, 236, 214], np.float32)
+PLACE_GOLD = np.array([214, 172, 92], np.float32)
+
+
+def place_image(name, year, size):
+    ff = font_file("Cinzel-wght.ttf", PLACE_FONT_URL)
+    big = ImageFont.truetype(str(ff), size) if ff else ImageFont.load_default()
+    small = ImageFont.truetype(str(ff), int(size * 0.62)) if ff else ImageFont.load_default()
+    for f, wgt in ((big, 600), (small, 600)):
+        try:
+            f.set_variation_by_axes([wgt])
+        except Exception:   # noqa: BLE001
+            pass
+    name, year = name.upper(), str(year)
+    sp_b, sp_s = size * 0.08, size * 0.12
+    wb = sum(big.getlength(c) + sp_b for c in name) - sp_b
+    ws = sum(small.getlength(c) + sp_s for c in year) - sp_s
+    pad = int(size * 0.7)
+    rule_y = pad + int(size * 1.18)
+    Wd = int(max(wb, ws, size * 2)) + pad * 2
+    Hd = rule_y + int(size * 0.95) + pad
+    text = Image.new("L", (Wd, Hd), 0)
+    rule = Image.new("L", (Wd, Hd), 0)
+    d, dr = ImageDraw.Draw(text), ImageDraw.Draw(rule)
+    x = pad
+    for c in name:
+        d.text((x, pad), c, font=big, fill=255)
+        x += big.getlength(c) + sp_b
+    x = pad
+    for c in year:
+        d.text((x, rule_y + int(size * 0.22)), c, font=small, fill=255)
+        x += small.getlength(c) + sp_s
+    dr.rectangle([pad, rule_y, pad + int(wb), rule_y + max(1, int(size * 0.05))], fill=255)
+    core_t = np.asarray(text, np.float32) / 255
+    core_r = np.asarray(rule, np.float32) / 255
+    core = np.maximum(core_t, core_r)
+    shadow = np.asarray(Image.fromarray((core * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(size * 0.3)),
+                        np.float32) / 255 * 0.8
+    alpha = np.clip(core + shadow * (1 - core), 0, 1)
+    rgb = np.zeros((Hd, Wd, 3), np.float32)
+    lit = core / np.maximum(alpha, 1e-4)
+    rgb += (core_t / np.maximum(core, 1e-4) * lit)[..., None] * PLACE_INK + (core_r / np.maximum(core, 1e-4) * lit * (core_t < 0.5))[..., None] * PLACE_GOLD
+    return rgb, alpha
+
+
+def place_layers(places, size):
+    return [{"in": float(p["in"]), "out": float(p["out"]), "size": size,
+             **dict(zip(("rgb", "a"), place_image(p["name"], p.get("year", ""), size)))} for p in places]
+
+
+def draw_places(img, layers, t, x, y):
+    H, W = img.shape[:2]
+    for L in layers:
+        if not (L["in"] <= t <= L["out"]):
+            continue
+        u = min(1.0, (t - L["in"]) / 0.6)
+        v = min(1.0, (L["out"] - t) / 0.6)
+        inn = u * u * (3 - 2 * u)
+        op = min(inn, v * v * (3 - 2 * v))
+        if op <= 0.01:
+            continue
+        h, w = L["a"].shape
+        yy = int(y + (1 - inn) * L["size"] * 0.2)
+        y0, y1, x0, x1 = max(0, yy), min(H, yy + h), max(0, x), min(W, x + w)
+        if y1 <= y0 or x1 <= x0:
+            continue
+        a = (L["a"][y0 - yy:y1 - yy, x0 - x:x1 - x] * op)[..., None]
+        img[y0:y1, x0:x1] = img[y0:y1, x0:x1] * (1 - a) + L["rgb"][y0 - yy:y1 - yy, x0 - x:x1 - x] * a
+    return img
+
+
 # ---- the whole video ------------------------------------------------------------------------------------------------
 def reader(path, W, H):
     return subprocess.Popen([FF, "-v", "error", "-i", str(path), "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-"],
@@ -386,6 +462,8 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
     fade_in, fade_out = float(plan.get("fade_in", 1.6)), float(plan.get("fade_out", 2.0))
     lyrics = [l for l in (plan.get("lyrics") or []) if float(l["in"]) < end]
     lw = lyric_layers(lyrics, W, H)
+    places = [p for p in (plan.get("places") or []) if float(p["in"]) < end]
+    pw = place_layers(places, int(H * 0.05))
     shade = np.zeros((H, 1, 1), np.float32)
     band = int(H * 0.28)
     shade[H - band:, 0, 0] = np.linspace(0, 0.55, band)
@@ -395,6 +473,7 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
     VW, VH = (540, 960) if quick else (1080, 1920)
     if vertical:
         lv = lyric_layers(lyrics, VW, VH, vertical=True)
+        pv = place_layers(places, int(VW * 0.058))
         silent_v = work / "_vertical-silent.mp4"
         encv = encoder(silent_v, VW, VH, quick)
         ph = int(VW * H / W)
@@ -433,6 +512,7 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
         clean = img
         img = img * (1 - shade) + shade_col * shade
         img = draw_lyrics(img, lw, t, W, H, H * 0.07)
+        img = draw_places(img, pw, t, int(W * 0.035), int(H * 0.045))
         enc.stdin.write(np.clip(img * g, 0, 255).astype(np.uint8).tobytes())
         if vertical:
             small = Image.fromarray(np.clip(clean, 0, 255).astype(np.uint8))
@@ -442,6 +522,7 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
             v = np.asarray(bg, np.float32) * 0.45
             v[py:py + ph] = np.asarray(small.resize((VW, ph), Image.LANCZOS), np.float32)
             v = draw_lyrics(v, lv, t, VW, VH, VH * 0.17)
+            v = draw_places(v, pv, t, int(VW * 0.05), max(0, py - int(VW * 0.058 * 3.4)))
             encv.stdin.write(np.clip(v * g, 0, 255).astype(np.uint8).tobytes())
         if f % (FPS * 20) == 0:
             say(f"  {t:6.1f} s of {end:.1f}")
