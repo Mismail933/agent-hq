@@ -3,6 +3,8 @@
 // the script's choices (labels on spoken words, faces, depth...).
 import React from 'react';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, Bust, Head, Box, Plane, Cloud, at, Labels} from './tis';
+import {noise2D} from '@remotion/noise';
+import {evolvePath} from '@remotion/paths';
 
 const P = (line) => line.p || {};
 const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
@@ -12,11 +14,22 @@ const wave = (f, y, amp, k) => {
   for (let x = -40; x <= W + 80; x += 40) d += ` L ${x} ${(y + Math.sin(x / 150 + f * 0.05 + k) * amp + Math.sin(x / 61 + f * 0.09 + k * 2) * amp * 0.35).toFixed(1)}`;
   return d + ` L ${W + 80} ${H + 40} Z`;
 };
-// a camera that zooms on a point: z from a to b between frames f0 and f1
-const Zoom = ({f, f0, f1, a, b, x = W / 2, y = H / 2, shake = 0, children}) => {
+// a camera that zooms on a point: z from a to b between frames f0 and f1. shake = a hit (fast, strong); hand = a hand-held camera's
+// slow drift (2.54.0: smooth noise from @remotion/noise instead of sine waves, so it never looks like a machine wobbling)
+export const camShake = (f, shake = 0, hand = 0) => [
+  noise2D('sx', f * 0.35, 0) * shake * 1.4 + noise2D('hx', f * 0.025, 0) * hand * 3,
+  noise2D('sy', 0, f * 0.35) * shake * 1.1 + noise2D('hy', 0, f * 0.025) * hand * 2.2,
+];
+const Zoom = ({f, f0, f1, a, b, x = W / 2, y = H / 2, shake = 0, hand = 0, children}) => {
   const z = lin(f, f0, f1, a, b);
-  const sx = shake ? Math.sin(f * 1.9) * shake : 0, sy = shake ? Math.cos(f * 2.3) * shake * 0.7 : 0;
+  const [sx, sy] = camShake(f, shake, hand);
   return <g transform={`translate(${W / 2 + sx} ${H / 2 + sy}) scale(${z}) translate(${-x} ${-y})`}>{children}</g>;
+};
+// a line that draws itself from 0 to 1 (evolvePath from @remotion/paths)
+export const DrawOn = ({d, k, stroke = INK, w = 6, op = 1}) => {
+  if (k <= 0) return null;
+  const e = evolvePath(clamp(k, 0, 1), d);
+  return <path d={d} fill="none" stroke={stroke} strokeWidth={w} strokeLinecap="round" strokeDasharray={e.strokeDasharray} strokeDashoffset={e.strokeDashoffset} opacity={op} />;
 };
 
 // ───────────── the sea from above ─────────────
@@ -139,7 +152,7 @@ const Bubbles = ({f, x, y, n = 12, seed = 3, spread = 60, op = 0.7}) => {
   const R = rng(seed);
   return <g>{[...Array(n)].map((_, i) => { const dx = (R() - 0.5) * spread, sp = 3 + R() * 4, r = 5 + R() * 9, ph = R() * 120;
     const yy = y - ((f * sp + ph * sp) % 520);
-    return <circle key={i} cx={x + dx + Math.sin(f * 0.15 + i) * 8} cy={yy} r={r} fill="none" stroke="#E0F2FE" strokeWidth={3} opacity={op * clamp(1 - (y - yy) / 520, 0, 1)} />; })}</g>;
+    return <circle key={i} cx={x + dx + noise2D('b' + seed, i * 3.1, f * 0.05) * 14} cy={yy} r={r} fill="none" stroke="#E0F2FE" strokeWidth={3} opacity={op * clamp(1 - (y - yy) / 520, 0, 1)} />; })}</g>;
 };
 
 // ───────────── the scenes ─────────────
@@ -200,9 +213,12 @@ function Snag({f, len, line}) {
   const h = clamp(pop(f, r, 220, 9), 0, 1.15);
   const tug = f >= r ? Math.max(0, 1 - (f - r) / 12) : 0;
   return (
-    <g><Zoom f={f} f0={0} f1={len} a={1.0} b={1.04} shake={f >= r && f < r + 14 ? 12 : 0}>
+    <g><Zoom f={f} f0={0} f1={len} a={1.0} b={1.04} shake={f >= r && f < r + 14 ? 12 : 0} hand={2}>
       <Sea f={f} y0={430} id="sn" swell={1.4} />
-      <g transform={`translate(1290 ${560 + Math.sin(f * 0.07) * 6}) scale(2.3)`}><Pisces f={f} lights={false} hatch={Math.min(1, h)} /></g>
+      <g transform={`translate(1290 ${560 + Math.sin(f * 0.07) * 6}) scale(2.3)`}><Pisces f={f} lights={false} hatch={Math.min(1, h)} />
+        {[['M -268 -136 l -40 -30 l -18 -36', 0], ['M -172 -136 l 34 -24 l 10 -40', 2], ['M -220 -136 l 6 -44 l -14 -30', 4]].map(([d, k]) => (
+          <DrawOn key={d} d={d} k={(f - r - k) / 8} w={5} />))}
+      </g>
       {/* the towline: down from the crane, looped round the hatch */}
       <path d={`M ${1800 - tug * 30} -20 C ${1500} ${120 + tug * 40} ${1000} ${170} ${790 + h * 40} ${240 - h * 60}`} fill="none" stroke="#F8FAFC" strokeWidth={14} />
       <path d={`M ${1800 - tug * 30} -20 C ${1500} ${120 + tug * 40} ${1000} ${170} ${790 + h * 40} ${240 - h * 60}`} fill="none" {...st(4)} />
@@ -224,7 +240,7 @@ function Flood({f, len, line}) {
   return (
     <g>
       <Deep f={f} depth={0.12} id="fl" surface />
-      <g transform={`translate(960 ${y}) rotate(${rot + Math.sin(f * 0.3) * (f < fl ? 2 : 0)}) scale(1.05)`}>
+      <g transform={`translate(${960 + camShake(f, 0, 2)[0]} ${y + camShake(f, 0, 2)[1]}) rotate(${rot + noise2D('fl', f * 0.12, 0) * (f < fl ? 3 : 0)}) scale(1.05)`}>
         <Pisces f={f} lights={false} hatch={1} flood={water} />
         {f < fl && <path d={`M -220 -136 C -230 -260 -200 -380 -230 -560`} fill="none" stroke="#7FC4EC" strokeWidth={34} strokeLinecap="round" opacity={0.8} />}
       </g>
@@ -270,7 +286,7 @@ function Trapped({f, len, line}) {
   const p = P(line);
   const tilt = p.tilt != null ? p.tilt : -14;
   return (
-    <g><Zoom f={f} f0={0} f1={len} a={1.0} b={1.08}>
+    <g><Zoom f={f} f0={0} f1={len} a={1.0} b={1.08} hand={1.5}>
       <rect width={W} height={H} fill="#05090E" />
       <g transform={`translate(960 560) rotate(${tilt})`}>
         <circle r={500} fill="#1C2530" {...st(12)} />

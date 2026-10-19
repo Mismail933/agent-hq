@@ -383,6 +383,17 @@ def on_clock(d, shots, words, starts, secs):
 
 
 # ---- render -----------------------------------------------------------------------------
+def emoji_slug(name):
+    """The file name a prop has in public/emoji (emoji.jsx's emojiSlug does the same)."""
+    return re.sub(r"^_+|_+$", "", re.sub(r"[^a-z0-9]+", "_", str(name).lower()))
+
+
+def emoji_names():
+    """Every ready-made prop the kit can draw (Fluent Emoji, flat), for the director's prompt."""
+    em = HOME / "fluent-emoji" / "assets"
+    return sorted(d.name.lower() for d in em.iterdir() if (d / "Flat").exists()) if em.exists() else []
+
+
 def ensure_app():
     APP.mkdir(parents=True, exist_ok=True)
     (APP / "public").mkdir(exist_ok=True)
@@ -396,6 +407,15 @@ def ensure_app():
             os.symlink(str(animate.APP / "node_modules"), str(APP / "node_modules"), target_is_directory=True)
         except OSError:
             subprocess.run(["cmd", "/c", "mklink", "/J", str(APP / "node_modules"), str(animate.APP / "node_modules")], capture_output=True)
+    # ready-made props (2.54.0): Fluent Emoji, flat (MIT), as public/emoji/<slug>.svg, copied once
+    em, dst = HOME / "fluent-emoji" / "assets", APP / "public" / "emoji"
+    if em.exists() and not (dst / ".copied").exists():
+        dst.mkdir(parents=True, exist_ok=True)
+        for d in em.iterdir():
+            for svg in (d / "Flat").glob("*.svg") if (d / "Flat").exists() else []:
+                shutil.copy(svg, dst / (emoji_slug(d.name) + ".svg"))
+                break
+        (dst / ".copied").write_text(str(len(list(dst.glob("*.svg")))), encoding="utf-8")
     # the kit's font, local (no network in a render)
     import base64
     css = ""

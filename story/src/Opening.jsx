@@ -7,6 +7,7 @@ import {JulianeArt} from './Thumb';
 import {STORY_SHOTS, DayCard, DayCorner} from './jungle';
 import {OCEAN_SHOTS} from './ocean';
 import {FONT_CSS} from './fonts';
+import {CameraMotionBlur} from '@remotion/motion-blur';
 
 // the frame (inside the line) where a word is said; fallback = a fraction of the line
 const at = (line, word, frac = 0.3) => {
@@ -284,6 +285,11 @@ function Title({f, len, line}) {
 const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
   breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS};
 
+// fast shots get a film camera's motion blur (2.54.0, @remotion/motion-blur: each frame is the average of a few moments within the
+// shutter time). Only these shots: it multiplies the rendering time of the frames it covers. line.p.blur forces it on (or off: false).
+const BLUR = new Set(['snag', 'flood', 'sink', 'breakup', 'falling']);
+const blurOf = (line) => ((line.p || {}).blur != null ? !!line.p.blur : BLUR.has(line.shot));
+
 const ShotLayer = ({line, len}) => {
   const f = useCurrentFrame();
   const S = SHOTS[line.shot] || Aerial;
@@ -359,7 +365,8 @@ export const Opening = ({lines = [], audio, captions = true}) => (
       const shifted = {...l, idx: i, cont, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
       return (
         <Sequence key={i} from={from} durationInFrames={Math.max(1, to - from)} layout="none">
-          <ShotLayer line={shifted} len={to - from} />
+          {blurOf(l) ? <CameraMotionBlur shutterAngle={200} samples={6}><ShotLayer line={shifted} len={to - from} /></CameraMotionBlur>
+            : <ShotLayer line={shifted} len={to - from} />}
         </Sequence>
       );
     })}

@@ -10,6 +10,7 @@ the voice) -> music and sound effects made in code (numpy, no downloads) -> mix 
 -> <sample>.mp4, <sample>.srt (exact subtitles for YouTube), review/sheet-NN.png, motion report.
 """
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -25,6 +26,7 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 import story   # noqa: E402
 import shorts   # noqa: E402
+import soundlib   # noqa: E402
 
 FPS = 30
 SR = 48000
@@ -498,6 +500,131 @@ def mood_of(l):
     return "tense"
 
 
+# ───────────── real sounds and music (2.54.0) ─────────────
+# The owner heard the made-up music as "corrupted" and wanted fewer, better effects. When the sound library (Sonniss, unpacked by
+# soundlib) and the music (Scott Buckley, CC BY 4.0) are on this PC, scenes get recorded sounds and real tracks; anything not found
+# falls back to the old made-up sound. USED lists every file a video used (credits.txt, and no sound twice in a row).
+USED = []
+MOOD_TRACK = {}
+TRACK_POS = {}
+SEED = [0]
+
+
+def _rms_of(x):
+    return float(np.sqrt(np.mean(x * x) + 1e-12))
+
+
+def lib_pick(queries, min_s=0.0, max_s=1e9):
+    if not soundlib.available():
+        return None
+    for q in queries:
+        r = soundlib.find(q, 3, min_s, max_s, avoid=set(USED[-6:]), seed=SEED[0])
+        if r:
+            return r[0]
+    return None
+
+
+def _strongest(x, dur, k=0):
+    """The k-th strongest moment of a long recording (libraries put many hits in one file), dur seconds from just before it."""
+    w = int(0.02 * SR)
+    n = len(x) // w
+    if n < 3:
+        return x[:int(dur * SR)]
+    e = np.sqrt(np.mean(x[:n * w].reshape(n, w) ** 2, 1))
+    on = np.maximum(0, e[1:] - e[:-1] * 1.6)   # onsets: a block much louder than the one before
+    order = np.argsort(-on)
+    picks = []
+    for i in order:   # well-separated hits, strongest first
+        if all(abs(i - j) > int(1.0 / 0.02) for j in picks):
+            picks.append(i)
+        if len(picks) > k:
+            break
+    i0 = max(0, (picks[min(k, len(picks) - 1)] + 1) * w - int(0.03 * SR))
+    return x[i0:i0 + int(dur * SR)]
+
+
+def real(bus, t, queries, dur=None, gain=0.3, fade_in=0.02, fade_out=0.3, loop=False, hit=False, level=0.1, min_s=0.0, max_s=1e9, k=0):
+    """A recorded sound at time t: an ambience (dur, looped with crossfades if the file is shorter, at RMS `level`) or a hit (the
+    strongest moment of the file, at peak 1 x gain). False when the library has nothing for it (the caller then makes its own)."""
+    r = lib_pick(queries, min_s, max_s)
+    if not r:
+        return False
+    x = soundlib.load(r["f"])
+    if hit:
+        seg = _strongest(x, dur or 1.5, k)
+        seg = seg / (np.max(np.abs(seg)) + 1e-9)
+    else:
+        need = int((dur or len(x) / SR) * SR)
+        if len(x) >= need:
+            off = int((len(x) - need) * ((hash((r["f"], SEED[0], round(t))) % 1000) / 1000.0))
+            seg = x[off:off + need].copy()
+        elif loop:
+            xf = int(min(1.5, len(x) / SR / 4) * SR)
+            seg = x.copy()
+            while len(seg) < need:   # equal-power crossfade into the next copy
+                a_ = np.cos(np.linspace(0, np.pi / 2, xf)) ; b_ = np.sin(np.linspace(0, np.pi / 2, xf))
+                seg = np.concatenate([seg[:-xf], seg[-xf:] * a_ + x[:xf] * b_, x[xf:]])
+            seg = seg[:need]
+        else:
+            seg = x.copy()
+        seg = seg * (level / _rms_of(seg))
+    n = len(seg)
+    put(bus, t, seg * env(n, int(fade_in * SR), int(fade_out * SR)), gain)
+    USED.append(r["f"])
+    return True
+
+
+def real_music(music, r0, r1, mood):
+    """A real track under a run of lines with one mood: the same track for that mood all video long, carrying on where it left off,
+    equal-power fades of 2.4 s so runs crossfade. False when there is no music on this PC."""
+    have = soundlib.tracks()
+    if not have:
+        return False
+    name = MOOD_TRACK.get(mood) or soundlib.music_for(mood, SEED[0], avoid=set(MOOD_TRACK.values()))
+    if not name:
+        return False
+    MOOD_TRACK[mood] = name
+    x = soundlib.load(have[name]["file"])
+    if name not in TRACK_POS:   # start where the track is first properly playing (skip a silent lead-in)
+        e = np.sqrt(np.convolve(x * x, np.ones(SR // 10) / (SR // 10), "same"))
+        on = np.nonzero(e > 0.12 * e.max())[0]
+        TRACK_POS[name] = (on[0] / SR) if len(on) else 0.0
+    fade = 2.4
+    t0, t1 = max(0.0, r0 - fade / 2), min(len(music) / SR, r1 + fade / 2)
+    need = int((t1 - t0) * SR)
+    pos = int(TRACK_POS[name] * SR)
+    seg = np.zeros(need)
+    got = 0
+    while got < need:   # wrap round to the start if the track runs out
+        take = min(need - got, len(x) - pos)
+        if take <= 0:
+            pos = int(10 * SR) if len(x) > 20 * SR else 0
+            continue
+        seg[got:got + take] = x[pos:pos + take]
+        got += take
+        pos += take
+    TRACK_POS[name] = pos / SR
+    nf = min(need // 2, int(fade * SR))
+    e = np.ones(need)
+    e[:nf] = np.sin(np.linspace(0, np.pi / 2, nf))
+    e[need - nf:] = np.cos(np.linspace(0, np.pi / 2, nf))
+    put(music, t0, seg * (0.09 / (_rms_of(seg) + 1e-9)) * e, 1.0)
+    return True
+
+
+def credits(folder):
+    """credits.txt beside the video: what to paste into the description."""
+    out = []
+    mc = soundlib.music_credit(sorted(set(MOOD_TRACK.values())))
+    if mc:
+        out.append(mc)
+    if USED:
+        out.append(soundlib.SONNISS_CREDIT + " (no credit required)")
+    (folder / "credits.txt").write_text("\n".join(out) + "\n", encoding="utf-8")
+    (folder / "sounds-used.json").write_text(json.dumps({"music": MOOD_TRACK, "sounds": USED}, indent=1), encoding="utf-8")
+    return out
+
+
 def scene_sound(lines, total, music, sfx):
     """Sound for the story scenes after the opening: the jungle (insects, birds by day, crickets at night), water, rain, planes,
     a hit when the day changes, and a music mood per scene. Everything is held under the voice later (mix)."""
@@ -515,7 +642,8 @@ def scene_sound(lines, total, music, sfx):
         else:
             runs.append([t0, t1, m])
     for r0, r1, m in runs:
-        bed(music, max(0.0, r0 - 1.0), min(total, r1 + 1.0), MOODS[m], 6.4, 0.075 if m != "hope" else 0.085, fade=2.4)
+        if not real_music(music, r0, r1, m):
+            bed(music, max(0.0, r0 - 1.0), min(total, r1 + 1.0), MOODS[m], 6.4, 0.075 if m != "hope" else 0.085, fade=2.4)
     # the jungle's hiss: continuous over runs of jungle lines
     jr = []
     for i, l in enumerate(lines):
@@ -555,36 +683,46 @@ def scene_sound(lines, total, music, sfx):
                 m2 = int(0.16 * SR)
                 t2 = np.arange(m2) / SR
                 put(sfx, t0 + dur * 0.5 + rng.uniform(-0.5, 0.5), band(np.sin(2 * np.pi * np.cumsum(2400 + 1200 * np.sin(2 * np.pi * 8 * t2)) / SR), None, 3500) * env(m2, 400, 3000), 0.015)
-        if l["shot"] in OCEAN_SURFACE:   # the open sea: a low wash of waves
-            put(sfx, t0, band(noise(dur), 90, 900) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.15 * tt)) * fade, 0.03)
-        if l["shot"] in OCEAN_DEEP:   # under the water: a deep, slow rumble
-            put(sfx, t0, band(noise(dur), 25, 160) * (0.8 + 0.2 * np.sin(2 * np.pi * 0.1 * tt)) * fade, 0.06)
+        if l["shot"] in OCEAN_SURFACE:   # the open sea: recorded waves, else a made-up wash
+            if not real(sfx, t0, ["ocean waves", "sea waves", "waves", "water lapping"], dur, 0.5, 0.6, 0.6, loop=True, level=0.06):
+                put(sfx, t0, band(noise(dur), 90, 900) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.15 * tt)) * fade, 0.03)
+        if l["shot"] in OCEAN_DEEP:   # under the water: a recorded underwater drone, else a deep, slow rumble
+            if not real(sfx, t0, ["underwater", "underwater ambience", "drone dark", "low rumble"], dur, 0.5, 0.6, 0.6, loop=True, level=0.06):
+                put(sfx, t0, band(noise(dur), 25, 160) * (0.8 + 0.2 * np.sin(2 * np.pi * 0.1 * tt)) * fade, 0.06)
         wt = lambda w: next((s for x, s, e in l["words"] if re.sub(r"[^a-z0-9]", "", x.lower()).startswith(w)), None)
         if l["shot"] == "snag" and wt("rips") is not None:   # metal tearing, and a thump
-            m = int(0.5 * SR)
-            th = np.arange(m) / SR
-            put(sfx, wt("rips"), band(noise(0.5), 700, 6000) * np.exp(-th * 9), 0.25)
-            put(sfx, wt("rips"), band(noise(0.5), 30, 220) * np.exp(-th * 6), 0.5)
+            if not real(sfx, wt("rips") - 0.05, ["metal tear", "metal stress", "metal creak", "metal impact"], 1.6, 0.9, hit=True):
+                m = int(0.5 * SR)
+                th = np.arange(m) / SR
+                put(sfx, wt("rips"), band(noise(0.5), 700, 6000) * np.exp(-th * 9), 0.25)
+                put(sfx, wt("rips"), band(noise(0.5), 30, 220) * np.exp(-th * 6), 0.5)
         if l["shot"] == "flood" and wt("floods") is not None:   # the water rushing in
             s0 = wt("floods")
             d = max(0.5, min(dur - (s0 - t0), 3.5))
-            put(sfx, s0, band(noise(d), 200, 2600) * env(int(d * SR), int(0.3 * SR), int(0.8 * SR)), 0.1)
+            if not real(sfx, s0 - 0.1, ["water rush", "water pour", "water splash", "water flow", "water gush"], d, 0.7, 0.15, 0.8, level=0.12):
+                put(sfx, s0, band(noise(d), 200, 2600) * env(int(d * SR), int(0.3 * SR), int(0.8 * SR)), 0.1)
         if l["shot"] == "sink":
-            for c in np.arange(0.3, dur - 0.3, 0.45):   # bubbles
-                m2 = int(0.08 * SR)
-                t2 = np.arange(m2) / SR
-                put(sfx, t0 + c + rng.uniform(0, 0.2), np.sin(2 * np.pi * (500 + 900 * t2 / 0.08) * t2) * env(m2, 60, 600), 0.015)
+            if not real(sfx, t0 + 0.2, ["bubbles underwater", "bubbles", "water bubble"], max(0.5, dur - 0.6), 0.5, 0.3, 0.6, loop=True, level=0.05):
+                for c in np.arange(0.3, dur - 0.3, 0.45):   # bubbles
+                    m2 = int(0.08 * SR)
+                    t2 = np.arange(m2) / SR
+                    put(sfx, t0 + c + rng.uniform(0, 0.2), np.sin(2 * np.pi * (500 + 900 * t2 / 0.08) * t2) * env(m2, 60, 600), 0.015)
             hb = wt("bottom")
             if hb is not None:   # the hit on the seabed
-                m = int(1.4 * SR)
-                th = np.arange(m) / SR
-                put(sfx, hb, band(noise(1.4), 20, 180) * np.exp(-th * 2.6), 0.9)
-                put(sfx, hb + 0.05, band(noise(1.4), 300, 2500) * np.exp(-th * 4), 0.08)
+                if not real(sfx, hb - 0.03, ["impact heavy", "bass drop", "boom", "impact"], 2.2, 1.0, hit=True):
+                    m = int(1.4 * SR)
+                    th = np.arange(m) / SR
+                    put(sfx, hb, band(noise(1.4), 20, 180) * np.exp(-th * 2.6), 0.9)
+                    put(sfx, hb + 0.05, band(noise(1.4), 300, 2500) * np.exp(-th * 4), 0.08)
         if l["shot"] == "trapped":   # a slow drip in the dark
-            for c in np.arange(0.6, dur - 0.2, 1.7):
-                m2 = int(0.12 * SR)
-                t2 = np.arange(m2) / SR
-                put(sfx, t0 + c, np.sin(2 * np.pi * 1700 * t2) * np.exp(-t2 * 40), 0.02)
+            if not real(sfx, t0 + 0.6, ["water drip", "drip"], max(0.5, dur - 0.8), 0.5, 0.2, 0.5, loop=True, level=0.03):
+                for c in np.arange(0.6, dur - 0.2, 1.7):
+                    m2 = int(0.12 * SR)
+                    t2 = np.arange(m2) / SR
+                    put(sfx, t0 + c, np.sin(2 * np.pi * 1700 * t2) * np.exp(-t2 * 40), 0.02)
+        if l["shot"] in ("p_title", "title") and not any(x in OPENING for x in (lines[0]["shot"],)):   # a low hit on the title's big word
+            tw = wt(((p.get("top_on") or "") or "survived").lower()) or t0 + 0.3
+            real(sfx, tw - 0.05, ["bass drop", "boom", "impact heavy"], 3.0, 0.9, hit=True)
         if l["shot"] in ("wade", "canoe", "hut") or p.get("water"):
             put(sfx, t0, band(noise(dur), 300, 2200) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.4 * tt)) * env(n, int(0.8 * SR), int(0.8 * SR)), 0.025)
         if p.get("rain"):
@@ -592,7 +730,9 @@ def scene_sound(lines, total, music, sfx):
         if l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
             drone = (np.sin(2 * np.pi * 110 * tt) + 0.5 * np.sin(2 * np.pi * 220 * tt)) * np.sin(np.pi * np.clip(tt / dur, 0, 1)) ** 2
             put(sfx, t0, band(drone + band(noise(dur), 80, 600) * 0.6, 60, 900), 0.07)
-        if p.get("day") not in (None, "") and p.get("day") != day:
+        if p.get("day") not in (None, "") and p.get("day") != day and real(sfx, t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.8, hit=True, k=1):
+            pass
+        elif p.get("day") not in (None, "") and p.get("day") != day:
             m = int(1.6 * SR)
             th = np.arange(m) / SR
             put(sfx, t0, np.sin(2 * np.pi * (60 - 20 * th) * th) * np.exp(-th * 3), 0.3)
@@ -732,7 +872,10 @@ def run(a, spec, folder):
     lines, total = timeline(spec, voiced)
     say(f"   {sum(len(l['words']) for l in lines)} words, {total:.1f} s")
     say("2. sound")
+    SEED[0] = int(hashlib.md5(str(spec.get("title", folder.name)).encode()).hexdigest()[:6], 16)
     music, sfx = make_sound(lines, total)
+    for c in credits(folder):
+        say("   " + c)
     wav = mix(lines, voiced, music, sfx, folder)
     srt(lines, folder / "subtitles.srt")
     story.ensure_app()

@@ -33,7 +33,7 @@ export const Label = ({x, y, text, f, at = 0, fill = '#FFE11A', color = INK, h =
 
 // ───────────────── faces ─────────────────
 const SKIN = {light: '#F2C29B', shade: '#D99C72', cheek: '#E8846A'};
-const SKINS = {light: SKIN, tan: {light: '#C98E5F', shade: '#A9724A', cheek: '#B86B4E'}};
+export const SKINS = {light: SKIN, tan: {light: '#C98E5F', shade: '#A9724A', cheek: '#B86B4E'}};
 const blinkAt = (f, seed) => ((f + seed * 41) % 100) < 4;
 
 function Eyes({expr, f, seed, look = 0}) {

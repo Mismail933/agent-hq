@@ -4,6 +4,7 @@ import {Story, StoryStill} from './Story';
 import {Sheet} from './Sheet';
 import {Thumb} from './Thumb';
 import {Opening} from './Opening';
+import {MotionTest, EmojiSheet} from './Showcase';
 import {FPS, W, H} from './kit';
 
 export const RemotionRoot = () => {
@@ -16,6 +17,8 @@ export const RemotionRoot = () => {
       <Composition id="Sheet" component={Sheet} durationInFrames={1} fps={FPS} width={W} height={H} defaultProps={props} />
       <Composition id="Thumb" component={Thumb} durationInFrames={1} fps={FPS} width={W} height={H} defaultProps={props} />
       <Composition id="Opening" component={Opening} durationInFrames={frames} fps={FPS} width={W} height={H} defaultProps={props} />
+      <Composition id="MotionTest" component={MotionTest} durationInFrames={frames} fps={FPS} width={W} height={H} defaultProps={props} />
+      <Composition id="EmojiSheet" component={EmojiSheet} durationInFrames={1} fps={FPS} width={W} height={H} defaultProps={props} />
     </>
   );
 };
