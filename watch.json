@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.302",
-   "checked": "2026-10-18"
+   "last_seen": "2.1.303 (bug fixes only)",
+   "checked": "2026-10-19"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-10-15 Opus 5.5 fast mode GA; nothing newer",
-   "checked": "2026-10-18"
+   "checked": "2026-10-19"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-15 independent evaluators update; no new models",
-   "checked": "2026-10-18"
+   "last_seen": "2026-10-18 public benefit investment; no new models",
+   "checked": "2026-10-19"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -132,11 +132,11 @@
    "note": "MIT; picks the best of several tries of a task"
   },
   "eat-pray-ai/yutu": {
-   "stars": 698,
-   "last_commit": "2026-10-11",
-   "verdict": "watch",
-   "checked": "2026-10-14",
-   "note": "Apache-2.0 YouTube CLI/MCP; retention reports unconfirmed"
+   "stars": 701,
+   "last_commit": "2026-10-18",
+   "verdict": "skip",
+   "checked": "2026-10-19",
+   "note": "Has upload/delete; conflicts with read-only Omar"
   },
   "Hao0321/video-autopilot-kit": {
    "stars": 2183,
@@ -158,6 +158,13 @@
    "verdict": "watch",
    "checked": "2026-10-18",
    "note": "local office of agents on subscriptions; only seen in search listing, repo not opened"
+  },
+  "JuliusBrussee/caveman": {
+   "stars": 113500,
+   "last_commit": "2026-10-18",
+   "verdict": "skip",
+   "checked": "2026-10-19",
+   "note": "Gain mostly equals 'answer concisely'; telemetry default on"
   }
  },
  "issues": {

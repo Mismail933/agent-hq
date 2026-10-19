@@ -1,0 +1,121 @@
+{
+ "date": "2026-10-19",
+ "focus": "tools",
+ "note": "Nothing worth your time today. Claude Code moved from 2.1.302 to 2.1.303 (bug fixes only) and no new Anthropic models. I checked the new repos for tokens and YouTube automation; none is worth adopting. This was a lighter run than usual (fewer searches than my target), so I stayed on zero ideas instead of padding.",
+ "research": {
+  "searches": 8,
+  "pages_read": 6,
+  "minutes": 10,
+  "questions": [
+   "Is there a new, safe open-source tool that cuts our Claude Code token use without hurting quality?",
+   "Is there a maintained YouTube/Shorts tool that does something we do by hand, under a permissive licence?",
+   "Did Claude Code or the API change anything our claude -p workers rely on?"
+  ],
+  "gaps": [
+   "Did not reach the target of 15 searches / 8 pages today.",
+   "Could not confirm who cached tokens are metered against subscription limits (no official page found).",
+   "YouTube blog landing page showed no dated posts; no official Oct 2026 Shorts policy post found (an unsourced blog claim about Oct 1 left unverified).",
+   "Did not read the 'Every case where caveman loses' page."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.303: bug fixes only (2.1.302 had fork subagents on by default in claude -p, and cloud routines no longer re-run a partly failed scheduled run an hour later).",
+  "Claude API 2026-10-14: OpenTelemetry export beta for Messages API; 2026-10-07: Sonnet 5.5 cache reads $0.10/M and Haiku 5.5 launched (already known).",
+  "Anthropic news: only policy/public-benefit items, no new models."
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "2.1.303 is bug fixes only."
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Nothing after 10-15 that affects us."
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "No product or model news."
+  },
+  {
+   "title": "caveman (JuliusBrussee)",
+   "url": "https://github.com/JuliusBrussee/caveman",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Its own page: a plain 'Answer concisely.' gets most of the output saving; headline 65% is not what it measures; telemetry on by default; piped install; cloud routing."
+  },
+  {
+   "title": "yutu (eat-pray-ai)",
+   "url": "https://github.com/eat-pray-ai/yutu",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Can upload/edit/delete on YouTube; Omar is deliberately read-only and the owner uploads by hand."
+  },
+  {
+   "title": "YouTube Official Blog",
+   "url": "https://blog.youtube/news-and-events/",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Page showed no dated posts."
+  },
+  {
+   "title": "GitHub search: claude code agents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+agents",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Big general harnesses (ECC, cc-switch, claude-mem); none fits our worker setup."
+  },
+  {
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Small or CapCut/posting tools; we have our own renderer."
+  },
+  {
+   "title": "GitHub search: prompt caching token cost",
+   "url": "https://api.github.com/search/repositories?q=prompt+caching+token+cost",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Tiny repos (0-2 stars); none vetted."
+  },
+  {
+   "title": "Search: YouTube Shorts policy Oct 2026",
+   "url": "https://outlierkit.com/blog/youtube-updates-july-2026",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "Only the July three-categories change, already in the 10-18 idea."
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "JuliusBrussee/caveman",
+   "url": "https://github.com/JuliusBrussee/caveman",
+   "licence": "Apache-2.0",
+   "stars": 113500,
+   "last_commit": "2026-10-18",
+   "verdict": "skip",
+   "fit": "Terse output and tool-output compression for coding agents; our workers return JSON schemas, so little to cut.",
+   "why": "Gains mostly come from 'be concise'; telemetry default on; pipes an install script; Blocks is pre-release."
+  },
+  {
+   "name": "eat-pray-ai/yutu",
+   "url": "https://github.com/eat-pray-ai/yutu",
+   "licence": "Apache-2.0",
+   "stars": 701,
+   "last_commit": "2026-10-18",
+   "verdict": "skip",
+   "fit": "YouTube CLI/MCP with upload and delete power.",
+   "why": "Write access conflicts with Omar's read-only rule; no releases shown."
+  }
+ ],
+ "ideas": []
+}

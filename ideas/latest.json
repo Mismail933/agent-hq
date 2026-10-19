@@ -1,183 +1,121 @@
 {
- "date": "2026-10-18",
- "focus": "results",
- "note": "One idea today: YouTube's July 2026 'three categories' rule is not in Israa's story checklist yet, and Storygraphics is the channel most exposed to it. This run was lighter than planned (9 searches, 9 pages).",
+ "date": "2026-10-19",
+ "focus": "tools",
+ "note": "Nothing worth your time today. Claude Code moved from 2.1.302 to 2.1.303 (bug fixes only) and no new Anthropic models. I checked the new repos for tokens and YouTube automation; none is worth adopting. This was a lighter run than usual (fewer searches than my target), so I stayed on zero ideas instead of padding.",
  "research": {
-  "searches": 9,
-  "pages_read": 9,
-  "minutes": 15,
+  "searches": 8,
+  "pages_read": 6,
+  "minutes": 10,
   "questions": [
-   "Does YouTube's July 2026 clarification of 'inauthentic content' change what Israa should check on Storygraphics scripts?",
-   "What is new in Claude Code 2.1.295-302 that touches claude -p, routines or cost?",
-   "Did any new model or price change since 10-17?"
+   "Is there a new, safe open-source tool that cuts our Claude Code token use without hurting quality?",
+   "Is there a maintained YouTube/Shorts tool that does something we do by hand, under a permissive licence?",
+   "Did Claude Code or the API change anything our claude -p workers rely on?"
   ],
   "gaps": [
-   "Fewer than the 15 searches / 8 pages the job asks for on this run: only 9 searches and 9 pages.",
-   "No official YouTube page for the three-category wording; I used TechCrunch and two trade sites quoting Halprin's Creator Insider interview (B).",
-   "Did not find whether creators see any warning in Studio before demonetisation.",
-   "Daily routine run caps (5/15/25) come only from secondary coverage; no Anthropic page found."
+   "Did not reach the target of 15 searches / 8 pages today.",
+   "Could not confirm who cached tokens are metered against subscription limits (no official page found).",
+   "YouTube blog landing page showed no dated posts; no official Oct 2026 Shorts policy post found (an unsourced blog claim about Oct 1 left unverified).",
+   "Did not read the 'Every case where caveman loses' page."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.296-2.1.302: Sonnet 5.5 cache reads priced $0.10/MTok in /cost; fork subagents on by default in claude -p (2.1.302); CLAUDE_CODE_RETRY_WATCHDOG_MAX_USAGE_LIMIT_WAIT_MS (2.1.301); routines: failed scheduled runs no longer rerun an hour later (2.1.302)",
-  "API notes 10-15: fast mode out of preview for Opus 5.5; 10-14 OpenTelemetry export beta; 10-09 Managed Agents dynamic workflows beta",
-  "No new Anthropic models since Haiku 5.5 (10-07); news page has nothing that changes our choices",
-  "YouTube (Oct 1): Shorts recommendations favour original clips over re-uploads (already in watch.json)"
+  "Claude Code 2.1.303: bug fixes only (2.1.302 had fork subagents on by default in claude -p, and cloud routines no longer re-run a partly failed scheduled run an hour later).",
+  "Claude API 2026-10-14: OpenTelemetry export beta for Messages API; 2026-10-07: Sonnet 5.5 cache reads $0.10/M and Haiku 5.5 launched (already known).",
+  "Anthropic news: only policy/public-benefit items, no new models."
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "used",
-   "why": "2.1.302 is the newest; only the top 6 versions read; fork subagents default on in claude -p is worth knowing for workers.py"
+   "result": "nothing new",
+   "why": "2.1.303 is bug fixes only."
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "Nothing new for us since 10-15 entries already seen"
+   "why": "Nothing after 10-15 that affects us."
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "No model or product change"
+   "why": "No product or model news."
   },
   {
-   "title": "Anthropic pricing",
-   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-   "tier": "A",
-   "result": "used",
-   "why": "Confirms Haiku 5.5 $0.10/$0.50, Sonnet 5.5 cache read $0.10; settings.py still prices Haiku 4.5 (idea 2026-10-08-1 still open)"
-  },
-  {
-   "title": "Anthropic usage policy update",
-   "url": "https://www.anthropic.com/news/usage-policy-update",
-   "tier": "A",
-   "result": "rejected",
-   "why": "Page describes the 2025 update, nothing new for our use"
-  },
-  {
-   "title": "YouTube Help: Spam, deceptive practices (Generic or repetitive content)",
-   "url": "https://support.google.com/youtube/answer/1311392",
-   "tier": "A",
-   "result": "used",
-   "why": "Template / interchangeable-videos wording; a series with recurring characters is fine if each video has a distinct storyline"
-  },
-  {
-   "title": "TechCrunch: YouTube clarifies policies around AI slop and upsetting videos",
-   "url": "https://techcrunch.com/2026/07/20/youtube-clarifies-policies-around-ai-slop-and-upsetting-videos/",
+   "title": "caveman (JuliusBrussee)",
+   "url": "https://github.com/JuliusBrussee/caveman",
    "tier": "B",
-   "result": "used",
-   "why": "The three categories, rolled out July 16, 2026"
+   "result": "rejected",
+   "why": "Its own page: a plain 'Answer concisely.' gets most of the output saving; headline 65% is not what it measures; telemetry on by default; piped install; cloud routing."
   },
   {
-   "title": "NetInfluencer on Halprin's interview",
-   "url": "https://www.netinfluencer.com/youtube-trust-and-safety-chief-details-three-categories-of-content-barred-from-monetization/",
+   "title": "yutu (eat-pray-ai)",
+   "url": "https://github.com/eat-pray-ai/yutu",
    "tier": "B",
-   "result": "used",
-   "why": "'Not a new policy'; channels judged on overall content"
-  },
-  {
-   "title": "Relevant Audience: Studio Insights and refined policy",
-   "url": "https://www.relevantaudience.com/youtube-ads/youtube-studio-insights-inauthentic-content/",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Same three categories; no word on warnings"
-  },
-  {
-   "title": "Haiku 5.5 benchmark coverage (apidog, itdaily)",
-   "url": "https://apidog.com/blog/claude-haiku-5-5-benchmarks/",
-   "tier": "C",
    "result": "rejected",
-   "why": "Secondary; figures are at max effort; not needed because idea 10-08-1 stands on pricing alone"
+   "why": "Can upload/edit/delete on YouTube; Omar is deliberately read-only and the owner uploads by hand."
   },
   {
-   "title": "Retention benchmark blogs (breadnbeyond, longstories.ai)",
-   "url": "https://longstories.ai/blog/retention-benchmarks-animated-youtube-videos",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Vendor self-reported numbers, not dated 2026"
-  },
-  {
-   "title": "Routine run caps coverage (noqta, gigazine)",
-   "url": "https://noqta.tn/en/news/anthropic-claude-code-routines-cloud-automation-2026",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Run caps not confirmed by Anthropic; I run once a day so not an issue"
-  },
-  {
-   "title": "GitHub search: claude code subagents skills",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
+   "title": "YouTube Official Blog",
+   "url": "https://blog.youtube/news-and-events/",
    "tier": "A",
    "result": "nothing new",
-   "why": "Skill hubs and spec tools, nothing that replaces our own code"
+   "why": "Page showed no dated posts."
   },
   {
-   "title": "GitHub search: faceless YouTube Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
-   "tier": "A",
-   "result": "rejected",
-   "why": "All 0-1 stars, no licence listed"
-  },
-  {
-   "title": "GitHub search: token cost reduction / prompt caching",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching",
-   "tier": "A",
-   "result": "rejected",
-   "why": "glyphdown is PolyForm Noncommercial; PromptCompressor has 0 stars"
-  },
-  {
-   "title": "GitHub search: multi-agent orchestration claude",
-   "url": "https://api.github.com/search/repositories?q=multi-agent+orchestration+claude",
+   "title": "GitHub search: claude code agents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+agents",
    "tier": "A",
    "result": "nothing new",
-   "why": "Large orchestration frameworks; we have our own control plane"
+   "why": "Big general harnesses (ECC, cc-switch, claude-mem); none fits our worker setup."
+  },
+  {
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Small or CapCut/posting tools; we have our own renderer."
+  },
+  {
+   "title": "GitHub search: prompt caching token cost",
+   "url": "https://api.github.com/search/repositories?q=prompt+caching+token+cost",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Tiny repos (0-2 stars); none vetted."
+  },
+  {
+   "title": "Search: YouTube Shorts policy Oct 2026",
+   "url": "https://outlierkit.com/blog/youtube-updates-july-2026",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "Only the July three-categories change, already in the 10-18 idea."
   }
  ],
  "repo_watch": [
   {
-   "name": "munder-difflin",
-   "url": "https://api.github.com/search/repositories?q=multi-agent+orchestration+claude",
-   "licence": "MIT",
-   "stars": 8856,
-   "last_commit": "2026-10-17",
-   "verdict": "watch",
-   "fit": "Local-first 'office of agents' on existing subscriptions, same idea as our office; only read from the search listing",
-   "why": "Fast-growing; I did not open the repo, owner name not confirmed, so no idea built on it yet"
+   "name": "JuliusBrussee/caveman",
+   "url": "https://github.com/JuliusBrussee/caveman",
+   "licence": "Apache-2.0",
+   "stars": 113500,
+   "last_commit": "2026-10-18",
+   "verdict": "skip",
+   "fit": "Terse output and tool-output compression for coding agents; our workers return JSON schemas, so little to cut.",
+   "why": "Gains mostly come from 'be concise'; telemetry default on; pipes an install script; Blocks is pre-release."
+  },
+  {
+   "name": "eat-pray-ai/yutu",
+   "url": "https://github.com/eat-pray-ai/yutu",
+   "licence": "Apache-2.0",
+   "stars": 701,
+   "last_commit": "2026-10-18",
+   "verdict": "skip",
+   "fit": "YouTube CLI/MCP with upload and delete power.",
+   "why": "Write access conflicts with Omar's read-only rule; no releases shown."
   }
  ],
- "ideas": [
-  {
-   "id": "2026-10-18-1",
-   "title": "Add YouTube's 'three categories' to Israa's story review, and check that Storygraphics videos differ from each other",
-   "area": "results",
-   "problem": "On July 16, 2026 YouTube clarified what it will not monetise (TechCrunch, B; the Help page 'Generic or repetitive content', A): (1) mass-produced template videos with little variation, (2) content built to distress or manipulate viewers for views, (3) AI personas on finance, legal or health. YouTube says it is not a new rule, and judges the whole channel. Storygraphics (project 5) is our most exposed channel: one cast rig, one voice, one story_v1 shape, and survival/disaster stories. In quality.py, STORY_TASK criterion 10 compares only against 'earlier episodes' for copying, and criterion 11 lists gore, sex, drugs, killers, advice and politics. Neither names template sameness across our own videos or 'distress for views'. The 2026-10-04-1 sameness check was written for Shorts (shorts.py checklist), not story_v1 scripts.",
-   "proposal": "1) In quality.py STORY_TASK, replace criterion 11 with: '11. Platform risk. Advertiser-safe (no graphic gore, no sexual content, no drug instructions, no glorifying a killer, no medical, legal or financial advice, no party politics). Also answer these three YouTube monetisation tests with yes/no and one line each: (a) TEMPLATE: if you swap the names and places, is this the same cold open, same section order and same ending as the earlier episodes below? Name the shared beats. (b) DISTRESS: is suffering used as the hook instead of the story (opening on injury or fear with no other reason)? (c) SENSITIVE ADVICE: does the narrator give health, legal or money advice? Any yes on (a) or (b) means verdict rework, with the exact change.' 2) Free code check next to pre_review for story_v1: compare the new script's section headings, `shape`, first 3 words of cold_open and last sentence with earlier episodes of the same project; warn when two or more match. 3) Log the three answers on the episode (data.checks) so the owner can see them.",
-   "gain": "Closes a gap between YouTube's stated rules and our checklist for the channel the owner now cares most about. Costs one more paragraph in an existing Israa call, no new run. Measure: after 3 episodes, every review carries the three answers, and at least one rework or note comes from them if the episodes are truly alike.",
-   "test": "Case 1 (normal): Juliane script (ep 32) reviewed: expect (a) no, (b) no, because the story opens on a moment and has a turn. Case 2 (edge): a second survival script that copies the same shape 'countdown', the same 'Day N' markers and the same closing line: expect (a) yes with the shared beats named and verdict rework. Case 3 (failure): a script that opens with a screaming injury for 20 seconds before any context: expect (b) yes and rework. A pass is Israa returning all three answers on each of the three scripts and the verdicts above. Free test: HQ_SIMULATE=1 only checks the schema; the real test is one Israa run per script.",
-   "effort": "S",
-   "confidence": "moderate",
-   "confidence_why": "YouTube Help page (A) supports the template wording; the three categories and 'overall channel' come from TechCrunch and trade sites quoting the same interview (B), so it is one source. Weakest link: I found no official page that lists the three categories, and no data on how often template channels with recurring characters are hit.",
-   "risks": "Israa may over-flag (every story has a hook and a clock). Keep the verdict rule narrow: two or more matching beats for (a). Adds a few hundred prompt tokens per review. The prompt is a rule target only if STORY_TASK is in rules.PROMPT_TARGET; otherwise this is a code edit by the Builder. Do not use it as a reason to block a script whose only fault is a similar shape; the owner decides.",
-   "links": [
-    {
-     "title": "YouTube Help: Generic or repetitive content",
-     "url": "https://support.google.com/youtube/answer/1311392"
-    },
-    {
-     "title": "TechCrunch, July 20 2026",
-     "url": "https://techcrunch.com/2026/07/20/youtube-clarifies-policies-around-ai-slop-and-upsetting-videos/"
-    },
-    {
-     "title": "NetInfluencer on the interview",
-     "url": "https://www.netinfluencer.com/youtube-trust-and-safety-chief-details-three-categories-of-content-barred-from-monetization/"
-    }
-   ],
-   "builds_on": "2026-10-04-1"
-  }
- ]
+ "ideas": []
 }
