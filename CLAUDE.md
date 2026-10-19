@@ -925,7 +925,7 @@ Agents never spend money without the owner's explicit approval.
   - Remotion's official add-ons at 4.0.250 in animation/package.json AND story/package.json (the story app shares the animation
     kit's node_modules; animate.ensure_toolchain runs npm install when animation/package.json changes): @remotion/motion-blur,
     noise, paths, shapes, transitions, lottie (+ lottie-web 5.12.2; no Lottie files yet). Opening.jsx wraps fast shots (`BLUR`:
-    snag, flood, sink, breakup, falling; `line.p.blur` true/false overrides) in `<CameraMotionBlur shutterAngle={200} samples={6}>`
+    flood, sink, breakup, falling (not a shake: blurring a fast jolt reads as stalls); `line.p.blur` true/false overrides) in `<CameraMotionBlur shutterAngle={200} samples={6}>`
     (multiplies those frames' render time). ocean.jsx: `camShake(f, shake, hand)` = noise2D (a hit and a hand-held drift) in `Zoom`,
     bubbles wobble with noise, `DrawOn` = evolvePath (the hatch's cracks draw themselves on "rips").
   - Sound effects: `soundlib.py` (repo). The Sonniss GDC 2026 Game Audio Bundle (gdc.sonniss.com, 5 zips, ~7.5 GB, ~347 long

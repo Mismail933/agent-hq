@@ -287,7 +287,7 @@ const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: Storm
 
 // fast shots get a film camera's motion blur (2.55.0, @remotion/motion-blur: each frame is the average of a few moments within the
 // shutter time). Only these shots: it multiplies the rendering time of the frames it covers. line.p.blur forces it on (or off: false).
-const BLUR = new Set(['snag', 'flood', 'sink', 'breakup', 'falling']);
+const BLUR = new Set(['flood', 'sink', 'breakup', 'falling']);   // not on a shake (snag): blurring a fast back-and-forth jolt made frames that barely move
 const blurOf = (line) => ((line.p || {}).blur != null ? !!line.p.blur : BLUR.has(line.shot));
 
 const ShotLayer = ({line, len}) => {

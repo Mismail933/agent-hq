@@ -216,7 +216,7 @@ function Snag({f, len, line}) {
   const h = clamp(pop(f, r, 220, 9), 0, 1.15);
   const tug = f >= r ? Math.max(0, 1 - (f - r) / 12) : 0;
   return (
-    <g><Zoom f={f} f0={0} f1={len} a={1.0} b={1.04} shake={f >= r && f < r + 14 ? 12 : 0} hand={2}>
+    <g><Zoom f={f} f0={0} f1={len} a={1.0} b={1.04} shake={f >= r && f < r + 20 ? 12 * (1 - (f - r) / 20) : 0} hand={2}>
       <Sea f={f} y0={430} id="sn" swell={1.4} />
       <g transform={`translate(1290 ${560 + Math.sin(f * 0.07) * 6}) scale(2.3)`}><Pisces f={f} lights={false} hatch={Math.min(1, h)} />
         {[['M -268 -136 l -40 -30 l -18 -36', 0], ['M -172 -136 l 34 -24 l 10 -40', 2], ['M -220 -136 l 6 -44 l -14 -30', 4]].map(([d, k]) => (
