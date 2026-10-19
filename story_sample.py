@@ -377,6 +377,7 @@ def bed(bus, t0, t1, chords, step, gain, fade=1.6):
 def make_sound(lines, total):
     N = int((total + 1) * SR)
     music, sfx = np.zeros(N), np.zeros(N)
+    AMB[0] = np.zeros(N)   # the calm beds (2.55.2), mixed at a steady level under the narrator
     by = {l["shot"]: l for l in lines}
     T = lambda shot, k="t_start": by[shot][k] if shot in by else None
 
@@ -543,12 +544,21 @@ def _strongest(x, dur, k=0):
     return x[i0:i0 + int(dur * SR)]
 
 
-def real(bus, t, queries, dur=None, gain=0.3, fade_in=0.02, fade_out=0.3, loop=False, hit=False, level=0.1, min_s=0.0, max_s=1e9, k=0):
+KEEP = {}
+
+
+def real(bus, t, queries, dur=None, gain=0.3, fade_in=0.02, fade_out=0.3, loop=False, hit=False, level=0.1, min_s=0.0, max_s=1e9, k=0,
+         keep=False, band_hz=None):
     """A recorded sound at time t: an ambience (dur, looped with crossfades if the file is shorter, at RMS `level`) or a hit (the
-    strongest moment of the file, at peak 1 x gain). False when the library has nothing for it (the caller then makes its own)."""
-    r = lib_pick(queries, min_s, max_s)
+    strongest moment of the file, at peak 1 x gain). keep: the same recording every time for these queries (a place sounds the
+    same all video); band_hz (lo, hi): soften it (no hiss on top, no rumble below). False when the library has nothing for it."""
+    key = tuple(queries)
+    r = KEEP.get(key) if keep else None
+    r = r or lib_pick(queries, min_s, max_s)
     if not r:
         return False
+    if keep:
+        KEEP[key] = r
     x = soundlib.load(r["f"])
     if hit:
         seg = _strongest(x, dur or 1.5, k)
@@ -567,6 +577,8 @@ def real(bus, t, queries, dur=None, gain=0.3, fade_in=0.02, fade_out=0.3, loop=F
             seg = seg[:need]
         else:
             seg = x.copy()
+        if band_hz:
+            seg = band(seg, band_hz[0], band_hz[1])
         seg = seg * (level / _rms_of(seg))
     n = len(seg)
     put(bus, t, seg * env(n, int(fade_in * SR), int(fade_out * SR)), gain)
@@ -626,8 +638,8 @@ def credits(folder):
 
 
 def scene_sound(lines, total, music, sfx):
-    """Sound for the story scenes after the opening: the jungle (insects, birds by day, crickets at night), water, rain, planes,
-    a hit when the day changes, and a music mood per scene. Everything is held under the voice later (mix)."""
+    """Sound for the story scenes after the opening: a music mood per run of scenes, one calm recorded bed per kind of place, and a
+    few accents on the story's events (2.55.2). Everything is held under the voice later (mix)."""
     day = None
     # music: one bed per run of lines with the same mood, the runs crossfading
     runs = []
@@ -644,24 +656,30 @@ def scene_sound(lines, total, music, sfx):
     for r0, r1, m in runs:
         if not real_music(music, r0, r1, m):
             bed(music, max(0.0, r0 - 1.0), min(total, r1 + 1.0), MOODS[m], 6.4, 0.075 if m != "hope" else 0.085, fade=2.4)
-    # the jungle's hiss: continuous over runs of jungle lines
-    jr = []
+    # ── the background (2.55.2). The owner on the first real-sound opening: the music is better, but "the sound of the stuff is
+    # louder and annoying i keep hearing noises ... it should be background noises who are relaxing ... dont wanna make it crowded
+    # with noise". So: ONE recorded bed per kind of place (the same recording for every line set there, continuous across them,
+    # softened), on its own bus that the mix keeps a steady AMB_UNDER_DB under the narrator (it never swells in a pause), and only a
+    # few accents where the story has an event. No made-up hiss, crickets, birds, bubbles, drips or drones: silence under the
+    # music is better than a noisy bed.
+    kinds = []
     for i, l in enumerate(lines):
-        p = l.get("p") or {}
-        if l["shot"] in OPENING or not (l["shot"] in JUNGLE and p.get("bg", "jungle") in ("jungle", "night")):
+        if l["shot"] in OPENING:
+            continue
+        k = bed_kind(l)
+        if not k:
             continue
         t0 = max(0.0, l["t_start"] - 0.2)
         t1 = (lines[i + 1]["t_start"] - 0.2) if i + 1 < len(lines) else total
-        nt = p.get("time") == "night" or p.get("bg") == "night"
-        if jr and jr[-1][2] == nt and abs(jr[-1][1] - t0) < 0.5:
-            jr[-1][1] = t1
+        if kinds and kinds[-1][2] == k and abs(kinds[-1][1] - t0) < 0.6:
+            kinds[-1][1] = t1
         else:
-            jr.append([t0, t1, nt])
-    for r0, r1, nt in jr:
-        d = r1 - r0
-        n = int(d * SR)
-        tt = np.arange(n) / SR
-        put(sfx, r0, band(noise(d), 4000, 9000) * (0.6 + 0.4 * np.sin(2 * np.pi * (7 if nt else 3) * tt)) * env(n, int(1.2 * SR), int(1.2 * SR)), 0.012)
+            kinds.append([t0, t1, k])
+    for r0, r1, k in kinds:
+        q, lo, hi = BEDS[k]
+        a0 = max(0.0, r0 - 0.8)
+        real(AMB[0], a0, q, min(total, r1 + 0.8) - a0, 1.0, 2.0, 2.0, loop=True, level=0.1, keep=True, band_hz=(lo, hi))
+    last = -9.0
     for i, l in enumerate(lines):
         if l["shot"] in OPENING:
             continue
@@ -669,87 +687,58 @@ def scene_sound(lines, total, music, sfx):
         t0 = max(0.0, l["t_start"] - 0.2)
         t1 = (lines[i + 1]["t_start"] - 0.2) if i + 1 < len(lines) else total
         dur = max(0.1, t1 - t0)
-        n = int(dur * SR)
-        tt = np.arange(n) / SR
-        fade = env(n, int(0.3 * SR), int(0.3 * SR))
-        night = p.get("time") == "night" or p.get("bg") == "night"
-        jungle = l["shot"] in JUNGLE and p.get("bg", "jungle") in ("jungle", "night")
-        if jungle:
-            if night:   # crickets: short soft pulses
-                m = int(0.04 * SR)
-                for c in np.arange(0.2, dur - 0.1, 0.5):
-                    put(sfx, t0 + c, np.sin(2 * np.pi * 4600 * np.arange(m) / SR) * env(m, 120, 600), 0.012)
-            elif i % 3 == 0 and dur > 3:   # now and then one far bird (the owner: "less sound effects ... especially the birds")
-                m2 = int(0.16 * SR)
-                t2 = np.arange(m2) / SR
-                put(sfx, t0 + dur * 0.5 + rng.uniform(-0.5, 0.5), band(np.sin(2 * np.pi * np.cumsum(2400 + 1200 * np.sin(2 * np.pi * 8 * t2)) / SR), None, 3500) * env(m2, 400, 3000), 0.015)
-        if l["shot"] in OCEAN_SURFACE:   # the open sea: recorded waves, else a made-up wash
-            if not real(sfx, t0, ["ocean waves", "sea waves", "waves", "water lapping"], dur, 0.5, 0.6, 0.6, loop=True, level=0.06):
-                put(sfx, t0, band(noise(dur), 90, 900) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.15 * tt)) * fade, 0.03)
-        if l["shot"] in ("sea_open", "hoist"):   # the support ship's diesel, far off
-            real(sfx, t0, ["boat engine", "diesel engine", "ship engine"], dur, 0.35, 0.8, 0.8, loop=True, level=0.03)
-        if l["shot"] in OCEAN_DEEP:   # under the water: a recorded underwater drone, else a deep, slow rumble
-            if not real(sfx, t0, ["underwater", "underwater ambience", "drone tension", "drone dark", "low rumble"], dur, 0.5, 0.6, 0.6, loop=True, level=0.06):
-                put(sfx, t0, band(noise(dur), 25, 160) * (0.8 + 0.2 * np.sin(2 * np.pi * 0.1 * tt)) * fade, 0.06)
         wt = lambda w: next((s for x, s, e in l["words"] if re.sub(r"[^a-z0-9]", "", x.lower()).startswith(w)), None)
-        if l["shot"] == "snag" and wt("rips") is not None:   # metal tearing, and a thump
-            real(sfx, wt("rips") - 0.02, ["metal impact", "heavy hit"], 1.2, 0.6, hit=True)   # the thump under the screech
-            if not real(sfx, wt("rips") - 0.05, ["metal tear", "metal groan", "metal squeal", "metal stress", "metal impact"], 1.8, 0.9, hit=True):
-                m = int(0.5 * SR)
-                th = np.arange(m) / SR
-                put(sfx, wt("rips"), band(noise(0.5), 700, 6000) * np.exp(-th * 9), 0.25)
-                put(sfx, wt("rips"), band(noise(0.5), 30, 220) * np.exp(-th * 6), 0.5)
-        if l["shot"] == "flood" and wt("floods") is not None:   # the water rushing in
-            s0 = wt("floods")
-            d = max(0.5, min(dur - (s0 - t0), 3.5))
-            if not real(sfx, s0 - 0.1, ["water submerge", "water rush", "water pour", "water splash"], d, 0.7, 0.05, 0.8, level=0.12):
-                put(sfx, s0, band(noise(d), 200, 2600) * env(int(d * SR), int(0.3 * SR), int(0.8 * SR)), 0.1)
-        if l["shot"] == "sink":
-            if not real(sfx, t0 + 0.2, ["bubbles underwater"], max(0.5, dur - 0.6), 0.5, 0.3, 0.6, loop=True, level=0.05):
-                for c in np.arange(0.3, dur - 0.3, 0.45):   # bubbles
-                    m2 = int(0.08 * SR)
-                    t2 = np.arange(m2) / SR
-                    put(sfx, t0 + c + rng.uniform(0, 0.2), np.sin(2 * np.pi * (500 + 900 * t2 / 0.08) * t2) * env(m2, 60, 600), 0.015)
-            hb = wt("bottom")
-            if hb is not None:   # the hit on the seabed
-                if not real(sfx, hb - 0.03, ["heavy hit", "impact heavy", "boom"], 2.2, 1.0, hit=True):
-                    m = int(1.4 * SR)
-                    th = np.arange(m) / SR
-                    put(sfx, hb, band(noise(1.4), 20, 180) * np.exp(-th * 2.6), 0.9)
-                    put(sfx, hb + 0.05, band(noise(1.4), 300, 2500) * np.exp(-th * 4), 0.08)
-        if l["shot"] == "trapped":   # a slow drip in the dark
-            if not real(sfx, t0 + 0.6, ["water drip", "drip"], max(0.5, dur - 0.8), 0.5, 0.2, 0.5, loop=True, level=0.03):
-                for c in np.arange(0.6, dur - 0.2, 1.7):
-                    m2 = int(0.12 * SR)
-                    t2 = np.arange(m2) / SR
-                    put(sfx, t0 + c, np.sin(2 * np.pi * 1700 * t2) * np.exp(-t2 * 40), 0.02)
-        if l["shot"] in ("p_title", "title") and not any(x in OPENING for x in (lines[0]["shot"],)):   # a low hit on the title's big word
-            tw = wt(((p.get("top_on") or "") or "survived").lower()) or t0 + 0.3
-            real(sfx, tw - 0.05, ["bass drop", "boom", "impact heavy"], 3.0, 0.9, hit=True)
-        if l["shot"] in ("wade", "canoe", "hut") or p.get("water"):
-            put(sfx, t0, band(noise(dur), 300, 2200) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.4 * tt)) * env(n, int(0.8 * SR), int(0.8 * SR)), 0.025)
-        if p.get("rain"):
-            put(sfx, t0, band(noise(dur), 1500, 7000) * env(n, int(0.8 * SR), int(0.8 * SR)), 0.03)
-        if l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
-            drone = (np.sin(2 * np.pi * 110 * tt) + 0.5 * np.sin(2 * np.pi * 220 * tt)) * np.sin(np.pi * np.clip(tt / dur, 0, 1)) ** 2
-            put(sfx, t0, band(drone + band(noise(dur), 80, 600) * 0.6, 60, 900), 0.07)
-        if p.get("day") not in (None, "") and p.get("day") != day and real(sfx, t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.8, hit=True, k=1):
-            pass
+        acc = None   # at most one accent a line, two seconds apart at least
+        if l["shot"] == "snag" and wt("rips") is not None:
+            acc = (wt("rips") - 0.02, ["metal impact", "heavy hit"], 1.2, 0.8, {})
+        elif l["shot"] == "flood" and wt("floods") is not None:
+            acc = (wt("floods") - 0.1, ["water submerge", "water splash"], 2.2, 0.8, {})
+        elif l["shot"] == "sink" and wt("bottom") is not None:
+            acc = (wt("bottom") - 0.03, ["heavy hit", "impact heavy", "boom"], 2.2, 0.9, {})
+        elif l["shot"] in ("p_title", "title") and lines[0]["shot"] not in OPENING:
+            acc = ((wt(((p.get("top_on") or "") or "survived").lower()) or t0 + 0.3) - 0.05, ["bass drop", "boom", "impact heavy"], 3.0, 0.8, {})
         elif p.get("day") not in (None, "") and p.get("day") != day:
-            m = int(1.6 * SR)
-            th = np.arange(m) / SR
-            put(sfx, t0, np.sin(2 * np.pi * (60 - 20 * th) * th) * np.exp(-th * 3), 0.3)
-            put(sfx, t0 - 0.25, band(noise(0.5), 400, 4000) * np.sin(np.pi * np.arange(int(0.5 * SR)) / (0.5 * SR)) ** 2, 0.1)
+            acc = (t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.7, {"k": 1})
+        elif l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
+            acc = (t0 + 0.3, ["helicopter"] if any(it.get("name") == "heli" for it in (p.get("items") or [])) else ["airplane", "propeller"], min(4.0, dur), 0.6, {})
+        if acc and acc[0] - last >= 2.0:
+            if real(sfx, acc[0], acc[1], acc[2], acc[3], hit=True, **acc[4]):
+                last = acc[0]
+                ACCENTS.append(round(acc[0], 2))
         if p.get("day") not in (None,):
             day = p.get("day")
+
+
+# the calm beds: kind of place -> (searches, softening band in Hz). "deep" is the sea's own sound muffled, as it is under water.
+BEDS = {"sea": (["ocean waves", "sea waves", "water lapping"], 120, 5000), "deep": (["underwater", "ocean waves"], 30, 300),
+        "jungle": (["jungle", "rainforest", "forest birds"], 150, 6000), "night": (["jungle night", "crickets", "night insects"], 150, 6000),
+        "river": (["river", "stream", "water lapping"], 120, 5000), "rain": (["rain"], 150, 6000), "cabin": (["airplane interior"], 60, 3000)}
+AMB = [None]
+ACCENTS = []
+
+
+def bed_kind(l):
+    p, s = l.get("p") or {}, l["shot"]
+    if s in OCEAN_SURFACE:
+        return "sea"
+    if s in OCEAN_DEEP:
+        return "deep"
+    if p.get("rain"):
+        return "rain"
+    if s in ("wade", "canoe", "hut") or p.get("water"):
+        return "river"
+    if s in JUNGLE and p.get("bg", "jungle") in ("jungle", "night"):
+        return "night" if (p.get("time") == "night" or p.get("bg") == "night") else "jungle"
+    return None
 
 
 # the owner (2026-10-17): "in some places the sound effects get louder than the narrator". The music and the effects are held
 # under the voice by measurement, not by hand-set volumes: while the narrator speaks, effects stay UNDER_VOICE_DB below his level
 # and music MUSIC_UNDER_DB below; in the pauses neither goes above the narrator's usual level. The mix reports the loudest moment.
-UNDER_VOICE_DB = -14.0   # was -9 (the owner on v3: "less sound effects or make them lower")
+UNDER_VOICE_DB = -16.0   # accents while he speaks (was -14; -9 before the owner's "less sound effects or make them lower" on v3)
 MUSIC_UNDER_DB = -18.0
-GAP_MAX_DB = -6.0
+GAP_MAX_DB = -10.0       # accents in a pause (was -6: the 2.55.1 opening's hits came within 7.7 dB of his voice in the gaps)
+AMB_UNDER_DB = -28.0     # the background beds, steady, all the time (2.55.2: "background noises who are relaxing")
 
 
 def _avg(x, win):
@@ -829,14 +818,24 @@ def mix(lines, voiced, music, sfx, folder):
     v1 = _rms(voice, int(1.0 * SR))
     music = hold_under(music, v1, v1 > 0.02, level, -9.0, -8.0, win)
     sfx = hold_under(sfx, vr, speaking, level, UNDER_VOICE_DB, GAP_MAX_DB, win)
+    amb = AMB[0] if AMB[0] is not None and len(AMB[0]) == N else np.zeros(N)
+    on = np.abs(amb) > 1e-7
+    amb_db = None
+    if on.any():   # one steady gain: the beds sit AMB_UNDER_DB under his usual level whether he speaks or not (no swelling)
+        amb = amb * (level * 10 ** (AMB_UNDER_DB / 20) / float(np.sqrt(np.mean(amb[on] ** 2))))
+        amb = hold_under(amb, vr, speaking, level, AMB_UNDER_DB + 6, AMB_UNDER_DB + 6, win)   # and no loud moment in a recording
+        amb_db = round(20 * np.log10(float(np.sqrt(np.mean(amb[on] ** 2))) / level), 1)
     report = loudness_report(voice, music, sfx, win)
-    out = voice + music + sfx
+    report["background_db_vs_voice"] = amb_db
+    report["accents"] = len(ACCENTS)
+    out = voice + music + sfx + amb
     out /= np.max(np.abs(out)) / 0.9
     raw = folder / "_mix_raw.wav"
     sf.write(str(raw), np.stack([out, out], 1).astype("float32"), SR)
     wav = folder / "mix.wav"
     story.normalise(raw, wav)
     (folder / "loudness.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
+    say(f"   background beds at {amb_db} dB under the voice (steady); accents placed: {report['accents']}")
     say(f"   sound: effects at most {report['effects_max_db_vs_voice']} dB vs the voice (at {report['effects_max_at_s']} s), "
         f"music at most {report['music_max_db_vs_voice']} dB; windows with effects over the voice: {report['effects_over_voice_windows']}")
     return wav

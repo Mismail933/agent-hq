@@ -939,6 +939,15 @@ Agents never spend money without the owner's explicit approval.
     equal-power crossfades, at an RMS level) or a hit (`_strongest`: the k-th strongest onset of a long file); every call keeps the
     old made-up sound as the fallback when nothing matches. Wired: ocean surface/deep ambiences, the hatch rip, the flood, bubbles,
     the seabed hit, the drip, the title hit, the day-change hit. Jungle/rain/planes still made up.
+  - Calm background (2.55.2, the owner on the 2.55.1 opening: the music is better, but the effects were "louder and annoying ... it
+    should be background noises who are relaxing ... dont wanna make it crowded with noise"): `scene_sound` lays ONE recorded bed per
+    kind of place (`BEDS`, `bed_kind`: sea, deep = the sea's own waves low-passed at 300 Hz, jungle, night, river, rain, cabin), the
+    same recording for every line set there (`real(..., keep=True)`), continuous across them, softened (`band_hz`), on its own bus
+    (`AMB`) that `mix` sets to a STEADY `AMB_UNDER_DB` (-28) under the narrator's usual level (it never swells in a pause), and at
+    most one accent a line, 2 s apart (rip, flood, seabed, title, day change, planes/heli). No made-up hiss, crickets, birds, bubbles,
+    drips, engine hums or drones any more (silence under the music beats a noisy bed). Accents: `UNDER_VOICE_DB` -16 while he speaks,
+    `GAP_MAX_DB` -10 in pauses. The report adds `background_db_vs_voice` and `accents`. Measured on the Pisces opening: beds -30.8 dB,
+    4 accents, effects at most -16.2 dB (was -7.7), 94% of the script's words heard by Whisper (old opening 94%).
   - Music: Scott Buckley, CC BY 4.0 (scottbuckley.com.au; credit in the DESCRIPTION, which also keeps his Content ID from claiming
     the video; MP3s are free, his WAVs are Patreon-only): 14 tracks in ~/.agent-hq-anim/music/scott-buckley, `soundlib.TRACKS`
     (moods tense/sad/hope/facts/night/danger). story_sample `real_music` replaces the chord `bed` per mood run: one track per mood
