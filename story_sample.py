@@ -480,8 +480,8 @@ def make_sound(lines, total):
 
 OPENING = {"aerial", "cabin", "father", "storm_window", "shaking", "lightning", "mother", "breakup", "falling", "wake", "title"}
 JUNGLE = {"jungle", "wade", "seats3", "hut", "planes", "today", "close", "quote"}
-OCEAN_SURFACE = {"sea_open", "hoist", "snag"}             # Storygraphics #2 (ocean.jsx): waves, no gulls
-OCEAN_DEEP = {"cabin_ball", "flood", "sink", "trapped"}   # under the water: a deep rumble
+OCEAN_SURFACE = {"sea_open", "hoist", "snag", "m_boat", "m_flee"}         # Storygraphics #2 (ocean.jsx) and #3 (meg.jsx): waves, no gulls
+OCEAN_DEEP = {"cabin_ball", "flood", "sink", "trapped", "m_rise", "m_take"}   # under the water: a deep rumble
 MOODS = {"tense": [(48, 51, 55, 60), (46, 50, 53, 58)], "night": [(45, 48, 52, 57), (44, 47, 50, 56)], "sad": [(45, 48, 52, 57), (41, 45, 48, 53)],
          "hope": [(48, 52, 55, 60), (53, 57, 60, 65), (50, 53, 57, 62), (55, 59, 62, 67)], "facts": [(50, 53, 57, 62), (48, 52, 55, 60)]}
 
@@ -705,7 +705,11 @@ def scene_sound(lines, total, music, sfx):
             acc = (wt("floods") - 0.1, ["water submerge", "water splash"], 2.2, 0.8, {})
         elif l["shot"] == "sink" and wt("bottom") is not None:
             acc = (wt("bottom") - 0.03, ["heavy hit", "impact heavy", "boom"], 2.2, 0.9, {})
-        elif l["shot"] in ("p_title", "title") and lines[0]["shot"] not in OPENING:
+        elif l["shot"] == "m_rise" and wt((p.get("rise_on") or "rises")) is not None:   # Storygraphics #3: the shark rises
+            acc = (wt((p.get("rise_on") or "rises")) - 0.1, ["low rumble", "boom", "impact heavy"], 3.0, 0.7, {})
+        elif l["shot"] == "m_take" and wt((p.get("pull_on") or "drags")) is not None:   # the jaws take the trap
+            acc = (wt((p.get("pull_on") or "drags")) - 0.05, ["water splash", "water submerge"], 2.0, 0.7, {})
+        elif l["shot"] in ("p_title", "title", "m_title") and lines[0]["shot"] not in OPENING:
             acc = ((wt(((p.get("top_on") or "") or "survived").lower()) or t0 + 0.3) - 0.05, ["bass drop", "boom", "impact heavy"], 3.0, 0.8, {})
         elif p.get("day") not in (None, "") and p.get("day") != day:
             acc = (t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.7, {"k": 1})
@@ -739,7 +743,8 @@ def scene_sound(lines, total, music, sfx):
 # what each sound must SOUND like, in plain words (2.56.2: Tarek's Earshot check; file-name searches like "StairWellDoor" scored low
 # against themselves even when the sound was right)
 NEEDS = {"snag": "a metal hatch being ripped open", "flood": "water rushing in", "sink": "a heavy metal object hitting the seabed",
-         "p_title": "a deep cinematic hit", "title": "a deep cinematic hit", "day": "a deep cinematic hit", "planes": "a plane flying overhead",
+         "p_title": "a deep cinematic hit", "title": "a deep cinematic hit", "m_title": "a deep cinematic hit",
+         "m_rise": "a deep low rumble rising from below", "m_take": "a big splash of water", "day": "a deep cinematic hit", "planes": "a plane flying overhead",
          "bed:sea": "calm ocean waves", "bed:deep": "a deep calm underwater ambience", "bed:jungle": "a calm rainforest ambience",
          "bed:night": "crickets at night", "bed:river": "a calm river", "bed:rain": "steady rain", "bed:cabin": "inside a plane in flight"}
 # the calm beds: kind of place -> (searches, softening band in Hz). "deep" is the sea's own sound muffled, as it is under water.
