@@ -4,6 +4,7 @@ import React from 'react';
 import {interpolate} from 'remotion';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, ease, Box, Label, Head, Bust, Figure, SeatBack, Plane, Cloud, Canopy, at, Cam, Rain, Labels} from './tis';
 import {LAND, RIVERS, K} from './mapdata';
+import {Emoji} from './emoji';
 
 const P = (line) => line.p || {};
 // the framing a line gets when the script doesn't say: position, size and camera move change from line to line
@@ -105,7 +106,7 @@ export const Thing = ({name, f = 0}) => {
     case 'fruit': return (<g><circle r={70} fill="#7C3AED" {...ST} /><circle cx={-24} cy={-22} r={16} fill="#A78BFA" /><path d="M 0 -70 C 10 -110 40 -120 60 -110" fill="none" stroke="#3F6212" strokeWidth={10} />
       <text x={0} y={30} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={80} fill="#fff" stroke={INK} strokeWidth={6} paintOrder="stroke">?</text></g>);
     case 'bat': return (<g transform={`scale(1 ${0.85 + Math.sin(f * 0.6) * 0.15})`}><path d="M -160 0 C -130 -40 -90 -40 -70 -10 C -60 -30 -40 -30 -30 -10 C -20 -30 20 -30 30 -10 C 40 -30 60 -30 70 -10 C 90 -40 130 -40 160 0 C 110 -10 60 20 0 30 C -60 20 -110 -10 -160 0 Z" fill="#3B2F2F" {...st(5)} /><circle cx={0} cy={-6} r={22} fill="#3B2F2F" {...st(4)} /></g>);
-    default: return null;
+    default: return <Emoji name={name} size={300} />;   // 2.55.0: anything not drawn here is a ready-made prop (emoji.jsx)
   }
 };
 

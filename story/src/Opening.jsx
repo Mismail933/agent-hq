@@ -285,7 +285,7 @@ function Title({f, len, line}) {
 const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
   breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS};
 
-// fast shots get a film camera's motion blur (2.54.0, @remotion/motion-blur: each frame is the average of a few moments within the
+// fast shots get a film camera's motion blur (2.55.0, @remotion/motion-blur: each frame is the average of a few moments within the
 // shutter time). Only these shots: it multiplies the rendering time of the frames it covers. line.p.blur forces it on (or off: false).
 const BLUR = new Set(['snag', 'flood', 'sink', 'breakup', 'falling']);
 const blurOf = (line) => ((line.p || {}).blur != null ? !!line.p.blur : BLUR.has(line.shot));

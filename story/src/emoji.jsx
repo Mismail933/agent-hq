@@ -1,4 +1,4 @@
-// Ready-made props (2.54.0): Microsoft's Fluent Emoji, flat style (MIT licence, github.com/microsoft/fluentui-emoji), about 1,285
+// Ready-made props (2.55.0): Microsoft's Fluent Emoji, flat style (MIT licence, github.com/microsoft/fluentui-emoji), about 1,285
 // objects, animals, foods, tools, vehicles and weather, so a story's things don't each need drawing by hand. story.ensure_app copies
 // them into public/emoji/<name>.svg (from ~/.agent-hq-anim/fluent-emoji). They are flat without outlines; <Emoji> adds the kit's
 // dark outline (a dilated silhouette behind the shape) so they sit with the cast. The SVG is read once and drawn inline (an <image>

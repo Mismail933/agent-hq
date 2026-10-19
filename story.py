@@ -407,7 +407,7 @@ def ensure_app():
             os.symlink(str(animate.APP / "node_modules"), str(APP / "node_modules"), target_is_directory=True)
         except OSError:
             subprocess.run(["cmd", "/c", "mklink", "/J", str(APP / "node_modules"), str(animate.APP / "node_modules")], capture_output=True)
-    # ready-made props (2.54.0): Fluent Emoji, flat (MIT), as public/emoji/<slug>.svg, copied once
+    # ready-made props (2.55.0): Fluent Emoji, flat (MIT), as public/emoji/<slug>.svg, copied once
     em, dst = HOME / "fluent-emoji" / "assets", APP / "public" / "emoji"
     if em.exists() and not (dst / ".copied").exists():
         dst.mkdir(parents=True, exist_ok=True)

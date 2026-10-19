@@ -1,4 +1,4 @@
-// What the 2.54.0 setup adds, shown on its own for the owner: people moving from motion capture (MotionTest, a short video) and the
+// What the 2.55.0 setup adds, shown on its own for the owner: people moving from motion capture (MotionTest, a short video) and the
 // ready-made props (EmojiSheet, a still).
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';

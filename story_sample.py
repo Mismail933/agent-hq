@@ -500,7 +500,7 @@ def mood_of(l):
     return "tense"
 
 
-# ───────────── real sounds and music (2.54.0) ─────────────
+# ───────────── real sounds and music (2.55.0) ─────────────
 # The owner heard the made-up music as "corrupted" and wanted fewer, better effects. When the sound library (Sonniss, unpacked by
 # soundlib) and the music (Scott Buckley, CC BY 4.0) are on this PC, scenes get recorded sounds and real tracks; anything not found
 # falls back to the old made-up sound. USED lists every file a video used (credits.txt, and no sound twice in a row).
@@ -686,12 +686,15 @@ def scene_sound(lines, total, music, sfx):
         if l["shot"] in OCEAN_SURFACE:   # the open sea: recorded waves, else a made-up wash
             if not real(sfx, t0, ["ocean waves", "sea waves", "waves", "water lapping"], dur, 0.5, 0.6, 0.6, loop=True, level=0.06):
                 put(sfx, t0, band(noise(dur), 90, 900) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.15 * tt)) * fade, 0.03)
+        if l["shot"] in ("sea_open", "hoist"):   # the support ship's diesel, far off
+            real(sfx, t0, ["boat engine", "diesel engine", "ship engine"], dur, 0.35, 0.8, 0.8, loop=True, level=0.03)
         if l["shot"] in OCEAN_DEEP:   # under the water: a recorded underwater drone, else a deep, slow rumble
-            if not real(sfx, t0, ["underwater", "underwater ambience", "drone dark", "low rumble"], dur, 0.5, 0.6, 0.6, loop=True, level=0.06):
+            if not real(sfx, t0, ["underwater", "underwater ambience", "drone tension", "drone dark", "low rumble"], dur, 0.5, 0.6, 0.6, loop=True, level=0.06):
                 put(sfx, t0, band(noise(dur), 25, 160) * (0.8 + 0.2 * np.sin(2 * np.pi * 0.1 * tt)) * fade, 0.06)
         wt = lambda w: next((s for x, s, e in l["words"] if re.sub(r"[^a-z0-9]", "", x.lower()).startswith(w)), None)
         if l["shot"] == "snag" and wt("rips") is not None:   # metal tearing, and a thump
-            if not real(sfx, wt("rips") - 0.05, ["metal tear", "metal stress", "metal creak", "metal impact"], 1.6, 0.9, hit=True):
+            real(sfx, wt("rips") - 0.02, ["metal impact", "heavy hit"], 1.2, 0.6, hit=True)   # the thump under the screech
+            if not real(sfx, wt("rips") - 0.05, ["metal tear", "metal groan", "metal squeal", "metal stress", "metal impact"], 1.8, 0.9, hit=True):
                 m = int(0.5 * SR)
                 th = np.arange(m) / SR
                 put(sfx, wt("rips"), band(noise(0.5), 700, 6000) * np.exp(-th * 9), 0.25)
@@ -699,17 +702,17 @@ def scene_sound(lines, total, music, sfx):
         if l["shot"] == "flood" and wt("floods") is not None:   # the water rushing in
             s0 = wt("floods")
             d = max(0.5, min(dur - (s0 - t0), 3.5))
-            if not real(sfx, s0 - 0.1, ["water rush", "water pour", "water splash", "water flow", "water gush"], d, 0.7, 0.15, 0.8, level=0.12):
+            if not real(sfx, s0 - 0.1, ["water submerge", "water rush", "water pour", "water splash"], d, 0.7, 0.05, 0.8, level=0.12):
                 put(sfx, s0, band(noise(d), 200, 2600) * env(int(d * SR), int(0.3 * SR), int(0.8 * SR)), 0.1)
         if l["shot"] == "sink":
-            if not real(sfx, t0 + 0.2, ["bubbles underwater", "bubbles", "water bubble"], max(0.5, dur - 0.6), 0.5, 0.3, 0.6, loop=True, level=0.05):
+            if not real(sfx, t0 + 0.2, ["bubbles underwater"], max(0.5, dur - 0.6), 0.5, 0.3, 0.6, loop=True, level=0.05):
                 for c in np.arange(0.3, dur - 0.3, 0.45):   # bubbles
                     m2 = int(0.08 * SR)
                     t2 = np.arange(m2) / SR
                     put(sfx, t0 + c + rng.uniform(0, 0.2), np.sin(2 * np.pi * (500 + 900 * t2 / 0.08) * t2) * env(m2, 60, 600), 0.015)
             hb = wt("bottom")
             if hb is not None:   # the hit on the seabed
-                if not real(sfx, hb - 0.03, ["impact heavy", "bass drop", "boom", "impact"], 2.2, 1.0, hit=True):
+                if not real(sfx, hb - 0.03, ["heavy hit", "impact heavy", "boom"], 2.2, 1.0, hit=True):
                     m = int(1.4 * SR)
                     th = np.arange(m) / SR
                     put(sfx, hb, band(noise(1.4), 20, 180) * np.exp(-th * 2.6), 0.9)

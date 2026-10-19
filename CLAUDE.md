@@ -901,6 +901,54 @@ Agents never spend money without the owner's explicit approval.
   clips.count, min/max_seconds, end_card_seconds, end_card_text, captions (auto = wide sources only), caption_words, caption_size,
   caption_highlight, phone. No re-voicing, no ElevenLabs. The owner uploads by hand. Not yet: an OK button for the clips on the phone
   (phone.py is protected; he answers Atlas), a Today card, rendered by the Builder (not seen yet: check the first clip's frames).
+- Animation and sound setup (2.55.0, the owner 2026-10-19 before the next Storygraphics story: "I wanna setup the animation first go do
+  some research find any github repo or anything that could help you also for the sound effects"; he approved downloading all of it).
+  Everything below is free for a monetised channel; the licences were checked on the sources' own pages.
+  - Motion capture: `mocap.py` (repo) turns CMU Graphics Lab Motion Capture BVH files (mocap.cs.cmu.edu, free for commercial use,
+    credit line `mocap.CREDIT`; Bruce Hahne's BVH conversion via github.com/una-dinosauria/cmu-mocap, no added restrictions) in
+    ~/.agent-hq-anim/mocap/bvh (43 files, ~55 MB, NOT in the repo) into `story/src/motions.js` (in the repo, ~470 KB): `CLIPS` =
+    32 moves (walk, walk_brisk/sad/tired/scared/careful, limp, limp_drag, run, run_careful, creep, swim, row, ladder, lie_down, fall,
+    sit_stand, sit_ground, search, drag, carry, wave, point, phone, dial, sad, cry, scared, cold, face_in_hands, look_around,
+    handshake). Forward kinematics -> projected in the body's own frame (a turning walk stays a side view, on the spot) -> per frame
+    every segment's angle from straight down, SIDE (forward = screen right) and FRONT views; loops cut at one cycle (first
+    autocorrelation peak of the legs, arms for swim/row, slow drift removed) and blended at the seam; `ground` keeps the feet on the
+    floor; `speed` = kit units per frame. `python mocap.py build` after changing CLIPS (download the BVH first).
+    `story/src/motion.jsx` `<Mover who motion t dir expr>`: the cast's look (tis.jsx heads, skins, clothes) on a jointed body (thigh +
+    shin + shoe, upper arm + forearm + hand, torso and head lean), same units as `Figure` (hips y 600, feet y 1090); dir 1/-1 side,
+    0 front; each limb is ONE outline under one fill (two outlined pieces showed a ring at every knee). `motionSpeed(name)` to move a
+    walker so its feet don't slide. Not yet used in a story scene (the Pisces opening has no walkers); `MotionTest` shows them.
+  - Ready-made props: Microsoft Fluent Emoji, flat (MIT), 1,285 SVGs, sparse clone in ~/.agent-hq-anim/fluent-emoji; `story.ensure_app`
+    copies them once to the story app's public/emoji/<slug>.svg (`story.emoji_slug`, `story.emoji_names()` for prompts).
+    `story/src/emoji.jsx` `<Emoji name size outline rot flip>`: read once and drawn inline (delayRender until loaded; ids prefixed),
+    the kit's dark outline added with an SVG dilate filter. `Thing` (jungle) and `OThing` (ocean) draw any name they don't know as an
+    emoji. `EmojiSheet` still shows a sample.
+  - Remotion's official add-ons at 4.0.250 in animation/package.json AND story/package.json (the story app shares the animation
+    kit's node_modules; animate.ensure_toolchain runs npm install when animation/package.json changes): @remotion/motion-blur,
+    noise, paths, shapes, transitions, lottie (+ lottie-web 5.12.2; no Lottie files yet). Opening.jsx wraps fast shots (`BLUR`:
+    snag, flood, sink, breakup, falling; `line.p.blur` true/false overrides) in `<CameraMotionBlur shutterAngle={200} samples={6}>`
+    (multiplies those frames' render time). ocean.jsx: `camShake(f, shake, hand)` = noise2D (a hit and a hand-held drift) in `Zoom`,
+    bubbles wobble with noise, `DrawOn` = evolvePath (the hatch's cracks draw themselves on "rips").
+  - Sound effects: `soundlib.py` (repo). The Sonniss GDC 2026 Game Audio Bundle (gdc.sonniss.com, 5 zips, ~7.5 GB, ~347 long
+    recordings from 17 vendors; royalty-free, monetised YouTube OK, no credit needed, NOT for AI training). Sonniss' download links
+    have a Cloudflare bot check (never get round it) and the Google Drive mirror was over quota: the Builder downloaded them in the
+    owner's Chrome (Claude in Chrome), so the zips are in his Downloads. `python soundlib.py unpack` -> ~/.agent-hq-anim/sfx-library/
+    sonniss-gdc2026/, `index` -> index.json: per file `n` = words that MATCH (its own name + its UCS CatID, e.g. METLImpt -> metal
+    impact, `UCS_CAT`/`UCS_SUB`) and `w` = folder + BWF description words, for ranking only (matching on those gave forest crickets for
+    "ocean"). `find(query)`: every query word (or a one-way synonym, `SYN`) must be in `n`. `load()` decodes to 48 kHz float once
+    (`_cache/*.npy`). story_sample.py: `real(bus, t, queries, dur, gain, ..., loop, hit)` places a recorded ambience (looped with
+    equal-power crossfades, at an RMS level) or a hit (`_strongest`: the k-th strongest onset of a long file); every call keeps the
+    old made-up sound as the fallback when nothing matches. Wired: ocean surface/deep ambiences, the hatch rip, the flood, bubbles,
+    the seabed hit, the drip, the title hit, the day-change hit. Jungle/rain/planes still made up.
+  - Music: Scott Buckley, CC BY 4.0 (scottbuckley.com.au; credit in the DESCRIPTION, which also keeps his Content ID from claiming
+    the video; MP3s are free, his WAVs are Patreon-only): 14 tracks in ~/.agent-hq-anim/music/scott-buckley, `soundlib.TRACKS`
+    (moods tense/sad/hope/facts/night/danger). story_sample `real_music` replaces the chord `bed` per mood run: one track per mood
+    for the whole video, continuing where it left off, 2.4 s equal-power crossfades, skips a silent lead-in; the mix still holds it
+    18 dB under the voice. `credits.txt` (paste into the description) + `sounds-used.json` beside each sample.
+  - Not usable (checked): BBC Sound Effects (non-commercial), HunyuanVideo-Foley (non-commercial), OpenMoji (share-alike),
+    OpenMontage (AGPL: ideas only, never copy its code into this public repo). Later, if wanted: Stable Audio 3 Small SFX on the Mac
+    (Stability Community Licence: free under $1M revenue, needs his Hugging Face login + registration + "Powered by Stability AI"),
+    Freesound CC0 (needs his free account and API key), turning Gemini/FLUX pictures into flat SVG with vtracer (MIT; a look change:
+    show him first).
 - Atlas's notes (2.37.0): `atlas_engine.allow()` adds his journal and requests by absolute path (Edit + Write). The "./" rules are
   read against the shell's current folder; after Atlas cd'd into the program folder (2026-10-12) every edit was refused.
 - `animator.py` (2.18.0): Rana writes bespoke scene components (`animate.py animator-test`). Files are installed as

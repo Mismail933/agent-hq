@@ -1,4 +1,4 @@
-// written by mocap.py (2.54.0): real people's movement from the CMU Graphics Lab Motion Capture Database
+// written by mocap.py (2.55.0): real people's movement from the CMU Graphics Lab Motion Capture Database
 // (mocap.cs.cmu.edu, free for commercial use; BVH conversion by Bruce Hahne). Angles in degrees per frame at 30 fps,
 // each limb from straight down (torso and neck from straight up). Columns: thighL, shinL, footL, thighR, shinR, footR, armL, foreL, armR, foreR, torso, neck.
 export const MOTION_KEYS = ["thighL", "shinL", "footL", "thighR", "shinR", "footR", "armL", "foreL", "armR", "foreR", "torso", "neck"];

@@ -1,4 +1,4 @@
-"""Motion capture -> 2D poses for the story kit's people (2.54.0, the owner: "set up the animation first").
+"""Motion capture -> 2D poses for the story kit's people (2.55.0, the owner: "set up the animation first").
 
 Real people's movement instead of hand-made sine swings: walks (normal, sad, scared, careful, exhausted, hurt leg), runs, a limp,
 swimming, rowing, climbing a ladder, getting down and up, falling, sitting, waving, the phone, crying, cold, scared...
@@ -264,7 +264,7 @@ def build():
         d.update({"loop": kind == "loop", "speed": round(m["speed"], 2), "src": f"CMU {fid}", "note": note})
         motions[name] = d
         report.append(rep + f", speed {m['speed']:.2f}/frame")
-    js = ("// written by mocap.py (2.54.0): real people's movement from the CMU Graphics Lab Motion Capture Database\n"
+    js = ("// written by mocap.py (2.55.0): real people's movement from the CMU Graphics Lab Motion Capture Database\n"
           "// (mocap.cs.cmu.edu, free for commercial use; BVH conversion by Bruce Hahne). Angles in degrees per frame at 30 fps,\n"
           f"// each limb from straight down (torso and neck from straight up). Columns: {', '.join(KEYS)}.\n"
           f"export const MOTION_KEYS = {json.dumps(KEYS)};\n"

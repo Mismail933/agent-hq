@@ -1,4 +1,4 @@
-"""Real recorded sounds and real music for the story videos (2.54.0, the owner: "set up the animation first ... also for the sound
+"""Real recorded sounds and real music for the story videos (2.55.0, the owner: "set up the animation first ... also for the sound
 effects"; before this every effect and every chord was made from noise and sine waves in story_sample.py, and he heard the music
 as "corrupted").
 
@@ -59,7 +59,7 @@ TRACKS = {
 SYN = {"ocean": ["sea", "surf", "waves", "wave", "shore", "coast"], "waves": ["wave", "surf", "swell", "lapping"],
        "underwater": ["submerged", "hydrophone", "subaquatic", "underwater"], "rain": ["rainfall", "drizzle", "downpour"],
        "metal": ["metallic", "steel", "iron"], "impact": ["hit", "crash", "thud", "slam", "bang"], "creak": ["creaking", "groan", "stress"],
-       "water": ["liquid", "splash", "pour", "gush", "flow"], "bubbles": ["bubble", "bubbling", "gurgle"], "wind": ["gust", "breeze"],
+       "water": ["liquid"], "bubbles": ["bubble", "bubbling", "gurgle"], "wind": ["gust", "breeze"],
        "engine": ["motor", "idle", "rumble"], "helicopter": ["heli", "chopper"], "airplane": ["aircraft", "plane", "prop plane", "propeller"],
        "jungle": ["rainforest", "tropical", "forest"], "crowd": ["walla", "people", "murmur"], "boat": ["ship", "vessel", "hull"],
        "rope": ["cable", "line", "winch"], "footsteps": ["footstep", "steps", "walk"], "thunder": ["storm", "lightning"],
@@ -102,6 +102,8 @@ def unpack(where=None):
                     if m.is_dir() or p.suffix.lower() not in EXTS or ".." in p.parts:
                         continue
                     dest = SONNISS / p
+                    if len(str(dest)) > 230:   # Windows' 260-character path limit (some names are whole sentences)
+                        dest = dest.parent / (p.stem[:90].rstrip() + "_" + hashlib.md5(p.stem.encode()).hexdigest()[:6] + p.suffix)
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     with zf.open(m) as src, open(dest, "wb") as out:
                         shutil.copyfileobj(src, out)

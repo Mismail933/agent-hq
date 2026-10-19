@@ -1,4 +1,4 @@
-// People who move like real people (2.54.0, the owner: "set up the animation first"). The cast's look (tis.jsx: outlined, two-tone
+// People who move like real people (2.55.0, the owner: "set up the animation first"). The cast's look (tis.jsx: outlined, two-tone
 // skin, the same heads and clothes) on a jointed body: thigh + shin + shoe, upper arm + forearm + hand, the torso and the head
 // leaning, driven frame by frame by motion capture (motions.js, made by mocap.py from the CMU database). The old Figure swung a
 // stiff leg on a sine; this one bends its knees, plants its feet and walks like the recording.

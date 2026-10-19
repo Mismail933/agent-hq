@@ -5,6 +5,7 @@ import React from 'react';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, Bust, Head, Box, Plane, Cloud, at, Labels} from './tis';
 import {noise2D} from '@remotion/noise';
 import {evolvePath} from '@remotion/paths';
+import {Emoji} from './emoji';
 
 const P = (line) => line.p || {};
 const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
@@ -15,10 +16,12 @@ const wave = (f, y, amp, k) => {
   return d + ` L ${W + 80} ${H + 40} Z`;
 };
 // a camera that zooms on a point: z from a to b between frames f0 and f1. shake = a hit (fast, strong); hand = a hand-held camera's
-// slow drift (2.54.0: smooth noise from @remotion/noise instead of sine waves, so it never looks like a machine wobbling)
+// slow drift (2.55.0: smooth noise from @remotion/noise instead of sine waves, so it never looks like a machine wobbling)
+// (a hit keeps the old fast sine so the picture moves every frame - noise alone slowed to a near stop between jolts, which the motion
+// report counted as stalls - with noise on top so no two hits look the same)
 export const camShake = (f, shake = 0, hand = 0) => [
-  noise2D('sx', f * 0.35, 0) * shake * 1.4 + noise2D('hx', f * 0.025, 0) * hand * 3,
-  noise2D('sy', 0, f * 0.35) * shake * 1.1 + noise2D('hy', 0, f * 0.025) * hand * 2.2,
+  Math.sin(f * 1.9) * shake + noise2D('sx', f * 0.35, 0) * shake * 0.5 + noise2D('hx', f * 0.025, 0) * hand * 3,
+  Math.cos(f * 2.3) * shake * 0.7 + noise2D('sy', 0, f * 0.35) * shake * 0.4 + noise2D('hy', 0, f * 0.025) * hand * 2.2,
 ];
 const Zoom = ({f, f0, f1, a, b, x = W / 2, y = H / 2, shake = 0, hand = 0, children}) => {
   const z = lin(f, f0, f1, a, b);
@@ -341,7 +344,7 @@ export const OThing = ({name, f = 0, title = ''}) => {
         {rows.map((r, i) => <Txt key={i} x={20} y={-110 + i * 56} text={r} size={46} fill="#FDE68A" stroke="none" />)}
         <circle cx={20} cy={90} r={60} fill="#FFD21F" {...st(5)} /><Txt x={20} y={196} text="ROGER CHAPMAN" size={30} fill="#fff" stroke="none" /></g>);
     }
-    default: return null;
+    default: return <Emoji name={name} size={430} />;   // 2.55.0: anything not drawn here is a ready-made prop (emoji.jsx)
   }
 };
 
