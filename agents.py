@@ -1407,7 +1407,7 @@ def gate_check(eid):
     state = {"episode": eid, "version": v, "israa": r.get("score") if int(r.get("version", 1)) == v else None,
              "builder": b.get("score") if int(b.get("version", 0)) == v else None, "need": need, "open": israa_ok and builder_ok}
     if state["open"] and e["status"] == "in_review":
-        cp.update_episode_if(eid, "in_review", status="awaiting_approval")
+        cp.update_episode(eid, status="awaiting_approval")   # (update_episode_if's own `status` is the CURRENT one: no status= there)
         cp.log("Calina", "script_ready", None, {**state})
     elif israa_ok and not builder_ok and e["status"] == "in_review":
         cp.log("Calina", "script_needs_builder", None, {**state})
