@@ -598,7 +598,8 @@ def real_music(music, r0, r1, mood):
     have = soundlib.tracks()
     if not have:
         return False
-    name = MOOD_TRACK.get(mood) or soundlib.music_for(mood, SEED[0], avoid=set(MOOD_TRACK.values()))
+    pick = (SOUND.get("music") or {}).get(mood)   # 2.61.0: the spec (or Tarek) may choose the track for a mood
+    name = MOOD_TRACK.get(mood) or (pick if pick in have else None) or soundlib.music_for(mood, SEED[0], avoid=set(MOOD_TRACK.values()))
     if not name:
         return False
     MOOD_TRACK[mood] = name
@@ -804,6 +805,8 @@ UNDER_VOICE_DB = -16.0   # accents while he speaks (was -14; -9 before the owner
 MUSIC_UNDER_DB = -18.0
 GAP_MAX_DB = -10.0       # accents in a pause (was -6: the 2.55.1 opening's hits came within 7.7 dB of his voice in the gaps)
 AMB_UNDER_DB = -28.0     # the background beds, steady, all the time (2.55.2: "background noises who are relaxing")
+MUSIC_PEAK_DB = -15.0    # 2.61.0: a short swell of the music never within 15 dB of the voice while he speaks (was 9: after the Megalodon
+MUSIC_PEAK_GAP_DB = -14.0   # title it came within 12.8 dB, Tarek's target is 16-20) nor above his usual level -14 dB in a pause (was 8)
 
 
 BLK = SR // 100   # 2.59.1: every level is measured on 10 ms blocks (a 20-minute mix at 48 kHz ran out of memory sample by sample)
@@ -900,7 +903,8 @@ def loudness_report(voice, music, sfx, win):
     level = np.percentile(vr[vr > 1e-3], 70) if np.any(vr > 1e-3) else 1e-3
     for i in range(0, len(vr), hop):
         v = vr[i]
-        ref = v if v > level * 0.25 else level   # in a pause, compare with the narrator's usual level
+        ref = v if v > level * 0.5 else level   # in a pause or a word's fading tail, compare with the narrator's usual level (2.61.0: at
+        #   0.25 a soft word's tail made the music read 12.8 dB under the voice where it sat 25 dB under his usual level)
         rows.append((i * BLK / SR, 20 * np.log10((sr_[i] + 1e-9) / ref), 20 * np.log10((mr[i] + 1e-9) / ref), v > level * 0.25))
     worst_sfx = max(rows, key=lambda r: r[1])
     worst_music = max(rows, key=lambda r: r[2])
@@ -934,7 +938,7 @@ def mix(lines, voiced, music, sfx, folder):
     # and a guard for short notes (the wake-up melody) that a 1.5 s average doesn't see: never within 9 dB of the voice while he
     # speaks (his level over 1 s, so it doesn't follow every syllable) nor above his usual level -8 dB in a pause
     v1 = _rms(voice, int(1.0 * SR))
-    hold_under(music, v1, v1 > 0.02, level, -9.0, -8.0, win)
+    hold_under(music, v1, v1 > 0.02, level, MUSIC_PEAK_DB, MUSIC_PEAK_GAP_DB, win)
     hold_under(sfx, vr, speaking, level, float(SOUND.get("accent_under_db", UNDER_VOICE_DB)), float(SOUND.get("accent_gap_db", GAP_MAX_DB)), win)
     amb = AMB[0] if AMB[0] is not None and len(AMB[0]) == N else np.zeros(N, dtype=np.float32)
     amb_under = float(SOUND.get("bed_under_db", AMB_UNDER_DB))

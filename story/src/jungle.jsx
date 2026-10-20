@@ -231,6 +231,7 @@ const PLACES = {lima: [-77.04, -12.05, 'LIMA', -1], pucallpa: [-74.55, -8.38, 'P
   puerto_inca: [-74.96, -9.38, 'PUERTO INCA', -1], tournavista: [-74.70, -8.93, 'TOURNAVISTA', 1], kiel: [10.13, 54.32, 'KIEL, GERMANY', 1],
   // Storygraphics #2 (Pisces III)
   britain: [-4.6, 50.8, 'BRITAIN', 1], canada: [-63.6, 44.7, 'CANADA', -1], cork: [-8.47, 51.9, 'CORK', 1], site: [-8.6, 49.8, 'PISCES III', -1],
+  teeth1875: [-150.2, -22.4, 'MEGALODON TEETH, 1875', 1], portsmouth: [-1.1, 50.8, 'PORTSMOUTH', 1],   // HMS Challenger
   na: [-100, 42, 'NORTH AMERICA', 1], sa: [-60, -12, 'SOUTH AMERICA', 1], eu: [12, 48, 'EUROPE', 1], af: [20, 4, 'AFRICA', 1], asia: [95, 38, 'ASIA', 1], au: [134, -24, 'AUSTRALIA', -1],   // Storygraphics #3
   california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1]};
 function Map({f, len, line}) {
@@ -251,6 +252,28 @@ function Map({f, len, line}) {
         {p.rivers !== false && <path d={RIVERS} fill="none" stroke="#3B82F6" strokeWidth={4} vectorEffect="non-scaling-stroke" />}
       </g>
       {(p.country || [['PERU', -75.2, -11.4]]).map(([nm, lo, la], i) => <text key={i} x={sx(lo)} y={sy(la)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={90} fill="#fff" opacity={0.55} stroke={INK} strokeWidth={4} paintOrder="stroke">{nm}</text>)}
+      {p.path && (() => {   // a voyage (2.61.0): [[lon, lat], ...] drawn on from path_on to path_end, a ship at its head, split where it crosses the date line
+        const pts = p.path.map(([lo, la]) => [sx(lo), sy(la)]);
+        const segs = [];
+        let total = 0;
+        for (let i = 1; i < p.path.length; i++) {
+          const [lo0, la0] = p.path[i - 1], [lo1, la1] = p.path[i];
+          if (Math.abs(lo1 - lo0) > 180) {   // over the date line: to the edge, then on from the other edge
+            const e0 = lo0 > 0 ? 180 : -180, e1 = -e0, d0 = Math.abs(e0 - lo0), d1 = Math.abs(lo1 - e1), la = la0 + (la1 - la0) * d0 / (d0 + d1);
+            segs.push([pts[i - 1], [sx(e0), sy(la)]], [[sx(e1), sy(la)], pts[i]]);
+          } else segs.push([pts[i - 1], pts[i]]);
+        }
+        segs.forEach((g) => { g.len = Math.hypot(g[1][0] - g[0][0], g[1][1] - g[0][1]); total += g.len; });
+        const pa = at(line, p.path_on || '', 0.05), pb = p.path_end ? at(line, p.path_end, 0.95) : len - 12;
+        let left = lin(f, pa, pb, 0, total, (t) => t), head = null;
+        const drawn = segs.map((g, i) => { if (left <= 0) return null; const k = Math.min(1, left / g.len); left -= g.len;
+          const x2 = g[0][0] + (g[1][0] - g[0][0]) * k, y2 = g[0][1] + (g[1][1] - g[0][1]) * k; head = [x2, y2, g[1][0] >= g[0][0] ? 1 : -1];
+          return <path key={i} d={`M ${g[0][0]} ${g[0][1]} L ${x2} ${y2}`} />; });
+        return (<g>
+          <g stroke="#fff" strokeWidth={13} fill="none" strokeLinecap="round" opacity={0.6}>{drawn}</g>
+          <g stroke="#E3232C" strokeWidth={6} fill="none" strokeLinecap="round" strokeDasharray="16 10">{drawn}</g>
+          {head && f > pa && <g transform={`translate(${head[0]} ${head[1] - 26})`}><Emoji name="sailboat" size={64} flip={head[2] < 0} /></g>}
+        </g>); })()}
       {route && (() => { const [a, b] = route; const x1 = sx(a[0]), y1 = sy(a[1]), x2 = sx(b[0]), y2 = sy(b[1]); const len2 = Math.hypot(x2 - x1, y2 - y1); const d = lin(f, ra, ra + 50, 0, len2);
         return <path d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#E3232C" strokeWidth={10} strokeDasharray={`${d} ${len2}`} strokeLinecap="round" />; })()}
       {pins.map((pl, i) => { const a = at(line, (p.pin_on || [])[i] || '', 0.15 + i * 0.15); const s = clamp(pop(f, a, 150, 12), 0, 1.15);

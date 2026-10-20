@@ -323,6 +323,9 @@ def clean_settings(s):
         out["accents"] = {str(k)[:30]: q(v) for k, v in s["accents"].items() if q(v)}
     if s.get("drop_accents"):
         out["drop_accents"] = [x if isinstance(x, (int, float)) else str(x)[:30] for x in s["drop_accents"]][:12]
+    if isinstance(s.get("music"), dict):   # 2.61.0: a music track per mood (soundlib.TRACKS keys)
+        import soundlib
+        out["music"] = {str(k): str(v) for k, v in s["music"].items() if str(v) in soundlib.TRACKS}
     if s.get("add_accents"):
         out["add_accents"] = [{"line": int(a["line"]), "word": str(a["word"])[:30], "for": str(a["for"])[:60]}
                               for a in s["add_accents"] if isinstance(a, dict) and a.get("line") and a.get("word") and a.get("for")][:6]
@@ -334,7 +337,7 @@ def merge_settings(old, new):
     sound must not undo the seabed's), lists kept unless the round gives its own."""
     out = dict(old)
     for k, v in new.items():
-        out[k] = {**(old.get(k) or {}), **v} if k in ("beds", "accents") and isinstance(v, dict) else v
+        out[k] = {**(old.get(k) or {}), **v} if k in ("beds", "accents", "music") and isinstance(v, dict) else v
     return out
 
 

@@ -902,6 +902,18 @@ Agents never spend money without the owner's explicit approval.
   credits.txt. ONLY public domain or CC BY (never BY-SA, never a copyrighted photo or poster), found on Wikimedia Commons (scratchpad
   commons_search.py reads the API's licence metadata; downloads asked first). Examples sent 2026-10-20: samples/photo-examples/
   (line 34: the Illustrated London News engraving of HMS Challenger, 1872, PD; line 13: James St. John's megalodon tooth, CC BY 2.0).
+  2.61.0 the owner's "yes, all across the video" + three additions (via Atlas, 2026-10-20: map, size comparison, running date; "keep it
+  clean"): 8 lines carry real pictures (content/project-5/photos/credits.json: AMNH jaws CC0, Panama nursery teeth Pimiento 2010 CC BY 2.5,
+  Ifremer nodule cross-section CC BY 4.0, NOAA bathymetry and deep corals PD, Terry Goss great white CC BY 2.5, plus the two above; a
+  short credit on the frame, the long one in the description). Map `path` [[lon, lat]...] = a voyage drawn on (path_on/path_end), a
+  sailboat at its head, split at the date line; PLACES teeth1875, portsmouth (line 34 = the Challenger's 1872-76 route under the
+  engraving). MScale 'shape' adds a diver (1.8 m) and a bus (12 m, drawn to real proportions: the emoji bus is far too tall) at the same
+  true scale (`scale_extras: false` hides them). `p.date` = Opening.jsx `DateLayer`: a small chip top-right from that line on, pops on a
+  change, "" hides it (don't double a date the scene already shows). Sound: `MUSIC_PEAK_DB` -15 / `MUSIC_PEAK_GAP_DB` -14 (was -9/-8);
+  spec `sound.music` {mood: track} picks a track (Tarek may set it); the decline part plays Penumbra instead of the solo piano.
+  loudness_report compares with the voice only above half his usual level (a word's fading tail made the music read 12.8 dB under where
+  it sat 25 dB under). Not done, and why: no free photo of David Stead, the 2013 film's poster is copyrighted, megamouth photos are
+  low-res or share-alike, none of divers off Florida.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

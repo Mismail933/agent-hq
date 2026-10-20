@@ -341,6 +341,26 @@ const ShotLayer = ({line, len}) => {
   );
 };
 
+// the running date (2.61.0, the owner: "a running date on screen so viewers know when each part happens"): line.p.date shows a small
+// chip in the top-right corner from that line on (it pops when the date changes); "" hides it. Kept small: labels own the top-left.
+const DateLayer = ({lines}) => {
+  const frame = useCurrentFrame();
+  let date = null, since = 0, prev = null, gone = 0;
+  for (const l of lines) {
+    const from = l.cut != null ? l.cut : l.start;
+    if (from > frame) break;
+    const d = (l.p || {}).date;
+    if (d !== undefined && d !== date) { if (date) { prev = date; gone = from; } date = d; since = from; }
+  }
+  const chip = (text, s, op) => (
+    <div style={{position: 'absolute', right: 40, top: 22, transform: `scale(${s})`, transformOrigin: '100% 0%', opacity: op, background: '#0B1F3A',
+      border: `5px solid ${INK}`, boxShadow: '6px 8px 0 rgba(0,0,0,0.35)', padding: '0 18px', fontFamily: OSWALD, fontWeight: 700, fontSize: 46,
+      color: '#FDE047', letterSpacing: 2, whiteSpace: 'nowrap'}}>{String(text).toUpperCase()}</div>
+  );
+  if (!date) return prev && frame - gone < 8 ? <AbsoluteFill>{chip(prev, 1, 1 - (frame - gone) / 8)}</AbsoluteFill> : null;
+  return <AbsoluteFill>{chip(date, clamp(pop(frame - since, 0, 170, 12), 0, 1.1), 1)}</AbsoluteFill>;
+};
+
 // the day: a big red card when it changes (line.p.day), then small in the corner until the next change (or day "" to clear)
 const DayLayer = ({lines}) => {
   const frame = useCurrentFrame();
@@ -412,6 +432,7 @@ export const Opening = ({lines = [], audio, captions = true}) => (
       );
     })}
     <DayLayer lines={lines} />
+    <DateLayer lines={lines} />
     {captions && <CaptionLayer lines={lines} />}
   </AbsoluteFill>
 );

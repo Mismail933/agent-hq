@@ -123,6 +123,24 @@ function MScale({f, len, line}) {
         <Txt x={lin(f, g - 12, g + 14, 960, 420)} y={lin(f, g - 12, g + 14, 790, 230)} text="GREAT WHITE: STOCKY, ~7 M" size={lin(f, g - 12, g + 14, 64, 44)} />
         <g transform={`translate(1150 640) scale(${s})`}><Silhouette len={1400} f={f} /></g>
         <Txt x={1150} y={880} text="MEGALODON: SLIMMER, UP TO 24.3 M" size={44} op={clamp((f - g) / 10, 0, 1)} />
+        {p.scale_extras !== false && (() => {   // 2.61.0: the same true scale (1400 px = 24.3 m): a diver (1.8 m) and a bus (12 m)
+          const m = 1400 / 24.3, k = clamp(pop(f, g + 14, 140, 13), 0, 1.04);
+          return (<g opacity={clamp((f - g - 10) / 10, 0, 1)}>
+            <g transform={`translate(1540 250) scale(${k})`}>   {/* drawn to its real proportions (12 x 3.2 m); the emoji bus is far too tall */}
+              <rect x={-6 * m} y={-1.6 * m} width={12 * m} height={2.9 * m} rx={0.4 * m} fill="#FACC15" {...st(5)} />
+              {[...Array(7)].map((_, i) => <rect key={i} x={-5.4 * m + i * 1.55 * m} y={-1.25 * m} width={1.15 * m} height={0.9 * m} rx={6} fill="#BFE6FF" {...st(3)} />)}
+              <rect x={-6 * m} y={0.55 * m} width={12 * m} height={0.25 * m} fill="#1F2937" />
+              {[-3.8, 3.6].map((x) => <circle key={x} cx={x * m} cy={1.3 * m} r={0.5 * m} fill="#1F2937" {...st(4)} />)}
+            </g>
+            <Txt x={1540} y={250 + 2.4 * m} text="BUS: 12 M" size={40} />
+            <g transform={`translate(870 330) scale(${k})`}>
+              <ellipse cx={0} cy={0} rx={0.62 * m} ry={0.16 * m} fill="#111827" {...st(4)} />
+              <circle cx={0.78 * m} cy={-0.04 * m} r={0.15 * m} fill="#F2C29B" {...st(3)} />
+              <rect x={0.74 * m} y={-0.14 * m} width={0.2 * m} height={0.11 * m} rx={3} fill="#38BDF8" {...st(2)} />
+              <path d={`M ${-0.62 * m} 0 L ${-0.95 * m} ${-0.1 * m} M ${-0.62 * m} ${0.05 * m} L ${-0.95 * m} ${0.12 * m}`} stroke="#111827" strokeWidth={0.1 * m} strokeLinecap="round" />
+            </g>
+            <Txt x={870} y={420} text="DIVER: 1.8 M" size={40} />
+          </g>); })()}
       </g>}
       {mode === 'hide' && <g>
         <g transform={`translate(${400} ${base - 160})`}><Silhouette len={4.5 * px} color="grey" f={f} /></g>
