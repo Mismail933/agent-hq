@@ -215,13 +215,13 @@ function Quote({f, len, line}) {
   return (
     <Cam f={f} len={len} from={1} to={1.05}>
       {p.bg === 'jungle' ? <Rainforest f={f} time={p.time || 'day'} seed={8} /> : <rect width={W} height={H} fill={p.color || '#0F2A44'} />}
-      <g transform={`translate(1450 ${p.y || 560}) scale(${p.s || 0.9})`}><Bust who={p.who || 'juliane'} x={0} y={0} s={1} expr={p.expr || 'calm'} f={f} talk={p.talk !== false && f >= a && f < len - 8} arms="rest" seed={3} /></g>
-      <g transform={`translate(110 ${540 - h / 2}) scale(${s})`}>
+      {p.who !== 'none' && <g transform={`translate(1450 ${p.y || 560}) scale(${p.s || 0.9})`}><Bust who={p.who || 'juliane'} x={0} y={0} s={1} expr={p.expr || 'calm'} f={f} talk={p.talk !== false && f >= a && f < len - 8} arms="rest" seed={3} /></g>}
+      <g transform={`translate(${p.who === 'none' ? 470 : 110} ${540 - h / 2}) scale(${s})`}>
         <rect x={10} y={12} width={980} height={h} fill="#000" opacity={0.35} /><rect width={980} height={h} fill="#fff" {...ST} />
         <rect x={30} y={30} width={14} height={h - 60} fill="#E3232C" />
         {rows.map((r, i) => <text key={i} x={80} y={110 + i * 84} fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={70} fill={INK}>{(i === 0 ? '"' : '') + r + (i === rows.length - 1 ? '"' : '')}</text>)}
       </g>
-      <Label x={110} y={540 + h / 2 + 30} text={String(p.who_label || '').toUpperCase()} f={f} at={a + 8} fill="#fff" h={60} />
+      <Label x={p.who === 'none' ? 470 : 110} y={540 + h / 2 + 30} text={String(p.who_label || '').toUpperCase()} f={f} at={a + 8} fill="#fff" h={60} />
     </Cam>
   );
 }

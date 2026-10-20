@@ -388,7 +388,8 @@ const chunksOf = (l) => {
   ws.forEach((w, i) => {
     cur.push(i);
     const end = /[.,!?;:\u2014]$/.test(w[0]) || /["\u201d]$/.test(w[0]);
-    if (end || cur.length >= 6) { out.push(cur); cur = []; }
+    const num = /^[\d][\d.,]*$/.test(w[0]) && i + 1 < ws.length;   // 2.61.1: "35 | METRES" split a number from its unit
+    if (end || (cur.length >= 6 && !num)) { out.push(cur); cur = []; }
   });
   if (cur.length) out.push(cur);
   // a lone word left at the end joins the phrase before it

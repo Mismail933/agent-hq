@@ -21,6 +21,35 @@ export const Cam = ({f, len, a = 1, b = 1.06, x = W / 2, y = H / 2, shake = 0, h
 export const BG = ({c = '#0F2A44'}) => <rect width={W} height={H} fill={c} />;
 // a shape popping in on a spoken word (frame a = the word's frame)
 export const popAt = (f, line, word, frac = 0.3) => clamp(pop(f, at(line, word || '', frac), 140, 12), 0, 1.1);
+// the same, but never later than frame `by` (a scene's first thing is on screen at once: Israa found blank starts)
+export const popBy = (f, line, word, frac = 0.3, by = 8) => clamp(pop(f, Math.min(at(line, word || '', frac), by), 140, 12), 0, 1.1);
+
+// a whale, flat, in the kit's look (2.61.1: the emoji whales clashed with the drawings), facing right, `len` px long
+export const Whale = ({len = 400, f = 0, spout = false, flip = false, bite = false}) => {
+  const k = len / 1000;
+  return (
+    <g transform={`scale(${flip ? -k : k} ${k})`}>
+      <path d={`M -430 -15 C -500 -40 -560 ${-70 + Math.sin(f * 0.08) * 12} -610 -60 C -575 -20 -575 10 -610 ${45 + Math.sin(f * 0.08) * 12} C -555 40 -495 25 -430 15 Z`} fill="#3E5F7C" {...ST} />
+      <path d="M 480 20 C 470 -90 300 -150 60 -150 C -160 -150 -330 -90 -430 -20 C -440 0 -440 10 -430 20 C -330 80 -200 105 0 115 C 300 125 430 95 480 20 Z" fill="#4A6E8C" {...ST} />
+      <path d="M 470 42 C 380 98 150 112 -50 104 C -200 95 -330 70 -425 22 C -320 58 -150 74 50 72 C 250 70 400 60 470 42 Z" fill="#C9D6E2" />
+      {[0, 1, 2, 3].map((i) => <path key={i} d={`M ${300 - i * 90} ${70 + i * 3} L ${200 - i * 90} ${80 + i * 3}`} stroke="#8FA3B5" strokeWidth={6} strokeLinecap="round" />)}
+      <path d="M 210 85 C 170 160 110 205 40 215 C 90 170 130 120 150 92 Z" fill="#3E5F7C" {...ST} />
+      <circle cx={330} cy={5} r={12} fill={INK} />
+      <path d="M 478 32 C 420 48 360 54 300 48" fill="none" {...st(6)} />
+      {bite && <path d="M -60 -150 C -40 -60 80 -60 110 -146 Z" fill="#7F1D1D" {...st(6)} />}
+      {spout && <g stroke="#BFE6FF" strokeWidth={16} fill="none" strokeLinecap="round"><path d="M 370 -140 C 350 -230 300 -270 250 -262" /><path d="M 370 -140 C 390 -230 440 -270 490 -262" /></g>}
+    </g>
+  );
+};
+// a bus drawn to its real proportions (12 x 3.2 m; the emoji bus was far too tall): `m` = px per metre, centred
+export const DrawnBus = ({m}) => (
+  <g>
+    <rect x={-6 * m} y={-1.6 * m} width={12 * m} height={2.9 * m} rx={0.4 * m} fill="#FACC15" {...st(5)} />
+    {[...Array(7)].map((_, i) => <rect key={i} x={-5.4 * m + i * 1.55 * m} y={-1.25 * m} width={1.15 * m} height={0.9 * m} rx={4} fill="#BFE6FF" {...st(3)} />)}
+    <rect x={-6 * m} y={0.55 * m} width={12 * m} height={0.25 * m} fill="#1F2937" />
+    {[-3.8, 3.6].map((x) => <circle key={x} cx={x * m} cy={1.3 * m} r={0.5 * m} fill="#1F2937" {...st(4)} />)}
+  </g>
+);
 // the shark drawn small for size comparisons: the slim megalodon (dark) or a great white (stocky: drawn 1.45x deeper), `len` px long
 export const Silhouette = ({len = 1000, kind = 'meg', color, op = 1, f = 0}) => {
   const k = len / 1630;
@@ -36,10 +65,10 @@ function MCard({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={1} b={1.04}>
       <BG c={p.color || '#0F2A44'} />
-      {p.thing && <g transform={`translate(${p.tx || 1480} ${p.ty || 520}) scale(${popAt(f, line, p.thing_on, 0.1)})`}><Emoji name={p.thing} size={p.ts || 460} /></g>}
-      {p.shark && <g transform={`translate(1420 520) scale(${popAt(f, line, p.thing_on, 0.1)})`}><Silhouette len={760} color="grey" f={f} /></g>}
-      {lines.map((t, i) => { const s = popAt(f, line, (p.on || [])[i], 0.1 + i * 0.25);
-        const w = Math.min(side ? 1080 : 1700, String(t).length * h * 0.5 + 90);
+      {p.thing && <g transform={`translate(${p.tx || 1480} ${p.ty || 520}) scale(${popBy(f, line, p.thing_on, 0.1, 6)})`}><Emoji name={p.thing} size={p.ts || 460} /></g>}
+      {p.shark && <g transform={`translate(1540 540) scale(${popBy(f, line, p.thing_on, 0.1, 6)})`}><Silhouette len={700} color="grey" f={f} /></g>}
+      {lines.map((t, i) => { const s = i === 0 ? popBy(f, line, (p.on || [])[0], 0.1, 10) : popAt(f, line, (p.on || [])[i], 0.1 + i * 0.25);
+        const w = Math.min(side ? 1000 : 1700, String(t).length * h * 0.5 + 90);
         const red = i === (p.red ?? -1);
         return <g key={i} transform={`translate(${side ? 120 : W / 2 - w / 2} ${(p.y0 || (side ? 220 : 470 - lines.length * (h + 50) / 2 + 40)) + i * (h + 50)})`}>
           <Box x={0} y={0} w={w} h={h} text={t} fill={red ? '#E3232C' : '#FFE11A'} color={red ? '#fff' : INK} outline={red} rot={i % 2 ? 2 : -2} s={s} /></g>; })}
@@ -148,13 +177,19 @@ function MScale({f, len, line}) {
         <g transform={`translate(${1150} ${base - 260}) scale(${s})`}><Silhouette len={24.3 * px * 0.5} op={0.35} f={f} /></g>
         <Txt x={1150} y={base - 30} text="24 M?" size={60} fill="#FDE047" op={clamp((f - g) / 10, 0, 1)} />
       </g>}
-      {mode === 'bus' && <g>
-        <g transform={`translate(330 ${base - 150})`}><Silhouette len={4.5 * px} color="grey" f={f} /></g>
-        <g transform={`translate(330 ${base + 20})`}><Emoji name="automobile" size={180} /></g>
-        <g transform={`translate(1200 ${base - 280}) scale(${s})`}><Silhouette len={24.3 * px * 0.55} f={f} /></g>
-        <g transform={`translate(1020 ${base + 10})`} opacity={clamp((f - g - 6) / 10, 0, 1)}><Emoji name="bus" size={260} /></g>
-        <g transform={`translate(1290 ${base + 10})`} opacity={clamp((f - g - 6) / 10, 0, 1)}><Emoji name="bus" size={260} /></g>
-      </g>}
+      {mode === 'bus' && (() => {   // 2.61.1: one true scale (32 px a metre): two 12 m buses nose to tail ARE the megalodon's 24 m
+        const m = 32;
+        return (<g>
+          <g transform="translate(330 380)"><Silhouette len={4.5 * m} color="grey" f={f} /></g>
+          <g transform="translate(330 470)"><Emoji name="automobile" size={4.5 * m} /></g>
+          <Txt x={330} y={560} text="CAR-SIZED: 4.5 M" size={40} />
+          <g transform={`translate(1240 380) scale(${s})`}><Silhouette len={24.3 * m} f={f} /></g>
+          <g opacity={clamp((f - g - 6) / 10, 0, 1)}>
+            <g transform={`translate(${1240 - 6 * m} 690)`}><DrawnBus m={m} /></g>
+            <g transform={`translate(${1240 + 6 * m} 690)`}><DrawnBus m={m} /></g>
+            <Txt x={1240} y={810} text="TWO BUSES = 24 M" size={44} fill="#FDE047" />
+          </g>
+        </g>); })()}
       {mode === 'rival' && <g>
         <g transform={`translate(1100 ${base - 300})`}><Silhouette len={24.3 * px * 0.6} op={0.9} f={f} /></g>
         <g transform={`translate(420 ${base - 120}) scale(${s})`}><Silhouette len={7 * px} kind="gw" f={f} /></g>
@@ -215,7 +250,7 @@ function MWhaleBone({f, len, line}) {
     <g><Cam f={f} len={len} a={1} b={1.07}>
       <BG c="#C9A66B" />
       <rect y={700} width={W} height={380} fill="#B08850" />
-      <g transform={`translate(1450 260) scale(${clamp(pop(f, w, 130, 12), 0, 1)})`}><Emoji name="spouting whale" size={360} /></g>
+      <g transform={`translate(1450 290) scale(${clamp(pop(f, Math.min(w, 8), 130, 12), 0, 1)})`}><Whale len={460} f={f} spout /></g>
       <g transform={`translate(760 640) scale(${clamp(pop(f, b, 120, 13), 0, 1.04)})`}>
         <path d="M -520 -40 C -420 -110 -200 -120 0 -100 C 200 -80 420 -90 520 -30 C 540 20 500 60 420 50 C 220 30 -160 40 -420 60 C -520 70 -560 20 -520 -40 Z" fill="#F1E5C8" {...ST} />
         {[...Array(9)].map((_, i) => <path key={i} d={`M ${-380 + i * 90} ${-90 + R() * 20} l ${10 + R() * 14} ${50 + R() * 30}`} stroke="#7F1D1D" strokeWidth={8} strokeLinecap="round" />)}
@@ -236,9 +271,18 @@ function MNursery({f, len, line}) {
     <g><Cam f={f} len={len} a={1} b={1.05} y={520}>
       <rect width={W} height={H} fill="#7DD3FC" />
       <path d="M -40 300 C 300 260 700 320 1000 290 C 1400 250 1700 300 1960 280 L 1960 -40 L -40 -40 Z" fill="#F6E7B8" {...st(5)} />
-      {mode === 'resort' && <g>{[220, 520, 820, 1120, 1420, 1720].map((x, i) => <g key={x} transform={`translate(${x} 170)`}><Emoji name={['hotel', 'beach with umbrella', 'hotel', 'beach with umbrella', 'hotel', 'beach with umbrella'][i]} size={210} /></g>)}
-        {[...Array(5)].map((_, i) => <g key={i} transform={`translate(${260 + i * 360 + Math.sin(f * 0.05 + i) * 30} ${470 + (i % 2) * 190})`}><Emoji name={['motor boat', 'speedboat', 'sailboat', 'motor boat', 'canoe'][i]} size={200} flip={i % 2 === 1} /></g>)}
-        <g transform="translate(1500 760)"><Emoji name="diving mask" size={170} /></g><g transform="translate(560 800)"><Emoji name="camera" size={150} /></g></g>}
+      {mode === 'resort' && <g>   {/* 2.61.1: drawn flat, like the rest (the emoji hotels and boats clashed) */}
+        {[[160, 170], [330, 230], [560, 150], [1180, 210], [1380, 160], [1640, 240]].map(([x, hgt], i) => <g key={'h' + i}>
+          <rect x={x - 70} y={290 - hgt} width={140} height={hgt} fill={['#F5EBD7', '#E2E8F0', '#FDE6C8'][i % 3]} {...st(5)} />
+          {[...Array(Math.floor(hgt / 40))].map((_, r) => [0, 1, 2].map((c) => <rect key={r + '-' + c} x={x - 52 + c * 38} y={300 - hgt + 14 + r * 40} width={24} height={20} fill="#7DD3FC" {...st(2)} />))}</g>)}
+        {[760, 900, 1040].map((x, i) => <g key={'u' + i} transform={`translate(${x} 250)`}><path d="M 0 0 L 0 -70" {...st(5)} /><path d="M -60 -60 C -40 -110 40 -110 60 -60 Z" fill={['#E3232C', '#FACC15', '#22C55E'][i]} {...st(5)} /></g>)}
+        {[[300, 520], [700, 700], [1150, 560], [1560, 690]].map(([x, y], i) => <g key={'b' + i} transform={`translate(${x + Math.sin(f * 0.05 + i) * 24} ${y}) scale(${i % 2 ? -1 : 1} 1)`}>
+          <path d="M -110 0 L 110 0 C 100 30 80 45 50 50 L -90 50 C -105 35 -110 20 -110 0 Z" fill={['#F8FAFC', '#E3232C', '#F8FAFC', '#2563EB'][i]} {...st(5)} />
+          <rect x={-40} y={-40} width={80} height={40} rx={8} fill="#CBD5E1" {...st(4)} /></g>)}
+        {[[520, 600], [880, 520], [1320, 760]].map(([x, y], i) => <g key={'s' + i} transform={`translate(${x} ${y + Math.sin(f * 0.1 + i) * 4})`}>
+          <circle r={18} fill="#F2C29B" {...st(4)} /><path d="M -40 10 C -30 -6 -20 -6 -14 6 M 40 10 C 30 -6 20 -6 14 6" fill="none" {...st(5)} />
+          <path d="M -60 22 C -20 12 20 12 60 22" stroke="#E0F2FE" strokeWidth={6} fill="none" /></g>)}
+      </g>}
       {mode !== 'resort' && [...Array(4)].map((_, i) => { const x = 300 + i * 380 + Math.sin(f * 0.03 + i) * 80, y = 600 + R() * 260;
         return <g key={i} transform={`translate(${x} ${y}) scale(${0.16 + (i % 2) * 0.05}) ${Math.cos(f * 0.03 + i) < 0 ? 'scale(-1 1)' : ''}`}><Shark f={f + i * 7} color="grey" /></g>; })}
       {mode === 'lagoon' && p.baby !== false && f > nb && <g opacity={clamp((f - nb) / 10, 0, 1)}>
@@ -271,7 +315,7 @@ function MTimeline({f, len, line}) {
       {[...Array(28)].map((_, i) => { const ma = 23 - i * (19.4 / 27); if (ma < grow) return null;
         return <path key={i} d={`M ${X(ma) - 14} 470 L ${X(ma) + 14} 470 L ${X(ma)} ${505 + R() * 6} Z`} fill="#F1E5C8" {...st(3)} />; })}
       {mode !== 'band' && <g><Txt x={X(3.6)} y={430} text="3.6 MILLION YEARS AGO" size={44} fill="#FDE047" /><path d={`M ${X(3.6)} 445 L ${X(3.6)} 520`} stroke="#FDE047" strokeWidth={6} /></g>}
-      {mode === 'stop' && f > old && <g opacity={clamp((f - old) / 10, 0, 1)}><Txt x={X(2.6)} y={800} text="OLD DATE: 2.6M" size={40} fill="#94A3B8" />
+      {mode === 'stop' && f > old && <g opacity={clamp((f - old) / 10, 0, 1)}><Txt x={X(2.6)} y={800} text="OLD DATE: 2.6M" size={54} fill="#E2E8F0" />
         <path d={`M ${X(2.6) - 150} 790 L ${X(2.6) + 150} 770`} stroke="#E3232C" strokeWidth={10} opacity={clamp((f - old - 30) / 8, 0, 1)} /></g>}
       {mode === 'empty' && <g><Txt x={(X(3.6) + x1) / 2} y={560} text="0 TEETH" size={70} fill="#E3232C" op={clamp((f - 10) / 10, 0, 1)} /></g>}
       {mode === 'cool' && <rect x={X(5)} y={500} width={x1 - X(5)} height={110} fill="#BAE6FD" opacity={clamp(f / 40, 0, 0.45)} />}
@@ -330,8 +374,8 @@ function MHide({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={1} b={1.1}>
       <Deep f={f} depth={0.95} id="mhd" />
-      <g transform={`translate(${900 + noise2D('mh', f * 0.01, 0) * 60} ${620 + Math.sin(f * 0.02) * 20}) scale(0.9)`} opacity={0.25 + 0.15 * Math.sin(f * 0.05)}><Shark f={f} color="pale" glow={0.4} /></g>
-      <rect width={W} height={H} fill="#000" opacity={0.35} />
+      <g transform={`translate(${900 + noise2D('mh', f * 0.01, 0) * 60} ${620 + Math.sin(f * 0.02) * 20}) scale(0.9)`} opacity={0.5 + 0.12 * Math.sin(f * 0.05)}><Shark f={f} color="pale" glow={0.7} /></g>
+      <rect width={W} height={H} fill="#000" opacity={0.18} />
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );

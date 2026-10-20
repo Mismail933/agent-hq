@@ -3,10 +3,10 @@
 import React from 'react';
 import {noise2D} from '@remotion/noise';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, Box, Bust, Cloud, at, Labels, Figure} from './tis';
-import {Sea, Deep, Seabed, mix} from './ocean';
+import {Sea, Deep, Seabed, mix, PiscesArt} from './ocean';
 import {Shark, Tooth, Coast, SKY} from './meg';
 import {Emoji} from './emoji';
-import {P, Txt, Cam, BG, popAt, Silhouette, Gauge} from './meg2';
+import {P, Txt, Cam, BG, popAt, popBy, Silhouette, Gauge, Whale} from './meg2';
 
 // ───────────── the tests: six gauges, one test at a time, FAIL stamps ─────────────
 const TESTS = ['THE CHALLENGER TEETH', 'THE 1918 CREW', 'THE TV FILM', 'THE UNMAPPED OCEAN', 'THE MISSING TEETH', 'THE WHALE CHECK'];
@@ -76,7 +76,7 @@ function MDepth({f, len, line}) {
       <linearGradient id="dwg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2E8FC4" /><stop offset="0.45" stopColor="#0B3756" /><stop offset="1" stopColor="#020A10" /></linearGradient>
       <rect width={W} height={H} fill="url(#dwg)" />
       <rect width={W} height={70} fill="#9CD3F5" />
-      {[460, 1260].map((x, i) => <g key={x} transform={`translate(${x + Math.sin(f * 0.02 + i) * 40} 170)`}><Emoji name="spouting whale" size={260} flip={i === 1} /></g>)}
+      {[460, 1260].map((x, i) => <g key={x} transform={`translate(${x + Math.sin(f * 0.02 + i) * 40} 190)`}><Whale len={330} f={f + i * 20} spout flip={i === 1} /></g>)}
       <g transform={`translate(960 ${860 + Math.sin(f * 0.04) * 10}) scale(0.4)`}><Shark f={f} color="grey" glow={0.6} /></g>
       <path d={`M 960 760 L 960 ${lin(f, 10, 50, 760, 320)}`} stroke="#FDE047" strokeWidth={8} strokeDasharray="20 16" />
       <Txt x={1500} y={600} text="FOOD LIVES UPSTAIRS" size={60} fill="#FDE047" op={clamp((f - 30) / 12, 0, 1)} />
@@ -218,11 +218,11 @@ function MCool({f, len, line}) {
     <g><Cam f={f} len={len} a={1} b={1.04}>
       <linearGradient id="clw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#CFE8F7" /><stop offset="0.5" stopColor="#2B7BB9" /><stop offset="1" stopColor="#CFE8F7" /></linearGradient>
       <rect width={W} height={H} fill="url(#clw)" />
-      <Txt x={1780} y={120} text="COLD" size={60} fill="#0B3756" stroke="#fff" anchor="end" />
+      <Txt x={1780} y={200} text="COLD" size={60} fill="#0B3756" stroke="#fff" anchor="end" />
       <Txt x={1780} y={560} text="WARM" size={60} fill="#FDE047" anchor="end" />
-      {[...Array(6)].map((_, i) => { const up = i % 2 === 0; const y = lin(f, 10 + i * 6, len, 540, up ? 150 : 930); const op = i > 3 ? lin(f, 20, 50, 1, 0) : 1;
-        return <g key={i} transform={`translate(${300 + i * 220} ${y})`} opacity={op}><Emoji name="whale" size={170} /></g>; })}
-      <g transform={`translate(${lin(f, 0, len, 800, 900)} 600) scale(0.3)`}><Shark f={f} color="grey" /></g>
+      {[...Array(6)].map((_, i) => { const up = i % 2 === 0; const y = lin(f, 10 + i * 6, len, 540, up ? 180 : 820); const op = i > 3 ? lin(f, 20, 50, 1, 0) : 1;
+        return <g key={i} transform={`translate(${220 + i * 180} ${y})`} opacity={op}><Whale len={200} f={f + i * 9} /></g>; })}
+      <g transform={`translate(${lin(f, 0, len, 1180, 1260)} 560) scale(0.3)`}><Shark f={f} color="grey" /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -336,5 +336,29 @@ function MVerdict({f, len, line}) {
   );
 }
 
-export const MEG4_SHOTS = {m_gauges: MGauges, m_depth: MDepth, m_teeth: MTeeth, m_whalecheck: MWhaleCheck, m_cool: MCool, m_ledger: MLedger,
+// the last line (2.61.1): while the narrator points to the next video its title art is on screen; only after his last word does the
+// end card fade in (Israa: the card used to go up while he was still talking). p.pause gives the card its seconds.
+function MNext({f, len, line}) {
+  const p = P(line);
+  const ws = line.words || [];
+  const last = ws.length ? ws[ws.length - 1][1] - line.start + 22 : len * 0.6;
+  const k = clamp((f - last - 6) / 16, 0, 1);
+  return (
+    <g>
+      <g opacity={1 - k}>
+        <g transform={`translate(960 540) scale(${lin(f, 0, last, 1.05, 1.0)}) translate(-960 -540)`}><PiscesArt f={f} top={p.top || 'TRAPPED'} bottom={p.bottom || '480 M DOWN'} /></g>
+        <Labels line={line} f={f} x0={100} y0={600} />
+      </g>
+      {k > 0 && <g opacity={k}>
+        <rect width={W} height={H} fill="#0B1F3A" />
+        <Box x={W / 2 - 500} y={180} w={1000} h={150} text={(p.channel || 'STORYGRAPHICS').toUpperCase()} fill="#FFE11A" s={clamp(pop(f, last + 8, 140, 12), 0, 1)} />
+        <text x={W / 2} y={460} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={64} fill="#fff">{(p.next || 'NEXT: TRAPPED 480 M DOWN').toUpperCase()}</text>
+        <g transform={`translate(${W / 2} 700) scale(${clamp(pop(f, last + 20, 160, 10), 0, 1.1)})`}><rect x={-280} y={-70} width={560} height={140} rx={70} fill="#E3232C" {...ST} /><text x={0} y={30} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={80} fill="#fff">SUBSCRIBE</text></g>
+        <rect width={W} height={H} fill="#000" opacity={lin(f, len - 20, len, 0, 1)} />
+      </g>}
+    </g>
+  );
+}
+
+export const MEG4_SHOTS = {m_next: MNext, m_gauges: MGauges, m_depth: MDepth, m_teeth: MTeeth, m_whalecheck: MWhaleCheck, m_cool: MCool, m_ledger: MLedger,
   m_rivals: MRivals, m_recap: MRecap, m_verdict: MVerdict};

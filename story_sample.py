@@ -664,7 +664,7 @@ def credits(folder):
     if mc:
         out.append(mc)
     if USED:
-        out.append(soundlib.SONNISS_CREDIT + " (no credit required)")
+        out.append(soundlib.SONNISS_CREDIT)
     out += PHOTO_CREDITS
     (folder / "credits.txt").write_text("\n".join(out) + "\n", encoding="utf-8")
     (folder / "sounds-used.json").write_text(json.dumps({"music": MOOD_TRACK, "sounds": USED}, indent=1), encoding="utf-8")
@@ -743,6 +743,8 @@ def scene_sound(lines, total, music, sfx):
             acc = (t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.7, {"k": 1})
         elif l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
             acc = (t0 + 0.3, ["helicopter"] if any(it.get("name") == "heli" for it in (p.get("items") or [])) else ["airplane", "propeller"], min(4.0, dur), 0.6, {})
+        if p.get("accent") is False:   # 2.61.1: this line has no accent (Tarek dropped the rumble on "What was it?" by its time, which moves)
+            acc = None
         if acc and (SOUND.get("accents") or {}).get(l["shot"]):   # another search for this scene's accent
             acc = (acc[0], SOUND["accents"][l["shot"]], acc[2], acc[3], acc[4])
         if acc and any(abs(acc[0] - float(d)) < 0.6 for d in (SOUND.get("drop_accents") or []) if not isinstance(d, str)):

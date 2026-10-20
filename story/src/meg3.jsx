@@ -6,7 +6,7 @@ import {W, H, INK, ST, st, clamp, lin, pop, rng, Box, Bust, Cloud, at, Labels, F
 import {Sea, Deep, Seabed, Ship} from './ocean';
 import {Shark, Boat, Tooth, Coast, SKY} from './meg';
 import {Emoji} from './emoji';
-import {P, Txt, Cam, BG, popAt, Silhouette, Gauge} from './meg2';
+import {P, Txt, Cam, BG, popAt, popBy, Silhouette, Gauge, Whale} from './meg2';
 
 // ───────────── HMS Challenger: a three-masted steam corvette (bow right) ─────────────
 const Challenger = ({f = 0}) => (
@@ -53,7 +53,7 @@ function MChallenger({f, len, line}) {
       {[...Array(14)].map((_, i) => <ellipse key={i} cx={i * 150 + 40} cy={960 + (i % 3) * 30} rx={40} ry={10} fill="#6E2A1E" />)}
       <Txt x={1500} y={1000} text="RED CLAY" size={50} fill="#FCA5A5" op={0} />
       <path d={`M 760 170 L 980 ${y}`} stroke="#CBD5E1" strokeWidth={5} />
-      <Txt x={1400} y={460} text="DEEP PACIFIC" size={60} fill="#7FB8E0" stroke="none" />
+      <Txt x={640} y={620} text="DEEP PACIFIC" size={60} fill="#7FB8E0" stroke="none" />
       <g transform={`translate(980 ${y}) scale(1.6)`}>
         <path d="M -90 -30 L 90 -30 L 70 70 L -70 70 Z" fill="#475569" {...st(5)} />
         {[-50, -10, 30].map((x2) => <path key={x2} d={`M ${x2} -30 L ${x2 + 10} 70`} stroke="#94A3B8" strokeWidth={4} />)}
@@ -112,6 +112,7 @@ function MCrust({f, len, line}) {
         <BG c="#0B1F3A" />
         {[[480, 0.45, '1.7 MM', '11,000 YEARS'], [1440, 0.95, '3.64 MM', '24,000 YEARS']].map(([x, cr, mm, yrs], i) => (
           <g key={i} transform={`translate(${x} 380)`}>
+            <circle cx={0} cy={60} r={200} fill="#CBD5E1" opacity={0.22} />
             <CrustTooth crust={cr} s={0.55} />
             <g transform={`translate(0 330) scale(${clamp(pop(f, i ? 18 : 6, 150, 12), 0, 1)})`}><Box x={-160} y={-50} w={320} h={90} text={mm} fill="#fff" /></g>
             {f > c + i * 12 && <g transform={`translate(0 480) scale(${clamp(pop(f, c + i * 12, 150, 12), 0, 1.05)})`}><Box x={-230} y={-50} w={460} h={100} text={yrs} fill="#FFE11A" /></g>}
@@ -149,7 +150,7 @@ function MCrust({f, len, line}) {
             <Txt x={0} y={80} text={`${n.toLocaleString('en-US')}${i === 0 && n > 200000 ? '+' : ''}`} size={130} fill={INK} stroke="none" />
             <Txt x={0} y={210} text="YEARS" size={50} />
           </g>))}
-        {f > r && <g transform={`translate(960 830) rotate(-3) scale(${clamp(pop(f, r, 150, 12), 0, 1.05)})`}><Box x={-430} y={-50} w={860} h={100} text="AND STILL TOO ROUGH TO TRUST" fill="#E3232C" color="#fff" outline /></g>}
+        {f > r && <g transform={`translate(960 875) rotate(-3) scale(${clamp(pop(f, r, 150, 12), 0, 1.05)})`}><Box x={-430} y={-50} w={860} h={100} text="AND STILL TOO ROUGH TO TRUST" fill="#E3232C" color="#fff" outline /></g>}
       </g>
     );
   }
@@ -238,7 +239,7 @@ function MWharf({f, len, line}) {
           <g key={i} transform={`translate(${x} 340) scale(0.4)`}><Figure who={w} pose={i === 0 && !crew ? 'signal' : 'stand'} expr={e} f={f} talk={!crew && i === 0 && Math.floor(f / 7) % 2 === 0} seed={i + 2} /></g>))}
         {!crew && <g transform="translate(1250 340) scale(0.4)"><Figure who="stead" pose="stand" expr="calm" f={f} seed={7} look={-2} /></g>}
         {!crew && <g transform="translate(1480 340) scale(0.4)"><Figure who="passenger" pose="stand" expr="calm" f={f} seed={8} look={-2} /></g>}
-        {!crew && <g transform={`translate(1700 230) scale(${popAt(f, line, p.book_on || 'book', 0.8)})`}><Emoji name="open book" size={210} /></g>}
+        {!crew && <g transform={`translate(1560 250) scale(${popAt(f, line, p.book_on || 'book', 0.8)})`}><Emoji name="open book" size={190} /></g>}
       </Cam>
         <Labels line={line} f={f} x0={100} y0={90} /></g>
     );
@@ -270,9 +271,9 @@ function MWharf({f, len, line}) {
         return <g key={i} transform={`translate(160 ${y})`}>
           <rect x={0} y={-50} width={1600 * ft / 300 * k} height={100} rx={10} fill="#FDE047" {...st(6)} />
           {[...Array(Math.floor(ft * k / 25) + 1)].map((_, j) => <path key={j} d={`M ${j * 25 * 1600 / 300} -50 L ${j * 25 * 1600 / 300} -10`} stroke={INK} strokeWidth={4} />)}
-          <Txt x={Math.max(170, 1600 * ft / 300 * k - 20)} y={30} text={t} size={70} fill={INK} stroke="none" anchor="end" />
+          <Txt x={Math.max(170, 1600 * ft / 300 * k - 20)} y={30} text={t} size={70} fill={INK} stroke="none" anchor="end" op={clamp((k - 0.12) * 6, 0, 1)} />
         </g>; })}
-      {[440, 600, 760].map((x, i) => <g key={i} transform={`translate(${x + 380} 800) scale(0.24)`}><Figure who={i === 1 ? 'fisher2' : 'fisher1'} expr="worried" f={f} seed={i + 1} /></g>)}
+      {[440, 600, 760].map((x, i) => <g key={i} transform={`translate(${x + 380} 640) scale(0.22)`}><Figure who={i === 1 ? 'fisher2' : 'fisher1'} expr="worried" f={f} seed={i + 1} /></g>)}
       {f > c && <g transform={`translate(1500 820) rotate(-6) scale(${clamp(pop(f, c, 150, 12), 0, 1.05)})`}><Box x={-200} y={-60} w={400} h={120} text="~3x" fill="#E3232C" color="#fff" outline /></g>}
     </g>
   );
@@ -288,7 +289,6 @@ function MAbove({f, len, line}) {
       {[...Array(30)].map((_, i) => { const x = R() * W, y = R() * H; return <path key={i} d={`M ${x + Math.sin(f * 0.07 + i) * 30} ${y} q 60 ${-20 + Math.sin(f * 0.1 + i) * 14} 120 0`} stroke="#BAE6FD" strokeWidth={8} fill="none" opacity={0.5} />; })}
       <path d="M -40 -40 L 1960 -40 L 1960 140 C 1500 220 400 220 -40 140 Z" fill="#8B5A2B" {...ST} />
       <path d="M -40 1120 L 1960 1120 L 1960 960 C 1500 880 400 880 -40 960 Z" fill="#8B5A2B" {...ST} />
-      <g transform="translate(260 140) scale(0.55) rotate(-8)"><Bust who="fisher1" x={0} y={0} s={1} expr="shock" f={f} arms="grip" seed={3} /></g>
     </Cam>
       <Labels line={line} f={f} x0={W - 100} y0={240} align="right" /></g>
   );
@@ -336,18 +336,21 @@ function MTv({f, len, line}) {
       {f > tr && <g transform={`translate(260 -120) rotate(-10) scale(${clamp(pop(f, tr, 150, 11), 0, 1.1)})`}><rect x={-200} y={-70} width={400} height={140} rx={16} fill="none" stroke="#E3232C" strokeWidth={16} /><Txt x={0} y={36} text="ACTOR" size={110} fill="#E3232C" stroke="#fff" /></g>}
     </g>);
   }
-  if (mode === 'fake') {   // the missing boat and the whale on the beach that never were
+  if (mode === 'fake') {   // the missing boat and the bitten whale that never were (2.61.1: dark words, the X behind them)
     const b = at(line, p.b_on || 'whale', 0.5);
+    const X1 = p.x !== false ? popAt(f, line, p.a_on || 'no', 0.2) : 0, X2 = p.x !== false && f > b ? clamp(pop(f, b + 10, 150, 12), 0, 1) : 0;
+    const cross = (k) => k > 0 && <g transform={`scale(${k})`}><path d="M -260 -200 L 260 200 M 260 -200 L -260 200" stroke="#E3232C" strokeWidth={34} strokeLinecap="round" opacity={0.85} /></g>;
     return (
       <g>
         <BG c="#0B1F3A" />
-        <g transform="translate(520 500)"><rect x={-360} y={-260} width={720} height={520} rx={30} fill="#7FB8E0" {...ST} />
-          <g transform="translate(0 40) scale(0.5)"><Boat f={f} /></g><Txt x={0} y={200} text="BOAT LOST OFF SOUTH AFRICA" size={44} />
-          {p.x !== false && <g transform={`scale(${popAt(f, line, p.a_on || 'no', 0.2)})`}><path d="M -260 -200 L 260 200 M 260 -200 L -260 200" stroke="#E3232C" strokeWidth={34} strokeLinecap="round" /></g>}</g>
-        <g transform="translate(1400 500)"><rect x={-360} y={-260} width={720} height={520} rx={30} fill="#F6E7B8" {...ST} />
-          <g transform="translate(0 20)"><Emoji name="whale" size={300} /></g><Txt x={0} y={200} text="BITTEN WHALE IN HAWAII" size={44} />
-          {p.x !== false && f > b && <g transform={`scale(${clamp(pop(f, b + 10, 150, 12), 0, 1)})`}><path d="M -260 -200 L 260 200 M 260 -200 L -260 200" stroke="#E3232C" strokeWidth={34} strokeLinecap="round" /></g>}</g>
-        {p.x !== false && <g transform="translate(960 900)"><Box x={-300} y={-50} w={600} h={100} text="NEVER HAPPENED" fill="#E3232C" color="#fff" outline s={popAt(f, line, p.c_on || '', 0.8)} /></g>}
+        <g transform="translate(520 470)"><rect x={-360} y={-260} width={720} height={520} rx={30} fill="#7FB8E0" {...ST} />
+          <g transform="translate(0 0) scale(0.5)"><Boat f={f} /></g>{cross(X1)}
+          <rect x={-330} y={170} width={660} height={64} rx={10} fill="#F8FAFC" {...st(4)} /><Txt x={0} y={216} text="BOAT LOST OFF SOUTH AFRICA" size={40} fill={INK} stroke="none" /></g>
+        <g transform="translate(1400 470)"><rect x={-360} y={-260} width={720} height={520} rx={30} fill="#F6E7B8" {...ST} />
+          <path d="M -360 120 L 360 120 L 360 230 C 360 250 350 260 330 260 L -330 260 C -350 260 -360 250 -360 230 Z" fill="#E9D7A5" />
+          <g transform="translate(0 40)"><Whale len={520} f={0} bite /></g>{cross(X2)}
+          <rect x={-330} y={170} width={660} height={64} rx={10} fill="#F8FAFC" {...st(4)} /><Txt x={0} y={216} text="BITTEN WHALE IN HAWAII" size={40} fill={INK} stroke="none" /></g>
+        {p.x !== false && <g transform="translate(960 870)"><Box x={-300} y={-50} w={600} h={100} text="NEVER HAPPENED" fill="#E3232C" color="#fff" outline s={popAt(f, line, p.c_on || '', 0.8)} /></g>}
       </g>
     );
   }
@@ -367,7 +370,7 @@ function MTv({f, len, line}) {
         <g key={t} transform={`translate(360 ${400 + i * 230})`}>
           <Txt x={-40} y={70} text={t} size={80} anchor="end" />
           <rect x={0} y={0} width={1200 * v * k} height={110} rx={14} fill={c} {...st(6)} />
-          <Txt x={1200 * v * k + 30} y={80} text={i === 0 ? 'MORE THAN 70%' : ''} size={64} fill="#FDE047" anchor="start" op={k} />
+          <Txt x={1200 * v * k + 30} y={80} text={i === 0 ? 'MORE THAN 70%' : ''} size={64} fill="#FDE047" anchor="start" op={clamp(k * 3, 0, 1)} />
         </g>))}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={830} /></g>
@@ -394,20 +397,28 @@ function MGlobe({f, len, line}) {
       </g>
       <g transform="translate(1440 420)"><Txt x={0} y={0} text={`${(k * 100).toFixed(1)}%`} size={190} fill="#38BDF8" /><Txt x={0} y={90} text="OF THE SEABED MAPPED" size={56} /></g>
       {p.mode === 'cont' && <g transform={`translate(1440 760) scale(${popAt(f, line, 'looked', 0.6)})`}><Emoji name="magnifying glass tilted left" size={220} /></g>}
-      {p.mode !== 'cont' && <g transform="translate(1440 740)" opacity={clamp((f - at(line, p.b_on || '104', 0.6)) / 12, 0, 1)}><Txt x={0} y={0} text="104 MILLION KM² DONE" size={52} fill="#FDE047" /><Txt x={0} y={80} text="71% STILL A BLUR" size={52} fill="#94A3B8" /></g>}
+      {p.mode !== 'cont' && <g transform="translate(1440 740)" opacity={clamp((f - at(line, p.b_on || '104', 0.6)) / 12, 0, 1)}><Txt x={0} y={0} text="104 MILLION KM² DONE" size={52} fill="#FDE047" /><Txt x={0} y={80} text="71% STILL A BLUR" size={52} fill="#E2E8F0" /></g>}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
 }
 
 // the megamouth: caught in a US Navy ship's sea anchor off Hawaii, 1976
-const Megamouth = ({f = 0}) => (
-  <g>
-    <g transform="scale(1 1.25)"><Shark f={f} color="dark" /></g>
-    <path d="M 640 -60 C 760 -40 820 20 800 90 C 700 120 600 110 540 70 Z" fill="#D9A3A3" {...st(6)} />
-    <path d="M 560 20 C 660 30 740 40 790 60" stroke="#7F1D1D" strokeWidth={8} fill="none" />
-  </g>
-);
+const Megamouth = ({f = 0}) => {   // side view, head right: soft brown-grey body, a broad rounded head, a huge wide mouth
+  const tail = Math.sin(f * 0.1) * 8;
+  return (
+    <g>
+      <g transform={`rotate(${tail} -620 0)`}><path d="M -600 -20 L -860 -250 C -830 -130 -800 -60 -760 0 L -820 160 C -780 110 -740 60 -700 20 Z" fill="#6B5E55" {...ST} /></g>
+      <path d="M 640 -10 C 660 -150 540 -230 300 -240 C 0 -250 -350 -170 -620 -30 C -650 -10 -650 20 -620 40 C -350 170 0 230 300 225 C 540 215 650 140 640 -10 Z" fill="#7A6C62" {...ST} />
+      <path d="M 40 -238 L -90 -420 C -50 -400 60 -300 170 -236 Z" fill="#6B5E55" {...ST} />
+      <path d="M 610 40 C 560 110 420 150 230 150 C 380 120 520 90 610 40 Z" fill="#3B1F1A" {...st(6)} />
+      <path d="M 640 0 C 600 60 460 110 240 128 C 440 140 600 100 650 30 Z" fill="#D9C8BE" {...st(5)} />
+      <path d="M 200 130 L 20 330 C 120 320 240 220 290 150 Z" fill="#6B5E55" {...ST} />
+      <circle cx={520} cy={-60} r={16} fill={INK} /><circle cx={526} cy={-66} r={5} fill="#fff" />
+      {[0, 1, 2, 3, 4].map((i) => <path key={i} d={`M ${120 - i * 34} -70 C ${108 - i * 34} -20 ${108 - i * 34} 30 ${120 - i * 34} 80`} fill="none" {...st(4)} />)}
+    </g>
+  );
+};
 function MNavy({f, len, line}) {
   const p = P(line);
   const mode = p.mode || 'catch';
@@ -448,7 +459,7 @@ function MExhibits({f, len, line}) {
     <g><Cam f={f} len={len} a={1} b={1.03}>
       <BG c="#0B1F3A" />
       {EXHIBITS.map(([l, t, w], i) => {
-        const s = all ? 1 : clamp(pop(f, at(line, (p.on || [])[i] || w, 0.15 + i * 0.16), 150, 12), 0, 1.05);
+        const s = all ? 1 : clamp(pop(f, at(line, (p.on || [])[i] || w, 0.15 + i * 0.16) + (p.stagger ? i * 5 : 0), 150, 12), 0, 1.05);
         return <g key={l} transform={`translate(${210 + i * 375} 500) rotate(${(i % 2 ? 2 : -2)}) scale(${s})`}>
           <rect x={-170} y={-260} width={340} height={520} rx={24} fill="#F5EBD7" {...ST} />
           <Txt x={0} y={-100} text={l} size={200} fill="#E3232C" />

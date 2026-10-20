@@ -213,7 +213,7 @@ function MFlee({f, len, line}) {
       <g transform={`translate(${x} ${700 + Math.sin(f * 0.09) * 8}) rotate(${Math.sin(f * 0.07) * 2}) scale(0.95)`}>
         <Boat f={f} sail={1} />
         <g transform="translate(-260 -150) scale(0.32)"><Bust who="fisher1" x={0} y={0} s={1} expr={p.expr || 'scared'} f={f} arms="grip" seed={2} look={-1} /></g>
-        <g transform="translate(-120 -140) scale(0.3)"><Bust who="fisher2" x={0} y={0} s={1} expr="shock" f={f} arms="rest" seed={5} look={-1} /></g>
+        <g transform="translate(-120 -140) scale(0.3)"><Bust who="fisher2" x={0} y={0} s={1} expr="scared" f={f} arms="rest" seed={5} look={-1} /></g>
       </g>
       <Sea f={f * 2.2} y0={760} id="mf2" front swell={1.3} />
     </Cam>
@@ -305,7 +305,6 @@ function MTitle({f, len, line}) {
       <g transform={`translate(960 540) scale(${lin(f, 0, len, 1.1, 1.0)}) translate(-960 -540)`}><MegArt boxes={false} f={f} open={lin(f, 0, len * 0.6, 0.4, 1)} /></g>
       <Box x={60} y={110} w={p.top_w || 820} h={190} text={p.top || 'MEGALODON'} rot={-3} s={clamp(pop(f, a, 160, 12), 0, 1.1)} />
       <Box x={60} y={320} w={p.bottom_w || 900} h={220} text={p.bottom || 'STILL ALIVE?'} fill="#E3232C" color="#fff" outline rot={-3} s={clamp(pop(f, b, 160, 12), 0, 1.1)} />
-      <rect width={W} height={H} fill="#000" opacity={lin(f, len - 18, len, 0, 1)} />
     </g>
   );
 }

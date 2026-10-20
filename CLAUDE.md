@@ -914,6 +914,13 @@ Agents never spend money without the owner's explicit approval.
   loudness_report compares with the voice only above half his usual level (a word's fading tail made the music read 12.8 dB under where
   it sat 25 dB under). Not done, and why: no free photo of David Stead, the 2013 film's poster is copyrighted, megamouth photos are
   low-res or share-alike, none of divers off Florida.
+  2.61.1 (Israa on v2: redo 6/10, 14 points): `popBy` (a scene's first thing up by frame 6-10, no blank starts); `Whale` and
+  `DrawnBus` (flat, in the kit's look; the emoji whales, hotels and boats clashed) used by whalebone, depth, cool, tv-fake, nursery
+  resort; m_scale 'bus' at one true scale (two 12 m buses = the 24 m megalodon); a redrawn megamouth (blunt head, wide mouth);
+  m_title no longer fades to black over the question; FAIL lines get `pause` 0.9 so the stamp lands and holds; `m_next` = the next
+  video's title art under the last line, the end card only after the last word (p.pause = its seconds); captions never end a chunk
+  on a number (its unit follows); Quote `who: 'none'` = the words only, centred (no invented face); `p.accent: false` skips a line's
+  accent (time-based drop_accents move when pauses are added). Quotes on cards are word for word, cuts marked with an ellipsis.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes
