@@ -1,0 +1,102 @@
+{
+ "date": "2026-10-20",
+ "focus": "reliability",
+ "note": "Nothing worth your time today. Claude Code went from 2.1.303 to 2.1.304 (small fixes, nothing we must act on), no new models, no new Anthropic product. This was a lighter run than my job description asks for (3 searches, 7 pages), so treat 'nothing found' as 'nothing obvious'.",
+ "research": {
+  "searches": 3,
+  "pages_read": 7,
+  "minutes": 10,
+  "questions": [
+   "Did Claude Code 2.1.302-2.1.304 change anything for claude -p, --json-schema, sessions or routines that our workers or this routine rely on?",
+   "Did any new repo offer a reliability or cost fix for headless Claude Code runs that fits workers.py?",
+   "Did YouTube or Remotion change rules for us?"
+  ],
+  "gaps": [
+   "Did not reach 15 searches / 8 pages this run",
+   "YouTube official blog and Help Center not opened today",
+   "Remotion 5.0 license text not found (still unreleased)",
+   "Did not read the 2.1.304 items beyond the first 100k characters of the changelog"
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.304: claude -p no longer lets a plugin keep a headless run going past --max-turns; resume of large compacted sessions in headless mode is faster; warning before resuming an inactive conversation on Pro/Max",
+  "Claude Code 2.1.302: routines that failed partway are no longer re-run from the start an hour later; routine runs whose session stopped unexpectedly show Failed, not Completed; fork subagents on by default in claude -p (CLAUDE_CODE_FORK_SUBAGENT=0 turns off)",
+  "Claude Code 2.1.304: /loop wakeups at the 1-hour max no longer miss the prompt cache",
+  "Claude API 2026-10-14/15: OpenTelemetry export beta for Messages API; Opus 5.5 fast mode GA; no new models",
+  "Anthropic news: nothing about models since Haiku 5.5 on Oct 7"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.304 read; fork-subagent default in 2.1.302 could change worker behaviour but workers pass an explicit --tools list, so low risk"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest entries 2026-10-14/15, none touch our calls"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "No new model or product since Haiku 5.5"
+  },
+  {
+   "title": "Claude Code scheduled tasks (routines) docs",
+   "url": "https://code.claude.com/docs/en/routines",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Limits: 100 scheduled runs/hour per account; a green status does not mean the work succeeded; GitHub disconnect pauses runs up to 72 h"
+  },
+  {
+   "title": "Reducing cost and improving performance with Claude Platform",
+   "url": "https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Only seen in search snippet, not opened; general caching advice we already follow"
+  },
+  {
+   "title": "YouTube monetization 2026 timelines (search results)",
+   "url": "https://air.io/en/monetization/youtube-monetization-policy-changes-2026-a-complete-dated-timeline",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Secondary; nothing new vs. earlier reports; not opened"
+  },
+  {
+   "title": "Remotion 5.0 migration",
+   "url": "https://remotion.dev/docs/5-0-migration",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Still unreleased; contractors will count toward team size; we pin 4.0.250"
+  },
+  {
+   "title": "GitHub search: claude code hooks reliability",
+   "url": "https://api.github.com/search/repositories?q=claude+code+hooks+reliability",
+   "tier": "B",
+   "result": "rejected",
+   "why": "All tiny (<35 stars), no fit"
+  },
+  {
+   "title": "GitHub search: faceless shorts automation",
+   "url": "https://api.github.com/search/repositories?q=faceless+video+automation+shorts",
+   "tier": "B",
+   "result": "rejected",
+   "why": "1 star each, no licence"
+  },
+  {
+   "title": "GitHub search: llm token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+agents",
+   "tier": "B",
+   "result": "rejected",
+   "why": "glyphdown is noncommercial; others tiny"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}
