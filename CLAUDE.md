@@ -885,6 +885,12 @@ Agents never spend money without the owner's explicit approval.
   gains to float32 buses in place (`_apply`): the 20-minute Megalodon mix stopped with an ArrayMemoryError (several 460 MB float64
   copies on this 8 GB PC). Same numbers as before on the Megalodon opening. A `quote` line needs `bg` other than jungle, or it gets
   the rainforest bed (bed_kind treats quote as a jungle scene). Kokoro on this PC: ~20 s of compute per line; 118 lines took ~40 min.
+  Rendered 2026-10-20 (66 min at concurrency 2): samples/megalodon-full.mp4, 19:57, upload package content/project-5/upload/
+  03-megalodon-still-alive/. Measured: effects >= 18 dB and music >= 12.8 dB under the voice, 0 windows over it; Whisper 95% of the
+  words; motion 144 stalls (70 in the 4 s TV-static shot, whose snow redrew every other frame: now every frame, `rng(f + 1)`), 26 jumps
+  (box pop-ins). Tarek 2 rounds: music -8 dB, the splash over "taut, gunwale, pot, metre" and a buzzy rumble dropped, the title hit a
+  dark braam, accent_gap_db -16 (applied by hand after his last round: `review` doesn't rebuild after the final round). His "cut-off
+  start" flags on lines 20/61/71 were fricative onsets (0.9 s of silence before each), not clipped words.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

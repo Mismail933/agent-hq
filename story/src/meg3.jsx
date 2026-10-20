@@ -296,7 +296,7 @@ function MAbove({f, len, line}) {
 
 // ───────────── the 2013 TV film ─────────────
 const TV = ({children, w = 1100, h = 660, f = 0, snow = 0}) => {
-  const R = rng(Math.floor(f / 2));
+  const R = rng(f + 1);   // new snow every frame (every other frame read as 70 stalls in the motion check)
   return (
     <g>
       <rect x={-w / 2 - 50} y={-h / 2 - 50} width={w + 100} height={h + 100} rx={40} fill="#1F2937" {...ST} />
