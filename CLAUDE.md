@@ -21,6 +21,9 @@ Agents never spend money without the owner's explicit approval.
   `atlas_engine.py`) or from an Atlas chat in the Claude app opened on that folder.
 - **Atlas's requests for you**: `C:\Users\USER\Atlas-HQ\requests-for-builder.md`. Check it at the start of every
   Builder session; mark items `[done]` when shipped. His decisions log: `atlas-journal.md` in the same folder.
+- **This chat is "Ocean"** (the owner named it 2026-10-20). Anything he says about Ocean, directly or through Atlas, is for this
+  chat: Atlas writes it as `## [builder-chat] ... OCEAN: ...` (atlas/CLAUDE.md). Check the requests file every 30 minutes while a
+  session is open; mark items `[builder-chat done]` and answer him on Telegram (`hq send-phone`) or with a builder-note.
 
 ## Team (agents.py)
 | Agent | Dept | Role |
