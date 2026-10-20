@@ -1653,8 +1653,17 @@ def run_omar(what, pid=None):
     headline, path = omar.weekly(pid)
     rel = str(path.relative_to(ROOT)).replace("\\", "/")
     atlas_says(f"**Omar's weekly note on {omar.name(pid)} is ready:** {headline}\n\nIt's in `{rel}`. Read it before you suggest the next batch.")
-    if rules.get("omar.phone_weekly"):
-        phone.notify("📈 " + path.read_text(encoding="utf-8")[:3800])   # as text, so he reads it in the chat (long notes are split)
+    if rules.get("omar.weekly_to_phone"):
+        # Sent at once, not through phone.notify: in the calm mode notify only keeps a headline for the next morning's digest, so
+        # the 2026-10-19 notes never reached him. Long notes are split by phone.send.
+        try:
+            ok = bool(phone.send("📈 " + path.read_text(encoding="utf-8")))
+            err = "" if ok else "no phone paired"
+        except Exception as e:
+            ok, err = False, str(e)[:200]
+        cp.log("Omar", "omar_weekly_phone", None, {"project": pid, "note": rel, "ok": ok, "error": err})
+        if not ok:
+            atlas_says(f"**Omar's weekly note on {omar.name(pid)} didn't reach the owner's phone** ({err}). Send it with `hq send-phone {rel}`.")
     if rules.get("omar.feed_calina"):
         if (cp.get_project(pid, with_text=False) or {}).get("status") == "approved":
             threading.Thread(target=run_review, args=(pid, omar.calina_stats(path, pid)), daemon=True).start()

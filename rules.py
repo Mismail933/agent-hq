@@ -147,7 +147,7 @@ RULES = {
     "omar.top_countries": _r("Omar & the channel", "int", 5, 0, 25, "How many countries Omar names in his daily line (where viewers are from, by views, with watch time; 0 = leave them out of the line, they stay in the snapshot and the weekly note)"),
     "omar.reach_reports": _r("Omar & the channel", "bool", True, None, None, "Omar reads impressions and click-through rate per video from YouTube's reach report (Reporting API; he sets up the report once per channel and downloads the new daily files each morning; YouTube starts the files a day or two after the setup)"),
     "omar.weekly_day": _r("Omar & the channel", "choice", "mon", ("mon", "tue", "wed", "thu", "fri", "sat", "sun"), None, "Day of Omar's weekly note (or the first day after it the office runs)"),
-    "omar.phone_weekly": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note is sent to the owner's phone"),
+    "omar.weekly_to_phone": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note is sent to the owner's phone in full as soon as it is written (not held for the morning digest)"),
     "omar.feed_calina": _r("Omar & the channel", "bool", True, None, None, "Omar's weekly note goes into Calina's next learning note (what to write differently)"),
     # SHORTS CUT FROM A FINISHED VIDEO (2.54.0: hq shorts; Omar picks, the office cuts, the owner uploads by hand)
     "clips.count": _r("Shorts from a video", "int", 3, 1, 8, "How many Shorts Omar cuts from a video when Atlas doesn't say"),

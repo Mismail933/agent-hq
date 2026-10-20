@@ -7,7 +7,7 @@ replies, edits or spends: those stay the owner's.
   one-line report to Atlas, computed from the numbers (no AI, no cost).
 - Weekly (rule omar.weekly_day): Omar (Claude Code on the subscription, no tools) reads the week's snapshots and writes a note for
   the owner (what worked, what to change: titles, thumbnails, posting time, topics) -> content/project-N/channel/weekly-<date>.md,
-  sent to the owner's phone (rule omar.phone_weekly) and given to Calina's next learning note (rule omar.feed_calina).
+  sent to the owner's phone (rule omar.weekly_to_phone) and given to Calina's next learning note (rule omar.feed_calina).
 - Before an upload: `hq omar suggest <episode>` -> 3 titles, a thumbnail idea, the description's first lines, tags, a time to post.
 - Rivals (2.45.0, the owner: "let Omar check other channels, how they're successful, and learn"): `hq omar watch <channel link|@handle>`
   adds a channel to content/project-N/channel/rivals.json (at most MAX_RIVALS); every daily look also reads their PUBLIC numbers
