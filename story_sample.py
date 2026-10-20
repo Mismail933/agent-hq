@@ -630,6 +630,32 @@ def real_music(music, r0, r1, mood):
     return True
 
 
+PHOTO_CREDITS = []
+
+
+def install_photos(spec, folder):
+    """Real pictures of real events (2.60.0): every line's p.photo.src ("photos/<file>") is copied from the project's photos/ folder
+    (content/project-N/photos/, beside samples/) into the story app's public/photos/, and its credit (photos/credits.json, written when
+    the picture was chosen: public domain or CC BY only) goes into credits.txt."""
+    PHOTO_CREDITS.clear()
+    src_dir = folder.parent.parent / "photos"
+    cred = {}
+    if (src_dir / "credits.json").exists():
+        cred = json.loads((src_dir / "credits.json").read_text(encoding="utf-8"))
+    for ln in spec["lines"]:
+        ph = (ln.get("p") or {}).get("photo") or {}
+        name = Path(str(ph.get("src", ""))).name
+        if not name:
+            continue
+        if not (src_dir / name).exists():
+            raise SystemExit(f"photo {name} not found in {src_dir}")
+        (story.APP / "public" / "photos").mkdir(parents=True, exist_ok=True)
+        shutil.copy(src_dir / name, story.APP / "public" / "photos" / name)
+        c = (cred.get(name) or {}).get("credit")
+        if c and c not in PHOTO_CREDITS:
+            PHOTO_CREDITS.append(c)
+
+
 def credits(folder):
     """credits.txt beside the video: what to paste into the description."""
     out = []
@@ -638,6 +664,7 @@ def credits(folder):
         out.append(mc)
     if USED:
         out.append(soundlib.SONNISS_CREDIT + " (no credit required)")
+    out += PHOTO_CREDITS
     (folder / "credits.txt").write_text("\n".join(out) + "\n", encoding="utf-8")
     (folder / "sounds-used.json").write_text(json.dumps({"music": MOOD_TRACK, "sounds": USED}, indent=1), encoding="utf-8")
     return out
@@ -979,6 +1006,8 @@ def run(a, spec, folder):
         say("   the sound agent's settings: " + json.dumps(SOUND)[:300])
     SEED[0] = int(hashlib.md5(str(spec.get("title", folder.name)).encode()).hexdigest()[:6], 16)
     music, sfx = make_sound(lines, total)
+    story.ensure_app()
+    install_photos(spec, folder)
     for c in credits(folder):
         say("   " + c)
     wav = mix(lines, voiced, music, sfx, folder)

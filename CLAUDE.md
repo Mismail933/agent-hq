@@ -894,6 +894,14 @@ Agents never spend money without the owner's explicit approval.
   (box pop-ins). Tarek 2 rounds: music -8 dB, the splash over "taut, gunwale, pot, metre" and a buzzy rumble dropped, the title hit a
   dark braam, accent_gap_db -16 (applied by hand after his last round: `review` doesn't rebuild after the final round). His "cut-off
   start" flags on lines 20/61/71 were fricative onsets (0.9 s of silence before each), not clipped words.
+  2.60.0 real pictures of real events (the owner via Atlas, 2026-10-20: "adding real pictures from real events like posters when talking
+  about events or findings"): any line's `p.photo` = {src "photos/<file>", size [w, h], on, off, side, x, y, w, rot, label, credit}:
+  Opening.jsx `PhotoLayer` pops it in on its word as a framed print over the cartoon (which dims 38%), a slow push inside the frame,
+  the credit in the frame's bottom strip, an optional yellow label. Files live in content/project-N/photos/ with credits.json (title,
+  source page, licence, author, credit line); story_sample `install_photos` copies them into the app and adds the credits to
+  credits.txt. ONLY public domain or CC BY (never BY-SA, never a copyrighted photo or poster), found on Wikimedia Commons (scratchpad
+  commons_search.py reads the API's licence metadata; downloads asked first). Examples sent 2026-10-20: samples/photo-examples/
+  (line 34: the Illustrated London News engraving of HMS Challenger, 1872, PD; line 13: James St. John's megalodon tooth, CC BY 2.0).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

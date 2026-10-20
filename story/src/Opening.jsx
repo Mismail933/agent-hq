@@ -1,8 +1,8 @@
 // The first 60 seconds of "She Survived a 3 km Fall" (2.49.0), in The Infographics Show's look (tis.jsx).
 // props: {lines: [{shot, text, start, end, words: [[word, frame]]}], audio, frames}. Each shot is drawn for exactly what its line says.
 import React from 'react';
-import {AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate} from 'remotion';
-import {W, H, INK, ST, st, clamp, lin, pop, rng, ease, Box, Label, Head, Bust, SeatBack, Plane, Bolt, Cloud, Canopy} from './tis';
+import {AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate, Img} from 'remotion';
+import {W, H, INK, ST, st, clamp, lin, pop, rng, ease, Box, Label, Head, Bust, SeatBack, Plane, Bolt, Cloud, Canopy, at, OSWALD} from './tis';
 import {JulianeArt} from './Thumb';
 import {STORY_SHOTS, DayCard, DayCorner} from './jungle';
 import {OCEAN_SHOTS} from './ocean';
@@ -294,12 +294,49 @@ export const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window
 const BLUR = new Set(['flood', 'sink', 'breakup', 'falling']);   // not on a shake (snag): blurring a fast back-and-forth jolt made frames that barely move
 const blurOf = (line) => ((line.p || {}).blur != null ? !!line.p.blur : BLUR.has(line.shot));
 
+// a real picture of a real event or finding (2.60.0): line.p.photo = {src (under public/), size [w, h] of the file, on (word), off (word,
+// else the end of the line), side left|right, x, y (its centre), w (its width), rot, label, credit}. It pops in as a framed print over
+// the cartoon, which dims a little; a slow push inside the frame keeps it alive; the credit sits in the frame's bottom strip.
+const PhotoLayer = ({line, len}) => {
+  const f = useCurrentFrame();
+  const ph = (line.p || {}).photo;
+  if (!ph || !ph.src) return null;
+  const a = at(line, ph.on || '', 0.15);
+  const b = ph.off ? at(line, ph.off, 1) : len - 4;
+  if (f < a - 1 || f > b + 10) return null;
+  const k = clamp(pop(f, a, 120, 14), 0, 1.04) * (1 - clamp((f - b) / 8, 0, 1));
+  const [iw, ih] = ph.size || [4, 3];
+  const w = ph.w || (iw >= ih ? 860 : 520), h = w * ih / iw;
+  const left = ph.side === 'left';
+  const cx = ph.x || (left ? 560 : 1360), cy = ph.y || 500;
+  const rot = ph.rot != null ? ph.rot : (left ? -3 : 3);
+  const pad = 18, strip = ph.credit ? 52 : pad;
+  const lab = clamp(pop(f, a + 8, 150, 12), 0, 1.1) * (1 - clamp((f - b) / 8, 0, 1));
+  return (
+    <AbsoluteFill>
+      <div style={{position: 'absolute', inset: 0, background: '#050A14', opacity: 0.38 * clamp((f - a) / 8, 0, 1) * (1 - clamp((f - b) / 8, 0, 1))}} />
+      <div style={{position: 'absolute', left: cx - w / 2 - pad, top: cy - h / 2 - pad, width: w + 2 * pad, height: h + pad + strip, background: '#FBFAF6',
+        border: `6px solid ${INK}`, boxShadow: '12px 16px 0 rgba(0,0,0,0.38)', transform: `rotate(${rot}deg) scale(${k})`, transformOrigin: '50% 50%'}}>
+        <div style={{position: 'absolute', left: pad - 6, top: pad - 6, width: w, height: h, overflow: 'hidden', border: `4px solid ${INK}`, background: '#ddd'}}>
+          <Img src={staticFile(ph.src)} style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${lin(f, a, len, 1.0, 1.07)})`}} />
+        </div>
+        {ph.credit && <div style={{position: 'absolute', left: pad, right: pad, bottom: 8, fontFamily: OSWALD, fontSize: 24, color: '#52525B', whiteSpace: 'nowrap',
+          overflow: 'hidden', textOverflow: 'ellipsis'}}>{ph.credit}</div>}
+      </div>
+      {ph.label && <div style={{position: 'absolute', left: cx - w / 2 - 30, top: cy - h / 2 - 96, background: '#FFE11A', border: `6px solid ${INK}`,
+        boxShadow: '8px 10px 0 rgba(0,0,0,0.35)', padding: '2px 22px', fontFamily: OSWALD, fontWeight: 700, fontSize: 56, color: INK, textTransform: 'uppercase',
+        transform: `rotate(${rot - 4}deg) scale(${lab})`, transformOrigin: '0% 100%', whiteSpace: 'nowrap'}}>{ph.label}</div>}
+    </AbsoluteFill>
+  );
+};
+
 const ShotLayer = ({line, len}) => {
   const f = useCurrentFrame();
   const S = SHOTS[line.shot] || Aerial;
   return (
     <AbsoluteFill>
       <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}><S f={f} len={len} line={line} /></svg>
+      <PhotoLayer line={line} len={len} />
     </AbsoluteFill>
   );
 };
