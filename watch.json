@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.304 (routine rerun fix in 2.1.302; headless --max-turns plugin fix)",
-   "checked": "2026-10-20"
+   "last_seen": "2.1.306 (claude -p cloud login fix; 2.1.305 workflow resume fix)",
+   "checked": "2026-10-21"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-15 Opus 5.5 fast mode GA; OTel export beta 10-14",
-   "checked": "2026-10-20"
+   "last_seen": "2026-10-20 user profiles + org webhooks beta; nothing for us",
+   "checked": "2026-10-21"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-18 public benefit investment; no new models",
-   "checked": "2026-10-20"
+   "checked": "2026-10-21"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -79,6 +79,11 @@
    "url": "https://support.google.com/youtube/answer/1311392",
    "last_seen": "Generic or repetitive content; three categories clarified 2026-07-16 (TechCrunch)",
    "checked": "2026-10-18"
+  },
+  "claude-code-cli-reference": {
+   "url": "https://code.claude.com/docs/en/cli-reference",
+   "last_seen": "--safe-mode works with subscription login; --bare needs API key",
+   "checked": "2026-10-21"
   }
  },
  "repos": {
@@ -165,6 +170,13 @@
    "verdict": "skip",
    "checked": "2026-10-19",
    "note": "Gain mostly equals 'answer concisely'; telemetry default on"
+  },
+  "affaan-m/ECC": {
+   "stars": 284988,
+   "last_commit": "2026-10-20",
+   "verdict": "watch",
+   "checked": "2026-10-21",
+   "note": "MIT harness collection; API listing only, not read deeply."
   }
  },
  "issues": {
