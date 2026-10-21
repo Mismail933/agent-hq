@@ -57,11 +57,16 @@ def setup():
     return ready()
 
 
+def ref_path(voice, speed=REF_SPEED):
+    speed = round(float(speed), 2)
+    return REFS / (f"{voice}.wav" if speed == REF_SPEED else f"{voice}-{int(round(speed * 100))}.wav")
+
+
 def ensure_ref(voice, speed=REF_SPEED):
     """The ~10 s reference clip in one of our Kokoro voices at that reading speed (made once; needs Kokoro, i.e. the video tools'
     Python). Chatterbox copies the clip's pace and calm too, so a slower clip gives a calmer read."""
+    f = ref_path(voice, speed)
     speed = round(float(speed), 2)
-    f = REFS / (f"{voice}.wav" if speed == REF_SPEED else f"{voice}-{int(round(speed * 100))}.wav")
     if f.exists():
         return f
     import numpy as np
@@ -107,6 +112,6 @@ if __name__ == "__main__":
     if a[:1] == ["setup"]:
         print("RESULT " + json.dumps({"ready": setup()}))
     elif a[:1] == ["ref"] and len(a) > 1:
-        print("RESULT " + json.dumps({"ref": str(ensure_ref(a[1]))}))
+        print("RESULT " + json.dumps({"ref": str(ensure_ref(a[1], float(a[2]) if len(a) > 2 else REF_SPEED))}))
     else:
         print(__doc__)

@@ -421,8 +421,13 @@ def review(sample, video=None, fix=True, rounds=None):
         spec["sound"] = merged
         sample.write_text(json.dumps(spec, indent=1, ensure_ascii=False), encoding="utf-8")
         say(f"round {n}: rebuilding the mix with {json.dumps(r['settings'])[:300]}")
-        _run([shorts_python(), str(ROOT / "story_sample.py"), str(sample), "--prep"], 3600)
-        if video:
+        retime = "voice" in r["settings"]   # 2.65.0: the voice's pace and pauses move every word: the picture is made again, not remuxed
+        _run([shorts_python(), str(ROOT / "story_sample.py"), str(sample)] + ([] if retime else ["--prep"]), 7200 if retime else 3600)
+        if video and retime:
+            made = sample.with_suffix(".mp4")
+            if Path(video).resolve() != made.resolve():
+                shutil.copy2(made, video)
+        elif video:
             tmp = Path(video).with_suffix(".sound-tmp.mp4")
             _remux(video, folder / "mix.wav", tmp)
             os.replace(tmp, video)

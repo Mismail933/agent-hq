@@ -992,6 +992,20 @@ Agents never spend money without the owner's explicit approval.
   Speed here: ~25 s of compute per line, ~5x slower than real time (a 20-minute video ~2 hours). Tested: samples/megalodon-opening-
   chatterbox(.json|.mp4), 44 s: Whisper heard 100% of the 114 words in the finished mix (the Kokoro opening 99%), music at most
   11.3 dB under the voice (the Kokoro one 7.9), effects never over it.
+  2.65.0 (the owner on that opening: "Why is it rushing", then "Can we play with the tone? Or we need a sound engineer"; via Atlas):
+  measured: Chatterbox read ~174 wpm while talking (short lines up to 194-215; the Kokoro opening 148, sample 8 157 with its own pauses)
+  and the spec's 0.35 s gaps were Kokoro's. Now `story_sample.TONES` styles calm | between | dramatic = {wpm (pace while he speaks:
+  135 / 148 / 152), gap between lines, sentence_pause + comma_pause (silence added inside a take at the quietest point between the
+  words, `_breathe`), beat_pause (after a line whose last sentence is <= `BEAT_WORDS` 6 words: "Then another."), temperature (new
+  takes), ref_speed (the Kokoro reference clip's pace; measured: little effect on Chatterbox's own pace), pace_spread (pace_of's
+  action-faster / sad-slower, scaled)}. `tone_of`: the style <- rules voice.story_style / story_wpm / story_gap / story_sentence_pause /
+  story_temperature (0 = the style's; Atlas changes them) <- the video's spec sound.voice (Tarek's). Every take is fitted to the wpm
+  (atempo, clamped 0.78-1.08: beyond that it sounds processed, so a 209 wpm line ends ~163); the timeline uses the tone's gap and
+  no pause_scale. The reference clip is made in its own process (`chatterbox_voice.ref_path` + `ref` command): Kokoro kept in
+  story_sample's process left too little memory and Chatterbox crashed (0xC0000005) on this 8 GB PC. Tarek (sound_agent) may set
+  `voice` {style, wpm, gap, sentence_pause, comma_pause, beat_pause, temperature, ref_speed, pace_spread} (clean_settings ranges,
+  merged per key); a round that changes it re-renders the picture (every word moves), not just a remux. Openings:
+  samples/megalodon-opening-calm|between|dramatic(.json|.mp4).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

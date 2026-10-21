@@ -303,6 +303,7 @@ TONES = {
     "dramatic": {"wpm": 152, "gap": 0.55, "sentence_pause": 0.38, "comma_pause": 0.05, "beat_pause": 1.0, "temperature": 0.9,
                  "ref_speed": 0.9, "pace_spread": 1.8},
 }
+TEMPO_MIN = 0.78   # the most a take is slowed (atempo); a take that would need more is made again (another seed reads at another pace)
 TONE_RULES = {"wpm": "voice.story_wpm", "gap": "voice.story_gap", "sentence_pause": "voice.story_sentence_pause",
               "temperature": "voice.story_temperature"}
 BEAT_WORDS = 6   # a line whose last sentence is this short is a dramatic beat ("Then another.")
@@ -383,7 +384,10 @@ def voice_chatterbox(spec, folder):
     tone = tone_of(spec)
     spec["_tone"] = tone
     say(f"  tone: {json.dumps(tone)}")
-    ref = cv.ensure_ref(ref_voice, tone["ref_speed"])
+    ref = cv.ref_path(ref_voice, tone["ref_speed"])
+    if not ref.exists():   # made in its own process: Kokoro kept in this one left too little memory for Chatterbox (it crashed)
+        subprocess.run([sys.executable, str(ROOT / "chatterbox_voice.py"), "ref", ref_voice, str(tone["ref_speed"])], check=True,
+                       capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     refsig = hashlib.sha1(ref.read_bytes()).hexdigest()[:8]
     temp = round(float(tone["temperature"]), 2)
     tries = int(spec.get("retakes", CHATTER_TRIES))
@@ -394,17 +398,29 @@ def voice_chatterbox(spec, folder):
     keys = [hashlib.sha1(f"chatterbox|{cv.MODEL_TAG}|{ref_voice}|{refsig}|{t}".encode() + (f"|t{temp}".encode() if temp != 0.8 else b"")).hexdigest()[:16]
             for t in spoken]
     have = lambda i: (cache / f"c-{keys[i]}.wav").exists() and (cache / f"c-{keys[i]}.json").exists()
-    todo = [i for i in range(len(L)) if not have(i)]
+    nwords = [len(re.findall(r"[A-Za-z0-9']+", ln["text"])) for ln in L]
+    want_wpm = [tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"]) for ln in L]
+    too_fast = lambda i, secs: 60.0 * nwords[i] / max(0.5, secs) > want_wpm[i] / TEMPO_MIN + 4   # can't be slowed enough cleanly
+    def stale(i):   # cached before 2.65.0's pace check and too fast to fit: once more
+        try:
+            m = json.loads((cache / f"c-{keys[i]}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return True
+        if "fast" in m:
+            return False
+        secs = sf.info(str(cache / f"c-{keys[i]}.wav")).duration
+        return too_fast(i, secs)
+    todo = [i for i in range(len(L)) if not have(i) or stale(i)]
     if todo:
         say(f"  Chatterbox: {len(todo)} of {len(L)} lines to voice (~{sum(len(spoken[i].split()) for i in todo) / 150 * 5:.0f} min on this PC)")
         raw = cache / "_chatter-raw"
         best = {}
         for attempt in range(tries):
-            left = [i for i in todo if i not in best or best[i]["score"] < CHATTER_GOOD or best[i]["extra"] > 2]
+            left = [i for i in todo if i not in best or best[i]["score"] < CHATTER_GOOD or best[i]["extra"] > 2 or best[i]["fast"]]
             if not left:
                 break
             if attempt:
-                say(f"  retake {attempt}: {len(left)} line(s) dropped or added words")
+                say(f"  retake {attempt}: {len(left)} line(s) dropped or added words, or too fast to slow down cleanly")
             jobs = [{"key": f"{keys[i]}-{attempt}", "text": spoken[i], "seed": 1009 * attempt + i, "temperature": temp} for i in left]
             need = [j for j in jobs if not (raw / f"{j['key']}.wav").exists()]   # a take made before a stop is kept
             if need:
@@ -423,14 +439,16 @@ def voice_chatterbox(spec, folder):
                 a = _level(a, sr)
                 heard = _heard(a, sr)
                 score, extra = _take_score(spoken[i], heard)
-                if i not in best or (score - 0.03 * extra) > (best[i]["score"] - 0.03 * best[i]["extra"]):
-                    best[i] = {"audio": a, "sr": sr, "words": heard, "score": score, "extra": extra, "try": attempt}
+                fast = too_fast(i, len(a) / sr)
+                rank = score - 0.03 * extra - (0.05 if fast else 0)
+                if i not in best or rank > best[i]["rank"]:
+                    best[i] = {"audio": a, "sr": sr, "words": heard, "score": score, "extra": extra, "try": attempt, "fast": fast, "rank": rank}
         for i in todo:
             b = best[i]
             a48 = np.interp(np.arange(int(len(b["audio"]) * SR / b["sr"])) / SR, np.arange(len(b["audio"])) / b["sr"], b["audio"]).astype("float32")
             sf.write(str(cache / f"c-{keys[i]}.wav"), a48, SR)
             (cache / f"c-{keys[i]}.json").write_text(json.dumps({"words": b["words"], "heard": round(b["score"], 3), "extra": b["extra"],
-                                                                 "try": b["try"]}), encoding="utf-8")
+                                                                 "try": b["try"], "fast": b["fast"]}), encoding="utf-8")
             if b["score"] < CHATTER_GOOD:
                 say(f"  line {i + 1}: best take heard {b['score']:.0%} of its words: listen to it")
         shutil.rmtree(raw, ignore_errors=True)
@@ -442,7 +460,7 @@ def voice_chatterbox(spec, folder):
         n = len(re.findall(r"[A-Za-z0-9']+", ln["text"]))
         own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace
         want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
-        f = max(0.78, min(1.08, want / own))   # atempo beyond these sounds processed
+        f = max(TEMPO_MIN, min(1.08, want / own))   # atempo beyond these sounds processed
         if abs(f - 1.0) > 0.01:
             a48 = _tempo(a48, SR, f)
             words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
