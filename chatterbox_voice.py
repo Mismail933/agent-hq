@@ -57,9 +57,11 @@ def setup():
     return ready()
 
 
-def ensure_ref(voice):
-    """The ~10 s reference clip in one of our Kokoro voices (made once; needs Kokoro, i.e. the video tools' Python)."""
-    f = REFS / f"{voice}.wav"
+def ensure_ref(voice, speed=REF_SPEED):
+    """The ~10 s reference clip in one of our Kokoro voices at that reading speed (made once; needs Kokoro, i.e. the video tools'
+    Python). Chatterbox copies the clip's pace and calm too, so a slower clip gives a calmer read."""
+    speed = round(float(speed), 2)
+    f = REFS / (f"{voice}.wav" if speed == REF_SPEED else f"{voice}-{int(round(speed * 100))}.wav")
     if f.exists():
         return f
     import numpy as np
@@ -67,7 +69,7 @@ def ensure_ref(voice):
     from kokoro import KPipeline
     REFS.mkdir(parents=True, exist_ok=True)
     pipe = KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M")
-    audio = np.concatenate([np.asarray(a, dtype=np.float32) for _, _, a in pipe(REF_TEXT, voice=voice, speed=REF_SPEED)])
+    audio = np.concatenate([np.asarray(a, dtype=np.float32) for _, _, a in pipe(REF_TEXT, voice=voice, speed=speed)])
     sf.write(f, audio, 24000)
     return f
 

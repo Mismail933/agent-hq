@@ -291,6 +291,87 @@ def _tempo(a, sr, f):
     return b
 
 
+# 2.65.0 (the owner on the 2.64.0 opening: "Why is it rushing", then "Can we play with the tone?"). Measured: Chatterbox read the
+# lines at ~174 words a minute (short ones up to 194; the Kokoro opening 148) with the old 0.35 s gaps made for Kokoro. Now every
+# line is fitted to a storytelling pace, sentences get a breath inside a line, short dramatic lines a beat after them. The style's
+# numbers are the defaults; rules voice.story_* (Atlas) and the video's sound.voice (Tarek, or a sample's spec) override them.
+TONES = {
+    "calm": {"wpm": 135, "gap": 0.85, "sentence_pause": 0.45, "comma_pause": 0.12, "beat_pause": 0.7, "temperature": 0.7,
+             "ref_speed": 0.85, "pace_spread": 0.5},
+    "between": {"wpm": 148, "gap": 0.65, "sentence_pause": 0.32, "comma_pause": 0.08, "beat_pause": 0.5, "temperature": 0.8,
+                "ref_speed": 0.9, "pace_spread": 1.0},
+    "dramatic": {"wpm": 152, "gap": 0.55, "sentence_pause": 0.38, "comma_pause": 0.05, "beat_pause": 1.0, "temperature": 0.9,
+                 "ref_speed": 0.9, "pace_spread": 1.8},
+}
+TONE_RULES = {"wpm": "voice.story_wpm", "gap": "voice.story_gap", "sentence_pause": "voice.story_sentence_pause",
+              "temperature": "voice.story_temperature"}
+BEAT_WORDS = 6   # a line whose last sentence is this short is a dramatic beat ("Then another.")
+
+
+def _rule(key, default):
+    try:
+        import rules
+        return rules.get(key)
+    except Exception:  # noqa: BLE001  (no office database: the style's numbers)
+        return default
+
+
+def tone_of(spec):
+    """The voice's settings for this video: the style's numbers <- the rules <- the video's own sound.voice."""
+    own = (spec.get("sound") or {}).get("voice") or {}
+    style = own.get("style") or _rule("voice.story_style", "between") or "between"
+    t = dict(TONES.get(style, TONES["between"]), style=style)
+    for k, r in TONE_RULES.items():
+        v = _rule(r, 0)
+        if v:
+            t[k] = float(v)
+    for k, v in own.items():
+        if k in t and k != "style" and isinstance(v, (int, float)):
+            t[k] = float(v)
+    return t
+
+
+def _quiet_at(a, sr, t0, t1):
+    """The quietest 20 ms point between t0 and t1 (seconds): where a pause goes in without cutting a sound."""
+    i0, i1 = max(0, int(t0 * sr)), min(len(a), int(t1 * sr))
+    if i1 - i0 < int(0.02 * sr):
+        return (t0 + t1) / 2
+    w = int(0.02 * sr)
+    e = np.convolve(a[i0:i1] ** 2, np.ones(w) / w, mode="valid")
+    return (i0 + int(np.argmin(e)) + w // 2) / sr
+
+
+def _breathe(a, sr, words, sentence, comma):
+    """Silence added after each sentence (and a little after commas) inside a take, at the quietest point between the words;
+    every later word moves with it. Returns (audio, words)."""
+    if not words or (sentence <= 0 and comma <= 0):
+        return a, words
+    cuts = []
+    for k in range(len(words) - 1):
+        w = words[k][0].strip()
+        add = sentence if w.endswith((".", "!", "?")) else comma if w.endswith((",", ";", ":")) else 0
+        if add > 0:
+            cuts.append((_quiet_at(a, sr, words[k][2] - 0.03, words[k + 1][1] + 0.03), add))
+    if not cuts:
+        return a, words
+    parts, last, shift, out = [], 0, [], []
+    for t, add in cuts:
+        i = int(t * sr)
+        parts += [a[last:i], np.zeros(int(add * sr), dtype=a.dtype)]
+        last = i
+        shift.append((t, add))
+    parts.append(a[last:])
+    for w, s0, e0 in words:
+        d = sum(add for t, add in shift if t <= s0)
+        out.append([w, s0 + d, e0 + d])
+    return np.concatenate(parts), out
+
+
+def _is_beat(text):
+    last = re.split(r"(?<=[.!?])\s+", text.strip())[-1]
+    return len(re.findall(r"[A-Za-z0-9']+", last)) <= BEAT_WORDS
+
+
 def voice_chatterbox(spec, folder):
     """2.64.0 (the owner's pick 2026-10-21: "go with chatter box am micheal"): Chatterbox Nano (MIT, free, on this PC), the voice copied
     from a clip of our own Kokoro voice (chatterbox_voice.ensure_ref). One take per line, cached in _voice-cache/c-<key>.wav/.json;
@@ -299,14 +380,19 @@ def voice_chatterbox(spec, folder):
     import hashlib
     import chatterbox_voice as cv
     ref_voice = spec["voice"].split(":", 1)[1] or "am_michael"
-    ref = cv.ensure_ref(ref_voice)
+    tone = tone_of(spec)
+    spec["_tone"] = tone
+    say(f"  tone: {json.dumps(tone)}")
+    ref = cv.ensure_ref(ref_voice, tone["ref_speed"])
     refsig = hashlib.sha1(ref.read_bytes()).hexdigest()[:8]
+    temp = round(float(tone["temperature"]), 2)
     tries = int(spec.get("retakes", CHATTER_TRIES))
     cache = folder / "_voice-cache"
     cache.mkdir(parents=True, exist_ok=True)
     L = spec["lines"]
     spoken = [ln.get("say") or ln["text"] for ln in L]
-    keys = [hashlib.sha1(f"chatterbox|{cv.MODEL_TAG}|{ref_voice}|{refsig}|{t}".encode()).hexdigest()[:16] for t in spoken]
+    keys = [hashlib.sha1(f"chatterbox|{cv.MODEL_TAG}|{ref_voice}|{refsig}|{t}".encode() + (f"|t{temp}".encode() if temp != 0.8 else b"")).hexdigest()[:16]
+            for t in spoken]
     have = lambda i: (cache / f"c-{keys[i]}.wav").exists() and (cache / f"c-{keys[i]}.json").exists()
     todo = [i for i in range(len(L)) if not have(i)]
     if todo:
@@ -319,7 +405,7 @@ def voice_chatterbox(spec, folder):
                 break
             if attempt:
                 say(f"  retake {attempt}: {len(left)} line(s) dropped or added words")
-            jobs = [{"key": f"{keys[i]}-{attempt}", "text": spoken[i], "seed": 1009 * attempt + i} for i in left]
+            jobs = [{"key": f"{keys[i]}-{attempt}", "text": spoken[i], "seed": 1009 * attempt + i, "temperature": temp} for i in left]
             need = [j for j in jobs if not (raw / f"{j['key']}.wav").exists()]   # a take made before a stop is kept
             if need:
                 _WHISPER[0] = None   # 8 GB PC: Whisper out of memory while Chatterbox (~2.5 GB) loads (a retake died silently)
@@ -348,18 +434,23 @@ def voice_chatterbox(spec, folder):
             if b["score"] < CHATTER_GOOD:
                 say(f"  line {i + 1}: best take heard {b['score']:.0%} of its words: listen to it")
         shutil.rmtree(raw, ignore_errors=True)
-    base = float(spec.get("speed", 1.0))
     out = []
     for i, ln in enumerate(L):
         a48, _ = sf.read(str(cache / f"c-{keys[i]}.wav"), dtype="float32")
         meta = json.loads((cache / f"c-{keys[i]}.json").read_text(encoding="utf-8"))
         words = meta["words"]
-        f = pace_of(ln, base) if spec.get("paced") else base
+        n = len(re.findall(r"[A-Za-z0-9']+", ln["text"]))
+        own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace
+        want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
+        f = max(0.78, min(1.08, want / own))   # atempo beyond these sounds processed
         if abs(f - 1.0) > 0.01:
             a48 = _tempo(a48, SR, f)
             words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
-        out.append({"audio": a48, "words": words or [[ln["text"].split()[0], 0.0, len(a48) / SR]], "secs": len(a48) / SR})
-        say(f"  line {i + 1}: {len(a48) / SR:.1f} s, heard {meta['heard']:.0%}" + (f" (take {meta['try'] + 1})" if meta.get("try") else ""))
+        a48, words = _breathe(a48, SR, words, tone["sentence_pause"], tone["comma_pause"])
+        after = tone["beat_pause"] if _is_beat(ln["text"]) else 0.0
+        out.append({"audio": a48, "words": words or [[ln["text"].split()[0], 0.0, len(a48) / SR]], "secs": len(a48) / SR, "after": after})
+        say(f"  line {i + 1}: {len(a48) / SR:.1f} s, {own:.0f} -> {own * f:.0f} wpm, heard {meta['heard']:.0%}"
+            + (f" (take {meta['try'] + 1})" if meta.get("try") else "") + (f", beat +{after:.2f} s" if after else ""))
     return out
 
 
@@ -432,11 +523,13 @@ def text_words(text, words):
 def timeline(spec, voiced):
     t, lines = LEAD, []
     gap, k = float(spec.get("gap", PAUSE)), float(spec.get("pause_scale", 1.0))   # the owner after v1: "a bit slow"
+    if spec.get("_tone"):   # 2.65.0: the Chatterbox voice's own pauses (the old gap/pause_scale were set for Kokoro)
+        gap, k = float(spec["_tone"]["gap"]), 1.0
     for ln, v in zip(spec["lines"], voiced):
         start, end = t, t + v["secs"]
         lines.append({"shot": ln["shot"], "text": ln["text"], "t_start": start, "t_end": end, "p": ln.get("p") or {},
                       "words": [[w, start + s, start + e] for w, s, e in text_words(ln["text"], v["words"])]})
-        t = end + (0.0 if v.get("joined") else gap) + (EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))) * k
+        t = end + (0.0 if v.get("joined") else gap) + (EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))) * k + v.get("after", 0.0)
     total = t
     for i, l in enumerate(lines):
         l["cut"] = 0 if i == 0 else int(round((l["t_start"] - LEADIN) * FPS))

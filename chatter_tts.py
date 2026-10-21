@@ -69,7 +69,7 @@ def main():
         t = time.time()
         torch.manual_seed(int(j.get("seed", 0)))
         with torch.inference_mode():
-            wav = model.generate(j["text"])
+            wav = model.generate(j["text"], temperature=float(j.get("temperature", 0.8)))
         f = out / f"{j['key']}.wav"
         ta.save(str(f.with_suffix(".part.wav")), wav, model.sr)
         f.with_suffix(".part.wav").replace(f)
