@@ -974,6 +974,24 @@ Agents never spend money without the owner's explicit approval.
   one by one), faint '?' poll bars before the reveal, a growing crust on the rate card, the depth counter from 200 m, the A-E row and
   the food chain inside the frame, measure labels on the left (the date corner stays clear), m_next's end card laid out for YouTube's
   end screen (the next video's art on the left, SUBSCRIBE on the right; p.pause 12 = 12 s).
+- The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
+  chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
+  Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
+  this PC's CPU in its own Python: `chatterbox_voice.py` (VENV ~/.agent-hq-anim/chatterbox/.venv with chatterbox-tts 0.1.7 + torch 2.6
+  CPU + setuptools<81 (its Perth watermarker needs pkg_resources; the watermark that marks takes as AI-made stays on); MODEL
+  models/nano = ResembleAI/chatterbox-nano's t3_nano_v1 + s3gen_meanflow + small files, ~2 GB; `setup()` = `python chatterbox_voice.py
+  setup`, downloads ~3 GB: ask first on a new computer) + `chatter_tts.py` (the worker in that venv: PyPI 0.1.7 has no Nano switch,
+  so it adds the GitHub version's GPT2_small config and loads Nano through ChatterboxTurboTTS). The voice is copied from a 10 s clip of
+  our own Kokoro voice (`ensure_ref`, refs/<kokoro voice>.wav, REF_TEXT at 0.95; synthetic, so no real person's voice is copied).
+  story_sample spec `"voice": "chatterbox:am_michael"` (project 5 meta `voice` records the pick) -> `voice_chatterbox`: one take per
+  line (`say` if set), cached `_voice-cache/c-<key>.wav/.json` (key = model, ref voice + its file hash, words); ends trimmed by loudness,
+  each take levelled to `CHATTER_LEVEL`; Whisper (base.en, word times) hears every new take -> its word times, and `_take_score`
+  (numbers left out, British spellings folded: they made false retakes) under `CHATTER_GOOD` (0.92) or 3+ invented words = a retake
+  with another seed, `CHATTER_TRIES` 3 (spec `retakes`), the best kept; `paced` = pace_of as an atempo of the take (spec `speed` = base).
+  Whisper is dropped before each Chatterbox run (8 GB PC: a retake died silently with both loaded); takes made before a stop are kept.
+  Speed here: ~25 s of compute per line, ~5x slower than real time (a 20-minute video ~2 hours). Tested: samples/megalodon-opening-
+  chatterbox(.json|.mp4), 44 s: Whisper heard 100% of the 114 words in the finished mix (the Kokoro opening 99%), music at most
+  11.3 dB under the voice (the Kokoro one 7.9), effects never over it.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

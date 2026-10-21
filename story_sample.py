@@ -259,10 +259,17 @@ def _heard(a, sr):
     return [[w.word.strip(), float(w.start), float(w.end)] for sg in segs for w in (sg.words or []) if w.word.strip()]
 
 
+NUM_WORDS = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+             "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy",
+             "eighty", "ninety", "hundred", "thousand", "million", "point"}
+
+
 def _take_score(spoken, heard):
-    """(share of the line's words heard, words heard that aren't in the line): numbers and letters compared as letters only."""
+    """(share of the line's words heard, words heard that aren't in the line). Numbers are left out of both sides: Whisper writes
+    "1918" where the line says "nineteen eighteen", which isn't a slip (it made 3 false retakes on the Megalodon opening)."""
     import difflib
-    tok = lambda t: [w for w in re.findall(r"[a-z']+", t.lower()) if w]
+    us = lambda w: re.sub(r"tre(s?)$", r"ter\1", re.sub(r"our(s?)$", r"or\1", w))   # metres/meters, colour/color: Whisper spells American
+    tok = lambda t: [us(w) for w in re.findall(r"[a-z']+", t.lower()) if w and w not in NUM_WORDS]
     want, got = tok(spoken), tok(" ".join(w for w, _, _ in heard))
     if not want:
         return 1.0, 0
@@ -313,7 +320,16 @@ def voice_chatterbox(spec, folder):
             if attempt:
                 say(f"  retake {attempt}: {len(left)} line(s) dropped or added words")
             jobs = [{"key": f"{keys[i]}-{attempt}", "text": spoken[i], "seed": 1009 * attempt + i} for i in left]
-            cv.speak(jobs, raw, ref, say=say)
+            need = [j for j in jobs if not (raw / f"{j['key']}.wav").exists()]   # a take made before a stop is kept
+            if need:
+                _WHISPER[0] = None   # 8 GB PC: Whisper out of memory while Chatterbox (~2.5 GB) loads (a retake died silently)
+                import gc
+                gc.collect()
+                try:
+                    cv.speak(need, raw, ref, say=say)
+                except RuntimeError as ex:
+                    say(f"  Chatterbox stopped ({str(ex)[:160]}); once more")
+                    cv.speak([j for j in need if not (raw / f"{j['key']}.wav").exists()], raw, ref, say=say)
             for i, j in zip(left, jobs):
                 a, sr = sf.read(str(raw / f"{j['key']}.wav"), dtype="float32")
                 a = a.mean(axis=1) if a.ndim > 1 else a

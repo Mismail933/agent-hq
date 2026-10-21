@@ -88,10 +88,12 @@ def speak(jobs, out_dir, ref, say=print):
         line = line.rstrip()
         if line.startswith(("VOICED", "LOADED")):
             say("    " + line)
-        elif line and not any(w in line.lower() for w in ("warn", "deprecat", "pkg_resources", "symlink")):
+        elif line and "it/s]" not in line and "s/it]" not in line and not any(w in line.lower() for w in ("deprecat", "pkg_resources", "symlink")):
             tail = (tail + [line])[-8:]
-    if p.wait() != 0:
-        raise RuntimeError("Chatterbox stopped: " + " | ".join(tail)[-500:])
+    code = p.wait()
+    if code != 0:
+        raise RuntimeError(f"Chatterbox stopped (exit {code}" + (", out of memory?" if code in (3221225477, -1073741819, 3221226505) else "")
+                           + "): " + (" | ".join(tail)[-400:] or "no message"))
     jf.unlink(missing_ok=True)
     missing = [j["key"] for j in jobs if not (out_dir / f"{j['key']}.wav").exists()]
     if missing:
