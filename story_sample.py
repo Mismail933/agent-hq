@@ -264,6 +264,19 @@ NUM_WORDS = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eig
              "eighty", "ninety", "hundred", "thousand", "million", "point"}
 
 
+def _hear_files(files):
+    """Whisper on each take in ITS OWN process (2.65.0): with faster-whisper loaded here, Chatterbox's next load crashed (0xC0000005)
+    on this 8 GB PC. Returns each file's heard words."""
+    if not files:
+        return []
+    lst = Path(files[0]).parent / "_hear.json"
+    lst.write_text(json.dumps([str(f) for f in files]), encoding="utf-8")
+    subprocess.run([sys.executable, str(Path(__file__).resolve()), "--hear", str(lst)], check=True, capture_output=True,
+                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    lst.unlink(missing_ok=True)
+    return [json.loads(Path(str(f) + ".heard.json").read_text(encoding="utf-8")) for f in files]
+
+
 def _take_score(spoken, heard):
     """(share of the line's words heard, words heard that aren't in the line). Numbers are left out of both sides: Whisper writes
     "1918" where the line says "nineteen eighteen", which isn't a slip (it made 3 false retakes on the Megalodon opening)."""
@@ -432,12 +445,19 @@ def voice_chatterbox(spec, folder):
                 except RuntimeError as ex:
                     say(f"  Chatterbox stopped ({str(ex)[:160]}); once more")
                     cv.speak([j for j in need if not (raw / f"{j['key']}.wav").exists()], raw, ref, say=say)
+            takes = {}
             for i, j in zip(left, jobs):
                 a, sr = sf.read(str(raw / f"{j['key']}.wav"), dtype="float32")
                 a = a.mean(axis=1) if a.ndim > 1 else a
                 a, _ = _trim(a, sr)
                 a = _level(a, sr)
-                heard = _heard(a, sr)
+                proc = raw / f"{j['key']}.proc.wav"
+                sf.write(str(proc), a, sr)
+                takes[i] = (a, sr, proc)
+            heard_all = dict(zip(takes, _hear_files([takes[i][2] for i in takes])))
+            for i in takes:
+                a, sr, _ = takes[i]
+                heard = heard_all[i]
                 score, extra = _take_score(spoken[i], heard)
                 fast = too_fast(i, len(a) / sr)
                 rank = score - 0.03 * extra - (0.05 if fast else 0)
@@ -1246,6 +1266,11 @@ def srt(lines, path):
 
 
 def main():
+    if sys.argv[1:2] == ["--hear"]:   # internal: Whisper on the files listed, each -> <file>.heard.json (see _hear_files)
+        for f in json.loads(Path(sys.argv[2]).read_text(encoding="utf-8")):
+            a, sr = sf.read(f, dtype="float32")
+            Path(f + ".heard.json").write_text(json.dumps(_heard(a.mean(axis=1) if a.ndim > 1 else a, sr)), encoding="utf-8")
+        return
     ap = argparse.ArgumentParser()
     ap.add_argument("sample")
     ap.add_argument("--stills", action="store_true", help="one still per shot instead of the video")

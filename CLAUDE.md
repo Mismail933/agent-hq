@@ -1005,7 +1005,12 @@ Agents never spend money without the owner's explicit approval.
   story_sample's process left too little memory and Chatterbox crashed (0xC0000005) on this 8 GB PC. Tarek (sound_agent) may set
   `voice` {style, wpm, gap, sentence_pause, comma_pause, beat_pause, temperature, ref_speed, pace_spread} (clean_settings ranges,
   merged per key); a round that changes it re-renders the picture (every word moves), not just a remux. Openings:
-  samples/megalodon-opening-calm|between|dramatic(.json|.mp4).
+  samples/megalodon-opening-calm|between|dramatic(.json|.mp4). Also: a take too fast to slow down cleanly (> wpm / `TEMPO_MIN` 0.78)
+  counts as bad and gets retakes (another seed reads at another pace; spec `retakes`, the reveal went 161 -> 138 wpm); Whisper hears
+  the takes in its own process (`_hear_files`, `story_sample.py --hear <list>`): with it loaded, Chatterbox's next load crashed.
+  Measured (Whisper on the finished videos): calm 63.7 s, 130 wpm while talking, 99% heard; between 57.5 s, 141 wpm, 100%; dramatic
+  55.6 s, 149 wpm, 96% (its fast action line and the boom-adjacent reveal). Tarek's 2 rounds on 'between' (music -4 dB, accents -18 dB
+  x0.65, no sea/deep beds, a trailer boom for the title) are in all three specs; his "re-voice costs credits" notes are moot here.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes
