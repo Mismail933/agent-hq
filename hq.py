@@ -12,7 +12,7 @@ Atlas's controls for Agent HQ.
                  restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
                  atlas-new ["why"]     (a fresh Atlas chat after your current reply; write the handoff in atlas-journal.md first)
                  resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
-                 design <what> ["brief"] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
+                 design <what> ["brief"] [--name NAME] | trace <image> [--colors N] [--bw] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
                  project-new "<name>" --kind client_music_video ["brief"]     (a client project: ONLY on the owner's explicit word)
                  channel-new "<name>" ["brief"]     (a new channel of long narrated stories: ONLY on the owner's explicit word)
                  client <project> | client-brief <project> "brief" | style-frames <project> ["brief"] | style-pick <project> <version> <option>     (client projects; the owner picks the look)
@@ -668,8 +668,18 @@ def main(argv):
         elif cmd == "cast-use":   # hq cast-use <project> kit|v<K>
             code, reply = office(f"/api/project/{int(args[0])}/cast-use", {"which": args[1]})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
-        elif cmd == "design":   # Rana draws: hq design <what> ["brief"] (3 options, rendered, checked by Israa, sent to the owner)
-            code, reply = office("/api/design", {"what": args[0], "brief": " ".join(args[1:])})
+        elif cmd == "design":   # Rana draws: hq design <what> ["brief"] [--name NAME] (3 options, real fonts, audited, checked by Israa)
+            rest, name = list(args[1:]), ""
+            if "--name" in rest:
+                i = rest.index("--name")
+                name = rest[i + 1] if i + 1 < len(rest) else ""
+                del rest[i:i + 2]
+            code, reply = office("/api/design", {"what": args[0], "brief": " ".join(rest), "name": name})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "trace":   # hq trace <image> [--colors N] [--bw]: a picture -> a vector (vtracer) in content/brand/traced/
+            rest = list(args)
+            colors = int(rest[rest.index("--colors") + 1]) if "--colors" in rest else 6
+            code, reply = office("/api/design/trace", {"image": rest[0], "colors": colors, "bw": "--bw" in rest})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "channel-new":   # hq channel-new "<name>" ["brief"]: a new channel of long narrated stories, ONLY on the owner's word
             code, reply = office("/api/channel/new", {"name": args[0] if args else "", "format": "story_v1", "brief": " ".join(args[1:])})

@@ -8,3 +8,5 @@ certifi
 numpy
 SoundCard==0.4.5
 opencv-python-headless   # musicvideo.py's motion report (2.46.0): optical flow of every frame; without it a cruder frame difference is used
+fonttools   # logo.py (2.62.0): Rana's lettering as real letter outlines (MIT)
+vtracer     # logo.py trace: a picture -> a vector (MIT)

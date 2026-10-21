@@ -2498,13 +2498,25 @@ LIGHT, DARK = "#F5F5F2", "#0B1220"
 
 
 def design_render(folder):
-    """Every option-k/ in folder: icon.svg -> icon-{light,dark}-{1024,256,64}.png, wordmark.svg -> wordmark-{light,dark}.png, and
-    sheet.png (all of them on one page, the 64 px ones shown at real size and enlarged) for Israa and the owner."""
+    """Every option-k/ in folder: icon.svg -> icon-{light,dark}-{1024,256,64,32,16}.png, wordmark.svg -> wordmark-{light,dark}.png,
+    and sheet.png (all of them on one page, the small ones shown at real size, 64 px also enlarged) for Israa and the owner.
+    2.62.0: first logo.finish (rule design.real_type): Rana's <text> becomes real letter outlines from the logo fonts, the wordmark's
+    viewBox is fitted to what is drawn, and the logo-design skill's audit checks both files (audit.json)."""
     import base64
     from PIL import Image, ImageDraw
     folder = Path(folder).resolve()   # Remotion runs in its own folder
     ensure_toolchain()
-    made = []
+    made, audits = [], {}
+    if rules.get("design.real_type"):
+        import logo
+        logo.ensure_fonts()
+        for opt in sorted(folder.glob("option-*")):
+            try:
+                audits[opt.name] = logo.finish(opt)
+                say(f"{opt.name}: real type {', '.join(audits[opt.name]['fonts']) or '(no text)'}")
+            except Exception as e:   # the files keep their live text; the renderer's fonts stand in
+                audits[opt.name] = {"error": str(e)[:300]}
+                say(f"{opt.name}: couldn't set the real type ({e})")
     for opt in sorted(folder.glob("option-*")):
         props = opt / "_props.json"
         for part, (w, h) in (("icon", (1024, 1024)), ("wordmark", (1600, 480))):
@@ -2517,18 +2529,25 @@ def design_render(folder):
                 remotion(["still", "src/index.jsx", "SvgStill", str(out), f"--props={props}", "--log=error", "--overwrite"], timeout=900)
                 if part == "icon":
                     big = Image.open(out).convert("RGB")
-                    for size in (256, 64):
+                    for size in (256, 64, 32, 16):
                         big.resize((size, size), Image.LANCZOS).save(opt / f"icon-{tone}-{size}.png")
         props.unlink(missing_ok=True)
-        # the contact sheet: icon at 256 and 64 (real size, and 64 blown up 4x to show what survives) on light and dark, wordmarks
+        # the contact sheet: icon at 256, at 64/32/16 real size (a YouTube avatar, a tab), 64 blown up 4x to show what survives,
+        # on light and dark; the wordmarks
         sheet = Image.new("RGB", (1400, 830), "#FFFFFF")
         d = ImageDraw.Draw(sheet)
-        d.text((24, 16), f"{opt.name}: icon at 256 px, at 64 px (real size), 64 px enlarged; wordmark. Light and dark.", fill="#111111")
+        sc = audits.get(opt.name) or {}
+        score = "" if not sc.get("icon") else f"  Audit: icon {sc['icon'].get('score')}/100, wordmark {(sc.get('wordmark') or {}).get('score')}/100."
+        d.text((24, 16), f"{opt.name}: icon at 256 px; 64, 32 and 16 px (real size); 64 px enlarged; wordmark. Light and dark.{score}", fill="#111111")
         for row, tone in enumerate(("light", "dark")):
             y = 48 + row * 300
             sheet.paste(Image.open(opt / f"icon-{tone}-256.png"), (24, y))
             small = Image.open(opt / f"icon-{tone}-64.png")
-            sheet.paste(small, (310, y + 96))
+            sheet.paste(small, (300, y + 8))
+            sheet.paste(Image.open(opt / f"icon-{tone}-32.png"), (316, y + 100))
+            sheet.paste(Image.open(opt / f"icon-{tone}-16.png"), (324, y + 160))
+            for ty, lab in ((y + 74, "64 px"), (y + 134, "32 px"), (y + 178, "16 px")):
+                d.text((314, ty), lab, fill="#555555")
             sheet.paste(small.resize((256, 256), Image.NEAREST), (410, y))
             word = Image.open(opt / f"wordmark-{tone}.png")
             word.thumbnail((700, 256))
@@ -2540,7 +2559,7 @@ def design_render(folder):
         d.text((24, 800), "Wordmarks at header size (360 px wide).", fill="#111111")
         sheet.save(opt / "sheet.png")
         made.append(opt.name)
-    return {"options": made}
+    return {"options": made, "audits": audits}
 
 
 def style_render(folder):

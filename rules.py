@@ -122,6 +122,9 @@ RULES = {
     "sound.rounds": _r("Tarek: sound & voice", "int", 2, 1, 4, "Times Tarek listens, fixes the mix by its settings and listens again", ("sound_agent", "ROUNDS")),
     "sound.fix": _r("Tarek: sound & voice", "bool", True, None, None, "Tarek fixes the mix himself (levels, recordings, accents; off = notes only)"),
     "review.design": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's design options before the owner sees them (off = straight to the owner)"),
+    "design.real_type": _r("Review & quality", "bool", True, None, None, "Rana's lettering in logos uses real fonts (20 free Google display families, SIL OFL) and is turned into exact letter outlines; the logo-design skill's audit checks every file (off = the old system fonts, live text)"),
+    "design.logo_method": _r("Review & quality", "bool", True, None, None, "Rana designs logos with the logo-design skill's method (MIT, kaankiziltug): a brief, the category's cliches, 8-12 one-line concepts across mark types, the 3 strongest built and tested at 16 px; Israa critiques with its checklist"),
+    "design.fonts": _r("Review & quality", "text", "", None, None, "The fonts Rana may use in logos, separated by commas (empty = all 20: Cinzel, Cinzel Decorative, Cormorant Garamond, Playfair Display, Marcellus, Bodoni Moda, DM Serif Display, Abril Fatface, Italiana, Forum, Montserrat, Bebas Neue, Oswald, Archivo Black, Syne, Unbounded, Space Grotesk, Josefin Sans, Michroma, Big Shoulders Display)"),
     "review.style_frames": _r("Review & quality", "bool", True, None, None, "Israa checks Rana's style frames for a client's music video before the owner sees them (off = straight to the owner)"),
     "review.voice_versions": _r("Review & quality", "bool", True, None, None, "Israa reviews voice versions before the owner compares them"),
     "cast.review_rounds": _r("Review & quality", "int", 2, 0, 6, "Times Israa may send Rana's redrawn cast characters back to her", ("cast", "ROUNDS")),
@@ -200,6 +203,11 @@ def parse(key, value):
             _shapes(s)
         if key == "rana.redraw":
             _redraws(s)
+        if key == "design.fonts":
+            import logo
+            bad = [x.strip() for x in s.split(",") if x.strip() and logo.family_of(x.strip())[1]]
+            if bad:
+                raise ValueError(f"design.fonts: not a logo font: {', '.join(bad)}. The fonts: {', '.join(logo.FAMILIES)}.")
         if key == "omar.projects" and not all(x.strip().isdigit() for x in s.replace(";", ",").split(",") if x.strip()):
             raise ValueError("omar.projects must be project numbers separated by commas, like 3,5.")
         return s

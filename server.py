@@ -1085,14 +1085,14 @@ def run_cast_check(pid, k):
         CHARMAKING.update(pid=None, step="")
 
 
-def run_design(what, brief=""):
+def run_design(what, brief="", name=""):
     """Rana draws options, the engine renders them, Israa checks them (weak ones go back to Rana once), the owner picks."""
     DESIGNING["what"] = what
     try:
         drawn = checkpoint.get("options drawn")   # resumed: what Rana drew, rendered and Israa checked before the stop is kept
         if drawn is None:
             cp.log("Rana", "design_started", None, {"what": what})
-            opts = design.ask_rana(what, brief)
+            opts = design.ask_rana(what, brief, name=name)
             folder = design.save_options(what, opts)
             checkpoint.done("options drawn", {"opts": opts, "folder": str(folder)})
         else:
@@ -1110,7 +1110,7 @@ def run_design(what, brief=""):
         if weak:
             notes = "\n".join(f"Option {k} ({opts[k - 1]['name'] if k <= len(opts) else ''}): {r.get('summary', '')} Fixes: {'; '.join(r.get('fixes') or [])}"
                                for k, r in weak.items())
-            new = design.ask_rana(what, brief + f"\nRedraw only these {len(weak)} option(s), one each, fixing Israa's notes.", notes)
+            new = design.ask_rana(what, brief + f"\nRedraw only these {len(weak)} option(s), one each, fixing Israa's notes.", notes, name=name)
             for (k, _), o in zip(weak.items(), new):
                 design.replace_option(folder, k, o)
             _animate("design-render", folder, timeout=3600)
@@ -3042,8 +3042,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "Say what to design, e.g. logo."})
             if anim_busy():
                 return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
-            threading.Thread(target=run_design, args=(what, clip(body.get("brief", ""), "notes")[0]), daemon=True).start()
+            threading.Thread(target=run_design, args=(what, clip(body.get("brief", ""), "notes")[0], str(body.get("name", "")).strip()[:40]),
+                             daemon=True).start()
             return self._send(202, {"ok": True, "message": f"Rana is drawing the {what}: 3 options, rendered and checked by Israa (about 15-25 minutes)."})
+        if u.path == "/api/design/trace":   # 2.62.0: vtracer turns a picture into a vector {image, colors, bw} (Atlas: hq trace)
+            body = self._json_body()
+            try:
+                got = design.trace(str(body.get("image", "")), int(body.get("colors") or 6), bool(body.get("bw")))
+            except (ValueError, RuntimeError, OSError) as e:
+                return self._send(400, {"error": f"Couldn't trace it: {e}"})
+            cp.log(str(body.get("by") or "Atlas"), "design_traced", None, got)
+            return self._send(200, {"ok": True, **got, "message": f"Traced: {got['svg']} ({got['paths']} shapes, {got['bytes']:,} bytes)"
+                                    + (f", preview {got['preview']}" if got.get("preview") else "") + "."})
         if u.path.startswith("/api/design/"):   # /api/design/<slug>/<version>/choose {option}
             parts = u.path.strip("/").split("/")
             try:

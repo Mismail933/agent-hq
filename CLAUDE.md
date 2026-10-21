@@ -489,6 +489,33 @@ Agents never spend money without the owner's explicit approval.
   `design.json` (status ready -> chosen). The owner picks on Today (`openDesign`, images via `/api/brand/...`) or on the phone
   (`design_cards`, `DZ:<slug>.<v>.<k>`); `design.choose` copies it to content/brand/<what>/chosen/. `first_logo()`: the Agent HQ
   logo the owner asked for starts by itself once (marker content/brand/.logo-requested).
+  Logo maker (2.62.0; the owner via Atlas 2026-10-21: "make Rana a great logo maker", free tools only; he approved the four
+  downloads in the Builder chat). `logo.py` (shorts venv: fontTools 4.67 MIT, vtracer 0.6 MIT, Pillow, certifi):
+  - Real type (rule design.real_type): 20 Google Fonts display families (`logo.FAMILIES`, SIL OFL, each folder keeps OFL.txt; ~5 MB in
+    ~/.agent-hq-anim/fonts/logo, fetched once from google/fonts at `GF_COMMIT`, `ensure_fonts`). Rana still writes SVG <text>
+    (tspan, textPath for type on a circle, letter-spacing px/em, text-anchor, dominant-baseline middle, dx/dy); `animate.design_render`
+    first runs `logo.finish(option)`: every <text> becomes that font's own outlines with its GPOS/kern pair kerning (variable fonts
+    cut at the weight, Bodoni's opsz at its display end; a missing letter from Montserrat/Cormorant Garamond, noted), her file is
+    kept as *.text.svg, textPath guides move into <defs>, the wordmark's viewBox is fitted to what is drawn (+8% of its height),
+    an icon running off its 512 canvas is scaled back in, and both files are audited -> audit.json. Unknown families map to
+    Cormorant Garamond (serif-like names) or Montserrat. Rule design.fonts (comma list, empty = all 20; validated) limits her choice.
+    Before she draws, `design._prepare` runs `logo.py prep` -> her work folder's fonts/specimen.png (the name in every family, 400 /
+    heaviest / Title Case) + fonts/measures.txt (the name's width in em and cap height per weight) so she lays type out by numbers.
+    The name: `hq design <what> ["brief"] --name NAME` (POST /api/design `name`), else the brief's first word in capitals.
+  - Method (rule design.logo_method): kaankiziltug/logo-design-skill (MIT) at `SKILL_SHA`, sparse-cloned by `logo.ensure_skill` into
+    ~/.agent-hq-anim/logo-skill WITHOUT skills/logo-design/assets/library (1,432 other companies' logos: trademarks, never copied).
+    Its SKILL.md + references (not library-guide.md) are copied to Rana's work folder; `METHOD` tells her to read them and work its
+    phases (brief, cliches, word map, 8-12 one-line concepts across mark types -> `longlist`, build the 3 strongest, test at 16 px,
+    craft pass), where this job wins (no scripts, no library, no checkpoint, 512 canvas, <text> allowed because we outline it).
+    `max_turns` 40 then. Israa reads its critique.md + testing-checklist.md and gets each option's fonts and the skill's
+    `svg_audit.py` findings (run with `python -I` on a copy without invisible shapes: `logo.audit_drawn`); REVIEW_SCHEMA has `score`.
+    The sheet shows the icon at 64, 32 and 16 px real size too, and the audit scores; design.json options carry `audit`.
+  - `hq trace <image> [--colors N] [--bw]` (POST /api/design/trace, `design.trace`): vtracer turns a PNG/JPG/WEBP from Atlas-HQ/review/
+    or content/ (quantised to N colours first) into content/brand/traced/<stem>-<time>/trace.svg + preview.png (`logo.py still`, the
+    renderer's SvgStill). A starting point or reference (e.g. a FLUX painting from the Mac), never a finished logo by itself.
+  - Tested: a Cinzel/Montserrat wordmark + a seal with text on a ring rendered right (kerning, fitted box); practice-mode job end to
+    end. Not yet: overlapping contours inside variable-font letters are kept (nonzero fill draws them whole; removing overlaps needs
+    skia-pathops); the skill's presentation boards and export_variants (favicon/app-icon sets) aren't wired in.
 - `cast.py` (2.28.0, Atlas's "Make the Animator the company's character artist"): Rana redraws a project's cast from the owner's
   picture(s). `hq cast-draw <project> <image...> ["notes"]` (`POST /api/project/<id>/cast-draw`, journaled `cast_draw`, holds
   CHARMAKING so the animation tools are hers): content/project-N/cast/v<K>/ gets the project's current cast file (or the kit's

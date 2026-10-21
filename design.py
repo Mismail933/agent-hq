@@ -28,6 +28,31 @@ BRAND = ROOT / "content" / "brand"
 RANA = "Rana"
 MAX_SVG = 60000
 SAFE_FONTS = "Arial Black, Arial, Georgia, Verdana, Trebuchet MS, Impact, Segoe UI, Tahoma, Times New Roman"
+# 2.62.0 (the owner: "make Rana a great logo maker"): real fonts (logo.py; rule design.real_type) and the logo-design skill's method
+# (rule design.logo_method). Rana still writes SVG <text>; animate.py design-render turns it into the font's own outlines.
+FONT_RULES = """- LETTERING: write every word as an SVG <text> element (it may hold <tspan>s, or a <textPath> for type on a circle or arc)
+  whose font-family is one of these real fonts. Afterwards our code replaces it with the exact letter outlines of that font, with
+  its kerning, at any weight the family has (font-weight 100-900 within its range). So your type is real typography:
+{fonts}
+  Open fonts/specimen.png with Read: it shows the name in every one of them; choose by eye, deliberately (what does the face say?).
+  fonts/measures.txt gives the name's width in em per family and weight: width in px = font-size x em + letter-spacing x (letters - 1).
+  Lay type out by those numbers. letter-spacing (px or em), text-anchor (start/middle/end), dominant-baseline="middle", x/y/dx/dy
+  and textPath's startOffset work as in a browser. text-transform doesn't: type capitals as capitals.
+  The wordmark's viewBox is fitted to what you draw afterwards (with even clear space). Keep the icon inside its 512 x 512 canvas."""
+SAFE_RULES = """- The WORDMARK sets the name in a font from this list only (the renderer has no others): """ + SAFE_FONTS + """. Use
+  text-anchor and letter-spacing deliberately; pair it with a small version of the icon if that helps."""
+METHOD = """
+YOUR METHOD is the logo-design skill (MIT licence, by kaankiziltug), copied into logo-skill/. Before you draw, Read
+logo-skill/SKILL.md, then logo-skill/references/principles.md, mark-types.md, typography.md, visual-techniques.md,
+svg-construction.md and testing-checklist.md (and color.md when colour carries the idea). Then work through its phases yourself:
+the brief (exact name, what they do, audience, 3-5 adjectives, where it must work), the category's cliches (off-limits unless you
+give them a fresh form), a word map, 8-12 one-sentence concepts across at least two mark types, and build the three strongest and
+most different. Test each in your head at 16 px, in one colour and reversed, and do its craft pass (letter test, junctions,
+literalness). Put your concepts in `longlist` (one line each, the three you built marked) and each option's mark type in `mark_type`.
+Where the skill differs from this job, this job wins: you can't run its scripts and there is no logo library (our code renders your
+files, sets the type, runs its audit, and Israa reviews them); don't ask questions or stop at a checkpoint (answer now; the owner
+picks from your three); the icon canvas is 512 x 512; and <text> IS how you set type here (the skill's "no live text" is done by
+our code, which outlines it before anyone sees it)."""
 
 SYSTEM = """You are Rana, the Designer & Animator of a small AI-run company (Agent HQ). Today you design brand art.
 
@@ -35,19 +60,22 @@ You draw in plain SVG, by hand, like a senior brand designer:
 - A strong, simple idea first; then shape. Few elements, clear silhouette, generous negative space, 1-3 colours plus neutrals.
 - The square ICON must read at 64 px (no thin hairlines, no small text, no detail that disappears when small) and work on BOTH a
   light (#F5F5F2) and a dark (#0B1220) background: test it in your head on both.
-- The WORDMARK sets the name in a font from this list only (the renderer has no others): """ + SAFE_FONTS + """. Use
-  text-anchor and letter-spacing deliberately; pair it with a small version of the icon if that helps.
+{lettering}
 - Both are self-contained SVG 1.1: a viewBox, no width/height in % , no <script>, no <foreignObject>, no <image>, no links or
   external files, no CSS @import, no filters that blur text. Gradients and simple shapes are fine. Under 20 KB each.
 - Three options that are really different from each other (different idea, not three colours of one idea).
 - Never copy or imitate an existing brand's logo. Original work only.
 
 Reference images named in the brief: open each with Read and look at it before you draw.
+{method}
 Answer only with the structured output."""
 
-DESIGN_SCHEMA = {"type": "object", "properties": {"options": {"type": "array", "minItems": 2, "maxItems": 4, "items": {
+DESIGN_SCHEMA = {"type": "object", "properties": {
+    "longlist": {"type": "array", "items": {"type": "string"}, "description": "Your 8-12 one-sentence concepts (the three you built marked)"},
+    "options": {"type": "array", "minItems": 2, "maxItems": 4, "items": {
     "type": "object", "properties": {
         "name": {"type": "string", "description": "2-4 words"},
+        "mark_type": {"type": "string", "description": "wordmark, monogram, letterform, pictorial, abstract, emblem, mascot or combination"},
         "idea": {"type": "string", "description": "The idea in one or two plain sentences for the owner"},
         "colors": {"type": "array", "items": {"type": "string"}},
         "icon_svg": {"type": "string", "description": "Square icon, viewBox 0 0 512 512"},
@@ -113,18 +141,125 @@ def _refs(brief):
     return names
 
 
-def ask_rana(what, brief, notes=""):
+def _shorts_python():
+    import os
+    import settings
+    p = getattr(settings, "SHORTS_PYTHON", None) or Path.home() / ".agent-hq-shorts" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    return str(p) if Path(p).exists() else None
+
+
+def _logo(*args, timeout=600):
+    """Run logo.py in the video tools' Python (fontTools, Pillow, vtracer). Returns its RESULT json; raises RuntimeError."""
+    import subprocess
+    py = _shorts_python()
+    if not py:
+        raise RuntimeError("the video tools aren't set up on this computer")
+    p = subprocess.run([py, str(ROOT / "logo.py"), *map(str, args)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=timeout, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    res = next((l[7:] for l in (p.stdout or "").splitlines() if l.startswith("RESULT ")), None)
+    if not res:
+        raise RuntimeError(((p.stderr or p.stdout or "no output").strip().splitlines() or ["?"])[-1][:300])
+    return json.loads(res)
+
+
+def trace(image, colors=6, bw=False):
+    """vtracer (logo.py): a picture from Atlas-HQ/review/uploads|refs or content/ -> content/brand/traced/<stem>-<time>/trace.svg and
+    preview.png (rendered on light). A starting point or reference for a mark, never a finished logo by itself. Returns facts."""
+    import atlas_engine
+    p = Path(image.replace("\\", "/"))
+    cands = [p, ROOT / image, atlas_engine.HOME / image]
+    for key, base in (("review/", atlas_engine.HOME), ("content/", ROOT)):
+        if key in image.replace("\\", "/"):
+            s = image.replace("\\", "/")
+            cands.append(base / s[s.find(key):])
+    src = next((c.resolve() for c in cands if c.is_file()), None)
+    if not src:
+        raise ValueError(f"no such picture: {image}")
+    roots = [(atlas_engine.HOME / "review").resolve(), (ROOT / "content").resolve()]
+    if not any(r in src.parents for r in roots) or src.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+        raise ValueError("only a PNG/JPG/WEBP from Atlas-HQ/review/ or content/ can be traced")
+    out = BRAND / "traced" / f"{_slug(src.stem)}-{time.strftime('%Y%m%d-%H%M%S')}"
+    got = _logo("trace", src, out / "trace.svg", "--colors", max(2, min(int(colors), 32)), *(["--bw"] if bw else []), timeout=900)
+    got["svg"] = (out / "trace.svg").relative_to(ROOT).as_posix()
+    try:
+        _logo("still", out / "trace.svg", out / "preview.png", timeout=900)
+        got["preview"] = (out / "preview.png").relative_to(ROOT).as_posix()
+    except RuntimeError as e:
+        got["preview_error"] = str(e)[:200]
+    return got
+
+
+def name_of(what, brief, name=""):
+    """The name to set: the one given, else the first word in capitals in the brief (EPOCH), else the thing designed."""
+    if name.strip():
+        return name.strip()[:40]
+    for w in re.findall(r"\b[A-Z][A-Z0-9&'-]{2,}\b", brief or ""):
+        if w not in ("THE", "AND", "FOR", "NOT", "NEW", "LOGO", "ICON", "SVG", "PNG", "AN", "YOUTUBE", "FILM", "STUDIO"):
+            return w
+    return what.strip().title()[:40]
+
+
+def allowed_fonts():
+    import logo
+    import rules
+    got = [logo.family_of(x.strip())[0] for x in (rules.get("design.fonts") or "").split(",") if x.strip()]
+    return [f for f in logo.FAMILIES if not got or f in got]
+
+
+def _prepare(name):
+    """Rana's work folder for a design job: the font sheet + measures and the skill's method, as the live rules say.
+    Returns (system prompt, the files she should open, notes for the log)."""
+    import logo
+    import rules
+    folder = workers.WORK / RANA.lower()
+    lettering, method, opens, notes = SAFE_RULES, "", [], []
+    if rules.get("design.real_type"):
+        fams = allowed_fonts()
+        try:
+            shutil.rmtree(folder / "fonts", ignore_errors=True)
+            _logo("prep", folder / "fonts", name, ",".join(fams))
+            lines = "\n".join(f"    {f} ({logo.FAMILIES[f][2]}): {logo.FAMILIES[f][3]}" for f in fams)
+            lettering = FONT_RULES.format(fonts=lines)
+            opens += ["fonts/specimen.png", "fonts/measures.txt"]
+        except (RuntimeError, OSError, ValueError) as e:
+            notes.append(f"the font sheet couldn't be made ({e}); Rana used the system fonts")
+    if rules.get("design.logo_method"):
+        skill = logo.ensure_skill()
+        if skill:
+            dst = folder / "logo-skill"
+            shutil.rmtree(dst, ignore_errors=True)
+            (dst / "references").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(skill / "SKILL.md", dst / "SKILL.md")
+            for f in (skill / "references").glob("*.md"):
+                if f.name != "library-guide.md":   # the library (other brands' logos) isn't here
+                    shutil.copy2(f, dst / "references" / f.name)
+            method = METHOD
+            opens.append("logo-skill/SKILL.md")
+        else:
+            notes.append("the logo-design skill isn't on this computer (git missing?); Rana drew without its method")
+    return SYSTEM.replace("{lettering}", lettering).replace("{method}", method), opens, notes
+
+
+def ask_rana(what, brief, notes="", name=""):
     """Rana draws the options. Returns the list of option dicts (SVGs cleaned); unusable options are dropped with a reason."""
     import os
     if os.environ.get("HQ_SIMULATE") == "1":
         got = {"options": _sim_options()}
     else:
         refs = _refs(brief)
-        task = (f"Design: {what}\nBrief from the owner and Atlas: {brief or '(none)'}\n"
+        nm = name_of(what, brief, name)
+        system, opens, why = _prepare(nm)
+        for w in why:
+            cp.log(RANA, "design_note", None, {"what": what, "note": w})
+        task = (f"Design: {what}\nThe name to set: {nm}\nBrief from the owner and Atlas: {brief or '(none)'}\n"
+                + (f"\nOpen first: {', '.join(opens)}\n" if opens else "")
                 + (f"\nReference images (open each with Read first): {', '.join(refs)}\n" if refs else "")
                 + (f"\nIsraa's notes on your last attempt (fix exactly these, keep what she liked):\n{notes}\n" if notes else "")
                 + "\nDraw three options.")
-        got, _ = workers.run(RANA, None, SYSTEM, task, tools=("Read",) if refs else (), schema=DESIGN_SCHEMA, max_turns=12)
+        got, _ = workers.run(RANA, None, system, task, tools=("Read",) if (refs or opens) else (), schema=DESIGN_SCHEMA,
+                             max_turns=40 if opens else 12)
+        if got.get("longlist"):
+            cp.log(RANA, "design_longlist", None, {"what": what, "concepts": got["longlist"][:12]})
     out = []
     for o in got.get("options") or []:
         try:
@@ -154,19 +289,24 @@ def save_options(what, options, version=None):
 
 REVIEW_TASK = """Review {n} logo options Rana drew for: {what}. Brief: {brief}
 
-Each option has one contact sheet (open each with Read): the icon at 256 px, at 64 px real size and the 64 px enlarged, on light and
-dark; the wordmark large and at header size, on light and dark.
+Each option has one contact sheet (open each with Read): the icon at 256 px, at 64, 32 and 16 px real size and the 64 px enlarged,
+on light and dark; the wordmark large and at header size, on light and dark.
 {sheets}
-
+{facts}
 For each option judge, strictly, like a senior brand designer:
-1. Legible at 64 px: does the icon's shape survive? Is any text in it still readable? Thin lines that vanish = fail.
+1. Legible small: does the icon's shape survive at 64 and 32 px (a YouTube avatar) and still say something at 16? Is any text in it
+   readable? Thin lines that vanish = fail.
 2. Works on light AND dark backgrounds (contrast, no part disappearing).
-3. The wordmark reads at header size; spacing and weight are deliberate.
-4. Fits the brief; original (not an imitation of a known brand); simple and memorable.
-Verdict good or weak. For weak: exact, drawable fixes (what to thicken, enlarge, recolour, remove)."""
+3. The wordmark reads at header size; the typeface fits the brief; spacing and weight are deliberate; every letter reads as itself.
+4. The idea: one sentence, not a category cliche, relevant but not literal; original (not an imitation of a known brand); simple
+   and memorable.
+5. Craft: clean junctions, consistent weights, no accidental shapes; the audit's FAIL/WARN lines are facts to weigh (near-miss angles
+   and tiny details inside letters are normal for type).
+Verdict good or weak, and a score 1-10. For weak: exact, drawable fixes (what to thicken, enlarge, recolour, remove, which font)."""
 
 REVIEW_SCHEMA = {"type": "object", "properties": {"options": {"type": "array", "items": {"type": "object", "properties": {
     "option": {"type": "integer"}, "verdict": {"type": "string", "enum": ["good", "weak"]},
+    "score": {"type": "integer", "minimum": 1, "maximum": 10},
     "legible_64": {"type": "boolean"}, "light_and_dark": {"type": "boolean"}, "summary": {"type": "string"},
     "fixes": {"type": "array", "items": {"type": "string"}}},
     "required": ["option", "verdict", "legible_64", "light_and_dark", "summary"]}}}, "required": ["options"]}
@@ -184,14 +324,40 @@ def review(folder, what, brief):
     stage = workers.WORK / quality.ISRAA.lower() / "design"
     shutil.rmtree(stage, ignore_errors=True)
     stage.mkdir(parents=True, exist_ok=True)
-    names = []
+    names, facts = [], []
     for o in opts:
         shutil.copy2(o / "sheet.png", stage / f"{o.name}.png")
         names.append(f"  - option {o.name.split('-')[1]}: design/{o.name}.png")
+        try:   # 2.62.0: the real fonts used and the logo-design skill's audit of each file
+            au = json.loads((o / "audit.json").read_text(encoding="utf-8"))
+            meta = json.loads((o / "meta.json").read_text(encoding="utf-8"))
+            line = [f"Option {o.name.split('-')[1]} ({meta.get('name', '')}; {meta.get('mark_type') or 'mark type not given'}): "
+                    f"fonts {', '.join(au.get('fonts') or []) or 'none'}"]
+            for part in ("icon", "wordmark"):
+                a = au.get(part) or {}
+                if a:
+                    line.append(f"  {part} audit {a.get('score')}/100, colours {', '.join(a.get('colors') or [])}"
+                                + "".join(f"\n    {x}" for x in (a.get("findings") or [])[:6]))
+            line += [f"  note: {n}" for n in (au.get("notes") or [])[:4]]
+            facts.append("\n".join(line))
+        except (OSError, ValueError):
+            pass
+    import rules
+    critique = ""
+    if rules.get("design.logo_method"):
+        import logo
+        skill = logo.ensure_skill()
+        if skill:
+            for ref in ("critique.md", "testing-checklist.md"):
+                shutil.copy2(skill / "references" / ref, stage / ref)
+            critique = ("\nFirst Read design/critique.md and design/testing-checklist.md (the logo-design skill's critique and tests, MIT): "
+                        "judge by them. Ignore their script names.\n")
+    fact_text = critique + ("\nMeasured by code (the skill's svg_audit on each finished file):\n" + "\n".join(facts) + "\n" if facts else "")
     system = quality.ISRAA_BASE.format(today=time.strftime("%B %d, %Y"),
                                        style="(Judge brand design: legibility at small sizes, light and dark, originality, the brief.)")
-    got, _ = workers.run(quality.ISRAA, None, system, REVIEW_TASK.format(n=len(opts), what=what, brief=brief or "(none)", sheets="\n".join(names)),
-                         tools=("Read",), schema=REVIEW_SCHEMA, max_turns=20)
+    got, _ = workers.run(quality.ISRAA, None, system, REVIEW_TASK.format(n=len(opts), what=what, brief=brief or "(none)", sheets="\n".join(names),
+                                                                         facts=fact_text),
+                         tools=("Read",), schema=REVIEW_SCHEMA, max_turns=30)
     out = {int(r["option"]): r for r in got.get("options") or [] if str(r.get("option", "")).isdigit() or isinstance(r.get("option"), int)}
     for k, r in out.items():
         cp.log(quality.ISRAA, "design_reviewed", None, {"what": what, "option": k, "verdict": r.get("verdict")})
@@ -200,8 +366,8 @@ def review(folder, what, brief):
 
 def replace_option(folder, k, o):
     f = folder / f"option-{k}"
-    for old in f.glob("*.png"):
-        old.unlink()
+    for old in [*f.glob("*.png"), *f.glob("*.text.svg"), f / "audit.json"]:
+        old.unlink(missing_ok=True)
     (f / "icon.svg").write_text(o["icon_svg"], encoding="utf-8")
     (f / "wordmark.svg").write_text(o["wordmark_svg"], encoding="utf-8")
     (f / "meta.json").write_text(json.dumps({k2: v for k2, v in o.items() if not k2.endswith("_svg")}, indent=1), encoding="utf-8")
@@ -211,6 +377,12 @@ def write_state(folder, what, brief, status="ready", review=None):
     opts = []
     for f in sorted(folder.glob("option-*"), key=lambda p: int(p.name.split("-")[1])):
         meta = json.loads((f / "meta.json").read_text(encoding="utf-8"))
+        try:   # the real type and the skill's audit (2.62.0)
+            au = json.loads((f / "audit.json").read_text(encoding="utf-8"))
+            meta["audit"] = {"fonts": au.get("fonts"), "icon": (au.get("icon") or {}).get("score"),
+                             "wordmark": (au.get("wordmark") or {}).get("score")}
+        except (OSError, ValueError):
+            pass
         opts.append({**meta, "folder": f.relative_to(ROOT).as_posix(), "sheet": (f / "sheet.png").relative_to(ROOT).as_posix()
                      if (f / "sheet.png").exists() else "", "review": (review or {}).get(int(f.name.split("-")[1]))})
     state = {"what": what, "brief": brief, "version": int(folder.name[1:]), "status": status, "made": time.strftime("%Y-%m-%d %H:%M"),
