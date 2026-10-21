@@ -516,6 +516,10 @@ Agents never spend money without the owner's explicit approval.
   - Tested: a Cinzel/Montserrat wordmark + a seal with text on a ring rendered right (kerning, fitted box); practice-mode job end to
     end. Not yet: overlapping contours inside variable-font letters are kept (nonzero fill draws them whole; removing overlaps needs
     skia-pathops); the skill's presentation boards and export_variants (favicon/app-icon sets) aren't wired in.
+    2.62.1: `hq design-pick <what> <version> <option>` (Atlas, only on the owner's word: with phone.send "nothing" no card with
+    buttons reaches his phone, so he answers Atlas). EPOCH round 3 = content/brand/logo/v6 (Rana's first three; Israa's design check
+    is off by the owner's rule of 10-08, so the Builder looked: Gate and Standing Stone were weak) and v7 (Cut in Stone kept + two
+    redrawn with the Builder's notes; overview.png = the one picture sent to his phone).
 - `cast.py` (2.28.0, Atlas's "Make the Animator the company's character artist"): Rana redraws a project's cast from the owner's
   picture(s). `hq cast-draw <project> <image...> ["notes"]` (`POST /api/project/<id>/cast-draw`, journaled `cast_draw`, holds
   CHARMAKING so the animation tools are hers): content/project-N/cast/v<K>/ gets the project's current cast file (or the kit's
