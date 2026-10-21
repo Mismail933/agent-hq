@@ -214,9 +214,144 @@ def voice_eleven(spec, folder):
     return out
 
 
+CHATTER_TRIES = 3       # a Chatterbox take that drops or invents words is made again with another seed, the best of these kept
+CHATTER_GOOD = 0.92     # share of the line's words Whisper must hear in a take to keep it without a retake
+CHATTER_LEVEL = 0.1     # every take's speech brought to this RMS (~ -20 dBFS), so separately made lines sound equally loud
+
+
+def _trim(a, sr, thr_db=-40.0, pad=0.05):
+    """A take without its silent ends (by loudness on 10 ms blocks, never by word times). Returns (audio, seconds cut at the start)."""
+    blk = max(1, sr // 100)
+    n = len(a) // blk
+    if n < 3:
+        return a, 0.0
+    r = np.sqrt((a[:n * blk].reshape(n, blk) ** 2).mean(axis=1) + 1e-12)
+    on = np.where(20 * np.log10(r / (r.max() + 1e-12)) > thr_db)[0]
+    if not len(on):
+        return a, 0.0
+    i0 = max(0, on[0] * blk - int(pad * sr))
+    i1 = min(len(a), (on[-1] + 1) * blk + int(pad * sr))
+    return a[i0:i1], i0 / sr
+
+
+def _level(a, sr):
+    blk = max(1, sr // 100)
+    n = len(a) // blk
+    if n < 3:
+        return a
+    r = np.sqrt((a[:n * blk].reshape(n, blk) ** 2).mean(axis=1) + 1e-12)
+    act = r[20 * np.log10(r / (r.max() + 1e-12)) > -30]
+    rms = float(np.sqrt((act ** 2).mean())) if len(act) else float(r.mean())
+    g = CHATTER_LEVEL / max(rms, 1e-6)
+    return np.clip(a * min(g, 8.0), -0.98, 0.98).astype("float32")
+
+
+_WHISPER = [None]
+
+
+def _heard(a, sr):
+    """Whisper's words with their times (faster-whisper base.en, as review_tools hears a finished video)."""
+    from faster_whisper import WhisperModel
+    if _WHISPER[0] is None:
+        _WHISPER[0] = WhisperModel("base.en", device="cpu", compute_type="int8")
+    a16 = np.interp(np.arange(int(len(a) * 16000 / sr)) / 16000, np.arange(len(a)) / sr, a).astype("float32")
+    segs, _ = _WHISPER[0].transcribe(a16, word_timestamps=True, vad_filter=False, condition_on_previous_text=False, language="en")
+    return [[w.word.strip(), float(w.start), float(w.end)] for sg in segs for w in (sg.words or []) if w.word.strip()]
+
+
+def _take_score(spoken, heard):
+    """(share of the line's words heard, words heard that aren't in the line): numbers and letters compared as letters only."""
+    import difflib
+    tok = lambda t: [w for w in re.findall(r"[a-z']+", t.lower()) if w]
+    want, got = tok(spoken), tok(" ".join(w for w, _, _ in heard))
+    if not want:
+        return 1.0, 0
+    sm = difflib.SequenceMatcher(None, want, got, autojunk=False)
+    hit = sum(b.size for b in sm.get_matching_blocks())
+    extra = sum(j2 - j1 for op, i1, i2, j1, j2 in sm.get_opcodes() if op == "insert")
+    return hit / len(want), extra
+
+
+def _tempo(a, sr, f):
+    """The take a little faster or slower (ffmpeg atempo, pitch kept): the 'paced' read for a voice that has no speed setting."""
+    import tempfile
+    ff = shorts.find_ffmpeg()
+    with tempfile.TemporaryDirectory() as tmp:
+        i, o = Path(tmp) / "i.wav", Path(tmp) / "o.wav"
+        sf.write(str(i), a, sr)
+        subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(i), "-filter:a", f"atempo={f:.4f}", str(o)], check=True)
+        b, _ = sf.read(str(o), dtype="float32")
+    return b
+
+
+def voice_chatterbox(spec, folder):
+    """2.64.0 (the owner's pick 2026-10-21: "go with chatter box am micheal"): Chatterbox Nano (MIT, free, on this PC), the voice copied
+    from a clip of our own Kokoro voice (chatterbox_voice.ensure_ref). One take per line, cached in _voice-cache/c-<key>.wav/.json;
+    Whisper hears each new take for its word times, and a take that drops or invents words is made again with another seed
+    (CHATTER_TRIES), the best kept. 'paced' = pace_of as a small tempo change of the finished take (spec 'speed' = the base tempo)."""
+    import hashlib
+    import chatterbox_voice as cv
+    ref_voice = spec["voice"].split(":", 1)[1] or "am_michael"
+    ref = cv.ensure_ref(ref_voice)
+    refsig = hashlib.sha1(ref.read_bytes()).hexdigest()[:8]
+    tries = int(spec.get("retakes", CHATTER_TRIES))
+    cache = folder / "_voice-cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    L = spec["lines"]
+    spoken = [ln.get("say") or ln["text"] for ln in L]
+    keys = [hashlib.sha1(f"chatterbox|{cv.MODEL_TAG}|{ref_voice}|{refsig}|{t}".encode()).hexdigest()[:16] for t in spoken]
+    have = lambda i: (cache / f"c-{keys[i]}.wav").exists() and (cache / f"c-{keys[i]}.json").exists()
+    todo = [i for i in range(len(L)) if not have(i)]
+    if todo:
+        say(f"  Chatterbox: {len(todo)} of {len(L)} lines to voice (~{sum(len(spoken[i].split()) for i in todo) / 150 * 5:.0f} min on this PC)")
+        raw = cache / "_chatter-raw"
+        best = {}
+        for attempt in range(tries):
+            left = [i for i in todo if i not in best or best[i]["score"] < CHATTER_GOOD or best[i]["extra"] > 2]
+            if not left:
+                break
+            if attempt:
+                say(f"  retake {attempt}: {len(left)} line(s) dropped or added words")
+            jobs = [{"key": f"{keys[i]}-{attempt}", "text": spoken[i], "seed": 1009 * attempt + i} for i in left]
+            cv.speak(jobs, raw, ref, say=say)
+            for i, j in zip(left, jobs):
+                a, sr = sf.read(str(raw / f"{j['key']}.wav"), dtype="float32")
+                a = a.mean(axis=1) if a.ndim > 1 else a
+                a, _ = _trim(a, sr)
+                a = _level(a, sr)
+                heard = _heard(a, sr)
+                score, extra = _take_score(spoken[i], heard)
+                if i not in best or (score - 0.03 * extra) > (best[i]["score"] - 0.03 * best[i]["extra"]):
+                    best[i] = {"audio": a, "sr": sr, "words": heard, "score": score, "extra": extra, "try": attempt}
+        for i in todo:
+            b = best[i]
+            a48 = np.interp(np.arange(int(len(b["audio"]) * SR / b["sr"])) / SR, np.arange(len(b["audio"])) / b["sr"], b["audio"]).astype("float32")
+            sf.write(str(cache / f"c-{keys[i]}.wav"), a48, SR)
+            (cache / f"c-{keys[i]}.json").write_text(json.dumps({"words": b["words"], "heard": round(b["score"], 3), "extra": b["extra"],
+                                                                 "try": b["try"]}), encoding="utf-8")
+            if b["score"] < CHATTER_GOOD:
+                say(f"  line {i + 1}: best take heard {b['score']:.0%} of its words: listen to it")
+        shutil.rmtree(raw, ignore_errors=True)
+    base = float(spec.get("speed", 1.0))
+    out = []
+    for i, ln in enumerate(L):
+        a48, _ = sf.read(str(cache / f"c-{keys[i]}.wav"), dtype="float32")
+        meta = json.loads((cache / f"c-{keys[i]}.json").read_text(encoding="utf-8"))
+        words = meta["words"]
+        f = pace_of(ln, base) if spec.get("paced") else base
+        if abs(f - 1.0) > 0.01:
+            a48 = _tempo(a48, SR, f)
+            words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
+        out.append({"audio": a48, "words": words or [[ln["text"].split()[0], 0.0, len(a48) / SR]], "secs": len(a48) / SR})
+        say(f"  line {i + 1}: {len(a48) / SR:.1f} s, heard {meta['heard']:.0%}" + (f" (take {meta['try'] + 1})" if meta.get("try") else ""))
+    return out
+
+
 def voice_lines(spec, folder):
     if str(spec.get("voice", "")).startswith("eleven:"):
         return voice_eleven(spec, folder)
+    if str(spec.get("voice", "")).startswith("chatterbox:"):
+        return voice_chatterbox(spec, folder)
     from kokoro import KPipeline
     voice, speed = spec.get("voice", "am_michael"), float(spec.get("speed", 0.92))
     pipe = KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M")
