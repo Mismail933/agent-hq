@@ -15,7 +15,10 @@ it down uses motion interpolation. A picture shot gets a slow camera move and it
 
   python musicvideo.py render <edit.json> <out folder> [--quick] [--vertical] [--until S]
 --quick: 960x540, no motion interpolation (a test in a few minutes). --vertical: also vertical.mp4 (9:16: the wide picture in
-the middle over a blurred, darkened copy of itself, the lyrics under it). Writes wide.mp4, wide.phone.mp4 (720p, under
+the middle over a blurred, darkened copy of itself, the lyrics under it). With "vertical_style": "frame45" in the edit (look C,
+the owner's pick for Shorts, 2.63.0) each shot is cropped to 4:5 around its "vfocus" (share of the width, default 0.5), under a
+header ("vertical_title": {"title", "by"}: the song title in Cinzel and the channel's name in gold), the lyrics over the lower
+part of the picture at ~70% of the height, clear of YouTube's own buttons. Writes wide.mp4, wide.phone.mp4 (720p, under
 Telegram's 50 MB), review/sheet-NN.png (a frame every 2 s) and prints RESULT {json} or BLOCKED <reason>.
 Runs in the video tools' Python (numpy, Pillow, certifi). The checks stop a render that has a gap, a missing shot, a blank stretch.
 """
@@ -241,7 +244,7 @@ def picture_clip(job):
 def shot_key(s, base, W, H, quick):
     src = base / (s.get("video") or s.get("picture"))
     st = src.stat()
-    blob = json.dumps({k: v for k, v in s.items() if k not in ("note", "prompt", "video_prompt", "status")}, sort_keys=True)
+    blob = json.dumps({k: v for k, v in s.items() if k not in ("note", "prompt", "video_prompt", "status", "vfocus")}, sort_keys=True)   # vfocus: only the compositor uses it
     return hashlib.md5(f"{CODE}|{blob}|{st.st_size}|{int(st.st_mtime)}|{W}x{H}|{quick}|{fr(s['end']) - fr(s['start'])}".encode()).hexdigest()[:12]
 
 
@@ -312,11 +315,11 @@ def line_image(text, size, max_w):
     return rgb, alpha
 
 
-def lyric_layers(lyrics, W, H, vertical=False):
+def lyric_layers(lyrics, W, H, vertical=False, width=None):
     size = int((W * 0.06) if vertical else (H * 0.045))
     out = []
     for ln in lyrics:
-        rgb, a = line_image(ln["text"], size, W * (0.86 if vertical else 0.84))
+        rgb, a = line_image(ln["text"], size, W * (width or (0.86 if vertical else 0.84)))
         out.append({"in": float(ln["in"]), "out": float(ln["out"]), "rgb": rgb, "a": a, "size": size})
     out.sort(key=lambda L: L["in"])
     for L, nxt in zip(out, out[1:] + [None]):   # a line is gone before the next one starts to appear: never two at once
@@ -395,6 +398,48 @@ def place_image(name, year, size):
     rgb = np.zeros((Hd, Wd, 3), np.float32)
     lit = core / np.maximum(alpha, 1e-4)
     rgb += (core_t / np.maximum(core, 1e-4) * lit)[..., None] * PLACE_INK + (core_r / np.maximum(core, 1e-4) * lit * (core_t < 0.5))[..., None] * PLACE_GOLD
+    return rgb, alpha
+
+
+HEADER_GOLD = np.array([201, 162, 39], np.float32)   # the EPOCH logo's gold (#C9A227)
+
+
+def title_header(title, by, VW):
+    """frame45's header as (rgb, alpha), VW wide: the song title in Cinzel capitals (warm white, shrunk to fit 88% of the width)
+    and the channel's name, letter-spaced, in gold under it, with a soft dark shadow."""
+    ff = font_file("Cinzel-wght.ttf", PLACE_FONT_URL)
+    title, by = (title or "").upper(), (by or "").upper()
+    s1, s2 = int(VW * 0.046), int(VW * 0.028)
+
+    def mk(size, weight):
+        f = ImageFont.truetype(str(ff), size) if ff else ImageFont.load_default()
+        try:
+            f.set_variation_by_axes([weight])
+        except Exception:   # noqa: BLE001
+            pass
+        return f
+
+    f1 = mk(s1, 700)
+    width = lambda f, txt, sp: sum(f.getlength(c) + sp for c in txt) - sp if txt else 0   # noqa: E731
+    while title and width(f1, title, s1 * 0.10) > VW * 0.88 and s1 > 12:
+        s1 -= 2
+        f1 = mk(s1, 700)
+    f2 = mk(s2, 600)
+    pad = int(VW * 0.02)
+    Hd = pad * 2 + int(s1 * 1.35) + int(s2 * 1.5)
+    tm, bm = Image.new("L", (VW, Hd), 0), Image.new("L", (VW, Hd), 0)
+    for m, f, txt, sp, y in ((tm, f1, title, s1 * 0.10, pad), (bm, f2, by, s2 * 0.32, pad + int(s1 * 1.35))):
+        d, x = ImageDraw.Draw(m), (VW - width(f, txt, sp)) / 2
+        for c in txt:
+            d.text((x, y), c, font=f, fill=255)
+            x += f.getlength(c) + sp
+    ct, cb = np.asarray(tm, np.float32) / 255, np.asarray(bm, np.float32) / 255
+    core = np.maximum(ct, cb)
+    shadow = np.asarray(Image.fromarray((core * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(s1 * 0.25)),
+                        np.float32) / 255 * 0.8
+    alpha = np.clip(core + shadow * (1 - core), 0, 1)
+    lit = core / np.maximum(alpha, 1e-4)
+    rgb = (ct / np.maximum(core, 1e-4) * lit)[..., None] * PLACE_INK + (cb / np.maximum(core, 1e-4) * lit)[..., None] * HEADER_GOLD
     return rgb, alpha
 
 
@@ -477,13 +522,27 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
     silent_w = work / "_wide-silent.mp4"
     enc = encoder(silent_w, W, H, quick)
     VW, VH = (540, 960) if quick else (1080, 1920)
+    vstyle = plan.get("vertical_style", "band")
     if vertical:
-        lv = lyric_layers(lyrics, VW, VH, vertical=True)
-        pv = place_layers(places, int(VW * 0.058))
         silent_v = work / "_vertical-silent.mp4"
         encv = encoder(silent_v, VW, VH, quick)
-        ph = int(VW * H / W)
-        py = int((VH - ph) / 2 - VH * 0.04)
+        if vstyle == "frame45":
+            lv = lyric_layers(lyrics, VW, VH, vertical=True, width=0.72)   # clear of YouTube's buttons on the right
+            pv = place_layers(places, int(VW * 0.05))
+            ph = int(VW * 5 / 4)
+            py = int(VH * 0.12)
+            vt = plan.get("vertical_title") or {}
+            head_rgb, head_a = title_header(vt.get("title", ""), vt.get("by", ""), VW)
+            head_y = max(0, py - head_rgb.shape[0] - int(VH * 0.008))
+            band45 = int(ph * 0.32)
+            pshade = np.zeros((ph, 1, 1), np.float32)
+            pshade[ph - band45:, 0, 0] = np.linspace(0, 0.6, band45)
+            lyric_bottom = int(VH * 0.28)
+        else:
+            lv = lyric_layers(lyrics, VW, VH, vertical=True)
+            pv = place_layers(places, int(VW * 0.058))
+            ph = int(VW * H / W)
+            py = int((VH - ph) / 2 - VH * 0.04)
     open_r, last, dark = {}, {}, []
     size = W * H * 3
     for f in range(total):
@@ -497,7 +556,7 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
             if len(buf) == size:
                 last[key] = np.frombuffer(buf, np.uint8).reshape(H, W, 3)
             if key in last:
-                frames.append((a, b, last[key]))
+                frames.append((a, b, last[key], float(s.get("vfocus", 0.5))))
         for key in [k for k in open_r if not any(sg[0].get("id") == k for sg in live)]:
             open_r[key].stdout.close()
             open_r[key].wait()
@@ -506,11 +565,13 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
             raise Blocked(f"no picture at {f / FPS:.2f} s")
         if len(frames) == 1:
             img = frames[0][2].astype(np.float32)
+            focus = frames[0][3]
         else:
-            (a1, b1, x1), (a2, b2, x2) = sorted(frames, key=lambda z: z[0])[:2]
+            (a1, b1, x1, f1), (a2, b2, x2, f2) = sorted(frames, key=lambda z: z[0])[:2]
             u = (f - a2 + 0.5) / max(1, b1 - a2)
             w = u * u * (3 - 2 * u)
             img = x1.astype(np.float32) * (1 - w) + x2.astype(np.float32) * w
+            focus = f1 * (1 - w) + f2 * w
         t = f / FPS
         if img.mean() < 6 and fade_in < t < end - fade_out:
             dark.append(t)
@@ -526,9 +587,20 @@ def render(edit_path, out_dir, quick=False, vertical=False, until=None):
             cw = int(VH * W / H)
             bg = bg.resize((cw, VH), Image.BILINEAR).crop(((cw - VW) // 2, 0, (cw - VW) // 2 + VW, VH))
             v = np.asarray(bg, np.float32) * 0.45
-            v[py:py + ph] = np.asarray(small.resize((VW, ph), Image.LANCZOS), np.float32)
-            v = draw_lyrics(v, lv, t, VW, VH, VH * 0.17)
-            v = draw_places(v, pv, t, int(VW * 0.05), max(0, py - int(VW * 0.058 * 3.4)))
+            if vstyle == "frame45":
+                cw45 = int(H * 4 / 5)
+                cx = int(min(max(focus * W - cw45 / 2, 0), W - cw45))
+                pic = np.asarray(small.crop((cx, 0, cx + cw45, H)).resize((VW, ph), Image.LANCZOS), np.float32)
+                v[py:py + ph] = pic * (1 - pshade) + shade_col * pshade
+                hh, hw = head_a.shape
+                ha = head_a[..., None]
+                v[head_y:head_y + hh, :hw] = v[head_y:head_y + hh, :hw] * (1 - ha) + head_rgb * ha
+                v = draw_lyrics(v, lv, t, VW, VH, lyric_bottom)
+                v = draw_places(v, pv, t, int(VW * 0.05), py + int(VW * 0.04))
+            else:
+                v[py:py + ph] = np.asarray(small.resize((VW, ph), Image.LANCZOS), np.float32)
+                v = draw_lyrics(v, lv, t, VW, VH, VH * 0.17)
+                v = draw_places(v, pv, t, int(VW * 0.05), max(0, py - int(VW * 0.058 * 3.4)))
             encv.stdin.write(np.clip(v * g, 0, 255).astype(np.uint8).tobytes())
         if f % (FPS * 20) == 0:
             say(f"  {t:6.1f} s of {end:.1f}")

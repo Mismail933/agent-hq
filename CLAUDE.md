@@ -599,6 +599,22 @@ Agents never spend money without the owner's explicit approval.
   old file); events `mv_ready`/`mv_failed` wake the autopilot. `hq mv | mv-shot | mv-render`. phone.py (2.43.0): a video the owner
   sends the bot (<= 20 MB, the Bot API's limit) is saved to Atlas-HQ/review/uploads/<date>-phone-<name>.mp4 and its path goes to
   Atlas with his caption. The first plan was written by the Builder (scratchpad make_edit.py); idea 2's v2-up-to-2m36 = that plan.
+- EPOCH, the music channel (2.63.0; the owner 2026-10-21: "the music channel is called EPOCH", run for the client; the first
+  upload is project 4's "Wild World in Your Bones", film = idea 3's v28, no end card: "not common", YouTube's own end screen goes over
+  the last 20 s of silent sky). Logo = Rana's v8 option 1 "Horizon Sun" (content/brand/logo/chosen; the Agent HQ logo it replaced is
+  kept in chosen-agent-hq-2026-10-08). Channel art in content/project-4/channel-art/: avatar.png (the sun only, no name: "one song
+  out of many"), banner-*.png (2560x1440; only y 508-931 shows on a computer and the middle 1546 of it on a phone: everything that
+  matters goes there; banner-A/B from his own ChatGPT/Gemini pictures, banner-ages from Gemini; scratchpad banner_from.py),
+  watermark.png, channel-about.txt / channel-description-long.txt (no AI mention: his rule for descriptions). Upload package:
+  content/project-4/upload/01-wild-world-in-your-bones/ (video.mp4 = hard link, thumb-1..3, title, description with the lyrics,
+  tags, UPLOAD.md). No client name anywhere (project rule).
+  Shorts: look C (his pick of four, versions/short-1-sample/short-looks.jpg): `musicvideo.py` edit key `"vertical_style": "frame45"`
+  = each shot cropped to 4:5 around its `vfocus` (share of the width, default 0.5; dissolves slide between the two), under a header
+  (`"vertical_title": {"title", "by"}`: the song title in Cinzel, the channel in the logo's gold #C9A227), lyrics over the lower part
+  of the picture at ~70% of the height (lyric width 0.72: clear of YouTube's buttons and caption), place labels at the picture's top
+  left. `vfocus` is not in the clip cache key. A Short = a piece of the edit (scratchpad cut_edit.py A B edit-short-N.json, written
+  in the idea folder so shot paths stay valid; song_from moves). The clip pool ran out of memory on this 8 GB PC while other jobs
+  ran: scratchpad premake.py makes the missing clips one at a time first.
 - Measure before done (2.46.0; the owner's STANDING RULE 2026-10-17, via Atlas: "measure his work properly before telling me it's done"): every `musicvideo.py render` ends with `motion_report` (also `musicvideo.py measure <edit.json> <video>`): the motion of every frame (OpenCV Farneback, 90th percentile at 320 px; frame difference if OpenCV is missing; opencv-python-headless is in requirements-video.txt and installed in the PC's shorts venv), per shot median speed and unevenness (std of log frame-to-frame ratio; smooth Veo footage ~0.10), stalls (a frame under 0.45x its neighbours), jumps inside shots, speed changes over 1.8x at straight cuts, video shots played over 1.15x or under 0.87x. Writes versions/<v>/review/motion.json + motion.png; RESULT carries `motion` {summary, warnings}; `run_mv_render` puts "Measured:" and the warnings in Atlas's announcement. Builder and Atlas: never call a version fixed while the stretch that was fixed has warnings; send the numbers with it. (It caught v19's 2.4x speed drop at the catch->ride cut and its two stalls.)
 - Automatic video checks + quick test render (2.49.0, Atlas's "Stop trial and error"; the owner: "trial and error is too costly"):
   `video_checks.py` (plain code, no AI). `animate.render_episode` runs, after the props are written and BEFORE Remotion,
