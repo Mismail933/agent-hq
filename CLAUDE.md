@@ -921,6 +921,12 @@ Agents never spend money without the owner's explicit approval.
   video's title art under the last line, the end card only after the last word (p.pause = its seconds); captions never end a chunk
   on a number (its unit follows); Quote `who: 'none'` = the words only, centred (no invented face); `p.accent: false` skips a line's
   accent (time-based drop_accents move when pauses are added). Quotes on cards are word for word, cuts marked with an ellipsis.
+  2.61.2 (Israa on v3: 6.5): Shark `slim` (scale 1.04 x 0.78) for the megalodon wherever the science shows it (Silhouette 'meg',
+  thermo, hide, rivals, verdict, depth, cool, nursery babies); the great white keeps the stocky body. Opening `FadeIn`: every shot after
+  the first starts 8 frames early and fades in over the previous one (no empty first frames). m_tv 'claims' (the film's four claims
+  one by one), faint '?' poll bars before the reveal, a growing crust on the rate card, the depth counter from 200 m, the A-E row and
+  the food chain inside the frame, measure labels on the left (the date corner stays clear), m_next's end card laid out for YouTube's
+  end screen (the next video's art on the left, SUBSCRIBE on the right; p.pause 12 = 12 s).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

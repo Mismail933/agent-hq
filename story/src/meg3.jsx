@@ -126,11 +126,12 @@ function MCrust({f, len, line}) {
     return (
       <g>
         <BG c="#0B1F3A" />
-        <g transform="translate(960 330)"><Box x={-560} y={-70} w={1120} h={140} text="0.15 MM PER 1,000 YEARS" fill="#fff" /></g>
-        <g transform="translate(560 650)"><g transform={`scale(${popAt(f, line, p.radium_on || 'radium', 0.3)})`}><circle r={150} fill="#FDE047" {...ST} />
+        <g transform="translate(960 230)"><Box x={-560} y={-70} w={1120} h={140} text="0.15 MM PER 1,000 YEARS" fill="#fff" /></g>
+        <g transform="translate(230 600)"><CrustTooth crust={lin(f, 4, len * 0.6, 0.05, 1)} s={0.5} /><Txt x={0} y={300} text="THE CRUST GROWS..." size={40} /></g>
+        <g transform="translate(700 650)"><g transform={`scale(${popAt(f, line, p.radium_on || 'radium', 0.3)})`}><circle r={150} fill="#FDE047" {...ST} />
           {[0, 120, 240].map((r) => <path key={r} transform={`rotate(${r + f * 0.6})`} d="M 0 -20 L -60 -125 A 120 120 0 0 1 60 -125 Z" fill={INK} />)}<circle r={26} fill={INK} /></g>
           <Txt x={0} y={240} text="OLD RADIUM ESTIMATES" size={44} /></g>
-        {f > x && <g transform={`translate(1360 650) rotate(-8) scale(${clamp(pop(f, x, 150, 11), 0, 1.1)})`}>
+        {f > x && <g transform={`translate(1420 650) rotate(-8) scale(${clamp(pop(f, x, 150, 11), 0, 1.1)})`}>
           <rect x={-330} y={-110} width={660} height={220} rx={20} fill="none" stroke="#E3232C" strokeWidth={16} />
           <Txt x={0} y={-10} text="20x TOO FAST" size={100} fill="#E3232C" stroke="#0B1F3A" /><Txt x={0} y={80} text="OR MORE" size={56} fill="#FCA5A5" stroke="#0B1F3A" /></g>}
       </g>
@@ -239,7 +240,7 @@ function MWharf({f, len, line}) {
           <g key={i} transform={`translate(${x} 340) scale(0.4)`}><Figure who={w} pose={i === 0 && !crew ? 'signal' : 'stand'} expr={e} f={f} talk={!crew && i === 0 && Math.floor(f / 7) % 2 === 0} seed={i + 2} /></g>))}
         {!crew && <g transform="translate(1250 340) scale(0.4)"><Figure who="stead" pose="stand" expr="calm" f={f} seed={7} look={-2} /></g>}
         {!crew && <g transform="translate(1480 340) scale(0.4)"><Figure who="passenger" pose="stand" expr="calm" f={f} seed={8} look={-2} /></g>}
-        {!crew && <g transform={`translate(1560 250) scale(${popAt(f, line, p.book_on || 'book', 0.8)})`}><Emoji name="open book" size={190} /></g>}
+        {!crew && <g transform={`translate(1760 470) scale(${popAt(f, line, p.book_on || 'book', 0.8)})`}><Emoji name="open book" size={170} /></g>}
       </Cam>
         <Labels line={line} f={f} x0={100} y0={90} /></g>
     );
@@ -258,7 +259,7 @@ function MWharf({f, len, line}) {
         <g transform="translate(0 760)"><path d={`M ${x0} 0 L ${x0 + m * px * g} 0`} stroke="#FDE047" strokeWidth={8} />
           <Txt x={x0 + m * px * g + 20} y={18} text={mode === 'measure300' ? '300 FT' : '115 FT'} size={50} fill="#FDE047" anchor="start" /></g>
       </Cam>
-        <Labels line={line} f={f} x0={W - 100} y0={90} align="right" /></g>
+        <Labels line={line} f={f} x0={100} y0={90} /></g>
     );
   }
   // tapes: 300 against 115, nearly three times
@@ -320,6 +321,20 @@ function MTv({f, len, line}) {
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
+  if (mode === 'claims') {   // 2.61.2: what the film showed, each on its words (Israa: four things named, none shown)
+    const items = [['boat', 'BOAT LOST'], ['whale', 'BITTEN WHALE'], ['biologists', '"BIOLOGISTS"'], ['grainy', 'A VAST FIN']];
+    return room(<g>
+      {items.map(([w, t], i) => { const s = popAt(f, line, w, 0.2 + i * 0.2); const x = -390 + (i % 2) * 520, y = -230 + Math.floor(i / 2) * 290;
+        return s > 0.01 && <g key={i} transform={`translate(${x + 130} ${y + 120}) scale(${s})`}>
+          <rect x={-240} y={-120} width={480} height={240} rx={14} fill="#123250" {...st(5)} />
+          {i === 0 && <g transform="scale(0.34)"><Boat f={f} /></g>}
+          {i === 1 && <g transform="translate(0 -10)"><Whale len={300} f={f} bite /></g>}
+          {i === 2 && <g transform="translate(0 30) scale(0.45)"><Bust who="actor" x={0} y={0} s={1} expr="calm" f={f} arms="rest" seed={4} /></g>}
+          {i === 3 && <g><path d={`M -60 40 L 30 -90 L 90 40 Z`} fill="#94A3B8" {...st(5)} /><path d="M -220 40 C -100 30 0 50 220 40" stroke="#7DD3FC" strokeWidth={6} fill="none" /></g>}
+          <Txt x={0} y={100} text={t} size={34} />
+        </g>; })}
+    </g>);
+  }
   if (mode === 'show') return room(<g>
     <g transform={`translate(${lin(f, 0, len, 300, -300)} 120) scale(0.5)`}><path d="M -40 0 L 120 -260 L 220 0 Z" fill="#475569" {...ST} /></g>
     <path d={`M -560 120 C -300 100 -100 140 200 110 S 500 130 560 120`} stroke="#7DD3FC" strokeWidth={8} fill="none" />
@@ -369,6 +384,7 @@ function MTv({f, len, line}) {
       {[['YES', 0.73, '#22C55E'], ['NO', 0.27, '#E3232C']].map(([t, v, c], i) => (
         <g key={t} transform={`translate(360 ${400 + i * 230})`}>
           <Txt x={-40} y={70} text={t} size={80} anchor="end" />
+          {k < 1 && <g opacity={0.28 * (1 - k)}><rect x={0} y={0} width={600} height={110} rx={14} fill="#94A3B8" {...st(4)} /><Txt x={640} y={84} text="?" size={80} anchor="start" /></g>}
           <rect x={0} y={0} width={1200 * v * k} height={110} rx={14} fill={c} {...st(6)} />
           <Txt x={1200 * v * k + 30} y={80} text={i === 0 ? 'MORE THAN 70%' : ''} size={64} fill="#FDE047" anchor="start" op={clamp(k * 3, 0, 1)} />
         </g>))}
@@ -460,12 +476,12 @@ function MExhibits({f, len, line}) {
       <BG c="#0B1F3A" />
       {EXHIBITS.map(([l, t, w], i) => {
         const s = all ? 1 : clamp(pop(f, at(line, (p.on || [])[i] || w, 0.15 + i * 0.16) + (p.stagger ? i * 5 : 0), 150, 12), 0, 1.05);
-        return <g key={l} transform={`translate(${210 + i * 375} 500) rotate(${(i % 2 ? 2 : -2)}) scale(${s})`}>
+        return <g key={l} transform={`translate(${280 + i * 340} 480) rotate(${(i % 2 ? 2 : -2)}) scale(${s * 0.92})`}>
           <rect x={-170} y={-260} width={340} height={520} rx={24} fill="#F5EBD7" {...ST} />
           <Txt x={0} y={-100} text={l} size={200} fill="#E3232C" />
           {t.map((r, k) => <Txt key={k} x={0} y={90 + k * 70} text={r} size={46} fill={INK} stroke="none" />)}
         </g>; })}
-      {all && <g transform={`translate(960 840) scale(${popAt(f, line, p.case_on || 'better', 0.2)})`}><Box x={-420} y={-55} w={840} h={110} text="BETTER THAN YOU'D EXPECT" fill="#FDE047" /></g>}
+      {all && <g transform={`translate(960 870) scale(${popAt(f, line, p.case_on || 'better', 0.2)})`}><Box x={-420} y={-55} w={840} h={110} text="BETTER THAN YOU'D EXPECT" fill="#FDE047" /></g>}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );

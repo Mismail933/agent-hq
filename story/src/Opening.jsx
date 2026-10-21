@@ -330,6 +330,11 @@ const PhotoLayer = ({line, len}) => {
   );
 };
 
+const FadeIn = ({on, children}) => {
+  const f = useCurrentFrame();
+  return <AbsoluteFill style={{opacity: on ? clamp(f / 8, 0, 1) : 1}}>{children}</AbsoluteFill>;
+};
+
 const ShotLayer = ({line, len}) => {
   const f = useCurrentFrame();
   const S = SHOTS[line.shot] || Aerial;
@@ -421,14 +426,15 @@ export const Opening = ({lines = [], audio, captions = true}) => (
     <style>{FONT_CSS}</style>
     {audio && <Audio src={staticFile(audio)} />}
     {lines.map((l, i) => {
-      const from = i === 0 ? 0 : l.cut, to = i + 1 < lines.length ? lines[i + 1].cut : l.until;
+      const XF = 8;   // 2.61.2: a short crossfade into every shot (Israa saw empty first frames before a shot's art popped in)
+      const from = i === 0 ? 0 : Math.max(0, l.cut - XF), to = i + 1 < lines.length ? lines[i + 1].cut : l.until;
       const prev = i > 0 ? lines[i - 1] : null;
       const cont = !!prev && prev.shot === l.shot && l.shot === 'item' && ((prev.p || {}).thing === (l.p || {}).thing);
       const shifted = {...l, idx: i, cont, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
       return (
         <Sequence key={i} from={from} durationInFrames={Math.max(1, to - from)} layout="none">
-          {blurOf(l) ? <CameraMotionBlur shutterAngle={200} samples={6}><ShotLayer line={shifted} len={to - from} /></CameraMotionBlur>
-            : <ShotLayer line={shifted} len={to - from} />}
+          <FadeIn on={i > 0}>{blurOf(l) ? <CameraMotionBlur shutterAngle={200} samples={6}><ShotLayer line={shifted} len={to - from} /></CameraMotionBlur>
+            : <ShotLayer line={shifted} len={to - from} />}</FadeIn>
         </Sequence>
       );
     })}

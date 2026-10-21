@@ -55,7 +55,7 @@ function MDepth({f, len, line}) {
   if (mode === 'descend') {
     const d = lin(f, 6, len - 8, 0, 1);
     const t2 = at(line, p.deep_on || '5,000', 0.5), fr = at(line, p.fridge_on || 'fridge', 0.7);
-    const depth = Math.round(lin(f, 6, len * 0.6, 0, 5000) / 100) * 100;
+    const depth = Math.round(lin(f, 6, len * 0.6, 200, 5000) / 100) * 100;
     return (
       <g>
         <Deep f={f} depth={0.3 + 0.7 * d} id="dd" />
@@ -77,7 +77,7 @@ function MDepth({f, len, line}) {
       <rect width={W} height={H} fill="url(#dwg)" />
       <rect width={W} height={70} fill="#9CD3F5" />
       {[460, 1260].map((x, i) => <g key={x} transform={`translate(${x + Math.sin(f * 0.02 + i) * 40} 190)`}><Whale len={330} f={f + i * 20} spout flip={i === 1} /></g>)}
-      <g transform={`translate(960 ${860 + Math.sin(f * 0.04) * 10}) scale(0.4)`}><Shark f={f} color="grey" glow={0.6} /></g>
+      <g transform={`translate(960 ${860 + Math.sin(f * 0.04) * 10}) scale(0.4)`}><Shark f={f} slim color="grey" glow={0.6} /></g>
       <path d={`M 960 760 L 960 ${lin(f, 10, 50, 760, 320)}`} stroke="#FDE047" strokeWidth={8} strokeDasharray="20 16" />
       <Txt x={1500} y={600} text="FOOD LIVES UPSTAIRS" size={60} fill="#FDE047" op={clamp((f - 30) / 12, 0, 1)} />
     </Cam>
@@ -204,7 +204,7 @@ function MCool({f, len, line}) {
         <rect y={sea} width={W} height={H - sea} fill="#2B7BB9" />
         <path d={`M 0 ${sea} L ${W} ${sea}`} stroke="#E0F2FE" strokeWidth={8} />
         <path d="M -40 340 L 520 380 C 700 520 900 560 1200 590 L 1500 900 L 1960 1000 L 1960 1120 L -40 1120 Z" fill="#C9A66B" {...ST} />
-        {sea < 560 && [...Array(3)].map((_, i) => <g key={i} transform={`translate(${760 + i * 160} ${520 + i * 6}) scale(0.09)`} opacity={lin(sea, 470, 560, 1, 0)}><Shark f={f + i * 9} color="grey" /></g>)}
+        {sea < 560 && [...Array(3)].map((_, i) => <g key={i} transform={`translate(${760 + i * 160} ${520 + i * 6}) scale(0.09)`} opacity={lin(sea, 470, 560, 1, 0)}><Shark f={f + i * 9} slim color="grey" /></g>)}
         <path d={`M 760 ${sea - 70} L 1180 ${sea - 70}`} stroke="#FDE047" strokeWidth={6} strokeDasharray="20 14" opacity={lin(sea, 470, 560, 1, 0)} />
         <Txt x={970} y={sea - 90} text="THE NURSERY" size={44} fill="#FDE047" op={lin(sea, 470, 560, 1, 0)} />
         <path d={`M 1700 420 L 1700 ${sea - 10}`} stroke="#fff" strokeWidth={10} /><path d={`M 1670 ${sea - 50} L 1700 ${sea - 10} L 1730 ${sea - 50}`} stroke="#fff" strokeWidth={10} fill="none" />
@@ -222,7 +222,7 @@ function MCool({f, len, line}) {
       <Txt x={1780} y={560} text="WARM" size={60} fill="#FDE047" anchor="end" />
       {[...Array(6)].map((_, i) => { const up = i % 2 === 0; const y = lin(f, 10 + i * 6, len, 540, up ? 180 : 820); const op = i > 3 ? lin(f, 20, 50, 1, 0) : 1;
         return <g key={i} transform={`translate(${220 + i * 180} ${y})`} opacity={op}><Whale len={200} f={f + i * 9} /></g>; })}
-      <g transform={`translate(${lin(f, 0, len, 1180, 1260)} 560) scale(0.3)`}><Shark f={f} color="grey" /></g>
+      <g transform={`translate(${lin(f, 0, len, 1180, 1260)} 560) scale(0.3)`}><Shark f={f} slim color="grey" /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -261,7 +261,7 @@ function MRivals({f, len, line}) {
     return (
       <g><Cam f={f} len={len} a={1} b={1.05}>
         <Deep f={f} depth={0.25} id="ra" />
-        <g transform={`translate(560 600) scale(0.6)`}><Shark f={f} color="dark" /></g>
+        <g transform={`translate(560 600) scale(0.6)`}><Shark f={f} slim color="dark" /></g>
         <g transform={`translate(${x} 420) scale(-0.3 0.4)`}><Shark f={f} color="grey" /></g>
         <Txt x={x} y={260} text="GREAT WHITE" size={52} fill="#FDE047" />
       </Cam>
@@ -274,13 +274,13 @@ function MRivals({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={1} b={1.04}>
       <BG c="#0B1F3A" />
-      {steps.map((t, i) => <g key={t}><rect x={640} y={860 - i * 150} width={640} height={110} rx={12} fill={i === 4 ? '#FDE047' : '#1E4466'} {...st(5)} />
-        <Txt x={960} y={935 - i * 150} text={t} size={52} fill={i === 4 ? INK : '#fff'} stroke={i === 4 ? 'none' : INK} /></g>)}
-      <g transform={`translate(380 ${lin(f, 6, a, 900, 300)}) scale(0.22)`}><Shark f={f} color="dark" /></g>
+      {steps.map((t, i) => <g key={t}><rect x={640} y={790 - i * 140} width={640} height={104} rx={12} fill={i === 4 ? '#FDE047' : '#1E4466'} {...st(5)} />
+        <Txt x={960} y={862 - i * 140} text={t} size={50} fill={i === 4 ? INK : '#fff'} stroke={i === 4 ? 'none' : INK} /></g>)}
+      <g transform={`translate(380 ${lin(f, 6, a, 900, 300)}) scale(0.22)`}><Shark f={f} slim color="dark" /></g>
       <g transform={`translate(1560 ${lin(f, 12, a + 6, 900, 300)}) scale(-0.12 0.17)`}><Shark f={f} color="grey" /></g>
       <g transform={`translate(260 160) scale(${popAt(f, line, 'zinc', 0.2)})`}><circle r={80} fill="#CBD5E1" {...ST} /><Txt x={0} y={26} text="Zn" size={80} fill={INK} stroke="none" /></g>
     </Cam>
-      <Labels line={line} f={f} x0={W - 100} y0={60} align="right" /></g>
+      <Labels line={line} f={f} x0={W - 100} y0={120} align="right" /></g>
   );
 }
 
@@ -315,7 +315,7 @@ function MVerdict({f, len, line}) {
     return (
       <g><Cam f={f} len={len} a={1} b={1.06}>
         <Deep f={f} depth={0.6} id="vg" />
-        <g transform="translate(960 560) scale(0.75)" opacity={op}><Shark f={f} color="dark" swim={op} /></g>
+        <g transform="translate(960 560) scale(0.75)" opacity={op}><Shark f={f} slim color="dark" swim={op} /></g>
         <g transform="translate(960 560) scale(0.75)" opacity={1 - op}><path d="M 790 14 C 700 -100 420 -182 60 -192 C -262 -186 -482 -112 -602 -30 C -642 -10 -642 20 -602 40 C -482 112 -262 172 60 172 C 400 162 640 112 790 14 Z" fill="none" stroke="#E0F2FE" strokeWidth={10} strokeDasharray="34 26" /></g>
         {f > g && <g transform={`translate(960 150) scale(${clamp(pop(f, g + 4, 150, 12), 0, 1)})`}><Box x={-520} y={-70} w={1040} h={140} text="EXTINCT FOR 3.6 MILLION YEARS" fill="#FDE047" /></g>}
       </Cam>
@@ -351,9 +351,14 @@ function MNext({f, len, line}) {
       </g>
       {k > 0 && <g opacity={k}>
         <rect width={W} height={H} fill="#0B1F3A" />
-        <Box x={W / 2 - 500} y={180} w={1000} h={150} text={(p.channel || 'STORYGRAPHICS').toUpperCase()} fill="#FFE11A" s={clamp(pop(f, last + 8, 140, 12), 0, 1)} />
-        <text x={W / 2} y={460} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={64} fill="#fff">{(p.next || 'NEXT: TRAPPED 480 M DOWN').toUpperCase()}</text>
-        <g transform={`translate(${W / 2} 700) scale(${clamp(pop(f, last + 20, 160, 10), 0, 1.1)})`}><rect x={-280} y={-70} width={560} height={140} rx={70} fill="#E3232C" {...ST} /><text x={0} y={30} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={80} fill="#fff">SUBSCRIBE</text></g>
+        <Box x={W / 2 - 500} y={70} w={1000} h={140} text={(p.channel || 'STORYGRAPHICS').toUpperCase()} fill="#FFE11A" s={clamp(pop(f, last + 8, 140, 12), 0, 1)} />
+        {/* laid out for YouTube's end screen: the next video's picture where its video element goes (left), subscribe (right) */}
+        <g transform={`translate(560 600) scale(${clamp(pop(f, last + 14, 140, 12), 0, 1)})`}>
+          <rect x={-410} y={-236} width={820} height={472} rx={10} fill="#000" {...st(8)} />
+          <svg x={-400} y={-225} width={800} height={450} viewBox={`0 0 ${W} ${H}`}><PiscesArt f={0} top={p.top || 'TRAPPED'} bottom={p.bottom || '480 M DOWN'} /></svg>
+          <Txt x={0} y={300} text={(p.next || 'NEXT: TRAPPED 480 M DOWN').toUpperCase()} size={48} />
+        </g>
+        <g transform={`translate(1430 600) scale(${clamp(pop(f, last + 22, 160, 10), 0, 1.1)})`}><circle r={190} fill="#E3232C" {...ST} /><text x={0} y={26} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={64} fill="#fff">SUBSCRIBE</text></g>
         <rect width={W} height={H} fill="#000" opacity={lin(f, len - 20, len, 0, 1)} />
       </g>}
     </g>

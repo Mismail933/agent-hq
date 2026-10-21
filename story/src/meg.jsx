@@ -23,12 +23,12 @@ export const SKY = ({id = 'msky'}) => (<g>
 
 // ───────────── the shark, side view (snout to the right), about 1600 long at s 1 ─────────────
 const SHARK = {pale: ['#DCE5EC', '#B9C7D3', '#F4F7FA'], grey: ['#7F8D9A', '#64717D', '#E4E8EC'], dark: ['#4C5763', '#3A434D', '#9AA5AF']};
-export function Shark({f = 0, color = 'pale', mouth = 0, swim = 1, glow = 0}) {
+export function Shark({f = 0, color = 'pale', mouth = 0, swim = 1, glow = 0, slim = false}) {   // slim: the megalodon as the 2025 study draws it
   const [B, S, L] = SHARK[color] || SHARK.pale;
   const tail = Math.sin(f * 0.13) * 9 * swim;
   const m = clamp(mouth, 0, 1);
   return (
-    <g>
+    <g transform={slim ? 'scale(1.04 0.78)' : undefined}>
       {glow > 0 && <ellipse cx={60} cy={0} rx={980} ry={360} fill="#E8F4FF" opacity={0.16 * glow} />}
       <g transform={`rotate(${tail} -600 0)`}>
         <path d="M -600 -30 L -840 -340 C -810 -210 -775 -105 -716 -2 Z" fill={S} {...ST} />

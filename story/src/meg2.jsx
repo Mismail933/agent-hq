@@ -53,7 +53,7 @@ export const DrawnBus = ({m}) => (
 // the shark drawn small for size comparisons: the slim megalodon (dark) or a great white (stocky: drawn 1.45x deeper), `len` px long
 export const Silhouette = ({len = 1000, kind = 'meg', color, op = 1, f = 0}) => {
   const k = len / 1630;
-  return <g transform={`scale(${k} ${kind === 'gw' ? k * 1.45 : k})`} opacity={op}><Shark f={f} color={color || (kind === 'gw' ? 'grey' : 'dark')} /></g>;
+  return <g transform={`scale(${k} ${kind === 'gw' ? k * 1.45 : k})`} opacity={op}><Shark f={f} slim={kind !== 'gw'} color={color || (kind === 'gw' ? 'grey' : 'dark')} /></g>;
 };
 
 // ───────────── generic: a card of big words that pop on their words, over a colour or a drawing ─────────────
@@ -81,7 +81,7 @@ function MCard({f, len, line}) {
 function MPlan({f, len, line}) {
   const p = P(line);
   const a = at(line, p.a_on || 'legend', 0.2), b = at(line, p.b_on || 'test', 0.6);
-  const sa = clamp(pop(f, a, 130, 12), 0, 1.05), sb = clamp(pop(f, b, 130, 12), 0, 1.05);
+  const sa = clamp(pop(f, Math.min(a, 6), 130, 12), 0, 1.05), sb = clamp(pop(f, b, 130, 12), 0, 1.05);
   return (
     <g>
       <BG c="#0B1F3A" />
@@ -142,31 +142,32 @@ function MScale({f, len, line}) {
         <path d={`M 960 ${base + 40} L 920 ${base - 220} L 1000 ${base - 220} Z`} fill="#94A3B8" {...ST} />
         <g transform={`rotate(${lin(f, g, g + 30, 0, -4)} 960 ${base - 230})`}>
           <rect x={250} y={base - 250} width={1420} height={30} rx={10} fill="#64748B" {...ST} />
-          <g transform={`translate(560 ${base - 380}) scale(0.4)`}><Shark f={f} color="dark" /></g>
+          <g transform={`translate(560 ${base - 380}) scale(0.4)`}><Shark f={f} slim color="dark" /></g>
           <g transform={`translate(1240 ${base - 330})`}><Emoji name="articulated lorry" size={250} /></g>
           <g transform={`translate(1480 ${base - 330})`}><Emoji name="articulated lorry" size={250} /></g>
         </g>
       </g>}
       {mode === 'shape' && <g>
         <g transform={`translate(${lin(f, g - 12, g + 14, 960, 420)} ${lin(f, g - 12, g + 14, 480, 330)})`}><Silhouette len={lin(f, g - 12, g + 14, 900, 1400 * 7 / 24.3)} kind="gw" f={f} /></g>
-        <Txt x={lin(f, g - 12, g + 14, 960, 420)} y={lin(f, g - 12, g + 14, 790, 230)} text="GREAT WHITE: STOCKY, ~7 M" size={lin(f, g - 12, g + 14, 64, 44)} />
+        <Txt x={lin(f, g - 12, g + 14, 960, 420)} y={lin(f, g - 12, g + 14, 790, 150)} text="GREAT WHITE: STOCKY, ~7 M" size={lin(f, g - 12, g + 14, 64, 44)} />
         <g transform={`translate(1150 640) scale(${s})`}><Silhouette len={1400} f={f} /></g>
         <Txt x={1150} y={880} text="MEGALODON: SLIMMER, UP TO 24.3 M" size={44} op={clamp((f - g) / 10, 0, 1)} />
         {p.scale_extras !== false && (() => {   // 2.61.0: the same true scale (1400 px = 24.3 m): a diver (1.8 m) and a bus (12 m)
           const m = 1400 / 24.3, k = clamp(pop(f, g + 14, 140, 13), 0, 1.04);
           return (<g opacity={clamp((f - g - 10) / 10, 0, 1)}>
-            <g transform={`translate(1540 250) scale(${k})`}>   {/* drawn to its real proportions (12 x 3.2 m); the emoji bus is far too tall */}
+            <g transform={`translate(1470 250) scale(${k})`}>   {/* drawn to its real proportions (12 x 3.2 m); the emoji bus is far too tall */}
               <rect x={-6 * m} y={-1.6 * m} width={12 * m} height={2.9 * m} rx={0.4 * m} fill="#FACC15" {...st(5)} />
               {[...Array(7)].map((_, i) => <rect key={i} x={-5.4 * m + i * 1.55 * m} y={-1.25 * m} width={1.15 * m} height={0.9 * m} rx={6} fill="#BFE6FF" {...st(3)} />)}
               <rect x={-6 * m} y={0.55 * m} width={12 * m} height={0.25 * m} fill="#1F2937" />
               {[-3.8, 3.6].map((x) => <circle key={x} cx={x * m} cy={1.3 * m} r={0.5 * m} fill="#1F2937" {...st(4)} />)}
             </g>
-            <Txt x={1540} y={250 + 2.4 * m} text="BUS: 12 M" size={40} />
+            <Txt x={1470} y={250 + 2.4 * m} text="BUS: 12 M" size={40} />
             <g transform={`translate(870 330) scale(${k})`}>
-              <ellipse cx={0} cy={0} rx={0.62 * m} ry={0.16 * m} fill="#111827" {...st(4)} />
+              <ellipse cx={0} cy={0} rx={0.62 * m} ry={0.16 * m} fill="#FDE047" stroke="#fff" strokeWidth={5} />
               <circle cx={0.78 * m} cy={-0.04 * m} r={0.15 * m} fill="#F2C29B" {...st(3)} />
               <rect x={0.74 * m} y={-0.14 * m} width={0.2 * m} height={0.11 * m} rx={3} fill="#38BDF8" {...st(2)} />
-              <path d={`M ${-0.62 * m} 0 L ${-0.95 * m} ${-0.1 * m} M ${-0.62 * m} ${0.05 * m} L ${-0.95 * m} ${0.12 * m}`} stroke="#111827" strokeWidth={0.1 * m} strokeLinecap="round" />
+              <path d={`M ${-0.62 * m} 0 L ${-0.95 * m} ${-0.1 * m} M ${-0.62 * m} ${0.05 * m} L ${-0.95 * m} ${0.12 * m}`} stroke="#FDE047" strokeWidth={0.1 * m} strokeLinecap="round" />
+              <circle cx={0} cy={0} r={0.9 * m} fill="none" stroke="#FDE047" strokeWidth={4} strokeDasharray="10 8" />
             </g>
             <Txt x={870} y={420} text="DIVER: 1.8 M" size={40} />
           </g>); })()}
@@ -284,10 +285,10 @@ function MNursery({f, len, line}) {
           <path d="M -60 22 C -20 12 20 12 60 22" stroke="#E0F2FE" strokeWidth={6} fill="none" /></g>)}
       </g>}
       {mode !== 'resort' && [...Array(4)].map((_, i) => { const x = 300 + i * 380 + Math.sin(f * 0.03 + i) * 80, y = 600 + R() * 260;
-        return <g key={i} transform={`translate(${x} ${y}) scale(${0.16 + (i % 2) * 0.05}) ${Math.cos(f * 0.03 + i) < 0 ? 'scale(-1 1)' : ''}`}><Shark f={f + i * 7} color="grey" /></g>; })}
+        return <g key={i} transform={`translate(${x} ${y}) scale(${0.16 + (i % 2) * 0.05}) ${Math.cos(f * 0.03 + i) < 0 ? 'scale(-1 1)' : ''}`}><Shark f={f + i * 7} slim color="grey" /></g>; })}
       {mode === 'lagoon' && p.baby !== false && f > nb && <g opacity={clamp((f - nb) / 10, 0, 1)}>
         <rect x={1060} y={560} width={780} height={300} rx={24} fill="#0F2A44" opacity={0.9} {...st(5)} />
-        <g transform="translate(1270 690) scale(0.2)"><Shark f={f} color="grey" /></g>
+        <g transform="translate(1270 690) scale(0.2)"><Shark f={f} slim color="grey" /></g>
         <g transform="translate(1660 690)"><Emoji name="automobile" size={230} flip /></g>
         <Txt x={1450} y={830} text="NEWBORN: 3.6-3.9 M" size={50} fill="#FDE047" />
       </g>}
@@ -333,7 +334,7 @@ function MThermo({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={1} b={1.05}>
       <Deep f={f} depth={0.35} id="mth" />
-      <g transform="translate(700 600) scale(0.6)"><Shark f={f} color="grey" glow={mode === 'warm' ? t : 0} /></g>
+      <g transform="translate(700 600) scale(0.6)"><Shark f={f} slim color="grey" glow={mode === 'warm' ? t : 0} /></g>
       {mode === 'warm' && <g transform="translate(1560 560)">
         <rect x={-50} y={-330} width={100} height={560} rx={50} fill="#F8FAFC" {...ST} />
         <circle cx={0} cy={250} r={90} fill="#E3232C" {...ST} />
