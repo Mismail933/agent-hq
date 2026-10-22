@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.306 (claude -p cloud login fix; 2.1.305 workflow resume fix)",
-   "checked": "2026-10-21"
+   "last_seen": "2.1.307 (safety_event OTel; 2.1.302 routine partial-rerun fix)",
+   "checked": "2026-10-22"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-20 user profiles + org webhooks beta; nothing for us",
-   "checked": "2026-10-21"
+   "last_seen": "2026-10-21 API version 2026-10-21 + ant CLI 2.0.0; fast mode GA Opus 5.5",
+   "checked": "2026-10-22"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-18 public benefit investment; no new models",
-   "checked": "2026-10-21"
+   "last_seen": "2026-10-21 LTBT member; no new models",
+   "checked": "2026-10-22"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -68,7 +68,7 @@
   "claude-code-routines-doc": {
    "url": "https://code.claude.com/docs/en/routines",
    "last_seen": "routines draw subscription usage; overage via usage credits; 1 h minimum interval",
-   "checked": "2026-10-17"
+   "checked": "2026-10-22"
   },
   "youtube-monetization-policy": {
    "url": "https://support.google.com/youtube/answer/1311392",

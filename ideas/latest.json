@@ -1,153 +1,39 @@
 {
- "date": "2026-10-21",
- "focus": "tokens",
- "note": "One small idea: start our one-shot workers with Claude Code's --safe-mode so they stop loading your personal skills, plugins, hooks and MCP servers. Lighter run than my target (5 searches, 8 pages), and I did not measure the gain, so confidence is moderate.",
- "research": {
-  "searches": 5,
-  "pages_read": 8,
-  "minutes": 15,
-  "questions": [
-   "Do our subscription workers (workers.run -> claude -p) load the owner's own Claude Code setup (skills, plugins, hooks, MCP servers, CLAUDE.md) that they do not need?",
-   "Is there a flag that turns that off and still uses the subscription login (--bare does not)?",
-   "Did Claude Code 2.1.304-2.1.306 change anything for claude -p, --json-schema or routines that we depend on?"
+  "date": "2026-10-22",
+  "focus": "agents",
+  "note": "No idea today. The daily sweep found nothing that changes our choices, and this run was shorter than the 15-search / 8-page target (see gaps), so I would rather bring nothing than a thin idea.",
+  "research": {
+    "searches": 1,
+    "pages_read": 7,
+    "minutes": 8,
+    "questions": [
+      "Did Claude Code 2.1.302-2.1.307 change anything for our one-shot claude -p workers or for cloud routines like Richard's?",
+      "Is there a proven grader-then-fix loop pattern that improves on Israa/Calina's current review rounds?"
+    ],
+    "gaps": [
+      "Fewer than 15 searches and 8 pages: only 1 web search and 7 pages opened, so the agents focus was not researched deeply.",
+      "Did not read YouTube policy pages today (not a results day).",
+      "The LLM-as-judge search returned only snippets; I opened none of those papers or docs, so nothing from it is used."
+    ]
+  },
+  "new_today": [
+    "Claude Code 2.1.306: claude -p inside cloud sessions no longer reports 'Not logged in' when started without the session's environment variables",
+    "Claude Code 2.1.302: fork subagents on by default in claude -p and the Agent SDK; fixed a cloud routine run that failed partway being rerun from the start an hour or more later (can repeat work); prompt cache miss for tools added mid-session fixed",
+    "Claude Code 2.1.304: warning on Pro/Max when resuming an inactive conversation uses a noticeable share of the 5-hour limit (relevant to Atlas's --resume sessions)",
+    "Claude Code 2.1.307: new claude_code.safety_event OpenTelemetry event",
+    "Claude API: version 2026-10-21 released with ant CLI 2.0.0; fast mode left research preview for Opus 5.5 (Oct 15)",
+    "Anthropic news Oct 8-21: no new models"
   ],
-  "gaps": [
-   "Did not measure how many tokens a Vera or Sage run spends on skills/MCP lists on the owner's PC (no access to hq.db usage rows from the cloud).",
-   "Could not find the version of the Claude app's bundled CLI on the owner's PC; --safe-mode needs 2.1.169 or newer (June 2026).",
-   "Did not open the context-window doc that says how big the skill and MCP lists are.",
-   "YouTube/results sources not checked today (focus was tokens)."
-  ]
- },
- "new_today": [
-  "Claude Code 2.1.304: fork subagents on by default in claude -p; a scheduled routine that failed partway is no longer rerun from the start an hour later; prompt-cache miss fixes for tools loaded mid-session.",
-  "Claude Code 2.1.305: fixed Workflow resume re-running finished agents; new CLAUDE_CODE_RETRY_WATCHDOG_USAGE_LIMIT_RECHECK_MS for unattended retry mode.",
-  "Claude Code 2.1.306: claude -p 'Not logged in' fix in cloud sessions; wrong 'prompt is too long' error fixed.",
-  "Claude API notes 2026-10-20: user profiles and org webhooks (Admin API beta); 2026-10-15: Opus 5.5 fast mode GA. Nothing we use.",
-  "Anthropic news: no new model or product since 2026-10-18."
- ],
- "checked": [
-  {
-   "title": "Claude Code CHANGELOG (2.1.304-2.1.306)",
-   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "tier": "A",
-   "result": "used",
-   "why": "Only the newest 100k characters read; no change we must act on, one routine fix that helps Richard himself."
-  },
-  {
-   "title": "Claude API release notes",
-   "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Enterprise/admin features only."
-  },
-  {
-   "title": "Anthropic news",
-   "url": "https://www.anthropic.com/news",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Policy and company news, no models."
-  },
-  {
-   "title": "Claude Code headless / claude -p docs",
-   "url": "https://code.claude.com/docs/en/headless",
-   "tier": "A",
-   "result": "used",
-   "why": "Confirms --bare needs an API key (so not for our workers) and that plain claude -p loads hooks, skills, MCP, CLAUDE.md like an interactive session."
-  },
-  {
-   "title": "Claude Code CLI reference",
-   "url": "https://code.claude.com/docs/en/cli-reference",
-   "tier": "A",
-   "result": "used",
-   "why": "--safe-mode: disables CLAUDE.md, skills, plugins, hooks, MCP, auto memory; login, model, built-in tools and permissions keep working."
-  },
-  {
-   "title": "Claude Code model-config (safe mode and fallback)",
-   "url": "https://code.claude.com/docs/en/model-config",
-   "tier": "A",
-   "result": "used",
-   "why": "Says --safe-mode is the way to check whether customizations cause classifier model fallback."
-  },
-  {
-   "title": "Claude Code: manage costs",
-   "url": "https://code.claude.com/docs/en/costs",
-   "tier": "A",
-   "result": "used",
-   "why": "MCP tool definitions are deferred, so the MCP cost is names and instructions only; no number for skill lists. Weakest link for the gain."
-  },
-  {
-   "title": "Search: --safe-mode flag (claudekit, dev.to, GitHub issue 66376)",
-   "url": "https://github.com/anthropics/claude-code/issues/66376",
-   "tier": "B",
-   "result": "used",
-   "why": "Flag added in v2.1.169 (June 2026); I did not open the pages, only the search summary."
-  },
-  {
-   "title": "GitHub search: claude code agents (30 days)",
-   "url": "https://api.github.com/search/repositories?q=claude+code+agents+pushed:>2026-09-21&sort=stars&order=desc",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Big general tool collections; nothing fits a headless worker."
-  },
-  {
-   "title": "GitHub search: faceless video shorts automation",
-   "url": "https://api.github.com/search/repositories?q=faceless+video+automation+shorts+pushed:>2026-09-21&sort=stars&order=desc",
-   "tier": "B",
-   "result": "rejected",
-   "why": "Two repos with 1 star and no licence."
-  },
-  {
-   "title": "GitHub search: llm token cost reduction",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+pushed:>2026-09-21&sort=stars&order=desc",
-   "tier": "B",
-   "result": "rejected",
-   "why": "Tiny repos, several without a clear licence."
-  }
- ],
- "repo_watch": [
-  {
-   "name": "affaan-m/ECC",
-   "url": "https://github.com/affaan-m/ECC",
-   "licence": "MIT",
-   "stars": 284988,
-   "last_commit": "2026-10-20",
-   "verdict": "watch",
-   "fit": "Big Claude Code harness collection; reference for prompts only (already a named candidate source in CLAUDE.md).",
-   "why": "Only the API listing was read, not the README or code. Huge scope; we should borrow ideas, not install."
-  }
- ],
- "ideas": [
-  {
-   "id": "2026-10-21-1",
-   "title": "Start our one-shot workers with --safe-mode so they load nothing of the owner's own setup",
-   "area": "tokens",
-   "problem": "workers.run() builds `claude -p --output-format json --no-session-persistence --max-turns N --model M --system-prompt ... --tools ...` (workers.py line ~87). Claude's headless doc says a plain `claude -p` 'discovers and loads' hooks, skills, plugins, MCP servers, auto memory and CLAUDE.md like an interactive session. --tools limits built-in tools only, not MCP tools. So every Doulya/Sage/Vera/Serge/Calina/Israa/Omar/Tarek run can pick up whatever is in the owner's ~/.claude (skills list, claude.ai connectors, hooks, plugins). That is extra input tokens on each run against the plan allowance (SUBSCRIPTION_DAILY_VALUE_USD), extra start-up time, and a run that behaves differently if he installs something. --bare would fix this but needs an API key, so it is not an option for us.",
-   "proposal": "1) workers.py, in run(): add `--safe-mode` to `cmd` for the agents with an empty own folder (not for Ghassan, who passes cwd=... and may need the repo's context). 2) Fallback: if Claude Code answers with an unknown-option error (older bundled CLI than 2.1.169), run once without the flag and log `safe_mode_unsupported`; never send this to the paid API fallback. 3) Make it a team rule per the standing rule: rules.py key `workers.safe_mode` (on/off, default on) so Atlas can switch it off with `hq rule set` if some worker turns out to need a skill or MCP tool. Atlas (atlas_engine.py) stays as it is: he uses his own CLAUDE.md and skills on purpose. The change is in protected files (workers.py, rules.py is not): it is a Builder-chat job, not Ghassan's.",
-   "gain": "Fewer input tokens per run and a faster start, and workers that behave the same whatever the owner installs on his PC. Size not known: Anthropic gives no number for the skill list; MCP tools are deferred, so only names and instructions count. Measure it: hq.db `usage` already stores input_tokens and cache_tokens per run; compare the average of the last 10 runs of one agent (say Vera) before and after.",
-   "test": "1) Normal: one Vera run with and without the flag on the same idea; pass = same structured_output keys, input_tokens + cache_tokens lower or equal, no error. 2) Edge: an old Claude CLI (or HQ_CLAUDE_PATH pointing at one) that rejects --safe-mode; pass = the run is retried without the flag once and `safe_mode_unsupported` is logged. 3) Failure case: with the rule off, the command line has no --safe-mode and runs exactly as today; also check Sage still gets WebSearch/WebFetch in safe mode (built-in tools should work; if not, drop the idea and say so).",
-   "effort": "S",
-   "confidence": "moderate",
-   "confidence_why": "Rests on Anthropic's own CLI reference and headless doc (A). Weakest link: nobody measured how much our workers load today, and the amount may be small if his setup is nearly empty; also the version of the CLI on his PC is unknown.",
-   "risks": "A worker might rely on a user skill or MCP tool we forgot (tested by test 3, and the rule is a one-line off switch). Old CLI rejects the flag (handled by the retry). The flag was added in June 2026 and was undocumented for a few weeks (GitHub issue 66376), so check `claude --safe-mode --help` style behaviour on his PC once. No outside code, no licence issue.",
-   "links": [
-    {
-     "title": "CLI reference: --safe-mode and --bare",
-     "url": "https://code.claude.com/docs/en/cli-reference"
-    },
-    {
-     "title": "Headless docs: what claude -p loads, bare mode needs an API key",
-     "url": "https://code.claude.com/docs/en/headless"
-    },
-    {
-     "title": "Model config: safe mode",
-     "url": "https://code.claude.com/docs/en/model-config"
-    },
-    {
-     "title": "Manage costs",
-     "url": "https://code.claude.com/docs/en/costs"
-    }
-   ],
-   "builds_on": "2026-10-09-1"
-  }
- ]
+  "checked": [
+    {"title": "Claude Code CHANGELOG", "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md", "tier": "A", "result": "nothing new", "why": "2.1.307 is newest; entries above are fixes, none needs a change in workers.py"},
+    {"title": "Claude API release notes", "url": "https://platform.claude.com/docs/en/release-notes/overview", "tier": "A", "result": "nothing new", "why": "API version 2026-10-21 and fast mode GA; we run on the subscription, no action"},
+    {"title": "Anthropic news", "url": "https://www.anthropic.com/news", "tier": "A", "result": "nothing new", "why": "policy and trust items only, no model or product change"},
+    {"title": "Claude Code scheduled tasks (routines) doc", "url": "https://code.claude.com/docs/en/routines", "tier": "A", "result": "nothing new", "why": "confirms: GitHub connection lapse skips runs for up to 72 h then turns the task off; fired prompt is not live consent; runs draw subscription usage"},
+    {"title": "GitHub search: claude code subagents skills", "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:>2026-09-22&sort=stars&order=desc", "tier": "A", "result": "rejected", "why": "mostly generic skill hubs and coding tools; nothing for scripts or video"},
+    {"title": "GitHub search: faceless YouTube Shorts automation", "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless+pushed:>2026-09-22&sort=stars&order=desc", "tier": "A", "result": "rejected", "why": "all repos have 0-1 stars and most have no licence"},
+    {"title": "GitHub search: llm script evaluation storytelling", "url": "https://api.github.com/search/repositories?q=llm+script+evaluation+storytelling+narration+pushed:>2026-09-22", "tier": "A", "result": "nothing new", "why": "zero results"},
+    {"title": "Search: LLM-as-judge rubric revision loop", "url": "https://docs.langchain.com/oss/javascript/deepagents/rubric.md", "tier": "C", "result": "rejected", "why": "search snippets only; I did not open the pages. Same pattern as our Israa->Calina notes loop"}
+  ],
+  "repo_watch": [],
+  "ideas": []
 }

@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-22",
+  "focus": "agents",
+  "note": "No idea today. The daily sweep found nothing that changes our choices, and this run was shorter than the 15-search / 8-page target (see gaps), so I would rather bring nothing than a thin idea.",
+  "research": {
+    "searches": 1,
+    "pages_read": 7,
+    "minutes": 8,
+    "questions": [
+      "Did Claude Code 2.1.302-2.1.307 change anything for our one-shot claude -p workers or for cloud routines like Richard's?",
+      "Is there a proven grader-then-fix loop pattern that improves on Israa/Calina's current review rounds?"
+    ],
+    "gaps": [
+      "Fewer than 15 searches and 8 pages: only 1 web search and 7 pages opened, so the agents focus was not researched deeply.",
+      "Did not read YouTube policy pages today (not a results day).",
+      "The LLM-as-judge search returned only snippets; I opened none of those papers or docs, so nothing from it is used."
+    ]
+  },
+  "new_today": [
+    "Claude Code 2.1.306: claude -p inside cloud sessions no longer reports 'Not logged in' when started without the session's environment variables",
+    "Claude Code 2.1.302: fork subagents on by default in claude -p and the Agent SDK; fixed a cloud routine run that failed partway being rerun from the start an hour or more later (can repeat work); prompt cache miss for tools added mid-session fixed",
+    "Claude Code 2.1.304: warning on Pro/Max when resuming an inactive conversation uses a noticeable share of the 5-hour limit (relevant to Atlas's --resume sessions)",
+    "Claude Code 2.1.307: new claude_code.safety_event OpenTelemetry event",
+    "Claude API: version 2026-10-21 released with ant CLI 2.0.0; fast mode left research preview for Opus 5.5 (Oct 15)",
+    "Anthropic news Oct 8-21: no new models"
+  ],
+  "checked": [
+    {"title": "Claude Code CHANGELOG", "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md", "tier": "A", "result": "nothing new", "why": "2.1.307 is newest; entries above are fixes, none needs a change in workers.py"},
+    {"title": "Claude API release notes", "url": "https://platform.claude.com/docs/en/release-notes/overview", "tier": "A", "result": "nothing new", "why": "API version 2026-10-21 and fast mode GA; we run on the subscription, no action"},
+    {"title": "Anthropic news", "url": "https://www.anthropic.com/news", "tier": "A", "result": "nothing new", "why": "policy and trust items only, no model or product change"},
+    {"title": "Claude Code scheduled tasks (routines) doc", "url": "https://code.claude.com/docs/en/routines", "tier": "A", "result": "nothing new", "why": "confirms: GitHub connection lapse skips runs for up to 72 h then turns the task off; fired prompt is not live consent; runs draw subscription usage"},
+    {"title": "GitHub search: claude code subagents skills", "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:>2026-09-22&sort=stars&order=desc", "tier": "A", "result": "rejected", "why": "mostly generic skill hubs and coding tools; nothing for scripts or video"},
+    {"title": "GitHub search: faceless YouTube Shorts automation", "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless+pushed:>2026-09-22&sort=stars&order=desc", "tier": "A", "result": "rejected", "why": "all repos have 0-1 stars and most have no licence"},
+    {"title": "GitHub search: llm script evaluation storytelling", "url": "https://api.github.com/search/repositories?q=llm+script+evaluation+storytelling+narration+pushed:>2026-09-22", "tier": "A", "result": "nothing new", "why": "zero results"},
+    {"title": "Search: LLM-as-judge rubric revision loop", "url": "https://docs.langchain.com/oss/javascript/deepagents/rubric.md", "tier": "C", "result": "rejected", "why": "search snippets only; I did not open the pages. Same pattern as our Israa->Calina notes loop"}
+  ],
+  "repo_watch": [],
+  "ideas": []
+}
