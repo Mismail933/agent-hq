@@ -276,7 +276,7 @@ Judge the mix and the narration. Then fix what the sound settings can fix (you m
 - beds: {place: [searches]} another recording for a place; accents: {shot: [searches]} another sound for that scene's accent
 - drop_accents: [seconds or shot names]; add_accents: [{line (1-based), word (the spoken word it lands on), for (a search)}]
 - voice (when the narrator is Chatterbox, the free voice on this PC; changing it costs no credits, only a few minutes of re-voicing):
-  style calm|between|dramatic, wpm (110..185, pace while he speaks; the owner found ~174 "rushing"), gap (0.2..1.5 s between lines),
+  style story|calm|between|dramatic (story = natural pace, few long pauses: what the reference narrators do), wpm (110..185, pace while he speaks; the owner found ~174 "rushing"), gap (0.2..1.5 s between lines),
   sentence_pause (0..1.2 s after a sentence inside a line), comma_pause (0..0.4), beat_pause (0..2 s after a short dramatic line),
   temperature (0.5..1.1, how varied the delivery is), ref_speed (0.75..1.05, the reference clip's pace: slower = calmer read),
   pace_spread (0..2, how much faster action lines and slower sad lines are)
@@ -306,7 +306,7 @@ SCHEMA = {"type": "object", "properties": {
         "add_accents": {"type": "array", "items": {"type": "object", "properties": {
             "line": {"type": "integer"}, "word": {"type": "string"}, "for": {"type": "string"}}, "required": ["line", "word", "for"]}},
         "voice": {"type": "object", "properties": {
-            "style": {"type": "string", "enum": ["calm", "between", "dramatic"]}, "wpm": {"type": "number"}, "gap": {"type": "number"},
+            "style": {"type": "string", "enum": ["story", "calm", "between", "dramatic"]}, "wpm": {"type": "number"}, "gap": {"type": "number"},
             "sentence_pause": {"type": "number"}, "comma_pause": {"type": "number"}, "beat_pause": {"type": "number"},
             "temperature": {"type": "number"}, "ref_speed": {"type": "number"}, "pace_spread": {"type": "number"}}}}},
     "voice_notes": {"type": "array", "items": {"type": "object", "properties": {
@@ -339,7 +339,7 @@ def clean_settings(s):
         v, lim = s["voice"], {"wpm": (110, 185), "gap": (0.2, 1.5), "sentence_pause": (0.0, 1.2), "comma_pause": (0.0, 0.4),
                               "beat_pause": (0.0, 2.0), "temperature": (0.5, 1.1), "ref_speed": (0.75, 1.05), "pace_spread": (0.0, 2.0)}
         vv = {k: max(lo, min(hi, float(v[k]))) for k, (lo, hi) in lim.items() if isinstance(v.get(k), (int, float))}
-        if v.get("style") in ("calm", "between", "dramatic"):
+        if v.get("style") in ("story", "calm", "between", "dramatic"):
             vv["style"] = v["style"]
         if vv:
             out["voice"] = vv

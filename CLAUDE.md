@@ -1017,6 +1017,16 @@ Agents never spend money without the owner's explicit approval.
   2.65.3: pace is counted in average-length words (`_words_eq` = syllables / 1.45): "They race back to port, and for a while..." is 15
   short words and both voices "read it at 230-290 wpm", which was a normal syllable rate (the fitting over-slowed such lines). A line
   may use a separately made take: line `voice_file` (a wav next to the spec + the same-name .json words; `_line_files`, ElevenLabs path).
+  2.66.0 (the owner after all five openings: "I am not feeling it at all ... this sound boring"; research request via Atlas): six
+  reference narrators measured from their own caption timing in the browser (the player's timedtext request with its pot token; the
+  resource-timing buffer must be enlarged first or the request isn't listed): The Infographics Show / RealLifeLore / Brew on the same
+  seafloor-survivor story (199/184/185 wpm overall, 228/237/225 while talking, 0.3/1.8/0.6 pauses >= 1 s a minute), MrBallen (203,
+  264, 2.3, "you" 2.8 a minute), Zack D. Films Short (165, 191, starts on the strangest fact, causal chain, twist), LEMMiNO (157, 238,
+  7.1: fast phrases, deliberate long pauses). Ours (Whisper word times, same method): 114-134 overall, 12-18 long pauses a minute:
+  the tone settings chopped the story into islands. Style "story" in TONES (and rules voice.story_style): no pace fitting (wpm 0),
+  lines run on (gap 0.15), a long pause only on beats; spec `passage_chars` = one continuous ElevenLabs take. Report:
+  Atlas-HQ/review/ocean-voice-research.md; opening samples/megalodon-opening-story (Owen, v3 stability 0.0, the lines rewritten for
+  the ear: mystery first, present tense, "you", a felt comparison, a tag per line).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

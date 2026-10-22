@@ -68,7 +68,7 @@ RULES = {
     # PACING & SOUND
     "pace.still_max_s": _r("Pacing & sound", "float", 4.0, 1, 20, "Longest stretch with nothing changing on screen before Israa flags it", ("quality", "STILL_MAX")),
     "pace.reframe_every_s": _r("Pacing & sound", "float", 4.0, 1, 15, "A stretch with nothing planned gets a cut to another framing this often (seconds)", ("animate", "REFRAME_EVERY")),
-    "voice.story_style": _r("Video & render", "choice", "between", ("calm", "between", "dramatic"), None, "The storytelling voice's style (Chatterbox story videos): calm = slow with long pauses, between, dramatic = long pauses on the big beats and more varied pace. A video's own sound.voice settings (Tarek's) win"),
+    "voice.story_style": _r("Video & render", "choice", "between", ("story", "calm", "between", "dramatic"), None, "The storytelling voice's style: story = the voice's natural pace, lines run on, long pauses only on the big beats (like the reference narrators); calm = slow with long pauses, between, dramatic = long pauses on the big beats and more varied pace. A video's own sound.voice settings (Tarek's) win"),
     "voice.story_wpm": _r("Video & render", "int", 0, 0, 200, "Storytelling pace in words per minute while he speaks (every line is fitted to it; 0 = the style's: calm 135, between 148, dramatic 152). Chatterbox reads ~175 by itself"),
     "voice.story_gap": _r("Video & render", "float", 0.0, 0.0, 2.0, "Pause between two lines of the story, seconds (0 = the style's: calm 0.85, between 0.65, dramatic 0.55)"),
     "voice.story_sentence_pause": _r("Video & render", "float", 0.0, 0.0, 1.5, "Extra pause after each sentence inside a line, seconds (0 = the style's: calm 0.45, between 0.32, dramatic 0.38)"),

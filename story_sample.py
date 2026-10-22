@@ -87,10 +87,11 @@ PASSAGE_CHARS = 420   # one ElevenLabs take holds a few lines, so the delivery r
 def passages(spec):
     """Consecutive lines read in one take: up to PASSAGE_CHARS, a new take when the day changes and around the title."""
     L, groups, cur, n = spec["lines"], [], [], 0
+    limit = int(spec.get("passage_chars", PASSAGE_CHARS))   # 2.66.0: a whole opening in one take (one continuous read)
     for i, ln in enumerate(L):
         p = ln.get("p") or {}
         text = ln.get("eleven_say") or ln["text"]
-        if cur and (n + len(text) > PASSAGE_CHARS or p.get("day") not in (None, "") or ln["shot"] == "title" or L[cur[-1]]["shot"] == "title"
+        if cur and (n + len(text) > limit or p.get("day") not in (None, "") or ln["shot"] == "title" or L[cur[-1]]["shot"] == "title"
                     or float(p.get("pause_before", 0)) > 0):
             groups.append(cur)
             cur, n = [], 0
@@ -309,6 +310,12 @@ def _tempo(a, sr, f):
 # line is fitted to a storytelling pace, sentences get a breath inside a line, short dramatic lines a beat after them. The style's
 # numbers are the defaults; rules voice.story_* (Atlas) and the video's sound.voice (Tarek, or a sample's spec) override them.
 TONES = {
+    # 2.66.0 (the owner after all five openings: "this sound boring"): measured 6 reference narrators from their own caption timing
+    # (The Infographics Show, RealLifeLore and Brew on the same seafloor-survivor story, MrBallen, Zack D. Films, LEMMiNO): all talk
+    # 191-264 wpm inside phrases and 157-203 overall, with 0.3-7 pauses of a second or more a minute; ours stopped 12-18 times a
+    # minute (114-134 overall). "story" = the natural pace of the take (no fitting), lines run on, a long pause only on the beats.
+    "story": {"wpm": 0, "gap": 0.15, "sentence_pause": 0.0, "comma_pause": 0.0, "beat_pause": 0.8, "temperature": 0.8,
+              "ref_speed": 0.95, "pace_spread": 0.0},
     "calm": {"wpm": 135, "gap": 0.85, "sentence_pause": 0.45, "comma_pause": 0.12, "beat_pause": 0.7, "temperature": 0.7,
              "ref_speed": 0.85, "pace_spread": 0.5},
     "between": {"wpm": 148, "gap": 0.65, "sentence_pause": 0.32, "comma_pause": 0.08, "beat_pause": 0.5, "temperature": 0.8,
@@ -509,7 +516,7 @@ def _tone_line(ln, a48, words, tone):
     n = _words_eq(ln["text"])
     own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace (in average-length words)
     want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
-    f = max(TEMPO_MIN, min(1.08, want / own))   # atempo beyond these sounds processed
+    f = max(TEMPO_MIN, min(1.08, want / own)) if want > 0 else 1.0   # atempo beyond these sounds processed; 0 = the take's own pace
     if abs(f - 1.0) > 0.01:
         a48 = _tempo(a48, SR, f)
         words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
