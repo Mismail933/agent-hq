@@ -279,7 +279,8 @@ Judge the mix and the narration. Then fix what the sound settings can fix (you m
   style story|calm|between|dramatic (story = natural pace, few long pauses: what the reference narrators do), wpm (110..185, pace while he speaks; the owner found ~174 "rushing"), gap (0.2..1.5 s between lines),
   sentence_pause (0..1.2 s after a sentence inside a line), comma_pause (0..0.4), beat_pause (0..2 s after a short dramatic line),
   temperature (0.5..1.1, how varied the delivery is), ref_speed (0.75..1.05, the reference clip's pace: slower = calmer read),
-  pace_spread (0..2, how much faster action lines and slower sad lines are)
+  pace_spread (0..2, how much faster action lines and slower sad lines are), max_pause (0..2 s: longer silences inside a take
+  are shortened to it; 0 = off; story 0.45)
 Searches must use words that are in the library's sound names (the list in the task); a search that finds nothing places nothing.
 Earshot checks each placed sound against what the scene NEEDS in plain words (e.g. "a metal hatch being ripped open"), not against
 your search words, so judge the sound by that check.
@@ -308,7 +309,8 @@ SCHEMA = {"type": "object", "properties": {
         "voice": {"type": "object", "properties": {
             "style": {"type": "string", "enum": ["story", "calm", "between", "dramatic"]}, "wpm": {"type": "number"}, "gap": {"type": "number"},
             "sentence_pause": {"type": "number"}, "comma_pause": {"type": "number"}, "beat_pause": {"type": "number"},
-            "temperature": {"type": "number"}, "ref_speed": {"type": "number"}, "pace_spread": {"type": "number"}}}}},
+            "temperature": {"type": "number"}, "ref_speed": {"type": "number"}, "pace_spread": {"type": "number"},
+            "max_pause": {"type": "number"}}}}},
     "voice_notes": {"type": "array", "items": {"type": "object", "properties": {
         "line": {"type": "integer"}, "note": {"type": "string"}, "tag": {"type": "string"}}, "required": ["line", "note"]}}},
     "required": ["verdict", "summary", "problems", "settings", "voice_notes"]}
@@ -337,7 +339,8 @@ def clean_settings(s):
         out["music"] = {str(k): str(v) for k, v in s["music"].items() if str(v) in soundlib.TRACKS}
     if isinstance(s.get("voice"), dict):   # 2.65.0: the Chatterbox voice's tone (story_sample.TONES)
         v, lim = s["voice"], {"wpm": (110, 185), "gap": (0.2, 1.5), "sentence_pause": (0.0, 1.2), "comma_pause": (0.0, 0.4),
-                              "beat_pause": (0.0, 2.0), "temperature": (0.5, 1.1), "ref_speed": (0.75, 1.05), "pace_spread": (0.0, 2.0)}
+                              "beat_pause": (0.0, 2.0), "temperature": (0.5, 1.1), "ref_speed": (0.75, 1.05), "pace_spread": (0.0, 2.0),
+                              "max_pause": (0.0, 2.0)}
         vv = {k: max(lo, min(hi, float(v[k]))) for k, (lo, hi) in lim.items() if isinstance(v.get(k), (int, float))}
         if v.get("style") in ("story", "calm", "between", "dramatic"):
             vv["style"] = v["style"]

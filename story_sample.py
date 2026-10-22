@@ -314,14 +314,14 @@ TONES = {
     # (The Infographics Show, RealLifeLore and Brew on the same seafloor-survivor story, MrBallen, Zack D. Films, LEMMiNO): all talk
     # 191-264 wpm inside phrases and 157-203 overall, with 0.3-7 pauses of a second or more a minute; ours stopped 12-18 times a
     # minute (114-134 overall). "story" = the natural pace of the take (no fitting), lines run on, a long pause only on the beats.
-    "story": {"wpm": 0, "gap": 0.15, "sentence_pause": 0.0, "comma_pause": 0.0, "beat_pause": 0.8, "temperature": 0.8,
-              "ref_speed": 0.95, "pace_spread": 0.0},
+    "story": {"wpm": 0, "gap": 0.15, "sentence_pause": 0.0, "comma_pause": 0.0, "beat_pause": 0.0, "temperature": 0.8,
+              "ref_speed": 0.95, "pace_spread": 0.0, "max_pause": 0.45},
     "calm": {"wpm": 135, "gap": 0.85, "sentence_pause": 0.45, "comma_pause": 0.12, "beat_pause": 0.7, "temperature": 0.7,
-             "ref_speed": 0.85, "pace_spread": 0.5},
+             "ref_speed": 0.85, "pace_spread": 0.5, "max_pause": 0.0},
     "between": {"wpm": 148, "gap": 0.65, "sentence_pause": 0.32, "comma_pause": 0.08, "beat_pause": 0.5, "temperature": 0.8,
-                "ref_speed": 0.9, "pace_spread": 1.0},
+                "ref_speed": 0.9, "pace_spread": 1.0, "max_pause": 0.0},
     "dramatic": {"wpm": 152, "gap": 0.55, "sentence_pause": 0.38, "comma_pause": 0.05, "beat_pause": 1.0, "temperature": 0.9,
-                 "ref_speed": 0.9, "pace_spread": 1.8},
+                 "ref_speed": 0.9, "pace_spread": 1.8, "max_pause": 0.0},
 }
 TEMPO_MIN = 0.78   # the most a take is slowed (atempo); a take that would need more is made again (another seed reads at another pace)
 TONE_RULES = {"wpm": "voice.story_wpm", "gap": "voice.story_gap", "sentence_pause": "voice.story_sentence_pause",
@@ -385,6 +385,43 @@ def _breathe(a, sr, words, sentence, comma):
     for w, s0, e0 in words:
         d = sum(add for t, add in shift if t <= s0)
         out.append([w, s0 + d, e0 + d])
+    return np.concatenate(parts), out
+
+
+def _tighten(a, sr, words, max_pause):
+    """Every silence inside a take longer than max_pause shortened to it (the middle is cut; an editor's 'tighten'), later words moved
+    up. Eleven v3 in its creative mode held 1-2 s after almost every sentence (14.5 long pauses a minute; the references 0.3-7)."""
+    if max_pause <= 0 or len(a) < sr:
+        return a, words
+    blk = max(1, sr // 100)
+    n = len(a) // blk
+    r = np.sqrt((a[:n * blk].reshape(n, blk) ** 2).mean(axis=1) + 1e-12)
+    quiet = 20 * np.log10(r / (r.max() + 1e-12)) < -38
+    keep, cuts, i = [], [], 0
+    while i < n:
+        if quiet[i]:
+            j = i
+            while j < n and quiet[j]:
+                j += 1
+            dur = (j - i) * blk / sr
+            if dur > max_pause and i > 0 and j < n:   # never the take's own ends
+                cut = int((dur - max_pause) * sr)
+                mid = (i * blk + j * blk) // 2
+                cuts.append((mid - cut // 2, cut))
+            i = j
+        else:
+            i += 1
+    if not cuts:
+        return a, words
+    parts, last = [], 0
+    for at, cut in cuts:
+        parts.append(a[last:at])
+        last = at + cut
+    parts.append(a[last:])
+    out = []
+    for w, s0, e0 in words:
+        d = sum(c for at, c in cuts if at + c <= s0 * sr + blk) / sr
+        out.append([w, max(0.0, s0 - d), max(0.0, e0 - d)])
     return np.concatenate(parts), out
 
 
@@ -520,6 +557,7 @@ def _tone_line(ln, a48, words, tone):
     if abs(f - 1.0) > 0.01:
         a48 = _tempo(a48, SR, f)
         words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
+    a48, words = _tighten(a48, SR, words, float(tone.get("max_pause", 0.0)))
     a48, words = _breathe(a48, SR, words, tone["sentence_pause"], tone["comma_pause"])
     after = tone["beat_pause"] if _is_beat(ln["text"]) else 0.0
     return ({"audio": a48, "words": words or [[ln["text"].split()[0], 0.0, len(a48) / SR]], "secs": len(a48) / SR, "after": after},
