@@ -563,7 +563,7 @@ def _tone_line(ln, a48, words, tone):
     if abs(f - 1.0) > 0.01:
         a48 = _tempo(a48, SR, f)
         words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
-    a48, words = _tighten(a48, SR, words, float(tone.get("max_pause", 0.0)))
+    a48, words = _tighten(a48, SR, words, float((ln.get("p") or {}).get("max_pause", tone.get("max_pause", 0.0))))   # a line may keep a longer pause
     a48, words = _breathe(a48, SR, words, tone["sentence_pause"], tone["comma_pause"])
     after = tone["beat_pause"] if _is_beat(ln["text"]) else 0.0
     return ({"audio": a48, "words": words or [[ln["text"].split()[0], 0.0, len(a48) / SR]], "secs": len(a48) / SR, "after": after},

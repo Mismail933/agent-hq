@@ -1034,6 +1034,10 @@ Agents never spend money without the owner's explicit approval.
   story `min_wpm` 150 (a line read slower is lifted by atempo, at most 1.15x); no "..." in story lines (v3 lingers on them).
   2.66.3 (the owner: the "as long as your hand" tooth shot "became so fast"): `timeline` holds a picture that pops on one of the
   line's last words (`_late_pop`: labels' on + every *_on) at least `REVEAL_HOLD` 1.5 s (spec `reveal_hold`) before the next cut.
+  2.66.4 (the owner: 6.5, "still feels weird"; Tarek: Owen in v3 creative raced lines 4-8 at 200-278 wpm and went flat on the reveal):
+  a line's own p.max_pause overrides the tone's ("It was the megalodon." keeps its pause); openings megalodon-opening-owen2 and
+  -marcus (Marcus, Classic Audiobook Narrator: #4 of the voice match to The Infographics Show, the most pitch movement of the top 5,
+  ~152k uses), both v3 natural (stability 0.5), Tarek's tag per line, an even pace (story with wpm 160, pace_spread 0.2).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes
