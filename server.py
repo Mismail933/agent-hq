@@ -97,6 +97,7 @@ import quality            # noqa: E402
 import sfx                # noqa: E402
 import ghassan            # noqa: E402
 import phone              # noqa: E402
+import clientbot          # noqa: E402
 import remote             # noqa: E402
 import studio             # noqa: E402
 import design             # noqa: E402
@@ -2005,6 +2006,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (ROOT / "office.html").read_bytes(), "text/html")
         if u.path == "/api/phone":   # the office's 'Your phone' card (never the token)
             return self._send(200, phone.view())
+        if u.path == "/api/clients":   # 2.67.0: clients' bots (never a token; the pairing code only on this PC)
+            local = remote.is_local(self)
+            return self._send(200, {"clients": clientbot.clients(local),
+                                    "outbox": [o for o in clientbot.outbox() if o["state"] == "waiting"][-20:] if local else []})
         if u.path == "/api/omar":   # Omar and the YouTube connection (never the client secret or the token)
             return self._send(200, omar.view())
         if u.path == "/api/channel-stats":   # the newest snapshot of a channel (hq channel-stats [project])
@@ -3077,6 +3082,45 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
             return self._send(200, {"ok": True, "message": msg})
+        if u.path.startswith("/api/clients/"):   # 2.67.0 (clientbot.py): new | <slug>/token | <slug>/say | <slug>/send | <slug>/unpair | outbox/<id>/send|drop
+            parts = u.path.strip("/").split("/")
+            try:
+                if parts[2:3] == ["new"]:
+                    b = self._json_body()
+                    c = clientbot.new(b.get("name"), int(b.get("project") or 0), str(b.get("by") or "Owner"))
+                    return self._send(200, {"ok": True, "message": f"{c['name']} is set up for project {c['project']}. Next: his bot's token "
+                                                                  "(Spend & limits -> Clients).", **c})
+                if parts[2:3] == ["outbox"] and len(parts) == 5:
+                    b = self._json_body()
+                    by = str(b.get("by") or "Owner").title()
+                    msg = clientbot.deliver(parts[3], b.get("text"), by) if parts[4] == "send" else clientbot.drop(parts[3], by)
+                    return self._send(200, {"ok": True, "message": msg})
+                slug = parts[2] if len(parts) > 3 else ""
+                if parts[3:4] == ["token"]:
+                    if not remote.is_local(self):
+                        return self._send(403, {"error": "A client's bot token can only be set on the PC itself."})
+                    n = int(self.headers.get("Content-Length") or 0)
+                    raw = self.rfile.read(min(n, 500)).decode("utf-8", "replace").strip() if n else ""
+                    try:
+                        raw = json.loads(raw).get("token", raw) if raw.startswith("{") else raw
+                    except ValueError:
+                        pass
+                    c = clientbot.set_token(slug, raw)
+                    return self._send(200, {"ok": True, "message": f"Connected to @{c['bot']}. Give {c['name']} the pairing code {c['code']}.", **c})
+                if parts[3:4] == ["say"]:
+                    b = self._json_body()
+                    return self._send(200, {"ok": True, "message": clientbot.queue(slug, str(b.get("text") or ""), by=str(b.get("by") or "Atlas"))})
+                if parts[3:4] == ["send"]:
+                    b = self._json_body()
+                    return self._send(200, {"ok": True, "message": clientbot.queue(slug, str(b.get("text") or ""), path=b.get("path"),
+                                                                                   caption=str(b.get("caption") or ""), approve=b.get("approve"),
+                                                                                   by=str(b.get("by") or "Atlas"))})
+                if parts[3:4] == ["unpair"]:
+                    c = clientbot.unpair(slug)
+                    return self._send(200, {"ok": True, "message": f"{c['name']}'s Telegram is unpaired. New code: {c['code']}.", **c})
+            except (ValueError, clientbot.TelegramError) as e:
+                return self._send(400, {"error": str(e)})
+            return self._send(404, {"error": "no such client route"})
         if u.path == "/api/phone/unpair":
             phone.unpair()
             cp.log("Owner", "phone_unpaired", None, {})
@@ -3234,6 +3278,7 @@ def main():
     phone.PROVIDERS.append(phone_cards)
     phone.PROVIDERS.append(design_cards)
     phone.start(srv.server_port)
+    clientbot.start_all(srv.server_port)   # 2.67.0: each client's own Telegram bot, bound to his project
     remote.start(Server, Handler, srv.server_port)   # the same office on the owner's other computers, over Tailscale (2.39.0)
     threading.Thread(target=resume_jobs, daemon=True).start()
     threading.Thread(target=first_logo, daemon=True).start()

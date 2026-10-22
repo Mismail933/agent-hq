@@ -2053,6 +2053,23 @@ async function ytPost(path, body, raw) {
   catch { toast("Can't reach the engine."); }
   renderPhone(true);
 }
+/* ---------- Clients: each client's own Telegram bot, bound to his project (clientbot.py, 2.67.0) ---------- */
+function clientsHtml(cl) {
+  if (!cl || !(cl.clients || []).length) return '';
+  const rows = cl.clients.map(c => {
+    const bot = c.bot ? `<a href="https://t.me/${encodeURIComponent(c.bot)}" target="_blank" rel="noopener">@${esc(c.bot)}</a>` : '';
+    if (!c.has_token) return `<p class="note"><b>${esc(c.name)}</b> (project ${c.project}): 1. In Telegram open <b>@BotFather</b>, send <b>/newbot</b> and name it for ${esc(c.name)} (a NEW bot, not your own).
+        2. Paste its token here. It stays on this PC.</p>
+        <form class="lrow" data-ctok="${esc(c.slug)}"><label>${esc(c.name)}'s bot token<small>Looks like 123456789:AA…</small></label><input type="password" autocomplete="off" spellcheck="false" aria-label="${esc(c.name)}'s bot token"></form>
+        <div><button class="btn sm" type="button" data-ctoksave="${esc(c.slug)}">Connect</button></div>`;
+    if (!c.paired) return `<div class="lrow"><label>${esc(c.name)} · project ${c.project}<small>Send him ${bot || 'his bot'} and this code: he presses Start and sends it.</small></label><b style="font-family:var(--mono);font-size:22px;letter-spacing:.2em;color:var(--cyan-ink)">${esc(c.code || '')}</b></div>
+        ${c.error ? `<p class="note" style="color:#FDA4AF">${esc(c.error)}</p>` : ''}`;
+    return `<div class="lrow"><label>${esc(c.name)} · project ${c.project}<small>Connected through ${bot}. His messages come to your phone; what goes to him waits for your Send.${c.waiting ? ` <b>${c.waiting} waiting for you.</b>` : ''}</small></label>
+        <button class="btn sm ghost" type="button" data-cunpair="${esc(c.slug)}" data-cname="${esc(c.name)}">Unpair</button></div>
+        ${c.error ? `<p class="note" style="color:#FDA4AF">Last problem: ${esc(c.error)}</p>` : ''}`;
+  }).join('');
+  return `<div class="lim"><strong>Clients</strong><p class="note">Each client talks to the studio through his own bot and sees only his project. Atlas adds a client when you tell him.</p>${rows}</div>`;
+}
 /* ---------- Your other computers: this office over Tailscale (remote.py, 2.39.0) ---------- */
 function remoteHtml(rm) {
   if (!rm || !rm.enabled) return '';
@@ -2075,7 +2092,8 @@ async function renderPhone(force) {
   let v, rm, om; try { v = await (await fetch('/api/phone', {cache:'no-store'})).json(); } catch { return; }
   try { rm = await (await fetch('/api/remote', {cache:'no-store'})).json(); } catch { rm = null; }
   try { om = await (await fetch('/api/omar', {cache:'no-store'})).json(); } catch { om = null; }
-  const k = JSON.stringify([v, rm, om]); if (!force && k === phoneKey) return; phoneKey = k;
+  let cl; try { cl = await (await fetch('/api/clients', {cache:'no-store'})).json(); } catch { cl = null; }
+  const k = JSON.stringify([v, rm, om, cl]); if (!force && k === phoneKey) return; phoneKey = k;
   const bot = v.bot ? `<a href="https://t.me/${encodeURIComponent(v.bot)}" target="_blank" rel="noopener">@${esc(v.bot)}</a>` : 'your bot';
   let body;
   if (!v.configured || (v.error && !v.running)) body = `
@@ -2092,7 +2110,10 @@ async function renderPhone(force) {
       Phone alerts: <b>${({decisions:'calm: only what needs you and finished videos, grouped, quiet at night, morning digest', everything:'every update', nothing:'muted: only Atlas\'s replies'})[v.send] || 'calm'}</b>. Change it in Telegram with /quiet, /all or /mute; /help lists the rest.</p>
       ${v.error ? `<p class="note" style="color:#FDA4AF">Last problem reaching Telegram: ${esc(v.error)}</p>` : ''}
       <div><button class="btn sm ghost" type="button" id="phoneUnpair">Unpair this phone</button></div>`;
-  box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>` + youtubeHtml(om) + remoteHtml(rm);
+  box.innerHTML = `<div class="lim"><strong>Your phone</strong>${body}</div>` + clientsHtml(cl) + youtubeHtml(om) + remoteHtml(rm);
+  box.querySelectorAll('[data-ctoksave]').forEach(b => b.addEventListener('click', () => { const f = box.querySelector(`[data-ctok="${b.dataset.ctoksave}"] input`); if (f && f.value.trim()) ytPost(`/api/clients/${b.dataset.ctoksave}/token`, f.value.trim(), true); }));
+  box.querySelectorAll('[data-ctok]').forEach(f => f.addEventListener('submit', e => { e.preventDefault(); const i = f.querySelector('input'); if (i.value.trim()) ytPost(`/api/clients/${f.dataset.ctok}/token`, i.value.trim(), true); }));
+  box.querySelectorAll('[data-cunpair]').forEach(b => b.addEventListener('click', () => { if (confirm(`Unpair ${b.dataset.cname}'s Telegram? He then needs a new code.`)) ytPost(`/api/clients/${b.dataset.cunpair}/unpair`, {}); }));
   const yc = $('#ytClient');
   if (yc) yc.addEventListener('change', async () => { const f = yc.files[0]; if (f) ytPost('/api/youtube/client', await f.arrayBuffer(), true); });
   box.querySelectorAll('[data-ytc]').forEach(b => b.addEventListener('click', () => ytPost('/api/youtube/connect', {project: +b.dataset.ytc})));

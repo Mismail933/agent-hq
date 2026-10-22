@@ -481,13 +481,17 @@ ACTIONS = {
     "CA": ("Approve the characters", "/api/project/{}/characters", None, {"action": "approve"}, False),
     "CB": ("Send the characters back", _send_back_characters, "note", {}, False),
     "DZ": ("Use this design", lambda a: (f"/api/design/{a.split('.')[0]}/{a.split('.')[1]}/choose", {"option": int(a.split(".")[2])}), None, {}, False),
+    "CS": ("Send it to the client", "/api/clients/outbox/{}/send", None, {"by": "owner"}, False),   # 2.67.0 (clientbot.py)
+    "CE": ("Send your own words", "/api/clients/outbox/{}/send", "text", {"by": "owner"}, False),
+    "CX": ("Don't send it", "/api/clients/outbox/{}/drop", None, {"by": "owner"}, False),
     "RES": ("Resume every agent", "/api/resume", None, {}, False),
     "STOP": ("Stop every agent", "/api/stop", None, {}, True),
 }
 TAKES_NOTE = {"CB"}   # computed routes that put the owner's note in the body themselves
 DONE = {"CB": "Atlas has your note; he'll have them redrawn and checked, and answers here.","R": "Sage starts researching it. Vera's verdict comes here when it's done.", "RES": "Every agent can work again.",
         "STOP": "Every agent is stopped. Send /resume to start again."}
-WHY = {"reason": "Why? Your reason teaches the team.", "note": "What should change? Write it in one message."}
+WHY = {"reason": "Why? Your reason teaches the team.", "note": "What should change? Write it in one message.",
+       "text": "Write the message exactly as the client should get it (one message)."}
 
 
 def _run_action(code, arg, extra=None):

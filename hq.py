@@ -12,6 +12,7 @@ Atlas's controls for Agent HQ.
                  restart ["why"]     (the office restarts into the newest version once nothing is running; saved jobs resume)
                  atlas-new ["why"]     (a fresh Atlas chat after your current reply; write the handoff in atlas-journal.md first)
                  resume <job id | kind>     (a stopped long job runs again from its last finished step; `status` lists saved_jobs)
+                 client-new "<name>" <project> (owner's word only) | clients | client-say <client> "text" | client-send <client> <file> ["caption"] [--approve <ep>]     (a client's own Telegram bot; everything to him waits for the owner's OK)
                  design <what> ["brief"] [--name NAME] | design-pick <what> <version> <option> (only on the owner's word) | trace <image> [--colors N] [--bw] | cast-draw <project> <image...> ["notes"] [--new] | cast-draw <project> --resume [v<K>] | cast <project> | cast-check <project> v<K> | cast-use <project> kit|v<K>     (Rana)
                  project-new "<name>" --kind client_music_video ["brief"]     (a client project: ONLY on the owner's explicit word)
                  channel-new "<name>" ["brief"]     (a new channel of long narrated stories: ONLY on the owner's explicit word)
@@ -675,6 +676,24 @@ def main(argv):
                 name = rest[i + 1] if i + 1 < len(rest) else ""
                 del rest[i:i + 2]
             code, reply = office("/api/design", {"what": args[0], "brief": " ".join(rest), "name": name})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "client-new":   # hq client-new "<name>" <project>: ONLY on the owner's word (2.67.0, clientbot.py)
+            code, reply = office("/api/clients/new", {"name": args[0], "project": int(args[1]), "by": "Atlas"})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "clients":   # each client's bot, pairing and what waits for the owner's OK
+            import urllib.request as _u
+            port = (ROOT / ".port").read_text().strip() if (ROOT / ".port").exists() else "8765"
+            show(json.dumps(json.loads(_u.urlopen(f"http://127.0.0.1:{port}/api/clients", timeout=30).read()), indent=1))
+        elif cmd == "client-say":   # hq client-say <client> "text": a message for the client; it waits for the owner's OK (rule client.review_replies)
+            code, reply = office(f"/api/clients/{args[0]}/say", {"text": " ".join(args[1:]), "by": "Atlas"})
+            show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
+        elif cmd == "client-send":   # hq client-send <client> <file under his project> ["caption"] [--approve <episode>]
+            rest, approve = list(args[1:]), None
+            if "--approve" in rest:
+                i = rest.index("--approve")
+                approve = int(rest[i + 1])
+                del rest[i:i + 2]
+            code, reply = office(f"/api/clients/{args[0]}/send", {"path": rest[0], "caption": " ".join(rest[1:]), "approve": approve, "by": "Atlas"})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "design-pick":   # hq design-pick <what> <version> <option>: ONLY when the owner told you which one (his phone reply)
             code, reply = office(f"/api/design/{args[0]}/{int(str(args[1]).lstrip('v'))}/choose", {"option": int(args[2])})

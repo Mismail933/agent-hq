@@ -169,6 +169,11 @@ RULES = {
     "clips.caption_highlight": _r("Shorts from a video", "bool", True, None, None, "The word being spoken is yellow in the captions"),
     "clips.phone": _r("Shorts from a video", "bool", True, None, None, "The finished clips are sent to the owner's phone for his OK (he uploads them himself)"),
     # PHONE
+    "client.review_replies": _r("Clients", "bool", True, None, None, "Everything going to a client (Atlas's replies, files, scripts, videos) waits for your Send / Edit / Don't send on your phone first (off = it goes straight to him)"),
+    "client.copy_owner": _r("Clients", "bool", True, None, None, "Every message a client sends (and his files) is shown on your phone at once"),
+    "client.ack": _r("Clients", "bool", True, None, None, "A client gets a short fixed 'Got it, the studio has your message' (at most every 10 minutes) while his answer waits for you"),
+    "client.draft_replies": _r("Clients", "bool", True, None, None, "Atlas drafts a reply to each client message (in a client-only role: his project only) for you to send, edit or drop"),
+    "client.can_approve": _r("Clients", "bool", True, None, None, "Scripts and videos sent to a client carry Approve / Changes / Reject buttons; his decision on his own project is final"),
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,
                      "What reaches the phone at once: decisions (things that need the owner + finished videos), everything, or nothing"),
     "phone.group_minutes": _r("Phone", "int", 15, 0, 240, "Things that need the owner are grouped: at most one phone alert per this many minutes"),

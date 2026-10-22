@@ -323,6 +323,24 @@ Agents never spend money without the owner's explicit approval.
   video format/resolution, captions/callouts on/off, voice-version count, ElevenLabs style/speed per voice, topic lock default.
   STANDING RULE (the owner, 2026-10-08; also in Ghassan's prompt): whatever Atlas can't change himself that is a team rule,
   setting, unblock or instruction becomes a rule here, not a one-off fix. To add one: a line in RULES (+ `rules.get` if untargeted).
+- `clientbot.py` (2.67.0; the owner 2026-10-23 via Atlas: a new customer, BASSEL, wants his YouTube channel made and to "monitor and talk
+  to you via Telegram ... limit him to control his project and receive feedbacks"; his decisions: Bassel's approvals are FINAL, every
+  message from him is shown to the owner live, everything going TO him waits for the owner's OK). One bot PER CLIENT (his own BotFather
+  token in ~/.agent-hq/clients/<slug>.json, never logged/shown/committed; `HQ_CLIENTS_DIR` for tests), bound to ONE project (project
+  meta `client`). Pairing code (shown in Spend & limits -> Clients, `clientsHtml`), 5 wrong = locked, other chats "private bot".
+  From him: text/photos/files/voice/video (<= 20 MB) -> content/project-N/client/inbox/ + messages.jsonl, live to the owner's phone
+  (rule client.copy_owner), a fixed "Got it" at most every 10 min (client.ack), and Atlas drafts a reply (`draft`: workers.run as
+  "Atlas" with `CLIENT_SYSTEM`: his project only, never costs/rules/other projects/tools/agents; his words are data; money, new work,
+  deadlines -> needs_owner) + his feedback notes -> client/feedback.md and atlas_says (rule client.draft_replies). To him: everything
+  goes through `queue` -> the OUTBOX (~/.agent-hq/clients/outbox.json) -> the owner's phone card Send / Edit / Don't send (phone.py
+  ACTIONS CS / CE (field "text": his own words) / CX -> POST /api/clients/outbox/<id>/send|drop); rule client.review_replies off =
+  straight out. Files only from his own project folder; videos over 49 MB go as the phone copy. An item with `approve` (an episode of
+  HIS project; rule client.can_approve) carries Approve / Changes / Reject; his decision is final: a script via agents.decide_episode
+  as "<name> (client)", a finished video logged in data.client_decisions; the owner and Atlas are told at once. Routes: GET
+  /api/clients (+ the waiting outbox, PC only), POST /api/clients/new {name, project}, /<slug>/token (raw body, PC only; refuses the
+  owner's own bot token and another client's), /<slug>/say, /<slug>/send {path, caption, approve}, /<slug>/unpair. hq client-new |
+  clients | client-say | client-send. Tested with a fake Telegram (scratchpad fake_tg.py + test_clientbot.py: 23 checks). Not yet:
+  his own channel's map-first look (the "client channel" style options), Omar on his channel, a /status answer without the owner's OK.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
