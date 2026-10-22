@@ -311,24 +311,50 @@ def _n(x):
     return f"{int(x):,}"
 
 
-COUNTRY_NAMES = {"US": "United States", "GB": "United Kingdom", "CA": "Canada", "AU": "Australia", "IN": "India", "PK": "Pakistan",
-                 "PH": "Philippines", "ID": "Indonesia", "DE": "Germany", "FR": "France", "NL": "Netherlands", "IT": "Italy", "ES": "Spain",
-                 "BR": "Brazil", "MX": "Mexico", "LB": "Lebanon", "AE": "UAE", "SA": "Saudi Arabia", "EG": "Egypt", "TR": "Turkey",
-                 "NG": "Nigeria", "ZA": "South Africa", "KE": "Kenya", "BD": "Bangladesh", "MY": "Malaysia", "SG": "Singapore",
-                 "NZ": "New Zealand", "IE": "Ireland", "SE": "Sweden", "PL": "Poland", "RU": "Russia", "JP": "Japan", "KR": "South Korea",
-                 "VN": "Vietnam", "TH": "Thailand", "MA": "Morocco", "JO": "Jordan", "IQ": "Iraq", "SY": "Syria", "GR": "Greece"}
+# ISO 3166-1 alpha-2 codes (YouTube Analytics' country dimension) -> plain names
+COUNTRY_NAMES = dict(p.split("=") for p in (
+    "AD=Andorra;AE=UAE;AF=Afghanistan;AG=Antigua and Barbuda;AI=Anguilla;AL=Albania;AM=Armenia;AO=Angola;AQ=Antarctica;"
+    "AR=Argentina;AS=American Samoa;AT=Austria;AU=Australia;AW=Aruba;AX=Aland Islands;AZ=Azerbaijan;BA=Bosnia and Herzegovina;"
+    "BB=Barbados;BD=Bangladesh;BE=Belgium;BF=Burkina Faso;BG=Bulgaria;BH=Bahrain;BI=Burundi;BJ=Benin;BL=Saint Barthelemy;"
+    "BM=Bermuda;BN=Brunei;BO=Bolivia;BQ=Caribbean Netherlands;BR=Brazil;BS=Bahamas;BT=Bhutan;BW=Botswana;BY=Belarus;BZ=Belize;"
+    "CA=Canada;CD=DR Congo;CF=Central African Republic;CG=Congo;CH=Switzerland;CI=Ivory Coast;CK=Cook Islands;CL=Chile;"
+    "CM=Cameroon;CN=China;CO=Colombia;CR=Costa Rica;CU=Cuba;CV=Cape Verde;CW=Curacao;CY=Cyprus;CZ=Czechia;DE=Germany;"
+    "DJ=Djibouti;DK=Denmark;DM=Dominica;DO=Dominican Republic;DZ=Algeria;EC=Ecuador;EE=Estonia;EG=Egypt;EH=Western Sahara;"
+    "ER=Eritrea;ES=Spain;ET=Ethiopia;FI=Finland;FJ=Fiji;FK=Falkland Islands;FM=Micronesia;FO=Faroe Islands;FR=France;GA=Gabon;"
+    "GB=United Kingdom;GD=Grenada;GE=Georgia;GF=French Guiana;GG=Guernsey;GH=Ghana;GI=Gibraltar;GL=Greenland;GM=Gambia;"
+    "GN=Guinea;GP=Guadeloupe;GQ=Equatorial Guinea;GR=Greece;GT=Guatemala;GU=Guam;GW=Guinea-Bissau;GY=Guyana;HK=Hong Kong;"
+    "HN=Honduras;HR=Croatia;HT=Haiti;HU=Hungary;ID=Indonesia;IE=Ireland;IL=Israel;IM=Isle of Man;IN=India;IQ=Iraq;IR=Iran;"
+    "IS=Iceland;IT=Italy;JE=Jersey;JM=Jamaica;JO=Jordan;JP=Japan;KE=Kenya;KG=Kyrgyzstan;KH=Cambodia;KI=Kiribati;KM=Comoros;"
+    "KN=Saint Kitts and Nevis;KP=North Korea;KR=South Korea;KW=Kuwait;KY=Cayman Islands;KZ=Kazakhstan;LA=Laos;LB=Lebanon;"
+    "LC=Saint Lucia;LI=Liechtenstein;LK=Sri Lanka;LR=Liberia;LS=Lesotho;LT=Lithuania;LU=Luxembourg;LV=Latvia;LY=Libya;"
+    "MA=Morocco;MC=Monaco;MD=Moldova;ME=Montenegro;MF=Saint Martin;MG=Madagascar;MH=Marshall Islands;MK=North Macedonia;ML=Mali;"
+    "MM=Myanmar;MN=Mongolia;MO=Macao;MP=Northern Mariana Islands;MQ=Martinique;MR=Mauritania;MS=Montserrat;MT=Malta;"
+    "MU=Mauritius;MV=Maldives;MW=Malawi;MX=Mexico;MY=Malaysia;MZ=Mozambique;NA=Namibia;NC=New Caledonia;NE=Niger;NG=Nigeria;"
+    "NI=Nicaragua;NL=Netherlands;NO=Norway;NP=Nepal;NR=Nauru;NZ=New Zealand;OM=Oman;PA=Panama;PE=Peru;PF=French Polynesia;"
+    "PG=Papua New Guinea;PH=Philippines;PK=Pakistan;PL=Poland;PM=Saint Pierre and Miquelon;PR=Puerto Rico;PS=Palestine;"
+    "PT=Portugal;PW=Palau;PY=Paraguay;QA=Qatar;RE=Reunion;RO=Romania;RS=Serbia;RU=Russia;RW=Rwanda;SA=Saudi Arabia;"
+    "SB=Solomon Islands;SC=Seychelles;SD=Sudan;SE=Sweden;SG=Singapore;SI=Slovenia;SK=Slovakia;SL=Sierra Leone;SM=San Marino;"
+    "SN=Senegal;SO=Somalia;SR=Suriname;SS=South Sudan;ST=Sao Tome and Principe;SV=El Salvador;SX=Sint Maarten;SY=Syria;"
+    "SZ=Eswatini;TC=Turks and Caicos Islands;TD=Chad;TG=Togo;TH=Thailand;TJ=Tajikistan;TL=Timor-Leste;TM=Turkmenistan;"
+    "TN=Tunisia;TO=Tonga;TR=Turkey;TT=Trinidad and Tobago;TV=Tuvalu;TW=Taiwan;TZ=Tanzania;UA=Ukraine;UG=Uganda;"
+    "US=United States;UY=Uruguay;UZ=Uzbekistan;VA=Vatican City;VC=Saint Vincent and the Grenadines;VE=Venezuela;"
+    "VG=British Virgin Islands;VI=US Virgin Islands;VN=Vietnam;VU=Vanuatu;WS=Samoa;XK=Kosovo;YE=Yemen;YT=Mayotte;"
+    "ZA=South Africa;ZM=Zambia;ZW=Zimbabwe;ZZ=Unknown").split(";"))
 
 
 def countries_text(snap, n=5):
     """Where a snapshot's viewers are from: the top n countries by views, with watch time and share of views, one plain line.
-    '' when there are none (a new channel, or the API refused)."""
-    rows = [r for r in (snap.get("analytics") or {}).get("countries") or [] if r.get("country")]
+    A share = the country's views / the channel's total views for the same days (as YouTube Studio shows it), not of the
+    listed countries' sum. '' when there are none (a new channel, or the API refused)."""
+    an = snap.get("analytics") or {}
+    rows = [r for r in an.get("countries") or [] if r.get("country")]
     if not rows or n <= 0:
         return ""
-    total = sum(int(r.get("views", 0)) for r in rows) or 1
+    total = int((an.get("total") or {}).get("views") or 0) or sum(int(r.get("views", 0)) for r in rows) or 1
     parts = [f"{COUNTRY_NAMES.get(r['country'], r['country'])} {round(100 * int(r.get('views', 0)) / total)}% "
              f"({_n(r.get('views', 0))} views, {float(r.get('estimatedMinutesWatched', 0)) / 60:.1f} h)" for r in rows[:n]]
-    return (f"Viewers from (to {snap.get('to', '?')}; YouTube's country numbers lag 1-2 days): " + ", ".join(parts) + ".")
+    return (f"Viewers from ({snap.get('from', '?')} to {snap.get('to', '?')}, Shorts + videos, share of all {_n(total)} views; "
+            "YouTube's country numbers lag 1-2 days): " + ", ".join(parts) + ".")
 
 
 def reach_setup(pid):
@@ -497,7 +523,9 @@ def _brief(snaps, pid=None):
              f"Last {last['days']} days, channel totals: {json.dumps(last['analytics']['total'])}",
              "Traffic sources: " + json.dumps(last["analytics"]["sources"][:8]),
              "Viewers by country (views and minutes watched, last 28 days; YouTube's country numbers lag 1-2 days; say where the "
-             "viewers are from in the note): " + json.dumps((last["analytics"].get("countries") or [])[:10]),
+             "viewers are from in the note; a country's share = its views / the channel's total views above, as YouTube Studio "
+             "shows it, not of these rows' sum; Shorts + videos together): " + json.dumps((last["analytics"].get("countries") or [])[:10]),
+             "Same as a line (shares of all views, full country names): " + (countries_text(last, 10) or "none"),
              "Per video (last 28 days): " + json.dumps(last["analytics"]["per_video"][:15]),
              "Impressions and click-through rate (YouTube's reach report, per video, newest days; ctr in percent): "
              + json.dumps(last.get("reach") or "not read yet", ensure_ascii=False),

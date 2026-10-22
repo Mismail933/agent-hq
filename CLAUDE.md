@@ -1039,8 +1039,10 @@ Agents never spend money without the owner's explicit approval.
   - Rivals (2.45.0, Atlas's [builder-chat] 2026-10-17: "let Omar check other channels, how they're successful, and learn"): `youtube.public_channel(ref, n)` (a link, @handle, channel id, /user/ name; /c/ names and plain words via one search) = public subscribers + last n uploads (views, likes, comments, `seconds`, upload time). `omar.watch/unwatch/rivals` keep content/project-N/channel/rivals.json (MAX_RIVALS 10); `daily()` also writes rivals-<date>.json (`rival_summary`: uploads in 28 days, median views, Shorts share, median length, likes per 1000 views, best recent titles, usual upload times UTC; one failing channel never stops the daily); `_brief` gives them to the weekly note, whose schema has `from_rivals` ("What works for the channels we watch"). Routes POST `/api/omar/watch|unwatch {ref, by}`; `hq omar watch <channel> | unwatch <channel> | rivals`; the YouTube card lists them. Public data only, no downloads.
   - Where viewers are from (Atlas's request 2026-10-18, the owner: "Can we know where are they from?"): `youtube.snapshot` also reads
     Analytics `dimensions=country` (views + estimatedMinutesWatched, top 25, same yt-analytics.readonly scope: no reconnect; a refusal
-    becomes `[{error}]`, never stops the snapshot) into `analytics.countries`. `omar.countries_text(snap, n)` (COUNTRY_NAMES, else the
-    ISO code; share of views, hours watched; says the numbers lag 1-2 days) goes on the daily line (rule omar.top_countries, 5; 0 =
+    becomes `[{error}]`, never stops the snapshot) into `analytics.countries`. `omar.countries_text(snap, n)` (COUNTRY_NAMES = every
+    ISO 3166 code; share = the country's views / the channel's total views for the same days, `analytics.total.views`, as Studio
+    shows it (it used to divide by the listed countries' sum: Lebanon read 36% instead of ~18%); says "Shorts + videos" and the
+    period; hours watched; says the numbers lag 1-2 days; the weekly brief carries the same line) goes on the daily line (rule omar.top_countries, 5; 0 =
     off), the weekly brief has the top 10 and the note a required `viewers_from` ("Where viewers are from"), `hq channel-stats`
     puts `viewers_from` first. Practice mode has made-up countries.
   - Impressions and click-through rate (Atlas's request 2026-10-18, the owner: "why cant omar access those"): not in the Analytics
