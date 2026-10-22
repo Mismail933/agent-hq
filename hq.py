@@ -461,7 +461,8 @@ def main(argv):
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "sound":   # hq sound <sample.json> [video.mp4]: Tarek listens, fixes the mix, gives voice notes
             if not args:
-                show("Use: hq sound <content/.../samples/<name>.json> [the finished video .mp4]   (rules sound.rounds, sound.fix)")
+                show("Use: hq sound <content/.../samples/<name>.json> [the finished video .mp4]   (rules sound.rounds, sound.fix)\n"
+                     "     hq sound <any .json/.mp4/.wav under content/, e.g. an ambience preview> [video]   (no narration: the bed only)")
                 return
             body = {"sample": args[0]}
             if len(args) > 1:

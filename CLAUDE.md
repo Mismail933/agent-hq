@@ -1290,6 +1290,11 @@ Agents never spend money without the owner's explicit approval.
     1.5 s voice average; now `_held_level` = speech level held through pauses). `merge_settings`: a later round's accents/beds merge
     per scene (round 2 had wiped round 1's seabed fix). Each placed sound carries `need` (story_sample `NEEDS`, plain words: "a metal
     hatch being ripped open") and Earshot matches THAT, not the file-name search.
+  - Beds only (Atlas's request 2026-10-23: `hq sound` on an Elsewhen Sounds ambience preview died, its `<name>/listen` folder's
+    parent didn't exist): `listen` makes the work folder with its parents; `/api/sound` takes a story json OR any video/audio file
+    under content/ (incl. content/ambience/). `sound_agent.bed_only` = no json, or a json with no narrated `lines`: no narrator
+    numbers, Earshot on the given file, `BED_NOTE` in his task (judge the bed only), one round, no settings, no rebuild. A bed json
+    without its video is refused.
   - Earshot also has 201 code-made effects (`earshot sfx list/render`, a `calm` kit preset) and `skills/real-sound` (a full
     professional soundtrack process); not wired in yet.
 - Atlas's notes (2.37.0): `atlas_engine.allow()` adds his journal and requests by absolute path (Edit + Write). The "./" rules are

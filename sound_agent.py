@@ -15,7 +15,7 @@ recording for a place, which accent to drop / search differently / add), rebuild
 again, up to rule sound.rounds. The picture is never touched; the voice is never re-made (that costs ElevenLabs credits): voice
 problems come back as notes (with the v3 delivery tag he'd use) for the owner / Builder.
 
-    python sound_agent.py review <sample.json> [--video V.mp4] [--no-fix] [--rounds N]     (office Python)
+    python sound_agent.py review <sample.json | any .mp4/.wav> [--video V.mp4] [--no-fix] [--rounds N]     (office Python)
     python sound_agent.py listen <sample.json> [--video V.mp4]                             (office Python; no AI)
     <shorts venv python> sound_agent.py voice <sample folder>                              (the narrator's numbers)
 """
@@ -157,26 +157,52 @@ def _run(cmd, timeout):
     return p.stdout
 
 
+def bed_only(sample):
+    """2.67.1 (Atlas: an Elsewhen Sounds ambience preview): no story_sample spec with narrated lines (a bare video/audio file, or a
+    json without `lines`) = an ambience or music bed: Tarek reviews the sound only, no voice checks, no rebuild."""
+    sample = Path(sample)
+    if sample.suffix.lower() != ".json":
+        return True
+    try:
+        lines = json.loads(sample.read_text(encoding="utf-8")).get("lines")
+    except Exception:  # noqa: BLE001
+        return True
+    return not (isinstance(lines, list) and any(isinstance(l, dict) and l.get("text") for l in lines))
+
+
+BED_NOTE = ("THIS IS NOT A NARRATED STORY: it is an ambience / music bed (no narrator, no script). Judge only the bed: is it calm, "
+            "steady, pleasant for a long listen, free of hiss, harsh 2-6 kHz, sudden jumps, clicks, obvious loop seams or pumping, at a "
+            "sensible loudness for YouTube. Ignore every rule about the narrator and voice. The sound settings don't apply here: leave "
+            "settings empty and voice_notes empty; put each fix in the problems' `fix` in plain words for whoever made it.")
+
+
 def listen(sample, video=None):
     """Everything he hears about a sample: Earshot on the mix and its layers, the narrator's numbers, story_sample's report."""
     sample = Path(sample)
     folder = sample.with_suffix("")
     out = folder / "listen"
-    out.mkdir(exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+    bed = bed_only(sample)
+    if bed and not video and sample.suffix.lower() != ".json":
+        video = sample   # a bare video/audio file: that is what he listens to
     placed = json.loads((folder / "placed.json").read_text(encoding="utf-8")) if (folder / "placed.json").exists() else {}
     loud = json.loads((folder / "loudness.json").read_text(encoding="utf-8")) if (folder / "loudness.json").exists() else {}
     rep = {"sample": str(sample), "video": str(video) if video else None, "story_sample": loud, "placed": placed.get("placed", []),
-           "settings": placed.get("settings", {})}
-    say("   the narrator's numbers")
-    try:
-        rep["voice"] = json.loads(_run([shorts_python(), str(ROOT / "sound_agent.py"), "voice", str(folder)], 1800).strip().splitlines()[-1])
-    except Exception as e:  # noqa: BLE001
-        rep["voice"] = {"error": str(e)[-300:]}
+           "settings": placed.get("settings", {}), "bed_only": bed}
+    if bed:
+        rep["voice"] = {"skipped": "no narration (an ambience / music bed)"}
+    else:
+        say("   the narrator's numbers")
+        try:
+            rep["voice"] = json.loads(_run([shorts_python(), str(ROOT / "sound_agent.py"), "voice", str(folder)], 1800).strip().splitlines()[-1])
+        except Exception as e:  # noqa: BLE001
+            rep["voice"] = {"error": str(e)[-300:]}
     if ears_ok():
         say("   Earshot listens (the mix, each layer, every sound placed: a few minutes)")
         stems = folder / "stems"
         # what the viewer hears: the finished video's own sound when there is one (it may be cut shorter than the mix), else the mix
-        job = {"mix": str(video) if video else str(folder / "mix.wav"), "video": str(video) if video else None, "sheet": str(out / "sheet.png"),
+        pic = str(video) if video and Path(video).suffix.lower() in (".mp4", ".mov", ".mkv", ".webm") else None   # an audio file has no cuts
+        job = {"mix": str(video) if video else str(folder / "mix.wav"), "video": pic, "sheet": str(out / "sheet.png"),
                "stems": {k: str(stems / f"{k}.wav") for k in ("beds", "accents") if (stems / f"{k}.wav").exists()},
                "match": [{"file": str(stems / ("accents.wav" if p_["role"] == "accent" else "beds.wav")), "start": max(0.0, p_["t"]),
                           "end": p_["t"] + min(p_["dur"], 6.0), "query": p_.get("need") or p_["for"],
@@ -230,7 +256,9 @@ def report_text(rep):
         if rows:
             L.append("DOES EACH PLACED SOUND SOUND LIKE WHAT IT WAS MEANT TO BE (Earshot match on that layer, at that moment):\n" + "\n".join(rows))
     v = rep.get("voice") or {}
-    if v.get("error"):
+    if v.get("skipped"):
+        L.append("NARRATOR: none (" + v["skipped"] + ")")
+    elif v.get("error"):
         L.append("NARRATOR: numbers failed: " + v["error"])
     else:
         it = v.get("intelligibility") or {}
@@ -373,17 +401,23 @@ def judge(sample, rep, round_no):
     import workers
     sample = Path(sample)
     folder = sample.with_suffix("")
-    spec = json.loads(sample.read_text(encoding="utf-8"))
+    bed = bed_only(sample)
     work = workers.WORK / AGENT.lower() / f"{folder.name}-r{round_no}"
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True, exist_ok=True)
     sheet = folder / "listen" / "sheet.png"
     if sheet.exists():
         shutil.copy2(sheet, work / "sheet.png")
-    script = "\n".join(f"{i + 1}. [{l['shot']}] {l['text']}" for i, l in enumerate(spec["lines"]))
-    task = (f"Round {round_no}. The sample: {sample.name} ({len(spec['lines'])} lines). "
+    if bed:
+        head, script = f"Round {round_no}. The recording: {sample.name}. {BED_NOTE} ", ""
+    else:
+        spec = json.loads(sample.read_text(encoding="utf-8"))
+        head = f"Round {round_no}. The sample: {sample.name} ({len(spec['lines'])} lines). "
+        script = "THE SCRIPT (line numbers are what add_accents and voice_notes use):\n" + "\n".join(
+            f"{i + 1}. [{l.get('shot', '')}] {l.get('text', '')}" for i, l in enumerate(spec["lines"]))[:9000]
+    task = (head
             + ("Read the annotated sheet: sheet.png (in your folder).\n\n" if sheet.exists() else "\n\n")
-            + "THE SCRIPT (line numbers are what add_accents and voice_notes use):\n" + script[:9000]
+            + script
             + "\n\nWHAT YOU HEAR (measurements):\n" + report_text(rep)[:24000]
             + "\n\nTHE SOUND LIBRARY'S SOUND NAMES (searches must use words from these):\n" + "; ".join(library_names())[:12000]
             + "\n\nGive your verdict, the problems with evidence, the settings that fix what settings can fix (only what should change;"
@@ -412,12 +446,13 @@ def review(sample, video=None, fix=True, rounds=None):
         rep = listen(sample, video)
         say(f"round {n}: judging")
         r = judge(sample, rep, n)
-        r["settings"] = clean_settings(r.get("settings") or {})
+        bed = bed_only(sample)
+        r["settings"] = {} if bed else clean_settings(r.get("settings") or {})   # a bed has no story_sample mix to rebuild
         r["round"] = n
         reviews.append(r)
         (folder / "listen" / f"review-{n}.json").write_text(json.dumps(r, indent=1), encoding="utf-8")
         say(f"   verdict {r['verdict']}: {r['summary'][:300]}")
-        if not fix or r["verdict"] == "good" or not r["settings"] or n == rounds:
+        if bed or not fix or r["verdict"] == "good" or not r["settings"] or n == rounds:
             break
         spec = json.loads(sample.read_text(encoding="utf-8"))
         merged = merge_settings(spec.get("sound") or {}, r["settings"])

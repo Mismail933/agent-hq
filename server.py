@@ -2844,8 +2844,12 @@ class Handler(BaseHTTPRequestHandler):
                     p = (ROOT / f).resolve()
                     if not f or not p.is_file() or ROOT / "content" not in p.parents:
                         raise ValueError(f"No such file under content/: {f}")
-                if not sample.endswith(".json"):
-                    raise ValueError("The sample is a story sample's .json (content/project-N/samples/<name>.json).")
+                media = (".mp4", ".mov", ".mkv", ".webm", ".wav", ".mp3", ".m4a", ".flac")
+                if not (sample.lower().endswith(".json") or sample.lower().endswith(media)):
+                    raise ValueError("Give a story sample's .json or a video/audio file under content/ (e.g. an ambience preview).")
+                import sound_agent
+                if sample.lower().endswith(".json") and sound_agent.bed_only(ROOT / sample) and not video:
+                    raise ValueError("That .json has no narrated lines (an ambience / music bed): give its video or audio file too.")
             except (ValueError, TypeError) as e:
                 return self._send(400, {"error": str(e)})
             by = "Owner" if body.get("by") == "owner" else "Atlas"
