@@ -315,7 +315,7 @@ TONES = {
     # 191-264 wpm inside phrases and 157-203 overall, with 0.3-7 pauses of a second or more a minute; ours stopped 12-18 times a
     # minute (114-134 overall). "story" = the natural pace of the take (no fitting), lines run on, a long pause only on the beats.
     "story": {"wpm": 0, "gap": 0.15, "sentence_pause": 0.0, "comma_pause": 0.0, "beat_pause": 0.0, "temperature": 0.8,
-              "ref_speed": 0.95, "pace_spread": 0.0, "max_pause": 0.45},
+              "ref_speed": 0.95, "pace_spread": 0.0, "max_pause": 0.45, "min_wpm": 150},
     "calm": {"wpm": 135, "gap": 0.85, "sentence_pause": 0.45, "comma_pause": 0.12, "beat_pause": 0.7, "temperature": 0.7,
              "ref_speed": 0.85, "pace_spread": 0.5, "max_pause": 0.0},
     "between": {"wpm": 148, "gap": 0.65, "sentence_pause": 0.32, "comma_pause": 0.08, "beat_pause": 0.5, "temperature": 0.8,
@@ -404,7 +404,11 @@ def _tighten(a, sr, words, max_pause):
             while j < n and quiet[j]:
                 j += 1
             dur = (j - i) * blk / sr
-            if dur > max_pause and i > 0 and j < n:   # never the take's own ends
+            if i == 0 or j == n:   # a line's own ends: at most half the pause each (the gap between lines makes up the rest)
+                if dur > max_pause / 2:
+                    cut = int((dur - max_pause / 2) * sr)
+                    cuts.append((0, cut) if i == 0 else (n * blk - cut, cut))
+            elif dur > max_pause:
                 cut = int((dur - max_pause) * sr)
                 mid = (i * blk + j * blk) // 2
                 cuts.append((mid - cut // 2, cut))
@@ -554,6 +558,8 @@ def _tone_line(ln, a48, words, tone):
     own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace (in average-length words)
     want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
     f = max(TEMPO_MIN, min(1.08, want / own)) if want > 0 else 1.0   # atempo beyond these sounds processed; 0 = the take's own pace
+    if want <= 0 and tone.get("min_wpm") and own < tone["min_wpm"]:   # story: a line read slower than this is lifted a little
+        f = min(1.15, tone["min_wpm"] / own)
     if abs(f - 1.0) > 0.01:
         a48 = _tempo(a48, SR, f)
         words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]

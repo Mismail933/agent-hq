@@ -1030,6 +1030,8 @@ Agents never spend money without the owner's explicit approval.
   2.66.1: Owen in v3's creative mode still held 1-2 s after almost every sentence (14.5 long pauses a minute): tone `max_pause`
   (`_tighten`: a silence inside a take longer than it is shortened to it, the middle cut, later words moved up; story 0.45, others
   off; Tarek may set it), story's beat_pause 0 (the line's own p.pause stays).
+  2.66.2: `_tighten` also trims a line's own silent ends to half of max_pause (the silence between lines sat at the clips' edges);
+  story `min_wpm` 150 (a line read slower is lifted by atempo, at most 1.15x); no "..." in story lines (v3 lingers on them).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

@@ -340,7 +340,7 @@ def clean_settings(s):
     if isinstance(s.get("voice"), dict):   # 2.65.0: the Chatterbox voice's tone (story_sample.TONES)
         v, lim = s["voice"], {"wpm": (110, 185), "gap": (0.2, 1.5), "sentence_pause": (0.0, 1.2), "comma_pause": (0.0, 0.4),
                               "beat_pause": (0.0, 2.0), "temperature": (0.5, 1.1), "ref_speed": (0.75, 1.05), "pace_spread": (0.0, 2.0),
-                              "max_pause": (0.0, 2.0)}
+                              "max_pause": (0.0, 2.0), "min_wpm": (0, 200)}
         vv = {k: max(lo, min(hi, float(v[k]))) for k, (lo, hi) in lim.items() if isinstance(v.get(k), (int, float))}
         if v.get("style") in ("story", "calm", "between", "dramatic"):
             vv["style"] = v["style"]
