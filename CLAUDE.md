@@ -1011,6 +1011,9 @@ Agents never spend money without the owner's explicit approval.
   Measured (Whisper on the finished videos): calm 63.7 s, 130 wpm while talking, 99% heard; between 57.5 s, 141 wpm, 100%; dramatic
   55.6 s, 149 wpm, 96% (its fast action line and the boom-adjacent reveal). Tarek's 2 rounds on 'between' (music -4 dB, accents -18 dB
   x0.65, no sea/deep beds, a trailer boom for the title) are in all three specs; his "re-voice costs credits" notes are moot here.
+  2.65.2 (the owner: "Give me a sample video with Quentin And Max"): an ElevenLabs sample whose spec has sound.voice gets the same tone
+  (`_tone_line`: pace fitted, breaths, beats, the tone's gaps), so voices are compared at the same pacing. Openings
+  samples/megalodon-opening-quentin|max (run from the install folder: the ElevenLabs key is only in its .env).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

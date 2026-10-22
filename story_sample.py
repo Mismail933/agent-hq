@@ -476,25 +476,41 @@ def voice_chatterbox(spec, folder):
     for i, ln in enumerate(L):
         a48, _ = sf.read(str(cache / f"c-{keys[i]}.wav"), dtype="float32")
         meta = json.loads((cache / f"c-{keys[i]}.json").read_text(encoding="utf-8"))
-        words = meta["words"]
-        n = len(re.findall(r"[A-Za-z0-9']+", ln["text"]))
-        own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace
-        want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
-        f = max(TEMPO_MIN, min(1.08, want / own))   # atempo beyond these sounds processed
-        if abs(f - 1.0) > 0.01:
-            a48 = _tempo(a48, SR, f)
-            words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
-        a48, words = _breathe(a48, SR, words, tone["sentence_pause"], tone["comma_pause"])
-        after = tone["beat_pause"] if _is_beat(ln["text"]) else 0.0
-        out.append({"audio": a48, "words": words or [[ln["text"].split()[0], 0.0, len(a48) / SR]], "secs": len(a48) / SR, "after": after})
-        say(f"  line {i + 1}: {len(a48) / SR:.1f} s, {own:.0f} -> {own * f:.0f} wpm, heard {meta['heard']:.0%}"
-            + (f" (take {meta['try'] + 1})" if meta.get("try") else "") + (f", beat +{after:.2f} s" if after else ""))
+        v, own, f = _tone_line(ln, a48, meta["words"], tone)
+        out.append(v)
+        say(f"  line {i + 1}: {v['secs']:.1f} s, {own:.0f} -> {own * f:.0f} wpm, heard {meta['heard']:.0%}"
+            + (f" (take {meta['try'] + 1})" if meta.get("try") else "") + (f", beat +{v['after']:.2f} s" if v["after"] else ""))
     return out
+
+
+def _tone_line(ln, a48, words, tone):
+    """One voiced line in the video's tone: fitted to its pace, a breath after each sentence, a beat after a short dramatic line.
+    Returns (voiced line, its own wpm, the tempo factor used)."""
+    n = len(re.findall(r"[A-Za-z0-9']+", ln["text"]))
+    own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace
+    want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
+    f = max(TEMPO_MIN, min(1.08, want / own))   # atempo beyond these sounds processed
+    if abs(f - 1.0) > 0.01:
+        a48 = _tempo(a48, SR, f)
+        words = [[w, s0 / f, e0 / f] for w, s0, e0 in words]
+    a48, words = _breathe(a48, SR, words, tone["sentence_pause"], tone["comma_pause"])
+    after = tone["beat_pause"] if _is_beat(ln["text"]) else 0.0
+    return ({"audio": a48, "words": words or [[ln["text"].split()[0], 0.0, len(a48) / SR]], "secs": len(a48) / SR, "after": after},
+            own, f)
 
 
 def voice_lines(spec, folder):
     if str(spec.get("voice", "")).startswith("eleven:"):
-        return voice_eleven(spec, folder)
+        out = voice_eleven(spec, folder)
+        if (spec.get("sound") or {}).get("voice"):   # 2.65.2: the same tone as the Chatterbox voice (the owner compares them by ear)
+            tone = tone_of(spec)
+            spec["_tone"] = tone
+            say(f"  tone: {json.dumps(tone)}")
+            for i, ln in enumerate(spec["lines"]):
+                v, own, f = _tone_line(ln, out[i]["audio"], out[i]["words"], tone)
+                out[i] = v
+                say(f"  line {i + 1}: {v['secs']:.1f} s, {own:.0f} -> {own * f:.0f} wpm" + (f", beat +{v['after']:.2f} s" if v["after"] else ""))
+        return out
     if str(spec.get("voice", "")).startswith("chatterbox:"):
         return voice_chatterbox(spec, folder)
     from kokoro import KPipeline
