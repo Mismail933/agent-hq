@@ -173,6 +173,7 @@ RULES = {
     "client.copy_owner": _r("Clients", "bool", True, None, None, "Every message a client sends (and his files) is shown on your phone at once"),
     "client.ack": _r("Clients", "bool", True, None, None, "A client gets a short fixed 'Got it, the studio has your message' (at most every 10 minutes) while his answer waits for you"),
     "client.draft_replies": _r("Clients", "bool", True, None, None, "Atlas drafts a reply to each client message (in a client-only role: his project only) for you to send, edit or drop"),
+    "client.projects": _r("Clients", "text", "6", None, None, "Projects the owner marked as a client's (numbers, e.g. 4,6): Rana's style frames and the other client tools work for them too, not only for client music videos"),
     "client.can_approve": _r("Clients", "bool", True, None, None, "Scripts and videos sent to a client carry Approve / Changes / Reject buttons; his decision on his own project is final"),
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,
                      "What reaches the phone at once: decisions (things that need the owner + finished videos), everything, or nothing"),
@@ -220,6 +221,8 @@ def parse(key, value):
                 raise ValueError(f"design.fonts: not a logo font: {', '.join(bad)}. The fonts: {', '.join(logo.FAMILIES)}.")
         if key == "omar.projects" and not all(x.strip().isdigit() for x in s.replace(";", ",").split(",") if x.strip()):
             raise ValueError("omar.projects must be project numbers separated by commas, like 3,5.")
+        if key == "client.projects" and not all(x.strip().isdigit() for x in s.replace(";", ",").split(",") if x.strip()):
+            raise ValueError("client.projects must be project numbers separated by commas, like 4,6.")
         return s
     s = str(value).strip()
     if kind == "choice":

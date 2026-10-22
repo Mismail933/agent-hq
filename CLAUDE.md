@@ -793,6 +793,12 @@ Agents never spend money without the owner's explicit approval.
   is_scene, crop_works, safe; rule `review.style_frames`), weak ones repainted once; the owner picks (`style-choose`, `hq style-pick`)
   -> meta.style + style-frames/chosen/. NOT built yet: the music-video pipeline (song as soundtrack, cuts on the beat, scenes on
   the lyrics, both shapes from one edit): build it when the owner sends the song.
+  Marked client channels (Atlas's request 2026-10-23, project 6 = Bassel's channel): rule `client.projects` (text, default "6";
+  `client.marked`) lets `client.get/find` (style frames, `hq client`, style-pick, the /api/client routes) accept a normal project
+  too; `is_client` stays music videos only (Calina, the Scout and the office's client pages are unchanged). For a project that isn't
+  a music video, Rana's and Israa's prompts say "a paying client's YouTube channel" (`_work`), the brief carries its approved
+  reference board (`_brief` = meta.brief + `quality.style_bar`; three ways to make THAT direction), and the ready message lists
+  the sheets + the style-pick command (it has no Style options page).
 - Long narrated stories (2.47.0, the owner 2026-10-17: "I am imitating The Infographics Show ... I need this style and the
   characters inside and I need stories and scripts"; the character in his Fable test video `Downloads/How_Deep_Is_The_Ocean_30s_POC.mp4`,
   a kid in a yellow sub, is OURS, made with Fable). The Builder read the transcripts of TIS's 20 most-viewed videos in the browser

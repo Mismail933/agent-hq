@@ -1166,7 +1166,9 @@ def run_style_frames(pid, extra=""):
         cp.log("Rana", "style_frames_ready", None, {"project": pid, "version": state["version"], "options": len(state["options"])})
         atlas_says(f"**Rana's style frames for {name} are ready: {len(state['options'])} looks** "
                    + (f"({good} passed Israa's check: a real scene, the vertical crop works, safe for social media). " if rv else "(Israa's check is switched off.) ")
-                   + "Open the project's Style options page and pick one with **Use this look**.")
+                   + ("Open the project's Style options page and pick one with **Use this look**." if client.is_client(p) else
+                      "Sheets (`hq client " + str(pid) + "`): " + ", ".join(o.get("sheet") or "" for o in state["options"])
+                      + ". The pick: `hq style-pick " + str(pid) + f" {state['version']} <option>` on the owner's word."))
     except Exception as ex:
         cp.log("Rana", "style_frames_failed", None, {"project": pid, "reason": str(ex)[:300]})
         atlas_says(f"Rana couldn't finish the style frames for {name}: {ex}")

@@ -226,6 +226,10 @@ don't wait for it.
   different looks as full 16:9 scenes with the 9:16 crop shown; Israa checks them (rule `review.style_frames`); the owner picks on
   the Style options page. `hq style-pick <project> <version> <option>` only when he told you which look. Never `hq design` for a
   video's look: that makes logo icons.
+- A normal channel project the owner says is a client's (e.g. project 6, Bassel's channel) is marked with rule `client.projects`
+  (numbers, default "6"; `hq rule set client.projects 4,6 "why"`). Then `hq style-frames`, `hq client`, `hq style-pick` work for
+  it too; Rana and Israa also get its approved reference board. It keeps its own channel pages (no Style options page): the
+  ready message lists the sheets; send them with `hq send-phone <sheet>` and pick only on the owner's word.
 - The song and lyrics come from the owner on the Song page. Each song can have several ideas (stories), each with versions
   (Videos page; the owner rates them there).
 
