@@ -1038,6 +1038,9 @@ Agents never spend money without the owner's explicit approval.
   a line's own p.max_pause overrides the tone's ("It was the megalodon." keeps its pause); openings megalodon-opening-owen2 and
   -marcus (Marcus, Classic Audiobook Narrator: #4 of the voice match to The Infographics Show, the most pitch movement of the top 5,
   ~152k uses), both v3 natural (stability 0.5), Tarek's tag per line, an even pace (story with wpm 160, pace_spread 0.2).
+  2.66.5: the reveal hold keeps the PICTURE, not the voice: the next cut waits up to `HOLD_OVERLAP` 0.9 s into the next line
+  (`hold_until`), only the rest delays the voice (holding the voice brought back 12-15 long pauses a minute); a fitted line may
+  be sped up to `TEMPO_MAX` 1.15 (was 1.08: Owen's tense lines stayed at ~96 wpm).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

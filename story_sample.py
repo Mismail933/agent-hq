@@ -557,7 +557,7 @@ def _tone_line(ln, a48, words, tone):
     n = _words_eq(ln["text"])
     own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace (in average-length words)
     want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
-    f = max(TEMPO_MIN, min(1.08, want / own)) if want > 0 else 1.0   # atempo beyond these sounds processed; 0 = the take's own pace
+    f = max(TEMPO_MIN, min(TEMPO_MAX, want / own)) if want > 0 else 1.0   # atempo beyond these sounds processed; 0 = the take's own pace
     if want <= 0 and tone.get("min_wpm") and own < tone["min_wpm"]:   # story: a line read slower than this is lifted a little
         f = min(1.15, tone["min_wpm"] / own)
     if abs(f - 1.0) > 0.01:
@@ -665,6 +665,9 @@ def text_words(text, words):
 
 
 REVEAL_HOLD = 1.5   # 2.66.3: a picture that pops on one of the line's last words stays this long before the cut (spec "reveal_hold")
+HOLD_OVERLAP = 0.9  # 2.66.5: up to this much of that hold is the PICTURE staying while the next line already speaks (the reference
+                    # narrators never stop for a picture: holding the voice made 12-15 long pauses a minute again)
+TEMPO_MAX = 1.15    # the most a dragging line is sped up when the pace is fitted
 
 
 def _triggers(p):
@@ -693,10 +696,15 @@ def timeline(spec, voiced):
         t = end + (0.0 if v.get("joined") else gap) + (EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))) * k + v.get("after", 0.0)
         pop = _late_pop(lines[-1]["words"], lines[-1]["p"])   # the owner: the "as long as your hand" tooth went by too fast
         if pop is not None and (t - LEADIN) - pop < hold:
-            t = pop + hold + LEADIN
+            need = pop + hold - (t - LEADIN)
+            lines[-1]["hold_until"] = pop + hold   # the next cut waits for this (into the next line by up to HOLD_OVERLAP)
+            t += max(0.0, need - HOLD_OVERLAP)
     total = t
     for i, l in enumerate(lines):
-        l["cut"] = 0 if i == 0 else int(round((l["t_start"] - LEADIN) * FPS))
+        cut_t = l["t_start"] - LEADIN
+        if i and lines[i - 1].get("hold_until"):
+            cut_t = min(max(cut_t, lines[i - 1]["hold_until"]), l["t_start"] + HOLD_OVERLAP)
+        l["cut"] = 0 if i == 0 else int(round(cut_t * FPS))
         l["start"] = int(round(l["t_start"] * FPS))
         l["end"] = int(round(l["t_end"] * FPS))
     lines[-1]["until"] = int(round(total * FPS))
