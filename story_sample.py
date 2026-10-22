@@ -664,8 +664,25 @@ def text_words(text, words):
     return out
 
 
+REVEAL_HOLD = 1.5   # 2.66.3: a picture that pops on one of the line's last words stays this long before the cut (spec "reveal_hold")
+
+
+def _triggers(p):
+    """The spoken words a scene's pictures pop on (labels' "on" and every *_on), normalised."""
+    out = [x.get("on") for x in p.get("labels") or [] if isinstance(x, dict)] + [v for k, v in p.items() if k.endswith("_on")]
+    return {re.sub(r"[^a-z0-9]", "", str(w).lower()) for w in out if isinstance(w, str) and w}
+
+
+def _late_pop(line_words, p):
+    """When this line's last picture pops (seconds, the last spoken match of a trigger word), or None."""
+    trig = _triggers(p)
+    hits = [s0 for w, s0, e0 in line_words if re.sub(r"[^a-z0-9]", "", w.lower()) in trig]
+    return max(hits) if hits else None
+
+
 def timeline(spec, voiced):
     t, lines = LEAD, []
+    hold = float(spec.get("reveal_hold", REVEAL_HOLD))
     gap, k = float(spec.get("gap", PAUSE)), float(spec.get("pause_scale", 1.0))   # the owner after v1: "a bit slow"
     if spec.get("_tone"):   # 2.65.0: the Chatterbox voice's own pauses (the old gap/pause_scale were set for Kokoro)
         gap, k = float(spec["_tone"]["gap"]), 1.0
@@ -674,6 +691,9 @@ def timeline(spec, voiced):
         lines.append({"shot": ln["shot"], "text": ln["text"], "t_start": start, "t_end": end, "p": ln.get("p") or {},
                       "words": [[w, start + s, start + e] for w, s, e in text_words(ln["text"], v["words"])]})
         t = end + (0.0 if v.get("joined") else gap) + (EXTRA.get(ln["shot"], 0) + float((ln.get("p") or {}).get("pause", 0))) * k + v.get("after", 0.0)
+        pop = _late_pop(lines[-1]["words"], lines[-1]["p"])   # the owner: the "as long as your hand" tooth went by too fast
+        if pop is not None and (t - LEADIN) - pop < hold:
+            t = pop + hold + LEADIN
     total = t
     for i, l in enumerate(lines):
         l["cut"] = 0 if i == 0 else int(round((l["t_start"] - LEADIN) * FPS))

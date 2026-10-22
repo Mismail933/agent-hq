@@ -1032,6 +1032,8 @@ Agents never spend money without the owner's explicit approval.
   off; Tarek may set it), story's beat_pause 0 (the line's own p.pause stays).
   2.66.2: `_tighten` also trims a line's own silent ends to half of max_pause (the silence between lines sat at the clips' edges);
   story `min_wpm` 150 (a line read slower is lifted by atempo, at most 1.15x); no "..." in story lines (v3 lingers on them).
+  2.66.3 (the owner: the "as long as your hand" tooth shot "became so fast"): `timeline` holds a picture that pops on one of the
+  line's last words (`_late_pop`: labels' on + every *_on) at least `REVEAL_HOLD` 1.5 s (spec `reveal_hold`) before the next cut.
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes
