@@ -411,7 +411,7 @@ def voice_chatterbox(spec, folder):
     keys = [hashlib.sha1(f"chatterbox|{cv.MODEL_TAG}|{ref_voice}|{refsig}|{t}".encode() + (f"|t{temp}".encode() if temp != 0.8 else b"")).hexdigest()[:16]
             for t in spoken]
     have = lambda i: (cache / f"c-{keys[i]}.wav").exists() and (cache / f"c-{keys[i]}.json").exists()
-    nwords = [len(re.findall(r"[A-Za-z0-9']+", ln["text"])) for ln in L]
+    nwords = [_words_eq(ln["text"]) for ln in L]
     want_wpm = [tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"]) for ln in L]
     too_fast = lambda i, secs: 60.0 * nwords[i] / max(0.5, secs) > want_wpm[i] / TEMPO_MIN + 4   # can't be slowed enough cleanly
     def stale(i):   # cached before 2.65.0's pace check and too fast to fit: once more
@@ -483,11 +483,31 @@ def voice_chatterbox(spec, folder):
     return out
 
 
+def _syllables(text):
+    """Syllables in a line, roughly (vowel groups per word, a silent final e dropped; a number counts per digit)."""
+    n = 0
+    for w in re.findall(r"[A-Za-z']+|\d+", text.lower()):
+        if w.isdigit():
+            n += 2 * len(w)
+            continue
+        g = len(re.findall(r"[aeiouy]+", w))
+        if w.endswith("e") and not w.endswith(("le", "ee", "ye")) and g > 1:
+            g -= 1
+        n += max(1, g)
+    return n
+
+
+def _words_eq(text):
+    """The line's length in average English words (1.45 syllables each): "They race back to port" is 5 words but short ones, so a pace
+    counted in plain words called a normal read 'rushed' (2.65.3: both ElevenLabs voices measured 230-290 'wpm' on that line)."""
+    return _syllables(text) / 1.45
+
+
 def _tone_line(ln, a48, words, tone):
     """One voiced line in the video's tone: fitted to its pace, a breath after each sentence, a beat after a short dramatic line.
     Returns (voiced line, its own wpm, the tempo factor used)."""
-    n = len(re.findall(r"[A-Za-z0-9']+", ln["text"]))
-    own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace
+    n = _words_eq(ln["text"])
+    own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace (in average-length words)
     want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
     f = max(TEMPO_MIN, min(1.08, want / own))   # atempo beyond these sounds processed
     if abs(f - 1.0) > 0.01:
@@ -499,9 +519,28 @@ def _tone_line(ln, a48, words, tone):
             own, f)
 
 
+def _line_files(spec, folder, out):
+    """A line's own take made separately (2.65.3): line "voice_file" = a wav next to the spec (+ the same name .json = its words
+    [[word, start, end]]) used instead of that line's voice, e.g. one line re-read calmer without paying for its whole passage again."""
+    for i, ln in enumerate(spec["lines"]):
+        vf = ln.get("voice_file")
+        if not vf:
+            continue
+        f = (folder.parent / vf).resolve()
+        a, sr = sf.read(str(f), dtype="float32")
+        a = a.mean(axis=1) if a.ndim > 1 else a
+        a48 = np.interp(np.arange(int(len(a) * SR / sr)) / SR, np.arange(len(a)) / sr, a).astype("float32") if sr != SR else a
+        words = json.loads(f.with_suffix(".json").read_text(encoding="utf-8"))
+        out[i] = {"audio": a48, "words": words, "secs": len(a48) / SR, "joined": False}
+        if i:
+            out[i - 1]["joined"] = False
+        say(f"  line {i + 1}: its own take {f.name} ({len(a48) / SR:.1f} s)")
+    return out
+
+
 def voice_lines(spec, folder):
     if str(spec.get("voice", "")).startswith("eleven:"):
-        out = voice_eleven(spec, folder)
+        out = _line_files(spec, folder, voice_eleven(spec, folder))
         if (spec.get("sound") or {}).get("voice"):   # 2.65.2: the same tone as the Chatterbox voice (the owner compares them by ear)
             tone = tone_of(spec)
             spec["_tone"] = tone

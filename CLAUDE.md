@@ -1014,6 +1014,9 @@ Agents never spend money without the owner's explicit approval.
   2.65.2 (the owner: "Give me a sample video with Quentin And Max"): an ElevenLabs sample whose spec has sound.voice gets the same tone
   (`_tone_line`: pace fitted, breaths, beats, the tone's gaps), so voices are compared at the same pacing. Openings
   samples/megalodon-opening-quentin|max (run from the install folder: the ElevenLabs key is only in its .env).
+  2.65.3: pace is counted in average-length words (`_words_eq` = syllables / 1.45): "They race back to port, and for a while..." is 15
+  short words and both voices "read it at 230-290 wpm", which was a normal syllable rate (the fitting over-slowed such lines). A line
+  may use a separately made take: line `voice_file` (a wav next to the spec + the same-name .json words; `_line_files`, ElevenLabs path).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes
