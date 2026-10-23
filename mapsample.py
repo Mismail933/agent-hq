@@ -27,7 +27,7 @@ APP = HOME / "maps"
 KIT = ROOT / "maps"
 OUT = Path(os.environ.get("HQ_MAPS_OUT") or ROOT / "content" / "project-6" / "samples" / "maps")
 FPS, W, H = 30, 1920, 1080
-LOOKS = ["midnight", "paper", "globe", "editorial", "bold"]
+LOOKS = ["midnight", "paper", "globe", "editorial", "bold", "bassel"]
 
 # countries drawn in detail (the rest of the world is a light backdrop)
 DETAIL = {"FRA", "ESP", "DEU", "BEL", "LUX", "CHE", "ITA", "AND", "MCO", "GBR", "PRT", "NLD", "AUT", "IRL", "BRA", "SUR", "GUY", "VEN"}

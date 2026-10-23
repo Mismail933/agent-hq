@@ -22,6 +22,10 @@ const ARC = (() => {
   const f = geoInterpolate(geo.places.paris, geo.places.cayenne);
   return {type: 'LineString', coordinates: Array.from({length: 97}, (_, i) => f(i / 96))};
 })();
+const STARS = Array.from({length: 260}, (_, i) => {
+  const r = (k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
+  return [r(1) * W, r(2) * H, 0.6 + r(3) * 1.4, 0.25 + r(4) * 0.6];
+});
 const ease = Easing.inOut(Easing.cubic);
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'};
 const prog = (f, [a, b], e = ease) => interpolate(f, [a, b], [0, 1], {...clamp, easing: e});
@@ -154,6 +158,8 @@ export const MapSample = ({look}) => {
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 40% 45%, ${L.bg[0]}, ${L.bg[1]})`}}>
       <style>{FONT_CSS}</style>
+      {L.stars ? <svg width={W} height={H} style={{position: 'absolute'}}>{STARS.map(([x, y, r, o], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fff" opacity={o * (0.75 + 0.25 * Math.sin(f / 23 + i))} />))}</svg> : null}
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <defs>
           <linearGradient id="focus" x1="0" y1="0" x2="1" y2="1">
@@ -227,11 +233,11 @@ export const MapSample = ({look}) => {
                      display: 'inline-block', padding: L.tape ? '0 18px' : 0}}>Brazil</div>
       </div>
       <div style={{position: 'absolute', left: 1360, top: 330, width: 470, fontFamily: L.panel.font, fontSize: L.tape ? 34 : 20,
-                   letterSpacing: L.tape ? 3 : 6, color: L.sub, borderBottom: `1px solid ${L.panel.line}`, paddingBottom: 12,
-                   opacity: interpolate(f, [T.bars - 10, T.bars + 6], [0, 1], clamp)}}>BORDER LENGTH</div>
+                   letterSpacing: L.tape ? 3 : 6, color: L.sub, textTransform: "uppercase", borderBottom: `1px solid ${L.panel.line}`, paddingBottom: 12,
+                   opacity: interpolate(f, [T.bars - 10, T.bars + 6], [0, 1], clamp)}}>{L.barTitle || "Border length"}</div>
       <Bar L={L} f={f} start={T.final} label="Brazil" km={KM.bra} color={L.bra} y={385} />
-      <Bar L={L} f={f} start={T.bars} label="Spain" km={KM.esp} color={L.esp} y={f >= T.final ? 490 : 385} />
-      <Bar L={L} f={f} start={T.bars + 14} label="Germany" km={KM.deu} color={L.deu} y={f >= T.final ? 595 : 490} />
+      <Bar L={L} f={f} start={T.bars} label="Spain" km={KM.esp} color={L.barOther || L.esp} y={f >= T.final ? 490 : 385} />
+      <Bar L={L} f={f} start={T.bars + 14} label="Germany" km={KM.deu} color={L.barOther || L.deu} y={f >= T.final ? 595 : 490} />
       {L.grain ? <Img src={staticFile('grain.png')} style={{position: 'absolute', width: W, height: H, objectFit: 'cover',
                                                               opacity: L.grain, mixBlendMode: 'overlay'}} /> : null}
       <AbsoluteFill style={{background: `radial-gradient(ellipse at 45% 50%, transparent 55%, rgba(0,0,0,${L.vignette}) 100%)`}} />

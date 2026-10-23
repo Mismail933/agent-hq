@@ -76,4 +76,20 @@ export const LOOKS = {
     panel: {font: 'Bebas Neue', line: 'rgba(255,255,255,0.2)'},
     zoom: [3700, 430, 8300], credit: 'rgba(255,255,255,0.4)',
   },
+  // F: Bassel's pick (2026-10-23): theme and colours of E (Rana's Dark Globe Arc), the border drawing and the bar chart of F
+  // (Light Editorial: one bold vermilion line, grey bars with Brazil in the accent)
+  bassel: {
+    name: "Globe + Editorial (Bassel's pick)",
+    bg: ['#0A1426', '#03060D'], sea: '#0C1D38', grat: 'rgba(120,180,230,0.12)', stars: true,
+    land: '#26334B', landStroke: '#3B4D6C', world: '#1F2B41', worldStroke: '#2E3D59',
+    focus: ['#5FE3FF', '#22AEDD'], focusStroke: '#D8F8FF', neighbour: {},
+    deu: '#FF6A3D', esp: '#FF6A3D', bra: '#FF6A3D', arc: '#FF9B6A', barOther: '#8C9AAE', barTitle: 'Land borders of France, km',
+    glow: true, atmosphere: '#4FC9F0', grain: 0.04, vignette: 0.55, borderW: 5,
+    text: '#EAF6FF', sub: '#93B4C8', label: 'rgba(190,220,238,0.8)', focusLabel: '#03202B',
+    title: {font: 'Archivo Black', weight: 400, size: 72, upper: true},
+    lab: {font: 'Montserrat', weight: 700, size: 20, spacing: 5, upper: true},
+    num: {font: 'Montserrat', weight: 800},
+    panel: {font: 'Montserrat', line: 'rgba(140,190,220,0.3)'},
+    zoom: [2700, 320, 6400], credit: 'rgba(150,190,215,0.5)',
+  },
 };
