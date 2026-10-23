@@ -670,12 +670,16 @@ def main(argv):
             code, reply = office(f"/api/project/{int(args[0])}/cast-use", {"which": args[1]})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "design":   # Rana draws: hq design <what> ["brief"] [--name NAME] (3 options, real fonts, audited, checked by Israa)
-            rest, name = list(args[1:]), ""
+            rest, name, project = list(args[1:]), "", None
             if "--name" in rest:
                 i = rest.index("--name")
                 name = rest[i + 1] if i + 1 < len(rest) else ""
                 del rest[i:i + 2]
-            code, reply = office("/api/design", {"what": args[0], "brief": " ".join(rest), "name": name})
+            if "--project" in rest:   # 2.70.4: for a client's project: a copy lands in content/project-N/brand/ (his bot can send it)
+                i = rest.index("--project")
+                project = int(rest[i + 1]) if i + 1 < len(rest) else None
+                del rest[i:i + 2]
+            code, reply = office("/api/design", {"what": args[0], "brief": " ".join(rest), "name": name, "project": project})
             show(reply.get("message") if code < 300 else f"Not done: {reply.get('error')}")
         elif cmd == "client-new":   # hq client-new "<name>" <project>: ONLY on the owner's word (2.67.0, clientbot.py)
             code, reply = office("/api/clients/new", {"name": args[0], "project": int(args[1]), "by": "Atlas"})

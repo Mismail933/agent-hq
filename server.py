@@ -1086,7 +1086,7 @@ def run_cast_check(pid, k):
         CHARMAKING.update(pid=None, step="")
 
 
-def run_design(what, brief="", name=""):
+def run_design(what, brief="", name="", project=None):
     """Rana draws options, the engine renders them, Israa checks them (weak ones go back to Rana once), the owner picks."""
     DESIGNING["what"] = what
     try:
@@ -1117,11 +1117,13 @@ def run_design(what, brief="", name=""):
             _animate("design-render", folder, timeout=3600)
             rv.update(design.review(folder, what, brief))
         state = design.write_state(folder, what, brief, "ready", rv)
+        mirror = design.mirror(folder, project) if project else None
         good = sum(1 for o in state["options"] if (o.get("review") or {}).get("verdict") == "good")
         cp.log("Rana", "design_ready", None, {"what": what, "version": state["version"], "options": len(state["options"])})
         atlas_says(f"**Rana's {what} options are ready: {len(state['options'])}** "
                    + (f"({good} passed Israa's check at 64 px and on light and dark). " if rv else "(Israa's check is switched off.) ")
-                   + "Look at them on the Today page or on your phone, and pick one with **Use this**.")
+                   + "Look at them on the Today page or on your phone, and pick one with **Use this**."
+                   + (f" A copy for project {project} (its client's bot can send these): {mirror}." if mirror else ""))
     except Exception as ex:
         cp.log("Rana", "design_failed", None, {"what": what, "reason": str(ex)[:300]})
         atlas_says(f"Rana couldn't finish the {what}: {ex}")
@@ -3051,7 +3053,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "Say what to design, e.g. logo."})
             if anim_busy():
                 return self._send(409, {"error": f"The animation tools are busy: {anim_busy()}. Try again when it's done."})
-            threading.Thread(target=run_design, args=(what, clip(body.get("brief", ""), "notes")[0], str(body.get("name", "")).strip()[:40]),
+            project = int(body.get("project") or 0) or None   # 2.70.4: a client project's design is mirrored into its folder
+            if project and not cp.get_project(project):
+                return self._send(400, {"error": f"No project {project}."})
+            threading.Thread(target=run_design, args=(what, clip(body.get("brief", ""), "notes")[0], str(body.get("name", "")).strip()[:40], project),
                              daemon=True).start()
             return self._send(202, {"ok": True, "message": f"Rana is drawing the {what}: 3 options, rendered and checked by Israa (about 15-25 minutes)."})
         if u.path == "/api/design/trace":   # 2.62.0: vtracer turns a picture into a vector {image, colors, bw} (Atlas: hq trace)

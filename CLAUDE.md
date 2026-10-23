@@ -562,6 +562,8 @@ Agents never spend money without the owner's explicit approval.
     buttons reaches his phone, so he answers Atlas). EPOCH round 3 = content/brand/logo/v6 (Rana's first three; Israa's design check
     is off by the owner's rule of 10-08, so the Builder looked: Gate and Standing Stone were weak) and v7 (Cut in Stone kept + two
     redrawn with the Builder's notes; overview.png = the one picture sent to his phone).
+    2.70.4: `hq design <what> ["brief"] --project N` (POST /api/design `project`): when the job is ready, `design.mirror` copies the
+    version into content/project-N/brand/<what>/v<N>/, the only place a client's bot may send files from (STRATA's v9 was stuck in content/brand/).
 - `cast.py` (2.28.0, Atlas's "Make the Animator the company's character artist"): Rana redraws a project's cast from the owner's
   picture(s). `hq cast-draw <project> <image...> ["notes"]` (`POST /api/project/<id>/cast-draw`, journaled `cast_draw`, holds
   CHARMAKING so the animation tools are hers): content/project-N/cast/v<K>/ gets the project's current cast file (or the kit's

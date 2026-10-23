@@ -391,6 +391,17 @@ def write_state(folder, what, brief, status="ready", review=None):
     return state
 
 
+def mirror(folder, project):
+    """2.70.4: a copy of a design version in the client's own project folder (content/project-N/brand/<what>/v<N>/), the only place his
+    bot may send files from. Returns the folder, relative to the office."""
+    folder = Path(folder)
+    dst = ROOT / "content" / f"project-{int(project)}" / "brand" / folder.parent.name / folder.name
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(folder, dst, ignore=shutil.ignore_patterns("*.text.svg"))
+    return dst.relative_to(ROOT).as_posix()
+
+
 def open_designs():
     """Designs that wait for the owner's pick (newest version per kind)."""
     out = []
