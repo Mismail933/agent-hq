@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.307 (safety_event OTel; 2.1.302 routine partial-rerun fix)",
-   "checked": "2026-10-22"
+   "last_seen": "2.1.309 (permissions/compaction fixes; claude -p cloud login fix 2.1.306)",
+   "checked": "2026-10-23"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-21 API version 2026-10-21 + ant CLI 2.0.0; fast mode GA Opus 5.5",
-   "checked": "2026-10-22"
+   "last_seen": "2026-10-22 fast mode Opus 5.5; API version 2026-10-21; Sonnet 5.5 cache reads $0.10/M (Oct 7)",
+   "checked": "2026-10-23"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-21 LTBT member; no new models",
-   "checked": "2026-10-22"
+   "last_seen": "2026-10-22 Agent Skills to Agentic AI Foundation (headline only); no new models",
+   "checked": "2026-10-23"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -41,9 +41,9 @@
    "checked": "2026-10-11"
   },
   "youtube-shorts-original-content": {
-   "url": "https://ppc.land/re-uploaded-shorts-lose-reach-as-youtube-favours-original-clips/",
-   "last_seen": "2026-10-01 TeamYouTube: less Shorts reach for channels mainly re-uploading others' videos; original post not read",
-   "checked": "2026-10-13"
+   "url": "https://www.mediapost.com/publications/article/418466/",
+   "last_seen": "2026-10-01/02 TeamYouTube: less Shorts reach for re-uploaders; no dashboard flag, no start date",
+   "checked": "2026-10-23"
   },
   "youtube-reach-help": {
    "url": "https://support.google.com/youtube/answer/9314355?hl=en",
@@ -84,6 +84,16 @@
    "url": "https://code.claude.com/docs/en/cli-reference",
    "last_seen": "--safe-mode works with subscription login; --bare needs API key",
    "checked": "2026-10-21"
+  },
+  "youtube-engaged-views": {
+   "url": "https://blog.youtube/inside-youtube/engaged-views-youtube-explained/",
+   "last_seen": "2026-08-24 first-frame views; analytics, YPP unchanged",
+   "checked": "2026-10-23"
+  },
+  "youtube-shorts-thumbnails": {
+   "url": "https://ppc.land/youtube-ends-2-year-wait-for-shorts-thumbnails-but-blocks-a-b-testing/",
+   "last_seen": "2026-07-24 YPP-only; not in Shorts feed; sources disagree on A/B",
+   "checked": "2026-10-23"
   }
  },
  "repos": {
