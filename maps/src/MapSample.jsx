@@ -36,18 +36,20 @@ function camera(f, zoom) {
   if (f <= T.move[0]) return {c: EU, s: interpolate(f, [0, T.move[0]], [zoom[0] * 0.94, zoom[0] * 1.04])};
   if (f >= T.move[1]) return {c: GF, s: interpolate(f, [T.move[1], FRAMES], [zoom[2], zoom[2] * 1.08], clamp)};
   const e = prog(f, T.move);
-  const a = Math.log(zoom[0] * 1.04), b = zEU * 0 + zGF;
+  const er = prog(f, [T.move[0] + 45, T.move[1] - 15]);   // the globe turns only once it is zoomed out (Israa: the move must read as a flight)
+  const a = Math.log(zoom[0] * 1.04), b = zGF;
   const bump = (a + b) / 2 - zMid;
-  return {c: geoInterpolate(EU, GF)(e), s: Math.exp(a + (b - a) * e - bump * Math.sin(Math.PI * e))};
+  return {c: geoInterpolate(EU, GF)(er), s: Math.exp(a + (b - a) * e - bump * Math.sin(Math.PI * e))};
 }
 
-const Draw = ({d, p, color, width, glow, dash}) => {
+const Draw = ({d, p, color, width, glow, halo}) => {
   if (!d || p <= 0) return null;
   const common = {d, fill: 'none', stroke: color, strokeLinecap: 'round', strokeLinejoin: 'round', pathLength: 1,
                   strokeDasharray: '1 1', strokeDashoffset: 1 - p};
   return (
     <g>
       {glow ? <path {...common} strokeWidth={width * 3.2} opacity={0.45} filter="url(#blur)" /> : null}
+      {halo ? <path {...common} stroke={halo} strokeWidth={width * 2.4} opacity={0.9} /> : null}
       <path {...common} strokeWidth={width} />
     </g>
   );
@@ -55,7 +57,7 @@ const Draw = ({d, p, color, width, glow, dash}) => {
 
 const Label = ({L, x, y, text, op = 1, size, color, anchor = 'middle', rot = 0, focus, weight}) => {
   if (op <= 0.01 || !isFinite(x)) return null;
-  const s = size || L.lab.size;
+  const s = (size || L.lab.size) * 1.3;   // Israa: >= 28 px on a phone
   const t = L.lab.upper ? text.toUpperCase() : text;
   const style = {fontFamily: L.lab.font, fontWeight: weight || L.lab.weight, fontSize: s, letterSpacing: L.lab.spacing};
   if (L.tape) {
@@ -69,7 +71,8 @@ const Label = ({L, x, y, text, op = 1, size, color, anchor = 'middle', rot = 0, 
     );
   }
   return (
-    <text x={x} y={y} textAnchor={anchor} fill={color || (focus ? L.focusLabel : L.label)} opacity={op} style={style}
+    <text x={x} y={y} textAnchor={anchor} fill={color || (focus ? L.focusLabel : L.label)} opacity={op}
+          style={{...style, paintOrder: 'stroke'}} stroke={(!focus && !color && L.textHalo) || 'none'} strokeWidth={!focus && !color && L.textHalo ? s * 0.22 : 0} strokeLinejoin="round"
           transform={`rotate(${rot} ${x} ${y})`}>{t}</text>
   );
 };
@@ -99,16 +102,16 @@ const Bar = ({L, f, start, label, km, color, y, max = 730}) => {
   const op = interpolate(f, [start, start + 10], [0, 1], clamp);
   if (op <= 0) return null;
   const grow = spring({frame: f - start, fps, config: {damping: 200}, durationInFrames: 32});
-  const width = 430 * (km / max) * grow;
+  const width = 470 * (km / max) * grow;
   const shown = Math.round(km * grow);
   return (
-    <div style={{position: 'absolute', left: 1360, top: y, width: 470, opacity: op}}>
-      <div style={{height: 16, width, background: color, borderRadius: L.tape ? 0 : 3,
+    <div style={{position: 'absolute', left: 1340, top: y, width: 520, opacity: op}}>
+      <div style={{height: 30, width, background: color, borderRadius: L.tape ? 0 : 3,
                    boxShadow: L.glow ? `0 0 18px ${color}88` : 'none'}} />
-      <div style={{display: 'flex', justifyContent: 'space-between', width: Math.max(width, 300), marginTop: 10,
-                   fontFamily: L.panel.font, fontSize: L.tape ? 40 : 30, color: L.text}}>
+      <div style={{display: 'flex', justifyContent: 'space-between', width: Math.max(width, 340), marginTop: 8,
+                   fontFamily: L.panel.font, fontSize: L.tape ? 52 : 38, color: L.text}}>
         <span style={{fontWeight: L.title.font === 'Montserrat' ? 700 : 600}}>{label}</span>
-        <span style={{color, fontStyle: L.num.italic ? 'italic' : 'normal', fontWeight: 700}}>{label === 'Brazil' ? '~' : ''}{shown} km</span>
+        <span style={{color: L.barNum || color, fontWeight: 800}}>{label === 'Brazil' ? '~' : ''}{shown} km</span>
       </div>
     </div>
   );
@@ -177,9 +180,9 @@ export const MapSample = ({look}) => {
         <path d={path(GRAT)} fill="none" stroke={L.grat} strokeWidth={1} strokeDasharray={L.gratDash || 'none'} />
         <path d={path(WORLD)} fill={L.world} stroke={L.worldStroke} strokeWidth={0.8} />
         <g style={{filter: L.shadow || 'none'}}>{detail}</g>
-        {geo.borders.deu ? <g opacity={doneFade(pDeu, T.deu[1])}><Draw d={path(geo.borders.deu)} p={pDeu} color={L.deu} width={L.borderW} glow={L.glow} /></g> : null}
-        <g opacity={doneFade(pEsp, T.esp[1])}><Draw d={path(geo.borders.esp)} p={pEsp} color={L.esp} width={L.borderW} glow={L.glow} /></g>
-        <Draw d={path(geo.borders.bra)} p={pBra} color={L.bra} width={L.borderW * 1.15} glow={L.glow} />
+        {geo.borders.deu ? <g opacity={doneFade(pDeu, T.deu[1])}><Draw d={path(geo.borders.deu)} p={pDeu} color={L.deu} width={L.borderW} glow={L.glow} halo={L.halo} /></g> : null}
+        <g opacity={doneFade(pEsp, T.esp[1])}><Draw d={path(geo.borders.esp)} p={pEsp} color={L.esp} width={L.borderW} glow={L.glow} halo={L.halo} /></g>
+        <Draw d={path(geo.borders.bra)} p={pBra} color={L.bra} width={L.borderW * 1.15} glow={L.glow} halo={L.halo} />
         {/* the flight: Paris -> Cayenne on the great circle */}
         {pArc > 0 && f < T.bra[0] + 20 ? (
           <g opacity={interpolate(f, [T.bra[0], T.bra[0] + 20], [1, 0], clamp)}>
@@ -200,7 +203,7 @@ export const MapSample = ({look}) => {
         <g opacity={euOp}>
           <Label L={L} {...xy(P([2.5, 46.9]))} text="France" focus size={L.lab.size * 1.25} />
           <Label L={L} {...xy(P([10.4, 51.2]))} text="Germany" />
-          <Label L={L} {...xy(P([-3.7, 40.1]))} text="Spain" />
+          <Label L={L} {...xy(P([-3.7, 40.1]))} text="Spain" op={interpolate(f, [T.esp[1] - 12, T.esp[1] - 2], [1, 0], clamp)} />
           <Label L={L} {...xy(P([12.6, 43.2]))} text="Italy" op={0.6} />
           <Num L={L} x={deuAt[0] + 18} y={deuAt[1]} text="418 km" color={L.deu} size={46} op={f >= T.deu[1] - 6 ? 1 : 0}
                pop={popAt(T.deu[1] - 6)} />
@@ -212,11 +215,14 @@ export const MapSample = ({look}) => {
         </g>
         {/* Guiana labels */}
         <g opacity={gfOp}>
-          <Label L={L} {...xy(P([-53.25, 4.15]))} text="French Guiana" focus size={L.lab.size * 1.1} />
+          <Label L={L} {...xy(P([-53.15, 3.75]))} text="French Guiana" focus size={L.lab.size * 1.05} />
           <Label L={L} {...xy(P([-55.9, 4.3]))} text="Suriname" />
           <Label L={L} {...xy(P([-52.0, 1.35]))} text="Brazil" size={L.lab.size * 1.2} />
-          <Label L={L} x={riverMid[0] + 28} y={riverMid[1]} rot={riverRot} text="Oyapock River" anchor="middle" size={L.lab.size * 0.8}
-                 color={L.bra} op={interpolate(f, [T.oyapock, T.oyapock + 15], [0, 1], clamp)} />
+          <g opacity={interpolate(f, [T.oyapock, T.oyapock + 15], [0, 1], clamp)}>
+            <line x1={riverMid[0] + 6} y1={riverMid[1]} x2={riverMid[0] + 70} y2={riverMid[1] - 60} stroke={L.bra} strokeWidth={2.5} />
+            <Label L={L} x={riverMid[0] + 78} y={riverMid[1] - 66} text="Oyapock River" anchor="start" size={L.lab.size * 1.05} color={L.bra}
+                   weight={800} />
+          </g>
           <Num L={L} x={braAt[0] + 40} y={braAt[1] + 40} text={`~${braNum} km`} color={L.bra} size={92}
                op={interpolate(f, [T.bra[0] + 6, T.bra[0] + 16], [0, 1], clamp)} pop={f > T.bra[1] ? popAt(T.bra[1]) : 1} />
         </g>
@@ -224,7 +230,7 @@ export const MapSample = ({look}) => {
       {/* type */}
       <div style={{position: 'absolute', left: 0, width: MAPX * 2, top: 70, textAlign: 'center', ...tStyle, opacity: titleOp,
                    transform: `translateY(${(1 - titleOp) * 16}px)`}}>
-        {L.title.upper ? "France's longest border?" : <>What is France&rsquo;s<br />longest border?</>}
+        <>What is France&rsquo;s<br />longest border?</>
       </div>
       <div style={{position: 'absolute', left: 0, width: MAPX * 2, top: 90, textAlign: 'center', ...tStyle, opacity: wrongOp}}>Both wrong.</div>
       <div style={{position: 'absolute', left: 90, top: 70, opacity: headOp, transform: `translateY(${(1 - headOp) * 16}px)`}}>
@@ -232,12 +238,12 @@ export const MapSample = ({look}) => {
         <div style={{...tStyle, fontSize: L.title.size * 1.15, color: L.tape ? '#111' : L.bra, background: L.tape ? L.bra : 'none',
                      display: 'inline-block', padding: L.tape ? '0 18px' : 0}}>Brazil</div>
       </div>
-      <div style={{position: 'absolute', left: 1360, top: 330, width: 470, fontFamily: L.panel.font, fontSize: L.tape ? 34 : 20,
+      <div style={{position: 'absolute', left: 1340, top: 262, width: 520, fontFamily: L.panel.font, fontSize: L.tape ? 40 : 26, whiteSpace: 'nowrap',
                    letterSpacing: L.tape ? 3 : 6, color: L.sub, textTransform: "uppercase", borderBottom: `1px solid ${L.panel.line}`, paddingBottom: 12,
-                   opacity: interpolate(f, [T.bars - 10, T.bars + 6], [0, 1], clamp)}}>{L.barTitle || "Border length"}</div>
-      <Bar L={L} f={f} start={T.final} label="Brazil" km={KM.bra} color={L.bra} y={385} />
-      <Bar L={L} f={f} start={T.bars} label="Spain" km={KM.esp} color={L.barOther || L.esp} y={f >= T.final ? 490 : 385} />
-      <Bar L={L} f={f} start={T.bars + 14} label="Germany" km={KM.deu} color={L.barOther || L.deu} y={f >= T.final ? 595 : 490} />
+                   opacity: interpolate(f, [T.bars - 10, T.bars + 6], [0, 1], clamp)}}>{L.barTitle || "Land borders (km)"}</div>
+      <Bar L={L} f={f} start={T.final} label="Brazil" km={KM.bra} color={L.bra} y={330} />
+      <Bar L={L} f={f} start={T.bars} label="Spain" km={KM.esp} color={L.barOther || L.esp} y={f >= T.final ? 460 : 330} />
+      <Bar L={L} f={f} start={T.bars + 14} label="Germany" km={KM.deu} color={L.barOther || L.deu} y={f >= T.final ? 590 : 460} />
       {L.grain ? <Img src={staticFile('grain.png')} style={{position: 'absolute', width: W, height: H, objectFit: 'cover',
                                                               opacity: L.grain, mixBlendMode: 'overlay'}} /> : null}
       <AbsoluteFill style={{background: `radial-gradient(ellipse at 45% 50%, transparent 55%, rgba(0,0,0,${L.vignette}) 100%)`}} />
