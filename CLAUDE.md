@@ -341,6 +341,9 @@ Agents never spend money without the owner's explicit approval.
   owner's own bot token and another client's), /<slug>/say, /<slug>/send {path, caption, approve}, /<slug>/unpair. hq client-new |
   clients | client-say | client-send. Tested with a fake Telegram (scratchpad fake_tg.py + test_clientbot.py: 23 checks). Not yet:
   his own channel's map-first look (the "client channel" style options), Omar on his channel, a /status answer without the owner's OK.
+  2.69.1: his voice notes/audio are transcribed on arrival (`clientbot.transcribe`: faster-whisper in the shorts venv, rule
+  client.voice_model, default base.en = already on this PC), saved as <file>.txt beside it, and the text goes into messages.jsonl, the
+  owner's live copy and Atlas's draft as "(voice note, transcribed) ...".
 - Map samples for a client's map channel (2.68.0, Atlas's OCEAN request 2026-10-23 for Bassel, project 6; the owner approved the downloads in
   the Builder chat): `mapsample.py` (shorts venv) draws REAL geography: Natural Earth 10m countries / land boundary lines / rivers
   (public domain) in ~/.agent-hq-anim/geo/natural-earth -> `prep` -> ~/.agent-hq-anim/maps/geo.json (countries simplified with an own

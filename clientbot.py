@@ -27,6 +27,7 @@ import json
 import os
 import re
 import secrets
+import subprocess
 import threading
 import time
 import urllib.error
@@ -445,6 +446,34 @@ def _download(c, file_id, name):
     return out
 
 
+HEAR = r"""
+import sys
+from faster_whisper import WhisperModel
+m = WhisperModel(sys.argv[2], device="cpu", compute_type="int8")
+segs, info = m.transcribe(sys.argv[1], vad_filter=True)
+print(" ".join(s.text.strip() for s in segs))
+"""
+
+
+def transcribe(f):
+    """A voice note as text, with the office's local Whisper (the shorts venv's model, rule client.voice_model); saved next to it as .txt.
+    "" when it can't be heard (never raises: the message still reaches the owner)."""
+    import design
+    if os.environ.get("HQ_SIMULATE") == "1":
+        return "(practice: a transcribed voice note)"
+    try:
+        p = subprocess.run([str(design._shorts_python()), "-c", HEAR, str(f), rules.get("client.voice_model") or "base.en"],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        heard = (p.stdout or "").strip().splitlines()[-1].strip() if p.returncode == 0 and p.stdout.strip() else ""
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print("Voice note not transcribed:", repr(e)[:200], flush=True)
+        return ""
+    if heard:
+        f.with_suffix(".txt").write_text(heard + "\n", encoding="utf-8")
+    return heard
+
+
 def on_message(c, m):
     chat = m["chat"]["id"]
     text = (m.get("text") or m.get("caption") or "").strip()
@@ -467,6 +496,11 @@ def on_message(c, m):
                 files.append(_download(c, m[key]["file_id"], m[key].get("file_name") or f"{key}.{'ogg' if key == 'voice' else 'mp4'}"))
     except (ValueError, TelegramError, OSError) as e:
         _say(c, f"I couldn't take that file: {e}")
+    for f in files:   # 2.69.1: his voice notes are heard (local speech-to-text), so Atlas and the owner read what he said
+        if f.suffix.lower() in (".ogg", ".oga", ".mp3", ".m4a", ".wav", ".opus"):
+            heard = transcribe(f)
+            if heard:
+                text = (text + "\n" if text else "") + f"(voice note, transcribed) {heard}"
     if cmd == "/status":
         text = "(He asked for the status of his channel: where each script and video is.)"
     if not text and not files:
