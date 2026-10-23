@@ -66,7 +66,7 @@ const Text = ({x, y, children, size = 34, color = C.text, anchor = 'middle', op 
   );
 };
 
-export const MapShort = ({cues = {}, seconds = 35}) => {
+export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = ''}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const at = (k, d = 0) => Math.round(((cues[k] ?? 0) + d) * fps);
@@ -119,7 +119,7 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
   const q = on(at('q'), 14) * interpolate(f, [at('neither') - 10, at('neither')], [1, 0], clamp);
   const neither = on(at('neither'), 8) * interpolate(f, [m0 - 6, m0 + 10], [1, 0], clamp);
   const head = on(at('final'), 14) * (cues.more ? interpolate(f, [at('more') - 4, at('more') + 10], [1, 0], clamp) : 1);
-  const braNum = Math.round(730 * prog(at('km730'), at('km730', 1.2)));
+  const braNum = Math.round(km.bra * prog(at('km730'), at('km730', 1.2)));
   const deuAt = P([8.5, 49.3]), espAt = P([-1.2, 42.5]), braAt = P([-51.7, 2.5]);
   const bra = geo.borders.bra.geometry.coordinates[0];
   const riv = P(bra[Math.round(bra.length * 0.18)]);
@@ -171,8 +171,8 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
             }
             return <Text key={a3} x={x} y={y} size={a3 === 'DEU' || a3 === 'ESP' ? 38 : 30} op={op} pop={pop(t)}>{name}</Text>;
           })}
-          <Text x={deuAt[0] + 22} y={deuAt[1] + 8} size={50} anchor="start" color={C.white} op={on(at('km418'), 6)} pop={pop(at('km418'))} spacing={1}>418 km</Text>
-          <Text x={espAt[0]} y={espAt[1] + 78} size={50} color={C.white} op={on(at('km646'), 6)} pop={pop(at('km646'))} spacing={1}>646 km</Text>
+          <Text x={deuAt[0] + 22} y={deuAt[1] + 8} size={50} anchor="start" color={C.white} op={on(at('km418'), 6)} pop={pop(at('km418'))} spacing={1}>{`${km.deu} km`}</Text>
+          <Text x={espAt[0]} y={espAt[1] + 78} size={50} color={C.white} op={on(at('km646'), 6)} pop={pop(at('km646'))} spacing={1}>{`${km.esp} km`}</Text>
         </g>
         <g opacity={interpolate(f, [0.25, 0.4, 0.7, 0.85].map((k) => m0 + k * (m1 - m0)), [0, 1, 1, 0], clamp)}>
           <Text {...xy(P([-32, 28]))} size={34} color={C.sub}>Atlantic Ocean</Text>
@@ -208,7 +208,7 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
           );
         }) : null}
       </svg>
-      {cues.more ? <Bars f={f} at={at} /> : null}
+      {cues.more ? <Bars f={f} at={at} km={km} source={source} /> : null}
       {cues.more ? (
         <div style={{...title, top: 70, opacity: on(at('q2'), 14), transform: `translateY(${(1 - on(at('q2'), 14)) * 14}px)`}}>
           <div style={{fontSize: 64}}>How did France come to hold<br />lands all over the world?</div>
@@ -230,8 +230,8 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
 };
 
 // v2: the length chart (on screen only, the narrator doesn't say the numbers): Germany and Spain as they are asked, then back with Brazil
-const Bars = ({f, at}) => {
-  const rows = [['Brazil', 730, C.accent, 'bars'], ['Spain', 646, '#D8B465', 'km646'], ['Germany', 418, '#9A9AD8', 'km418']];
+const Bars = ({f, at, km, source}) => {
+  const rows = [['Brazil', km.bra, C.accent, 'bars'], ['Spain', km.esp, '#D8B465', 'km646'], ['Germany', km.deu, '#9A9AD8', 'km418']];
   const first = interpolate(f, [at('km418') - 6, at('km418') + 6, at('neither'), at('neither') + 12], [0, 1, 1, 0], clamp);
   const second = interpolate(f, [at('bars') - 6, at('bars') + 8, at('more') - 4, at('more') + 10], [0, 1, 1, 0], clamp);
   const op = Math.max(first, second);
@@ -244,13 +244,14 @@ const Bars = ({f, at}) => {
         const g = interpolate(f, [at(cue) - 6, at(cue) + 18], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});
         return (
           <div key={name} style={{marginTop: 26}}>
-            <div style={{height: 30, width: 500 * (km / 730) * g, background: color, borderRadius: 3, boxShadow: `0 0 16px ${color}66`}} />
+            <div style={{height: 30, width: 500 * (km / Math.max(...rows.map((r) => r[1]))) * g, background: color, borderRadius: 3, boxShadow: `0 0 16px ${color}66`}} />
             <div style={{display: 'flex', justifyContent: 'space-between', width: 520, marginTop: 8, fontSize: 38, color: C.text, fontWeight: 700}}>
               <span>{name}</span><span style={{color}}>{name === 'Brazil' ? '~' : ''}{Math.round(km * g)} km</span>
             </div>
           </div>
         );
       })}
+      {source ? <div style={{marginTop: 22, fontSize: 18, color: C.sub, opacity: 0.8}}>{source}</div> : null}
     </div>
   );
 };

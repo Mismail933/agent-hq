@@ -404,7 +404,8 @@ def short(folder, music_db=-24.0):
     secs = round(float(meta["words"][-1][2]) + 2.8, 2)
     animate = ensure_app()
     pic = folder / "picture.mp4"
-    _remotion(animate, ["render", "src/index.jsx", "MapShort", str(pic), "--props=" + json.dumps({"cues": cues, "seconds": secs}),
+    props = {"cues": cues, "seconds": secs, **({"km": meta["km"]} if meta.get("km") else {}), **({"source": meta["source"]} if meta.get("source") else {})}
+    _remotion(animate, ["render", "src/index.jsx", "MapShort", str(pic), "--props=" + json.dumps(props),
                         "--concurrency=2", "--crf=18", "--muted"])
     ff = shorts.find_ffmpeg()
     track = HOME / "music" / "scott-buckley" / "convergence.mp3"
