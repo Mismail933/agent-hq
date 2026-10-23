@@ -151,8 +151,8 @@ export const MapSample = ({look}) => {
   const [hx, hy] = P(head);
   const paris = P(geo.places.paris), cay = P(geo.places.cayenne);
   const deuAt = P([8.4, 49.4]), espAt = P([-0.9, 42.4]), braAt = P([-51.55, 2.6]);
-  const titleOp = interpolate(f, [T.title, T.title + 18, T.wrong - 4, T.wrong + 6], [0, 1, 1, 0], clamp);
-  const wrongOp = fade(f, T.wrong, T.wrong + 10, T.move[0] + 6, T.move[0] + 26);
+  const titleOp = interpolate(f, [T.title, T.title + 18, T.wrong - 12, T.wrong - 4], [0, 1, 1, 0], clamp);
+  const wrongOp = fade(f, T.wrong - 2, T.wrong + 8, T.move[0] + 6, T.move[0] + 26);
   const headOp = interpolate(f, [T.head, T.head + 16], [0, 1], clamp);
   const braNum = Math.round(KM.bra * pBra);
   const tStyle = {fontFamily: L.title.font, fontWeight: L.title.weight, fontStyle: L.title.italic ? 'italic' : 'normal',
