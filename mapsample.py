@@ -13,6 +13,7 @@ Runs in the shorts venv (numpy, Pillow). Looks: maps/src/looks.js.
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,7 @@ LOOKS = ["midnight", "paper", "globe", "editorial", "bold", "bassel"]
 
 # countries drawn in detail (the rest of the world is a light backdrop)
 DETAIL = {"FRA", "ESP", "DEU", "BEL", "LUX", "CHE", "ITA", "AND", "MCO", "GBR", "PRT", "NLD", "AUT", "IRL", "BRA", "SUR", "GUY", "VEN"}
+OVERSEAS = {"MAF", "NCL", "SPM", "PYF", "ATF", "BLM", "WLF", "CLP"}   # France outside Europe (Natural Earth admin-0 units), drawn finely
 PLACES = {"paris": [2.35, 48.86], "cayenne": [-52.33, 4.92], "kourou": [-52.65, 5.16]}
 
 
@@ -141,11 +143,16 @@ def prep():
         g = _simplify(f["geometry"], 0.08, 2)
         if g:
             world.append({"type": "Feature", "properties": {"a3": a3}, "geometry": g})
+        if a3 in OVERSEAS:
+            g = _simplify(f["geometry"], 0.003, 4)
+            if g:
+                detail.append({"type": "Feature", "properties": {"a3": a3}, "geometry": g})
         if a3 in DETAIL:
-            if a3 == "FRA":   # metropolitan France (with Corsica) and French Guiana as their own shapes
-                for key, keep in (("FRA", lambda poly: -6 < poly[0][0][0] < 10 and 41 < poly[0][0][1] < 52),
-                                  ("GUF", lambda poly: -55 < poly[0][0][0] < -51 and 1.5 < poly[0][0][1] < 6.5)):
-                    g = _simplify(f["geometry"], 0.004, 4, keep)
+            if a3 == "FRA":   # metropolitan France (with Corsica), French Guiana, and the overseas departments (FRO) as their own shapes
+                metro = lambda poly: -6 < poly[0][0][0] < 10 and 41 < poly[0][0][1] < 52
+                guf = lambda poly: -55 < poly[0][0][0] < -51 and 1.5 < poly[0][0][1] < 6.5
+                for key, keep in (("FRA", metro), ("GUF", guf), ("FRO", lambda poly: not metro(poly) and not guf(poly))):
+                    g = _simplify(f["geometry"], 0.004 if key != "FRO" else 0.003, 4, keep)
                     detail.append({"type": "Feature", "properties": {"a3": key}, "geometry": g})
             else:
                 g = _simplify(f["geometry"], 0.006 if a3 != "BRA" else 0.01, 4)
@@ -348,6 +355,33 @@ CUE_WORDS = [("q", "which", 0), ("deu", "germany", 0), ("km418", "four", 0), ("e
              ("km730", "seven", 0), ("final", "france's", -1)]
 
 
+# v2 (Bassel's notes of 14:35): lengths only on screen, the chart back with Brazil, France's lands outside Europe, the ending question.
+# (key, word, which occurrence, seconds to add); a key may instead follow another key: (key, "@other", 0, offset)
+CUE_WORDS_V2 = [("q", "which", 0, 0), ("deu", "germany", 0, 0), ("km418", "@deu", 0, 0.7), ("esp", "spain", 0, 0), ("km646", "@esp", 0, 0.7),
+                ("neither", "neither", 0, 0), ("bel", "belgium", 0, 0), ("lux", "luxembourg", 0, 0), ("che", "switzerland", 0, 0),
+                ("ita", "italy", 0, 0), ("mco", "monaco", 0, 0), ("and", "andorra", 0, 0), ("move", "but", 0, 0), ("arrive", "south", 0, 0),
+                ("sur", "suriname", 0, 0), ("bra", "brazil", 0, 0), ("km730", "seven", 0, 0), ("bars", "that", 0, 0),
+                ("final", "longer", 0, 0), ("more", "only", 0, -0.4), ("carib", "caribbean", 0, 0), ("gua", "guadeloupe", 0, 0),
+                ("mtq", "martinique", 0, 0), ("maf", "martin", 0, 0), ("blm", "barthelemy", 0, 0), ("spmline", "off", 0, 0),
+                ("spmn", "pierre", 0, 0), ("indian", "indian", 0, 0), ("reu", "reunion", 0, 0), ("myt", "mayotte", 0, 0),
+                ("ker", "@myt", 0, 0.8), ("pacific", "pacific", 0, 0), ("ncl", "caledonia", 0, 0), ("wlf", "wallis", 0, 0),
+                ("pyf", "polynesia", 0, 0), ("clp", "@pyf", 0, 0.8), ("q2", "so", 0, 0), ("still", "still", 0, 0), ("link", "find", 0, 0)]
+
+
+def cues_v2(words):
+    norm = [(re.sub(r"[^a-z]", "", w[0].lower()), float(w[1])) for w in words]
+    out = {}
+    for key, word, which, add in CUE_WORDS_V2:
+        if word.startswith("@"):
+            out[key] = round(out[word[1:]] + add, 3)
+            continue
+        hits = [t for w, t in norm if w == word]
+        if len(hits) <= which:
+            raise ValueError(f"the voice never says '{word}' (cue {key})")
+        out[key] = round(hits[which] + add, 3)
+    return out
+
+
 def cues_from(words):
     norm = [(w[0].lower().strip(".,!?:;"), float(w[1])) for w in words]
     out = {}
@@ -366,7 +400,7 @@ def short(folder, music_db=-24.0):
     import shorts
     folder = Path(folder)
     meta = json.loads((folder / "voice.json").read_text(encoding="utf-8"))
-    cues = cues_from(meta["words"])
+    cues = cues_v2(meta["words"]) if meta.get("cue_set") == "v2" else cues_from(meta["words"])
     secs = round(float(meta["words"][-1][2]) + 2.8, 2)
     animate = ensure_app()
     pic = folder / "picture.mp4"

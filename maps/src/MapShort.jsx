@@ -4,7 +4,7 @@
 // Switzerland, Italy, Monaco, Andorra; then outside Europe: Suriname, then Brazil, the longest.
 import React from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig, Img, staticFile} from 'remotion';
-import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10} from 'd3-geo';
+import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance} from 'd3-geo';
 import geo from './geo.json';
 import {FONT_CSS} from './fonts';
 
@@ -22,7 +22,18 @@ const C = {
 };
 const NAMES = {DEU: ['Germany', [10.4, 51.2]], ESP: ['Spain', [-3.7, 40.1]], BEL: ['Belgium', [4.6, 50.6]], LUX: ['Luxembourg', [6.1, 49.75]],
                CHE: ['Switzerland', [8.2, 46.8]], ITA: ['Italy', [12.6, 43.0]], MCO: ['Monaco', [7.42, 43.74]], AND: ['Andorra', [1.52, 42.55]]};
-const TINY = new Set(['LUX', 'MCO', 'AND']);   // a dot and a pointer line, the country is too small to label inside
+const TINY = new Set(['LUX', 'MCO', 'AND']);
+const OVERSEAS = new Set(['FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);   // France outside Europe: drawn as France
+// v2: the tour of France's lands outside Europe (label offsets keep the four Caribbean islands apart)
+const TERR = [['Saint Martin', [-63.06, 18.07], 'maf', [150, -80]], ['Saint Barthelemy', [-62.83, 17.9], 'blm', [150, -30]],
+              ['Guadeloupe', [-61.55, 16.25], 'gua', [150, 20]], ['Martinique', [-61.02, 14.64], 'mtq', [150, 70]],
+              ['Saint Pierre and Miquelon', [-56.3, 46.9], 'spmn', [24, -16]], ['Reunion', [55.53, -21.13], 'reu', [24, -16]],
+              ['Mayotte', [45.15, -12.83], 'myt', [-24, -16]], ['Kerguelen', [69.5, -49.3], 'ker', [24, -16]],
+              ['New Caledonia', [165.6, -21.3], 'ncl', [-24, -16]], ['Wallis and Futuna', [-176.2, -13.3], 'wlf', [24, -16]],
+              ['French Polynesia', [-149.4, -17.65], 'pyf', [24, -16]], ['Clipperton', [-109.2, 10.3], 'clp', [24, -16]]];
+// v2 camera after French Guiana: [cue the move starts on, cue it arrives by, centre, scale]
+const TOUR = [['more', 'carib', [-62, 16.3], 1700], ['spmline', 'spmn', [-59, 32], 620], ['indian', 'reu', [52, -27], 700],
+              ['pacific', 'ncl', [-170, -17], 560], ['q2', 'link', [-125, 2], 300]];   // a dot and a pointer line, the country is too small to label inside
 const DETAIL = new Set(geo.detail.features.map((f) => f.properties.a3));
 const WORLD = {type: 'FeatureCollection', features: geo.world.features.filter((f) => !DETAIL.has(f.properties.a3) && f.properties.a3 !== 'FRA')};
 const GRAT = geoGraticule10();
@@ -67,7 +78,19 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
   const m0 = at('move'), m1 = at('arrive');
   let c, s;
   if (f <= m0) { c = EU; s = interpolate(f, [0, m0], [Z.eu * 0.95, Z.eu * 1.05], clamp); }
-  else if (f >= m1) { c = GF; s = interpolate(f, [m1, m1 + 300], [Z.gf, Z.gf * 1.06], clamp); }
+  else if (f >= m1 && !(cues.more && f >= at('more'))) { c = GF; s = interpolate(f, [m1, m1 + 300], [Z.gf, Z.gf * 1.06], clamp); }
+  else if (f >= m1) {   // v2: fly from one group of France's lands to the next
+    let from = [GF, Z.gf * 1.04], k = 0;
+    for (; k < TOUR.length - 1 && f >= at(TOUR[k + 1][0]); k++) from = [TOUR[k][2], TOUR[k][3]];
+    const [a0, a1, to, ts] = TOUR[k];
+    const t0 = at(a0), t1 = Math.max(at(a1, 0.2), t0 + 40);
+    const e = prog(t0, t1);
+    const far = geoDistance(from[0], to) > 0.6;
+    const la = Math.log(from[1]), lb = Math.log(ts), bump = far ? Math.max(0, (la + lb) / 2 - Math.log(330)) : 0;
+    c = geoInterpolate(from[0], to)(far ? prog(t0 + 8, t1 - 4) : e);
+    s = Math.exp(la + (lb - la) * e - bump * Math.sin(Math.PI * e));
+    if (f > t1) s = ts * interpolate(f, [t1, t1 + 200], [1, 1.05], clamp);
+  }
   else {
     const e = prog(m0, m1), er = prog(m0 + 30, m1 - 10);
     const a = Math.log(Z.eu * 1.05), b = Math.log(Z.gf), bump = (a + b) / 2 - Math.log(Z.mid);
@@ -82,7 +105,7 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
                  SUR: at('sur'), BRA: at('bra')};
   const detail = geo.detail.features.map((ft) => {
     const a3 = ft.properties.a3;
-    const focus = a3 === 'FRA' || a3 === 'GUF';
+    const focus = a3 === 'FRA' || a3 === 'GUF' || OVERSEAS.has(a3);
     const t = named[a3] != null ? on(named[a3], 12) : 0;
     const fill = focus ? 'url(#france)' : C.fill[a3] ? mix(C.land, C.fill[a3], t * 0.92) : C.land;
     return <path key={a3} d={path(ft)} fill={fill} stroke={focus ? '#E8FBFF' : C.line} strokeWidth={focus ? 2 : C.lineW} />;
@@ -90,12 +113,12 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
   const pDeu = prog(named.DEU, named.DEU + 30), pEsp = prog(named.ESP, named.ESP + 30), pSur = prog(named.SUR, named.SUR + 24);
   const pBra = prog(named.BRA, at('km730', 1.2), Easing.inOut(Easing.quad));
   const euOp = interpolate(f, [m0, m0 + 20], [1, 0], clamp);
-  const gfOp = interpolate(f, [m1 - 20, m1 + 10], [0, 1], clamp);
+  const gfOp = interpolate(f, [m1 - 20, m1 + 10], [0, 1], clamp) * (cues.more ? interpolate(f, [at('more'), at('more') + 20], [1, 0], clamp) : 1);
   const pArc = prog(m0 + 10, m1 - 5);
   const [hx, hy] = P(geoInterpolate(geo.places.paris, geo.places.cayenne)(pArc));
   const q = on(at('q'), 14) * interpolate(f, [at('neither') - 10, at('neither')], [1, 0], clamp);
   const neither = on(at('neither'), 8) * interpolate(f, [m0 - 6, m0 + 10], [1, 0], clamp);
-  const head = on(at('final'), 14);
+  const head = on(at('final'), 14) * (cues.more ? interpolate(f, [at('more') - 4, at('more') + 10], [1, 0], clamp) : 1);
   const braNum = Math.round(730 * prog(at('km730'), at('km730', 1.2)));
   const deuAt = P([8.5, 49.3]), espAt = P([-1.2, 42.5]), braAt = P([-51.7, 2.5]);
   const bra = geo.borders.bra.geometry.coordinates[0];
@@ -151,7 +174,7 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
           <Text x={deuAt[0] + 22} y={deuAt[1] + 8} size={50} anchor="start" color={C.white} op={on(at('km418'), 6)} pop={pop(at('km418'))} spacing={1}>418 km</Text>
           <Text x={espAt[0]} y={espAt[1] + 78} size={50} color={C.white} op={on(at('km646'), 6)} pop={pop(at('km646'))} spacing={1}>646 km</Text>
         </g>
-        <g opacity={interpolate(f, [m0 + 40, m0 + 60, m1 - 50, m1 - 25], [0, 1, 1, 0], clamp)}>
+        <g opacity={interpolate(f, [0.25, 0.4, 0.7, 0.85].map((k) => m0 + k * (m1 - m0)), [0, 1, 1, 0], clamp)}>
           <Text {...xy(P([-32, 28]))} size={34} color={C.sub}>Atlantic Ocean</Text>
         </g>
         {/* South America */}
@@ -166,7 +189,33 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
           <Text x={braAt[0] + 40} y={braAt[1] + 130} size={96} anchor="start" color={C.accent} op={on(at('km730'), 8)} spacing={0}
                 pop={f > at('km730', 1.2) ? pop(at('km730', 1.2)) : 1}>{`~${braNum} km`}</Text>
         </g>
+        {cues.more ? TERR.map(([name, ll, key, [dx, dy]]) => {
+          if (cues[key] == null) return null;
+          const t = at(key);
+          const vis = geoDistance(c, ll) < 1.4 ? 1 : 0;
+          const op = on(t, 8) * vis * interpolate(f, [at('q2'), at('q2', 0.6)], [1, 0.55], clamp);
+          if (op <= 0.01) return null;
+          const [x, y] = P(ll);
+          const ring = 10 + 26 * ((f - t) % 45) / 45;
+          return (
+            <g key={key} opacity={op}>
+              <circle cx={x} cy={y} r={ring} fill="none" stroke={C.france[0]} strokeWidth={2} opacity={1 - ((f - t) % 45) / 45} />
+              <circle cx={x} cy={y} r={7} fill={C.france[0]} stroke={C.white} strokeWidth={2} />
+              {Math.abs(dx) > 60 && f < at('q2') ? <line x1={x} y1={y} x2={x + dx - 8} y2={y + dy - 10} stroke={C.white} strokeWidth={1.5} /> : null}
+              <Text x={x + dx} y={y + dy} size={30} anchor={dx < 0 ? 'end' : 'start'} pop={pop(t)}
+                    op={interpolate(f, [at('q2') - 10, at('q2') + 6], [1, 0], clamp)}>{name}</Text>
+            </g>
+          );
+        }) : null}
       </svg>
+      {cues.more ? <Bars f={f} at={at} /> : null}
+      {cues.more ? (
+        <div style={{...title, top: 70, opacity: on(at('q2'), 14), transform: `translateY(${(1 - on(at('q2'), 14)) * 14}px)`}}>
+          <div style={{fontSize: 64}}>How did France come to hold<br />lands all over the world?</div>
+          <div style={{fontSize: 64, color: C.accent, marginTop: 14, opacity: on(at('still'), 12)}}>And why are they still French?</div>
+          <div style={{fontSize: 34, color: C.sub, marginTop: 26, opacity: on(at('link'), 12), letterSpacing: 2}}>FIND OUT IN THE FULL STORY &#9654; LINK BELOW</div>
+        </div>
+      ) : null}
       <div style={{...title, fontSize: 74, opacity: q, transform: `translateY(${(1 - q) * 14}px)`}}>Which country has the<br />longest border with France?</div>
       <div style={{...title, fontSize: 96, opacity: neither, color: C.accent}}>Neither!</div>
       <div style={{...title, opacity: head, transform: `translateY(${(1 - head) * 14}px)`}}>
@@ -177,6 +226,32 @@ export const MapShort = ({cues = {}, seconds = 35}) => {
       <AbsoluteFill style={{background: 'radial-gradient(ellipse at 45% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)'}} />
       <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}</div>
     </AbsoluteFill>
+  );
+};
+
+// v2: the length chart (on screen only, the narrator doesn't say the numbers): Germany and Spain as they are asked, then back with Brazil
+const Bars = ({f, at}) => {
+  const rows = [['Brazil', 730, C.accent, 'bars'], ['Spain', 646, '#D8B465', 'km646'], ['Germany', 418, '#9A9AD8', 'km418']];
+  const first = interpolate(f, [at('km418') - 6, at('km418') + 6, at('neither'), at('neither') + 12], [0, 1, 1, 0], clamp);
+  const second = interpolate(f, [at('bars') - 6, at('bars') + 8, at('more') - 4, at('more') + 10], [0, 1, 1, 0], clamp);
+  const op = Math.max(first, second);
+  if (op <= 0.01) return null;
+  const shown = rows.filter(([name, , , cue]) => (second > 0.01 ? true : name !== 'Brazil') && f >= at(cue) - 6);
+  return (
+    <div style={{position: 'absolute', left: 1330, top: 250, width: 540, opacity: op, fontFamily: 'Space Grotesk'}}>
+      <div style={{fontSize: 30, letterSpacing: 5, color: C.sub, borderBottom: '1px solid rgba(140,190,220,0.3)', paddingBottom: 10}}>LAND BORDERS (KM)</div>
+      {shown.map(([name, km, color, cue]) => {
+        const g = interpolate(f, [at(cue) - 6, at(cue) + 18], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});
+        return (
+          <div key={name} style={{marginTop: 26}}>
+            <div style={{height: 30, width: 500 * (km / 730) * g, background: color, borderRadius: 3, boxShadow: `0 0 16px ${color}66`}} />
+            <div style={{display: 'flex', justifyContent: 'space-between', width: 520, marginTop: 8, fontSize: 38, color: C.text, fontWeight: 700}}>
+              <span>{name}</span><span style={{color}}>{name === 'Brazil' ? '~' : ''}{Math.round(km * g)} km</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 

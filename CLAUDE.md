@@ -361,6 +361,10 @@ Agents never spend money without the owner's explicit approval.
   2.69.0 (Bassel's pick after the six samples: the globe look + white borders and coloured countries; his order of beats): `maps/src/
   MapShort.jsx` timed to a narrator's words (`mapsample.cues_from`: CUE_WORDS -> seconds), `python mapsample.py short <folder>` (voice.wav +
   voice.json from ElevenLabs with word times) -> picture.mp4, short.mp4 (voice -16 LUFS + Convergence 24 dB under), sheet.png, cues.json.
+  2.70.0 (Bassel's voice notes of 14:35/14:38): v2 cues (`CUE_WORDS_V2`, voice.json `cue_set: v2`): lengths only on screen, the chart
+  (`Bars`) with Germany/Spain then back with Brazil, the tour of France's lands outside Europe (`TOUR` camera keys, `TERR` pins; the
+  Natural Earth overseas units + FRO = France's overseas departments are now in geo.json and drawn as France), the ending question
+  and 'find out in the full story'. Free voice = Chatterbox lines with word times from the assembly (not Whisper: it drifts at pauses).
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
