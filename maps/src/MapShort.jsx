@@ -66,7 +66,7 @@ const Text = ({x, y, children, size = 34, color = C.text, anchor = 'middle', op 
   );
 };
 
-export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW'}) => {
+export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = []}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const at = (k, d = 0) => Math.round(((cues[k] ?? 0) + d) * fps);
@@ -201,9 +201,9 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
             <g key={key} opacity={op}>
               <circle cx={x} cy={y} r={ring} fill="none" stroke={C.france[0]} strokeWidth={2} opacity={1 - ((f - t) % 45) / 45} />
               <circle cx={x} cy={y} r={7} fill={C.france[0]} stroke={C.white} strokeWidth={2} />
-              {Math.abs(dx) > 60 && f < at('q2') ? <line x1={x} y1={y} x2={x + dx - 8} y2={y + dy - 10} stroke={C.white} strokeWidth={1.5} /> : null}
-              <Text x={x + dx} y={y + dy} size={30} anchor={dx < 0 ? 'end' : 'start'} pop={pop(t)}
-                    op={interpolate(f, [at('q2') - 10, at('q2') + 6], [1, 0], clamp)}>{name}</Text>
+              {Math.abs(dx) > 60 && f < at('q2') && !unnamed.includes(key) ? <line x1={x} y1={y} x2={x + dx - 8} y2={y + dy - 10} stroke={C.white} strokeWidth={1.5} /> : null}
+              {unnamed.includes(key) ? null : <Text x={x + dx} y={y + dy} size={30} anchor={dx < 0 ? 'end' : 'start'} pop={pop(t)}
+                    op={interpolate(f, [at('q2') - 10, at('q2') + 6], [1, 0], clamp)}>{name}</Text>}
             </g>
           );
         }) : null}
