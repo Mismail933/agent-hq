@@ -967,7 +967,7 @@ def anim_busy():
     return ""
 
 
-DESIGNING = {"what": ""}
+DESIGNING = {"what": "", "project": None}   # project: the client project whose style frames Rana is painting (2.68.3)
 ASSETWORK = {"eid": None, "step": ""}
 
 
@@ -1135,6 +1135,7 @@ def run_style_frames(pid, extra=""):
     p = client.get(pid)
     name = p["meta"].get("name") or f"project {pid}"
     DESIGNING["what"] = f"style frames for {name}"
+    DESIGNING["project"] = int(pid)
     try:
         drawn = checkpoint.get("frames painted")   # resumed: what was painted, rendered and checked before the stop is kept
         if drawn is None:
@@ -2058,6 +2059,7 @@ class Handler(BaseHTTPRequestHandler):
                 "designs": [d for d in design.open_designs() if d.get("status") == "ready"],
                 "client": {p["id"]: client.view(p) for p in cp.list_projects(20) if client.is_client(p)},
                 "designing": DESIGNING["what"],
+                "designing_project": DESIGNING.get("project") if DESIGNING["what"] else None,
                 "ghassan": dict(ghassan.STATUS, pending={k: v for k, v in (ghassan.pending() or {}).items() if k != "diff"} or None),
                 "voice_match": {p["id"]: voice_match_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
                 "cast": {p["id"]: cast_view(p) for p in cp.list_projects(20) if p["status"] == "approved" and (p.get("meta") or {}).get("format") == "animated_v1"},
