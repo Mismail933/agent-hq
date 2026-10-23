@@ -4,6 +4,7 @@ The same ~30 s opening ("France's longest border?": Germany 418 km, Spain 646 km
 Oyapock drawing itself, ~730 km) in several looks, from REAL geography: Natural Earth 10m (public domain) in ~/.agent-hq-anim/geo,
 drawn with d3-geo (ISC) in a small Remotion app (~/.agent-hq-anim/maps, node_modules shared with the animation kit).
 
+    python mapsample.py kit [project]        # real-border SVGs for Rana: content/project-N/map-kit/
     python mapsample.py prep                 # geo.json for the app (simplified countries, the three borders, places)
     python mapsample.py still <look> <frame> <out.png>
     python mapsample.py render <look|all> [--every N]   # -> content/project-6/samples/maps/<look>.mp4 + sheet
@@ -176,6 +177,48 @@ def prep():
     (APP / "geo.json").write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
     print("geo.json", round((APP / "geo.json").stat().st_size / 1e6, 2), "MB;", len(world), "world shapes,", len(detail), "detail shapes")
 
+# views of the real-border kit for Rana's style frames (`kit`): centre [lon, lat], orthographic scale, label anchors
+VIEWS = {
+    "europe": {"name": "France and its European neighbours", "center": [2.4, 46.5], "scale": 3700,
+               "labels": {"france": [2.5, 46.9], "germany": [10.4, 51.2], "spain": [-3.7, 40.1], "italy": [12.6, 43.2], "paris": [2.35, 48.86]}},
+    "guiana": {"name": "French Guiana, Suriname and Brazil (the Oyapock border)", "center": [-53.15, 3.95], "scale": 8300,
+               "labels": {"french_guiana": [-53.25, 4.15], "suriname": [-55.9, 4.3], "brazil": [-52.0, 1.35], "cayenne": [-52.33, 4.92],
+                          "oyapock_mouth": [-51.6, 4.3]}},
+    "atlantic": {"name": "The Atlantic globe from France to French Guiana", "center": [-25, 26], "scale": 440,
+                 "labels": {"france": [2.5, 46.9], "french_guiana": [-53.2, 4.0], "atlantic": [-32, 28]}},
+    "south-america": {"name": "South America (for an inset)", "center": [-58, -14], "scale": 1250, "graticule": False,
+                      "labels": {"french_guiana": [-53.2, 4.0], "brazil": [-52, -10]}},
+}
+
+
+def kit(project=6):
+    """content/project-N/map-kit/<view>.svg: real borders Rana copies verbatim (client.ask_rana gives them to her)."""
+    animate = ensure_app()
+    dst = Path(os.environ.get("HQ_ROOT") or ROOT) / "content" / f"project-{project}" / "map-kit"
+    dst.mkdir(parents=True, exist_ok=True)
+    (APP / "tools").mkdir(exist_ok=True)
+    shutil.copy(KIT / "tools" / "region.mjs", APP / "tools" / "region.mjs")
+    for name, v in VIEWS.items():
+        vf = APP / "tools" / f"view-{name}.json"
+        vf.write_text(json.dumps(v), encoding="utf-8")
+        p = subprocess.run([str(animate.NODE_EXE), str(APP / "tools" / "region.mjs"), str(APP / "geo.json"), str(vf), str(dst / f"{name}.svg")],
+                           cwd=APP, env=animate.node_env(), capture_output=True, text=True)
+        if p.returncode:
+            raise RuntimeError(p.stderr[-1500:])
+        print(p.stdout.strip())
+    (dst / "README.md").write_text(KIT_README, encoding="utf-8")
+    return dst
+
+
+KIT_README = """# Real borders (Natural Earth 10m, public domain)
+Every SVG here is a 1920x1080 view already projected with d3-geo (orthographic). The shapes are exact: never redraw a coastline or a
+border by hand. Copy the `d` of the paths you need VERBATIM into your frame; restyle them freely (fill, stroke, glow, shadow, dash), and
+move or scale a whole group with a transform (e.g. the Guiana view as an inset lens). Ids: sea, graticule, w-<ISO3> (rest of the world),
+c-<ISO3> (c-FRA = metropolitan France, c-GUF = French Guiana), b-fra-deu / b-fra-esp / b-fra-bra / b-fra-sur (France's land borders),
+p-<place> (Paris, Cayenne, Kourou). Each file's comment lists label anchors (x, y). Numbers to print: Germany 418 km, Spain 646 km,
+Brazil ~730 km (official lengths; the drawn line is simplified).
+"""
+
 
 def _noise():
     """A grain tile for the paper and film looks (made once, no download)."""
@@ -304,6 +347,8 @@ if __name__ == "__main__":
         print(__doc__)
     elif a[0] == "prep":
         prep()
+    elif a[0] == "kit":
+        kit(int(a[1]) if len(a) > 1 else 6)
     elif a[0] == "preview":
         for lk in (LOOKS if a[1] == "all" else a[1].split(",")):
             preview(lk)

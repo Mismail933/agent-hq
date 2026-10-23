@@ -349,7 +349,12 @@ Agents never spend money without the owner's explicit approval.
   camera flies over a real globe; d3-geo 3.1.1 + d3-array 3.2.4, ISC, added to animation/ and story/package.json, node_modules shared
   with the kit); `maps/src/looks.js` = 5 looks of the same 30 s opening (midnight, paper, globe, editorial, bold; from Rana's style
   frames). `preview <look|all>` = a GIF sheet in ~1 min; `render <look|all>` -> content/project-6/samples/maps/<look>.mp4 + sheet
-  (HQ_MAPS_OUT moves it). Not yet: relief/hillshade (needs ETOPO, ask first), sound, the history and overseas-France beats.
+  (HQ_MAPS_OUT moves it). Not yet: relief/hillshade (needs ETOPO, ask first), the history and overseas-France beats.
+  2.68.1 (Atlas's OCEAN request: Bassel wants "scientifically correct borders" in Rana's frames): `mapsample.py kit [project]` ->
+  content/project-N/map-kit/{europe,guiana,atlantic,south-america}.svg + README.md (maps/tools/region.mjs: d3-geo, ids c-<ISO3>,
+  c-FRA/c-GUF, b-fra-deu|esp|bra|sur, p-<place>, label anchors in the comment; points under ~1 px dropped). `client.ask_rana` copies
+  the kit into her work folder's maps/ with `MAP_KIT_NOTE` (copy the paths verbatim, restyle freely) and `uses_kit` refuses a frame
+  without one of the kit's country/border paths ("its map was drawn by hand"). MAX_FRAME_SVG 400 KB (real paths are bigger).
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
