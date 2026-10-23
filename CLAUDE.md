@@ -341,6 +341,15 @@ Agents never spend money without the owner's explicit approval.
   owner's own bot token and another client's), /<slug>/say, /<slug>/send {path, caption, approve}, /<slug>/unpair. hq client-new |
   clients | client-say | client-send. Tested with a fake Telegram (scratchpad fake_tg.py + test_clientbot.py: 23 checks). Not yet:
   his own channel's map-first look (the "client channel" style options), Omar on his channel, a /status answer without the owner's OK.
+- Map samples for a client's map channel (2.68.0, Atlas's OCEAN request 2026-10-23 for Bassel, project 6; the owner approved the downloads in
+  the Builder chat): `mapsample.py` (shorts venv) draws REAL geography: Natural Earth 10m countries / land boundary lines / rivers
+  (public domain) in ~/.agent-hq-anim/geo/natural-earth -> `prep` -> ~/.agent-hq-anim/maps/geo.json (countries simplified with an own
+  Douglas-Peucker, outer rings clockwise for d3-geo, metropolitan France and French Guiana split, the France-Germany/Spain/Brazil/Suriname
+  borders chained and ordered for draw-on). `maps/src` = a small Remotion app (MapSample: d3-geo orthographic every frame, so the
+  camera flies over a real globe; d3-geo 3.1.1 + d3-array 3.2.4, ISC, added to animation/ and story/package.json, node_modules shared
+  with the kit); `maps/src/looks.js` = 5 looks of the same 30 s opening (midnight, paper, globe, editorial, bold; from Rana's style
+  frames). `preview <look|all>` = a GIF sheet in ~1 min; `render <look|all>` -> content/project-6/samples/maps/<look>.mp4 + sheet
+  (HQ_MAPS_OUT moves it). Not yet: relief/hillshade (needs ETOPO, ask first), sound, the history and overseas-France beats.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
