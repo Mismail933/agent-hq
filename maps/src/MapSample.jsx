@@ -57,7 +57,7 @@ const Draw = ({d, p, color, width, glow, halo}) => {
 
 const Label = ({L, x, y, text, op = 1, size, color, anchor = 'middle', rot = 0, focus, weight}) => {
   if (op <= 0.01 || !isFinite(x)) return null;
-  const s = (size || L.lab.size) * 1.3;   // Israa: >= 28 px on a phone
+  const s = (size || L.lab.size) * 1.75;   // Israa: readable on a phone
   const t = L.lab.upper ? text.toUpperCase() : text;
   const style = {fontFamily: L.lab.font, fontWeight: weight || L.lab.weight, fontSize: s, letterSpacing: L.lab.spacing};
   if (L.tape) {
@@ -72,7 +72,7 @@ const Label = ({L, x, y, text, op = 1, size, color, anchor = 'middle', rot = 0, 
   }
   return (
     <text x={x} y={y} textAnchor={anchor} fill={color || (focus ? L.focusLabel : L.label)} opacity={op}
-          style={{...style, paintOrder: 'stroke'}} stroke={(!focus && !color && L.textHalo) || 'none'} strokeWidth={!focus && !color && L.textHalo ? s * 0.22 : 0} strokeLinejoin="round"
+          style={{...style, paintOrder: 'stroke'}} stroke={(!color && L.textHalo) || 'none'} strokeWidth={!color && L.textHalo ? s * 0.22 : 0} strokeLinejoin="round"
           transform={`rotate(${rot} ${x} ${y})`}>{t}</text>
   );
 };
@@ -108,7 +108,7 @@ const Bar = ({L, f, start, label, km, color, y, max = 730}) => {
     <div style={{position: 'absolute', left: 1340, top: y, width: 520, opacity: op}}>
       <div style={{height: 30, width, background: color, borderRadius: L.tape ? 0 : 3,
                    boxShadow: L.glow ? `0 0 18px ${color}88` : 'none'}} />
-      <div style={{display: 'flex', justifyContent: 'space-between', width: Math.max(width, 340), marginTop: 8,
+      <div style={{display: 'flex', justifyContent: 'space-between', width: 520, marginTop: 8,
                    fontFamily: L.panel.font, fontSize: L.tape ? 52 : 38, color: L.text}}>
         <span style={{fontWeight: L.title.font === 'Montserrat' ? 700 : 600}}>{label}</span>
         <span style={{color: L.barNum || color, fontWeight: 800}}>{label === 'Brazil' ? '~' : ''}{shown} km</span>
@@ -146,7 +146,7 @@ export const MapSample = ({look}) => {
   const bra = geo.borders.bra.geometry.coordinates;
   const riverA = P(bra[0][0]), riverB = P(bra[0][Math.min(45, bra[0].length - 1)]);
   const riverRot = Math.atan2(riverB[1] - riverA[1], riverB[0] - riverA[0]) * 180 / Math.PI;
-  const riverMid = P(bra[0][22]);
+  const riverMid = P(bra[0][Math.round(bra[0].length * 0.18)]);
   const head = geoInterpolate(geo.places.paris, geo.places.cayenne)(pArc);
   const [hx, hy] = P(head);
   const paris = P(geo.places.paris), cay = P(geo.places.cayenne);
@@ -156,7 +156,8 @@ export const MapSample = ({look}) => {
   const headOp = interpolate(f, [T.head, T.head + 16], [0, 1], clamp);
   const braNum = Math.round(KM.bra * pBra);
   const tStyle = {fontFamily: L.title.font, fontWeight: L.title.weight, fontStyle: L.title.italic ? 'italic' : 'normal',
-                  fontSize: L.title.size, color: L.text, lineHeight: 1.05, textTransform: L.title.upper ? 'uppercase' : 'none'};
+                  fontSize: L.title.size, color: L.text, lineHeight: 1.05, textTransform: L.title.upper ? 'uppercase' : 'none',
+                  textShadow: L.titleHalo || 'none'};
 
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 40% 45%, ${L.bg[0]}, ${L.bg[1]})`}}>
@@ -219,11 +220,11 @@ export const MapSample = ({look}) => {
           <Label L={L} {...xy(P([-55.9, 4.3]))} text="Suriname" />
           <Label L={L} {...xy(P([-52.0, 1.35]))} text="Brazil" size={L.lab.size * 1.2} />
           <g opacity={interpolate(f, [T.oyapock, T.oyapock + 15], [0, 1], clamp)}>
-            <line x1={riverMid[0] + 6} y1={riverMid[1]} x2={riverMid[0] + 70} y2={riverMid[1] - 60} stroke={L.bra} strokeWidth={2.5} />
-            <Label L={L} x={riverMid[0] + 78} y={riverMid[1] - 66} text="Oyapock River" anchor="start" size={L.lab.size * 1.05} color={L.bra}
+            <line x1={riverMid[0] + 8} y1={riverMid[1] + 4} x2={riverMid[0] + 60} y2={riverMid[1] + 70} stroke={L.bra} strokeWidth={2.5} />
+            <Label L={L} x={riverMid[0] + 66} y={riverMid[1] + 104} text="Oyapock River" anchor="start" size={L.lab.size * 0.95} color={L.bra}
                    weight={800} />
           </g>
-          <Num L={L} x={braAt[0] + 40} y={braAt[1] + 40} text={`~${braNum} km`} color={L.bra} size={92}
+          <Num L={L} x={braAt[0] + 40} y={braAt[1] + 120} text={`~${braNum} km`} color={L.bra} size={92}
                op={interpolate(f, [T.bra[0] + 6, T.bra[0] + 16], [0, 1], clamp)} pop={f > T.bra[1] ? popAt(T.bra[1]) : 1} />
         </g>
       </svg>
@@ -238,7 +239,7 @@ export const MapSample = ({look}) => {
         <div style={{...tStyle, fontSize: L.title.size * 1.15, color: L.tape ? '#111' : L.bra, background: L.tape ? L.bra : 'none',
                      display: 'inline-block', padding: L.tape ? '0 18px' : 0}}>Brazil</div>
       </div>
-      <div style={{position: 'absolute', left: 1340, top: 262, width: 520, fontFamily: L.panel.font, fontSize: L.tape ? 40 : 26, whiteSpace: 'nowrap',
+      <div style={{position: 'absolute', left: 1340, top: 262, width: 520, fontFamily: L.panel.font, fontSize: L.tape ? 46 : 34, whiteSpace: 'nowrap',
                    letterSpacing: L.tape ? 3 : 6, color: L.sub, textTransform: "uppercase", borderBottom: `1px solid ${L.panel.line}`, paddingBottom: 12,
                    opacity: interpolate(f, [T.bars - 10, T.bars + 6], [0, 1], clamp)}}>{L.barTitle || "Land borders (km)"}</div>
       <Bar L={L} f={f} start={T.final} label="Brazil" km={KM.bra} color={L.bra} y={330} />
