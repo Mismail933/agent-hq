@@ -66,7 +66,7 @@ const Text = ({x, y, children, size = 34, color = C.text, anchor = 'middle', op 
   );
 };
 
-export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = ''}) => {
+export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW'}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const at = (k, d = 0) => Math.round(((cues[k] ?? 0) + d) * fps);
@@ -213,7 +213,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
         <div style={{...title, top: 70, opacity: on(at('q2'), 14), transform: `translateY(${(1 - on(at('q2'), 14)) * 14}px)`}}>
           <div style={{fontSize: 64}}>How did France come to hold<br />lands all over the world?</div>
           <div style={{fontSize: 64, color: C.accent, marginTop: 14, opacity: on(at('still'), 12)}}>And why are they still French?</div>
-          <div style={{fontSize: 34, color: C.sub, marginTop: 26, opacity: on(at('link'), 12), letterSpacing: 2}}>FIND OUT IN THE FULL STORY &#9654; LINK BELOW</div>
+          <div style={{fontSize: 34, color: C.sub, marginTop: 26, opacity: on(at('link'), 12), letterSpacing: 2}}>{endLine}</div>
         </div>
       ) : null}
       <div style={{...title, fontSize: 74, opacity: q, transform: `translateY(${(1 - q) * 14}px)`}}>Which country has the<br />longest border with France?</div>

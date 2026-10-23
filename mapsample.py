@@ -368,10 +368,12 @@ CUE_WORDS_V2 = [("q", "which", 0, 0), ("deu", "germany", 0, 0), ("km418", "@deu"
                 ("pyf", "polynesia", 0, 0), ("clp", "@pyf", 0, 0.8), ("q2", "so", 0, 0), ("still", "still", 0, 0), ("link", "find", 0, 0)]
 
 
-def cues_v2(words):
+def cues_v2(words, alias=None):
+    """alias {cue: word}: a script that words a beat differently (e.g. no 'But' before the flight)."""
     norm = [(re.sub(r"[^a-z]", "", w[0].lower()), float(w[1])) for w in words]
     out = {}
     for key, word, which, add in CUE_WORDS_V2:
+        word = (alias or {}).get(key, word)
         if word.startswith("@"):
             out[key] = round(out[word[1:]] + add, 3)
             continue
@@ -400,11 +402,11 @@ def short(folder, music_db=-24.0):
     import shorts
     folder = Path(folder)
     meta = json.loads((folder / "voice.json").read_text(encoding="utf-8"))
-    cues = cues_v2(meta["words"]) if meta.get("cue_set") == "v2" else cues_from(meta["words"])
+    cues = cues_v2(meta["words"], meta.get("cue_alias")) if meta.get("cue_set") == "v2" else cues_from(meta["words"])
     secs = round(float(meta["words"][-1][2]) + 2.8, 2)
     animate = ensure_app()
     pic = folder / "picture.mp4"
-    props = {"cues": cues, "seconds": secs, **({"km": meta["km"]} if meta.get("km") else {}), **({"source": meta["source"]} if meta.get("source") else {})}
+    props = {"cues": cues, "seconds": secs, **({"km": meta["km"]} if meta.get("km") else {}), **({"source": meta["source"]} if meta.get("source") else {}), **({"endLine": meta["end_line"]} if meta.get("end_line") else {})}
     _remotion(animate, ["render", "src/index.jsx", "MapShort", str(pic), "--props=" + json.dumps(props),
                         "--concurrency=2", "--crf=18", "--muted"])
     ff = shorts.find_ffmpeg()
