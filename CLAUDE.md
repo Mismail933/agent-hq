@@ -355,6 +355,9 @@ Agents never spend money without the owner's explicit approval.
   c-FRA/c-GUF, b-fra-deu|esp|bra|sur, p-<place>, label anchors in the comment; points under ~1 px dropped). `client.ask_rana` copies
   the kit into her work folder's maps/ with `MAP_KIT_NOTE` (copy the paths verbatim, restyle freely) and `uses_kit` refuses a frame
   without one of the kit's country/border paths ("its map was drawn by hand"). MAX_FRAME_SVG 400 KB (real paths are bigger).
+  2.69.0 (Bassel's pick after the six samples: the globe look + white borders and coloured countries; his order of beats): `maps/src/
+  MapShort.jsx` timed to a narrator's words (`mapsample.cues_from`: CUE_WORDS -> seconds), `python mapsample.py short <folder>` (voice.wav +
+  voice.json from ElevenLabs with word times) -> picture.mp4, short.mp4 (voice -16 LUFS + Convergence 24 dB under), sheet.png, cues.json.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen

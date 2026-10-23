@@ -1,8 +1,15 @@
 import React from 'react';
 import {Composition, getInputProps} from 'remotion';
 import {MapSample, FPS, W, H, FRAMES} from './MapSample';
+import {MapShort} from './MapShort';
 
 export const Root = () => {
   const props = {look: 'midnight', ...getInputProps()};
-  return <Composition id="MapSample" component={MapSample} durationInFrames={FRAMES} fps={FPS} width={W} height={H} defaultProps={props} />;
+  const secs = Number(props.seconds) || 35;
+  return (
+    <>
+      <Composition id="MapSample" component={MapSample} durationInFrames={FRAMES} fps={FPS} width={W} height={H} defaultProps={props} />
+      <Composition id="MapShort" component={MapShort} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={W} height={H} defaultProps={props} />
+    </>
+  );
 };

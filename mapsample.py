@@ -341,12 +341,59 @@ def render(look, every=None):
     return out
 
 
+# Bassel's short (2026-10-23): MapShort timed to a narrator's words (voice.json from ElevenLabs with word times)
+CUE_WORDS = [("q", "which", 0), ("deu", "germany", 0), ("km418", "four", 0), ("esp", "spain", 0), ("km646", "six", 0), ("neither", "neither", 0),
+             ("bel", "belgium", 0), ("lux", "luxembourg", 0), ("che", "switzerland", 0), ("ita", "italy", 0), ("mco", "monaco", 0),
+             ("and", "andorra", 0), ("move", "but", 0), ("arrive", "south", 0), ("sur", "suriname", 0), ("bra", "brazil", 0),
+             ("km730", "seven", 0), ("final", "france's", -1)]
+
+
+def cues_from(words):
+    norm = [(w[0].lower().strip(".,!?:;"), float(w[1])) for w in words]
+    out = {}
+    for key, word, which in CUE_WORDS:
+        hits = [t for w, t in norm if w == word]
+        if not hits:
+            raise ValueError(f"the voice never says '{word}' (cue {key})")
+        out[key] = hits[which]
+    return out
+
+
+def short(folder, music_db=-24.0):
+    """folder holds voice.wav + voice.json; writes short.mp4 (voice + a light music bed) and sheet.png there."""
+    import soundfile as sf
+    sys.path.insert(0, str(ROOT))
+    import shorts
+    folder = Path(folder)
+    meta = json.loads((folder / "voice.json").read_text(encoding="utf-8"))
+    cues = cues_from(meta["words"])
+    secs = round(float(meta["words"][-1][2]) + 2.8, 2)
+    animate = ensure_app()
+    pic = folder / "picture.mp4"
+    _remotion(animate, ["render", "src/index.jsx", "MapShort", str(pic), "--props=" + json.dumps({"cues": cues, "seconds": secs}),
+                        "--concurrency=2", "--crf=18", "--muted"])
+    ff = shorts.find_ffmpeg()
+    track = HOME / "music" / "scott-buckley" / "convergence.mp3"
+    out = folder / "short.mp4"
+    flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={secs}[v];"
+           f"[2:a]atrim=4:{4 + secs},asetpts=N/SR/TB,afade=t=in:d=1.5,afade=t=out:st={secs - 2.5}:d=2.5,loudnorm=I={-16 + music_db}:TP=-6[m];"
+           "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
+    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-i", str(track), "-filter_complex", flt,
+                    "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(secs), str(out)], check=True)
+    sheet(out, folder / "sheet.png", every=1.5, cols=4)
+    (folder / "cues.json").write_text(json.dumps(cues, indent=1), encoding="utf-8")
+    print("SHORT", out, secs, "s")
+    return out
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if not a:
         print(__doc__)
     elif a[0] == "prep":
         prep()
+    elif a[0] == "short":
+        short(a[1])
     elif a[0] == "kit":
         kit(int(a[1]) if len(a) > 1 else 6)
     elif a[0] == "preview":
