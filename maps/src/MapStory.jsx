@@ -110,6 +110,9 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     if (!fill || op <= 0.01) return null;
     return <path key={`g${id}`} d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.62 : op} stroke={fill} strokeWidth={2} strokeDasharray="6 5" strokeOpacity={0.9} />;
   });
+  // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
+  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path}
+    p={interpolate(f, [at(line.t0 + 0.2), at(Math.min(line.t1, line.t0 + 4.2))], [0, 1], {...clamp, easing: Easing.inOut(Easing.quad)})} f={f} /> : null;
   const dateText = line.date;
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 50% 45%, ${C.bg[0]}, ${C.bg[1]})`}}>
@@ -129,6 +132,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         {world}
         {detail}
         {regionPaths}
+        {voyage}
         {lines.map((l, i) => (l.river && geo.rivers[l.river] && i === li ? (
           <g key={`r${i}`}>
             <Draw d={path(geo.rivers[l.river])} p={interpolate(f, [at(l.t0), at(l.t0) + 50], [0, 1], {...clamp, easing: ease})} color="#7FD7FF" width={4} />
@@ -209,6 +213,41 @@ const Photo = ({line, f, fps}) => {
     </>
   );
 };
+
+function Voyage({pts, proj, path, p, f}) {
+  const dense = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const g = geoInterpolate(pts[i], pts[i + 1]);
+    for (let k = 0; k < 40; k++) dense.push(g(k / 40));
+  }
+  dense.push(pts[pts.length - 1]);
+  const cum = [0];
+  for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + geoDistance(dense[i - 1], dense[i]));
+  const want = cum[cum.length - 1] * p;
+  let j = 1;
+  while (j < dense.length - 1 && cum[j] < want) j++;
+  const u = (want - cum[j - 1]) / Math.max(1e-9, cum[j] - cum[j - 1]);
+  const here = geoInterpolate(dense[j - 1], dense[j])(Math.min(1, Math.max(0, u)));
+  const done = [...dense.slice(0, j), here];
+  const a = proj(here), b = proj(dense[Math.min(dense.length - 1, j + 1)]) || a;
+  if (!a) return null;
+  const dir = b && b[0] < a[0] ? -1 : 1;   // the ship faces the way it sails
+  const bob = Math.sin(f / 6) * 2.5;
+  return (
+    <g>
+      <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#F2EEE4" strokeWidth={3} strokeDasharray="10 8" opacity={0.85} />
+      <g transform={`translate(${a[0]} ${a[1] + bob}) scale(${dir} 1)`} opacity={p > 0 ? 1 : 0}>
+        <ellipse cx={0} cy={14} rx={30} ry={6} fill="rgba(0,0,0,0.35)" />
+        <path d="M-28 2 L28 2 L20 14 L-22 14 Z" fill="#7A4A2A" stroke="#F2EEE4" strokeWidth={2} />
+        <line x1={-4} y1={2} x2={-4} y2={-38} stroke="#F2EEE4" strokeWidth={2.5} />
+        <line x1={12} y1={2} x2={12} y2={-28} stroke="#F2EEE4" strokeWidth={2.5} />
+        <path d="M-4 -36 Q10 -22 -4 -4 Z" fill="#F2EEE4" />
+        <path d="M12 -26 Q24 -16 12 -2 Z" fill="#F2EEE4" />
+        <path d="M-4 -38 L-18 -33 L-4 -29 Z" fill="#49C6E6" />
+      </g>
+    </g>
+  );
+}
 
 function interpolateColor(a, b, k) {
   const h = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));

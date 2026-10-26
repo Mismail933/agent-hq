@@ -20,7 +20,8 @@ import mapsample  # noqa: E402
 
 SR = 24000
 GAP_SHORT = {1: 0.75, 2: 0.8, 3: 0.55, 5: 0.35, 6: 0.3, 7: 0.7, 8: 0.45, 12: 0.5, 13: 0.25}
-GAP_STORY = 0.45
+STORY_SPEED = 1.08
+GAP_STORY = 0.32   # Bassel (10-26 20:50): the story a little faster
 MUSIC = Path.home() / ".agent-hq-anim" / "music" / "scott-buckley" / "convergence.mp3"
 
 
@@ -37,6 +38,8 @@ def voice(spec, folder):
     for i, text in enumerate(texts):
         # Tarek (part 1): questions and the closing line were rushed: read them a little slower
         speed = (0.8 if len(text.split()) > 6 else 0.88) if text.rstrip().endswith("?") or i == len(texts) - 1 else 1.0
+        if i >= n_short:   # the story (not the approved short): Bassel asked for a slightly faster pace
+            speed = 0.96 if i == len(texts) - 1 else STORY_SPEED
         f = cache / (hashlib.sha1(f"am_michael|{speed}|{text}".encode()).hexdigest()[:16] + ".wav")
         if not f.exists():
             a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(text, voice="am_michael", speed=speed)])
