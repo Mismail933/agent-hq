@@ -115,7 +115,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
           if (i > li || t < p.at - 0.05) return null;
           if (geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
-          const fresh = i >= li - 1;
+          const fresh = i === li;   // a pin's name only on its own line (older names cluttered the next beats)
           const ring = 10 + 26 * (((f - at(p.at)) % 45) / 45);
           return (
             <g key={`p${i}-${k}`}>

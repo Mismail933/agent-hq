@@ -20,8 +20,8 @@ const C = {
          MCO: '#7FB3A8', AND: '#7FB3A8'},
   accent: '#FF6A3D', white: '#F2F7FF', text: '#EAF6FF', sub: '#C4DAE6', halo: 'rgba(3,8,16,0.85)',
 };
-const NAMES = {DEU: ['Germany', [10.4, 51.2]], ESP: ['Spain', [-3.7, 40.1]], BEL: ['Belgium', [4.6, 50.6]], LUX: ['Luxembourg', [6.1, 49.75]],
-               CHE: ['Switzerland', [8.2, 46.8]], ITA: ['Italy', [12.6, 43.0]], MCO: ['Monaco', [7.42, 43.74]], AND: ['Andorra', [1.52, 42.55]]};
+const NAMES = {DEU: ['Germany', [10.4, 51.2]], ESP: ['Spain', [-3.7, 40.1]], BEL: ['Belgium', [4.2, 51.0]], LUX: ['Luxembourg', [6.1, 49.75]],
+               CHE: ['Switzerland', [8.9, 46.9]], ITA: ['Italy', [12.6, 43.0]], MCO: ['Monaco', [7.42, 43.74]], AND: ['Andorra', [1.52, 42.55]]};
 const TINY = new Set(['LUX', 'MCO', 'AND']);
 const OVERSEAS = new Set(['FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);   // France outside Europe: drawn as France
 // v2: the tour of France's lands outside Europe (label offsets keep the four Caribbean islands apart)
@@ -251,7 +251,7 @@ const Bars = ({f, at, km, source}) => {
           </div>
         );
       })}
-      {source ? <div style={{marginTop: 22, fontSize: 18, color: C.sub, opacity: 0.8}}>{source}</div> : null}
+      {source ? <div style={{marginTop: 22, fontSize: 24, color: C.sub, opacity: 0.8}}>{source}</div> : null}
     </div>
   );
 };
