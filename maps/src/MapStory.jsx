@@ -10,7 +10,7 @@ import {FONT_CSS} from './fonts';
 const W = 1920, H = 1080, MAPX = W * 0.5, MAPY = H * 0.54;
 const C = {
   bg: ['#0A1426', '#03060D'], sea: '#0C1D38', grat: 'rgba(120,180,230,0.10)', atmo: '#4FC9F0',
-  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#FF9B6A',
+  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#FF9B6A', uk: '#C8505A', es: '#E3B75A',
   accent: '#FF6A3D', white: '#F2F7FF', text: '#EAF6FF', sub: '#C4DAE6', halo: 'rgba(3,8,16,0.85)',
 };
 const FRANCE = new Set(['FRA', 'GUF', 'FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);
@@ -69,22 +69,25 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   const pop = (s) => spring({frame: f - at(s), fps, config: {damping: 12, stiffness: 160}, durationInFrames: 20});
   // fills: the countries this line names, fading in on the line
   // a country named by a line fills in on it and stays (the story's history: only mainland France is French from the start)
-  const fills = {};
-  lines.forEach((l, i) => (l.fill || []).forEach((a3) => {
+  // "CAN:uk" = filled in a rival's colour (Britain red, Spain yellow) instead of the highlight
+  const fills = {}, tint = {};
+  lines.forEach((l, i) => (l.fill || []).forEach((code) => {
+    const [a3, who] = code.split(':');
     const span = i === li ? on(l.t0, 12) : i < li ? 1 : 0;
+    if (span > 0 && who) tint[a3] = C[who] || C.fill;
     fills[a3] = Math.max(fills[a3] || 0, span);
   }));
   const detail = geo.detail.features.map((ft) => {
     const a3 = ft.properties.a3;
     const k = fills[a3] || 0;
     const fr = a3 === 'FRA' || (FRANCE.has(a3) && k > 0);   // a French territory turns France's colour once the story reaches it
-    const fill = fr ? 'url(#france)' : k > 0 ? C.fill : C.land;
+    const fill = fr ? 'url(#france)' : k > 0 ? (tint[a3] || C.fill) : C.land;
     return <path key={a3} d={path(ft)} fill={fill} fillOpacity={fr ? (a3 === 'FRA' ? 1 : 0.3 + 0.7 * k) : k > 0 ? 0.35 + 0.6 * k : 1}
                  stroke={fr ? '#E8FBFF' : C.line} strokeWidth={fr ? 2 : 1.6} />;
   });
   const world = WORLD.map((ft) => {
     const k = fills[ft.properties.a3] || 0;
-    return <path key={ft.properties.a3} d={path(ft)} fill={k > 0 ? C.fill : C.world} fillOpacity={k > 0 ? 0.35 + 0.6 * k : 1} stroke={C.line} strokeWidth={1.1} />;
+    return <path key={ft.properties.a3} d={path(ft)} fill={k > 0 ? (tint[ft.properties.a3] || C.fill) : C.world} fillOpacity={k > 0 ? 0.35 + 0.6 * k : 1} stroke={C.line} strokeWidth={1.1} />;
   });
   const dateText = line.date;
   return (
@@ -104,8 +107,8 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         <path d={path(GRAT)} fill="none" stroke={C.grat} strokeWidth={1} />
         {world}
         {detail}
-        {lines.map((l, i) => (l.river && geo.rivers[l.river] && i <= li ? (
-          <g key={`r${i}`} opacity={i === li ? 1 : 0.5}>
+        {lines.map((l, i) => (l.river && geo.rivers[l.river] && i === li ? (
+          <g key={`r${i}`}>
             <Draw d={path(geo.rivers[l.river])} p={interpolate(f, [at(l.t0), at(l.t0) + 50], [0, 1], {...clamp, easing: ease})} color="#7FD7FF" width={4} />
           </g>) : null))}
         {lines.map((l, i) => (l.arc && i <= li ? (
@@ -115,19 +118,24 @@ export const MapStory = ({lines = [], seconds = 10}) => {
           if (i > li || t < p.at - 0.05) return null;
           if (geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
-          const fresh = i === li;   // a pin's name only on its own line (older names cluttered the next beats)
           const ring = 10 + 26 * (((f - at(p.at)) % 45) / 45);
           return (
             <g key={`p${i}-${k}`}>
               {i === li ? <circle cx={x} cy={y} r={ring} fill="none" stroke={C.accent} strokeWidth={2} opacity={1 - (((f - at(p.at)) % 45) / 45)} /> : null}
               <circle cx={x} cy={y} r={8} fill={C.accent} stroke={C.white} strokeWidth={2} opacity={on(p.at, 6)} />
-              {p.label && fresh ? <Text x={x + 18} y={y - 16} size={34} anchor="start" op={on(p.at, 8) * (i === li ? 1 : 0.7)} pop={pop(p.at)}>{p.label}</Text> : null}
             </g>
           );
         }))}
-        {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={40} color={C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
       </svg>
       {line.photo ? <Photo line={line} f={f} fps={fps} /> : null}
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        {(line.pins || []).map((p, k) => {
+          if (!p.label || t < p.at - 0.05 || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
+          const [x, y] = P(p.ll);
+          return <Text key={`n${k}`} x={x + 18} y={y - 16} size={34} anchor="start" op={on(p.at, 8)} pop={pop(p.at)}>{p.label}</Text>;
+        })}
+        {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={40} color={C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
+      </svg>
       {dateText ? (
         <div style={{position: 'absolute', right: 60, top: 50, fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 84, color: C.white,
                      letterSpacing: 2, opacity: on(line.t0, 8), transform: `scale(${pop(line.t0)})`, transformOrigin: 'right top',
