@@ -406,7 +406,7 @@ function Quebec1608({f}) {
     return {x: P(a[0] + (b[0] - a[0]) * mv.u, a[1] + (b[1] - a[1]) * mv.u), lift: mv.lift * 26, show: f >= 352 + k * 8, k};
   });
   // New France: the land France claimed, spreading out from Quebec along the river (by the 1700s), outlined
-  const spread = lerp(f, 386, 470, 0, 1, Easing.inOut(Easing.quad));
+  const spread = lerp(f, 412, 474, 0, 1, Easing.inOut(Easing.quad));
   const [qx, qy] = P(...QC);
   const nf = ringFeature(NEW_FRANCE);
   const field = (lon, lat, w, h, at) => {
@@ -422,14 +422,19 @@ function Quebec1608({f}) {
         {f > 300 && f < 380 && <Wake ships={[{i: 9, speed: (1 - canoeU) * 3, wake: [...Array(8)].map((_, k) => ({x: P(...canoePath(Math.max(0, canoeU - (k + 1) * 0.03)))[0], y: P(...canoePath(Math.max(0, canoeU - (k + 1) * 0.03)))[1], k}))}]} />}
         {spread > 0 && (
           <g clipPath="url(#landclip)">
-            <defs><clipPath id="grow"><circle cx={qx} cy={qy} r={spread * 3400} /></clipPath></defs>
-            <g clipPath="url(#grow)">
+            <defs>
+              <radialGradient id="growg" cx={qx} cy={qy} r={Math.max(1, spread * 3600)} gradientUnits="userSpaceOnUse">
+                <stop offset="0" stopColor="#FFF" /><stop offset="0.72" stopColor="#FFF" /><stop offset="1" stopColor="#FFF" stopOpacity="0" />
+              </radialGradient>
+              <mask id="grow" maskUnits="userSpaceOnUse" x={-2000} y={-2000} width={PW + 4000} height={PH + 4000}><rect x={-2000} y={-2000} width={PW + 4000} height={PH + 4000} fill="url(#growg)" /></mask>
+            </defs>
+            <g mask="url(#grow)">
               <path d={path(nf)} fill="#3FB8DE" fillOpacity={0.42} />
               <path d={path(nf)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeLinejoin="round" />
             </g>
           </g>
         )}
-        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1]} textAnchor="middle" opacity={lerp(f, 420, 436, 0, 1)}
+        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1]} textAnchor="middle" opacity={lerp(f, 436, 452, 0, 1)}
                                  style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 64, letterSpacing: 10, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 10}}>NEW FRANCE</text>}
       </Board>
       {/* pieces, back to front */}
