@@ -8,7 +8,7 @@
 // Scenes: 'quebec1608' (Bassel 10-26: settling, not a battle: Champlain sails from Honfleur, the Habitation goes up, trade with the First
 // Nations, New France spreads along the river); 'quebec1759' (the first sample: the Plains of Abraham).
 import React from 'react';
-import {AbsoluteFill, Easing, interpolate, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Easing, interpolate, useCurrentFrame, staticFile} from 'remotion';
 import {geoMercator, geoPath, geoArea} from 'd3-geo';
 import stl from './war_stl.json';
 import geo from './geo.json';
@@ -304,6 +304,59 @@ const ringFeature = (ring) => {
   return ft;
 };
 
+// ───── after the map (Bassel: "a small animation, not very cartoonish but a bit more animated"): a real painting brought to life.
+// Ambroise-Louis Garneray, "The founding of Quebec by Samuel de Champlain in 1608" (1848), public domain (Wikimedia Commons). The water
+// shimmers (moving noise displaces it), the flags ripple, mist drifts along the far shore, a few birds cross, the camera pushes in.
+const PAINT = {src: 'photos/quebec1608.jpg', w: 1260, h: 814};
+function PaintingCoda({f, len = 200}) {
+  const k = W / PAINT.w, ph = PAINT.h * k;   // fitted to the width; the camera moves over it
+  const z = lerp(f, 0, len, 1.06, 1.2, Easing.inOut(Easing.sin));
+  const fx = lerp(f, 0, len, 960, 1100, Easing.inOut(Easing.sin)), fy = lerp(f, 0, len, 560, 600, Easing.inOut(Easing.sin));
+  const img = <image href={staticFile(PAINT.src)} x={0} y={0} width={W} height={ph} preserveAspectRatio="none" />;
+  const R = (x, y, w, h) => ({x: x * k, y: y * k, width: w * k, height: h * k});
+  const birds = [[0.0, 210, 1.0], [0.08, 240, 0.8], [0.15, 190, 0.7]];
+  return (
+    <AbsoluteFill style={{background: '#0B0907'}}>
+      <svg width={W} height={H}>
+        <defs>
+          <filter id="water" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.004 0.06" numOctaves="2" seed="4" result="n" />
+            <feOffset in="n" dx={f * 1.4} dy={0} result="m" />
+            <feDisplacementMap in="SourceGraphic" in2="m" scale="7" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter id="cloth" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="turbulence" baseFrequency="0.035 0.02" numOctaves="2" seed="9" result="n" />
+            <feOffset in="n" dx={f * 3.2} dy={Math.sin(f / 9) * 6} result="m" />
+            <feDisplacementMap in="SourceGraphic" in2="m" scale="14" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <clipPath id="cWater"><path d={`M ${300 * k} ${350 * k} L ${1150 * k} ${350 * k} L ${1150 * k} ${470 * k} L ${700 * k} ${560 * k} L ${560 * k} ${640 * k} L ${330 * k} ${640 * k} L ${300 * k} ${520 * k} Z`} /></clipPath>
+          <clipPath id="cFlags"><rect {...R(770, 145, 150, 150)} /><rect {...R(990, 262, 135, 105)} /><rect {...R(985, 478, 130, 95)} /></clipPath>
+          <linearGradient id="mist" x1="0" x2="1"><stop offset="0" stopColor="#FFFFFF" stopOpacity="0" /><stop offset="0.5" stopColor="#FFFFFF" stopOpacity="0.5" /><stop offset="1" stopColor="#FFFFFF" stopOpacity="0" /></linearGradient>
+        </defs>
+        <g transform={`translate(${W / 2} ${H / 2}) scale(${z}) translate(${-fx} ${-fy})`}>
+          {img}
+          <g clipPath="url(#cWater)" filter="url(#water)">{img}</g>
+          <g clipPath="url(#cFlags)" filter="url(#cloth)">{img}</g>
+          {[0, 1].map((i) => (
+            <rect key={i} x={((f * (0.8 + i * 0.5) + i * 700) % (W + 900)) - 900} y={(330 + i * 26) * k} width={900} height={40 * k} fill="url(#mist)" opacity={0.28} />))}
+          <ellipse cx={330 * k} cy={430 * k} rx={60 * k} ry={140 * k} fill="#FFFFFF" opacity={0.06 + 0.05 * Math.sin(f / 14)} />
+          {birds.map(([d, y, s], i) => {
+            const t = (f / len) * 1.2 - d, x = -60 + t * (W + 200);
+            const flap = Math.sin(f / 3 + i * 2) * 5;
+            return t > 0 && t < 1 ? <path key={i} d={`M ${x - 12 * s} ${y + flap * s} Q ${x - 5 * s} ${y - 4 * s} ${x} ${y} Q ${x + 5 * s} ${y - 4 * s} ${x + 12 * s} ${y + flap * s}`} fill="none" stroke="#2A2622" strokeWidth={2.2 * s} /> : null;
+          })}
+        </g>
+      </svg>
+      <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%)'}} />
+      <div style={{position: 'absolute', left: 70, bottom: 60, background: 'rgba(8,12,20,0.72)', borderLeft: '6px solid #C9A227', padding: '10px 18px',
+                   color: '#F4EEDC', fontFamily: 'Space Grotesk', opacity: lerp(f, 10, 24, 0, 1)}}>
+        <div style={{fontSize: 30, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase'}}>The founding of Quebec, 1608</div>
+        <div style={{fontSize: 18, opacity: 0.8, marginTop: 4}}>As imagined by Ambroise-Louis Garneray, 1848 (public domain, Wikimedia Commons)</div>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 // ───────── Quebec, 1608: Champlain sails from Honfleur; the Habitation goes up; trade with the First Nations; New France spreads
 function Quebec1608({f}) {
   const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[-74, 40], [3, 54]]}).scale();
@@ -434,8 +487,14 @@ function Quebec1759({f}) {
   );
 }
 
-const SCENES = {quebec1608: Quebec1608, quebec1759: Quebec1759};
-export const WAR_FRAMES = {quebec1608: 480, quebec1759: 390};
+const Quebec1608Sample = ({f}) => (
+  <AbsoluteFill>
+    {f < 486 && <Quebec1608 f={f} />}
+    {f >= 462 && <AbsoluteFill style={{opacity: lerp(f, 462, 486, 0, 1)}}><PaintingCoda f={f - 462} len={220} /></AbsoluteFill>}
+  </AbsoluteFill>
+);
+const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759};
+export const WAR_FRAMES = {quebec1608: 680, quebec1608map: 480, quebec1759: 390};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();
