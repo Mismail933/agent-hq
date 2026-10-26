@@ -230,19 +230,25 @@ const Piece = ({x, y, s = 1, w, h, rise = 1, fall = 0, op = 1, turn = 0, lift = 
   </>
 );
 
-const Title = ({f, items}) => (
-  <div style={{position: 'absolute', left: 70, top: 60}}>
-    {items.map(([text, at, big, out], i) => {
-      const o = lerp(f, at, at + 12, 0, 1) * (out ? lerp(f, out, out + 12, 1, 0) : 1);
-      if (f < at || (out && f > out + 12)) return null;   // a title that has gone gives its place to the next
-      return (
-        <div key={i} style={{opacity: o, transform: `translateY(${(1 - o) * 12}px)`, marginBottom: 12, display: 'table', background: 'rgba(8,12,20,0.78)',
-                             borderLeft: '6px solid #C9A227', padding: big ? '12px 22px' : '8px 18px', color: '#F4EEDC', fontFamily: 'Space Grotesk',
-                             fontWeight: 700, fontSize: big ? 46 : 32, letterSpacing: 3, textTransform: 'uppercase'}}>{text}</div>
-      );
-    })}
-  </div>
-);
+// titles stacked top-left; one that fades out gives its place to the next by sliding (no jump)
+const Title = ({f, items}) => {
+  let y = 0;
+  return (
+    <div style={{position: 'absolute', left: 70, top: 60}}>
+      {items.map(([text, at, big, out], i) => {
+        const o = lerp(f, at, at + 12, 0, 1) * (out ? lerp(f, out, out + 12, 1, 0) : 1);
+        const top = y;
+        y += (big ? 86 : 62) * o;
+        if (o <= 0.001) return null;
+        return (
+          <div key={i} style={{position: 'absolute', top, left: 0, whiteSpace: 'nowrap', opacity: o, transform: `translateY(${(1 - o) * 12}px)`, background: 'rgba(8,12,20,0.78)',
+                               borderLeft: '6px solid #C9A227', padding: big ? '12px 22px' : '8px 18px', color: '#F4EEDC', fontFamily: 'Space Grotesk',
+                               fontWeight: 700, fontSize: big ? 46 : 32, letterSpacing: 3, textTransform: 'uppercase'}}>{text}</div>
+        );
+      })}
+    </div>
+  );
+};
 
 // the table and the map under the pieces; land = the detailed St Lawrence cut + the rest of the world
 const OTHER = [...geo.world.features, ...geo.detail.features].filter((ft) => !['CAN', 'USA', 'SPM'].includes(ft.properties.a3));
