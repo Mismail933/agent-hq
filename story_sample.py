@@ -1157,8 +1157,8 @@ def scene_sound(lines, total, music, sfx):
             acc = ((wt(((p.get("top_on") or "") or "survived").lower()) or t0 + 0.3) - 0.05, ["bass drop", "boom", "impact heavy"], 3.0, 0.8, {})
         elif p.get("day") not in (None, "") and p.get("day") != day:
             acc = (t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.7, {"k": 1})
-        elif l["shot"] == "planes" or any(it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
-            acc = (t0 + 0.3, ["helicopter"] if any(it.get("name") == "heli" for it in (p.get("items") or [])) else ["airplane", "propeller"], min(4.0, dur), 0.6, {})
+        elif l["shot"] == "planes" or any(isinstance(it, dict) and it.get("name") in ("plane", "heli") for it in (p.get("items") or [])):
+            acc = (t0 + 0.3, ["helicopter"] if any(isinstance(it, dict) and it.get("name") == "heli" for it in (p.get("items") or [])) else ["airplane", "propeller"], min(4.0, dur), 0.6, {})
         if p.get("accent") is False:   # 2.61.1: this line has no accent (Tarek dropped the rumble on "What was it?" by its time, which moves)
             acc = None
         if acc and (SOUND.get("accents") or {}).get(l["shot"]):   # another search for this scene's accent

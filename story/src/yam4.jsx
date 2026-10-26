@@ -240,7 +240,7 @@ function YHospital({f, len, line}) {
 // ───────────── why did he live: question | the reasons (distance, cover, body) popping on their words ─────────────
 function YWhy({f, len, line}) {
   const p = P(line);
-  const items = p.items || [['DISTANCE', 'ring'], ['COVER', 'roof'], ['A BODY THAT HELD', 'heart']];
+  const items = p.reasons || [['DISTANCE', 'ring'], ['COVER', 'roof'], ['A BODY THAT HELD', 'heart']];   // (not `items`: story_sample reads p.items as named things)
   const show = p.show != null ? p.show : items.length;
   const icon = (k) => k === 'ring' ? <g><circle r={90} fill="none" stroke="#E3232C" strokeWidth={10} strokeDasharray="20 12" /><circle r={50} fill="#F97316" opacity={0.6} {...st(5)} /><circle cx={70} cy={0} r={16} fill="#FFE11A" {...st(5)} /></g>
     : k === 'roof' ? <g><path d="M -110 0 L 0 -90 L 110 0 Z" fill="#475569" {...st(7)} /><rect x={-80} y={0} width={160} height={90} fill="#C2B48C" {...st(6)} /></g>
