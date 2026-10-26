@@ -342,7 +342,7 @@ function YMeet({f, len, line}) {
           <g transform="translate(70 70)"><Baby s={0.7} f={f} /></g>
         </g>
         <rect x={-270} y={-230} width={540} height={400} fill="none" {...st(5)} />
-        <Txt x={0} y={216} text={p.photo || 'HISAKO AND THEIR SON'} size={34} fill={INK} stroke="none" />
+        <Txt x={0} y={216} text={p.photo_caption || 'HISAKO AND THEIR SON'} size={34} fill={INK} stroke="none" />   {/* not p.photo: that is a real picture (story_sample) */}
       </g>}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={80} /></g>
