@@ -68,17 +68,19 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   const on = (s, len = 10) => interpolate(f, [at(s), at(s) + len], [0, 1], clamp);
   const pop = (s) => spring({frame: f - at(s), fps, config: {damping: 12, stiffness: 160}, durationInFrames: 20});
   // fills: the countries this line names, fading in on the line
+  // a country named by a line fills in on it and stays (the story's history: only mainland France is French from the start)
   const fills = {};
   lines.forEach((l, i) => (l.fill || []).forEach((a3) => {
-    const span = i === li ? on(l.t0, 12) : i < li ? interpolate(f, [at(lines[i + 1].t0), at(lines[i + 1].t0) + 20], [1, 0], clamp) : 0;
+    const span = i === li ? on(l.t0, 12) : i < li ? 1 : 0;
     fills[a3] = Math.max(fills[a3] || 0, span);
   }));
   const detail = geo.detail.features.map((ft) => {
     const a3 = ft.properties.a3;
-    const fr = FRANCE.has(a3) && (a3 !== 'GUF' || true);
     const k = fills[a3] || 0;
+    const fr = a3 === 'FRA' || (FRANCE.has(a3) && k > 0);   // a French territory turns France's colour once the story reaches it
     const fill = fr ? 'url(#france)' : k > 0 ? C.fill : C.land;
-    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={fr ? 1 : k > 0 ? 0.35 + 0.6 * k : 1} stroke={fr ? '#E8FBFF' : C.line} strokeWidth={fr ? 2 : 1.6} />;
+    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={fr ? (a3 === 'FRA' ? 1 : 0.3 + 0.7 * k) : k > 0 ? 0.35 + 0.6 * k : 1}
+                 stroke={fr ? '#E8FBFF' : C.line} strokeWidth={fr ? 2 : 1.6} />;
   });
   const world = WORLD.map((ft) => {
     const k = fills[ft.properties.a3] || 0;

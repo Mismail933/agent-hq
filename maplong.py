@@ -70,6 +70,28 @@ def _cue_time(line, word):
     return line["t0"] + 0.3
 
 
+def mix(folder):
+    """Only the sound and the sheet again, on the already rendered picture.mp4 (or story.mp4)."""
+    folder = Path(folder)
+    total = json.loads((folder / "voice.json").read_text(encoding="utf-8"))["seconds"]
+    pic = folder / "picture.mp4" if (folder / "picture.mp4").exists() else folder / "story.mp4"
+    _mux(folder, pic, total)
+
+
+def _mux(folder, pic, total):
+    import shorts
+    ff = shorts.find_ffmpeg()
+    out = folder / "part.mp4"
+    flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
+           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
+           "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
+    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-stream_loop", "-1", "-i", str(MUSIC),
+                    "-filter_complex", flt, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(total), str(out)],
+                   check=True)
+    mapsample.sheet(out, folder / "sheet.png", every=3.0, cols=5)
+    print("PART", out, round(total, 1), "s")
+
+
 def part(folder):
     folder = Path(folder)
     spec = json.loads((folder / "script.json").read_text(encoding="utf-8"))
@@ -113,9 +135,9 @@ def part(folder):
         pic = clips[0]
     out = folder / "part.mp4"
     flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
-           f"[2:a]aloop=loop=-1:size=2e9,atrim=4:{4 + total},asetpts=N/SR/TB,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-10[m];"
+           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
            "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
-    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-i", str(MUSIC), "-filter_complex", flt,
+    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-stream_loop", "-1", "-i", str(MUSIC), "-filter_complex", flt,
                     "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(total), str(out)], check=True)
     mapsample.sheet(out, folder / "sheet.png", every=3.0, cols=5)
     (folder / "beats.json").write_text(json.dumps(beats, indent=1), encoding="utf-8")
@@ -126,5 +148,7 @@ if __name__ == "__main__":
     a = sys.argv[1:]
     if a and a[0] == "part":
         part(a[1])
+    elif a and a[0] == "mix":
+        mix(a[1])
     else:
         print(__doc__)
