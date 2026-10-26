@@ -36,7 +36,7 @@ def voice(spec, folder):
     import hashlib
     for i, text in enumerate(texts):
         # Tarek (part 1): questions and the closing line were rushed: read them a little slower
-        speed = 0.88 if text.rstrip().endswith("?") or i == len(texts) - 1 else 1.0
+        speed = (0.8 if len(text.split()) > 6 else 0.88) if text.rstrip().endswith("?") or i == len(texts) - 1 else 1.0
         f = cache / (hashlib.sha1(f"am_michael|{speed}|{text}".encode()).hexdigest()[:16] + ".wav")
         if not f.exists():
             a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(text, voice="am_michael", speed=speed)])
