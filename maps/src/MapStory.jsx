@@ -2,7 +2,7 @@
 // looks (view [lon, lat, scale]), the date chip, pins that pop on their word, countries to fill, a river or an arc to draw.
 // Same look as MapShort (his pick: the globe, white borders, coloured countries). Times come from the voice (props.lines t0/t1, s).
 import React from 'react';
-import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig, Img, staticFile} from 'remotion';
+import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig, Img, staticFile, Sequence, OffthreadVideo} from 'remotion';
 import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance, geoArea} from 'd3-geo';
 import geo from './geo.json';
 import {FONT_CSS} from './fonts';
@@ -188,6 +188,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
       <Img src={staticFile('grain.png')} style={{position: 'absolute', width: W, height: H, objectFit: 'cover', opacity: 0.04, mixBlendMode: 'overlay'}} />
       <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)'}} />
       <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}</div>
+      {lines.map((l, i) => (l.event ? <EventClip key={`e${i}`} ev={l.event} t0={l.t0} f={f} fps={fps} /> : null))}
     </AbsoluteFill>
   );
 };
@@ -220,6 +221,19 @@ const Photo = ({line, f, fps}) => {
     </>
   );
 };
+
+// event {key, delay, dur}: an animated scene of the event (story kit, rendered beforehand into public/events/<key>.mp4), full screen over
+// the map from the line's start + delay, fading in and out (Bassel: a short animation of a key event about every 2 minutes)
+function EventClip({ev, t0, f, fps}) {
+  const a = Math.round((t0 + (ev.delay || 0)) * fps), n = Math.round((ev.dur || 8) * fps);
+  if (f < a - 1 || f > a + n + 1) return null;
+  const op = interpolate(f, [a, a + 10, a + n - 12, a + n], [0, 1, 1, 0], clamp);
+  return (
+    <Sequence from={a} durationInFrames={n}>
+      <AbsoluteFill style={{opacity: op}}><OffthreadVideo src={staticFile(`events/${ev.key}.mp4`)} muted /></AbsoluteFill>
+    </Sequence>
+  );
+}
 
 function Voyage({pts, proj, path, p, f}) {
   const dense = [];
