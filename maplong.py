@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 import mapsample  # noqa: E402
 
 SR = 24000
-GAP_SHORT = {1: 1.0, 2: 1.1, 3: 0.55, 5: 0.35, 6: 0.3, 7: 0.7, 8: 0.45, 12: 0.5, 13: 0.25}
+GAP_SHORT = {1: 0.75, 2: 0.8, 3: 0.55, 5: 0.35, 6: 0.3, 7: 0.7, 8: 0.45, 12: 0.5, 13: 0.25}
 GAP_STORY = 0.45
 MUSIC = Path.home() / ".agent-hq-anim" / "music" / "scott-buckley" / "convergence.mp3"
 
@@ -34,14 +34,16 @@ def voice(spec, folder):
     seq, t, lines = [np.zeros(int(SR * 0.3), np.float32)], 0.3, []
     import hashlib
     for i, text in enumerate(texts):
-        f = cache / (hashlib.sha1(("am_michael|1.0|" + text).encode()).hexdigest()[:16] + ".wav")
+        # Tarek (part 1): questions and the closing line were rushed: read them a little slower
+        speed = 0.88 if text.rstrip().endswith("?") or i == len(texts) - 1 else 1.0
+        f = cache / (hashlib.sha1(f"am_michael|{speed}|{text}".encode()).hexdigest()[:16] + ".wav")
         if not f.exists():
-            a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(text, voice="am_michael", speed=1.0)])
+            a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(text, voice="am_michael", speed=speed)])
             sf.write(f, a, SR)
         a, _ = sf.read(f, dtype="float32")
         env = np.convolve(np.abs(a), np.ones(240) / 240, mode="same")
         on = np.where(env > 0.01 * env.max())[0]
-        a0, a1 = (max(0, on[0] - 600), min(len(a), on[-1] + 1200)) if len(on) else (0, len(a))
+        a0, a1 = (max(0, on[0] - 1900), min(len(a), on[-1] + 1900)) if len(on) else (0, len(a))   # 80 ms of air: no clipped first word
         a = a[a0:a1]
         dur = len(a) / SR
         lead = (on[0] - a0) / SR if len(on) else 0
@@ -83,7 +85,7 @@ def _mux(folder, pic, total):
     ff = shorts.find_ffmpeg()
     out = folder / "part.mp4"
     flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
-           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
+           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,highpass=f=120,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
            "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
     subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-stream_loop", "-1", "-i", str(MUSIC),
                     "-filter_complex", flt, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(total), str(out)],
@@ -135,7 +137,7 @@ def part(folder):
         pic = clips[0]
     out = folder / "part.mp4"
     flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
-           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
+           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,highpass=f=120,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
            "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
     subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-stream_loop", "-1", "-i", str(MUSIC), "-filter_complex", flt,
                     "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(total), str(out)], check=True)
