@@ -450,13 +450,17 @@ function YBooks({f, len, line}) {
 // ───────────── the bandages blown away, and an empty first-aid box ─────────────
 function YBandage({f, len, line}) {
   const p = P(line);
-  const a = at(line, p.on || 'clean', 0.6);
+  const a = at(line, p.on || 'clean', 0.6), bl = at(line, p.blow_on || 'blows', 0.15);
+  const t = clamp((f - bl) / 40, 0, 1);
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.04}>
       <rect width={W} height={H} fill="#5B4F45" />
-      {[...Array(7)].map((_, i) => { const t = clamp(f / Math.max(60, len * 0.7), 0, 1); const x = 700 + i * 60 + t * (500 + i * 80), y = 400 + Math.sin(i * 2 + f * 0.1) * 60 - t * 200;
-        return <path key={i} d={`M ${x} ${y} C ${x + 60} ${y - 40} ${x + 120} ${y + 40} ${x + 180} ${y}`} stroke="#F8F6EE" strokeWidth={26} fill="none" strokeLinecap="round" opacity={1 - t * 0.4} />; })}
-      <g transform={`translate(560 600) scale(${pz(f, a)})`}>
+      <g opacity={0.5}><Ruins y={820} color="#3A302A" seed={63} /></g>
+      <rect y={820} width={W} height={260} fill="#4A3F36" />
+      <YBust who="yamaguchi" x={1180} y={470} s={0.9} expr={f > bl ? 'shock' : 'worried'} f={f} seed={3} band={f < bl} turn={-0.2} />
+      {f >= bl && [...Array(7)].map((_, i) => { const x = 1100 + i * 20 + t * (500 + i * 70), y = 340 + (i % 3) * 120 + Math.sin(i * 2 + f * 0.15) * 40 - t * (160 + i * 20);
+        return <path key={i} d={`M ${x} ${y} C ${x + 60} ${y - 40} ${x + 120} ${y + 40} ${x + 180} ${y}`} stroke="#F8F6EE" strokeWidth={26} fill="none" strokeLinecap="round" opacity={1 - t * 0.5} />; })}
+      <g transform={`translate(480 520) scale(${pz(f, a)})`}>
         <rect x={-220} y={-150} width={440} height={300} rx={20} fill="#FBF7EC" {...st(8)} />
         <path d="M -220 -150 L 220 -150 L 180 -240 L -180 -240 Z" fill="#E8E2D4" {...st(6)} />
         <path d="M -30 -100 L 30 -100 L 30 -40 L 90 -40 L 90 20 L 30 20 L 30 80 L -30 80 L -30 20 L -90 20 L -90 -40 L -30 -40 Z" fill="#E3232C" />
