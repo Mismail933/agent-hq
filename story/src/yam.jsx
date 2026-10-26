@@ -494,7 +494,7 @@ function YWindow({f, len, line}) {
 
 // ───────────── THE TITLE (and the thumbnail) ─────────────
 // southern Japan, the red train line from Hiroshima to Nagasaki, a white burst over each city, Yamaguchi bandaged in front
-export function YamArt({boxes = true, f = 0, top = 'HE SURVIVED BOTH', bottom = '3 DAYS APART', bursts = [1, 1], line = 1, face = 'determined'}) {
+export function YamArt({boxes = true, f = 0, top = 'HE SURVIVED BOTH', bottom = '3 DAYS APART', bursts = [1, 1], line = 1, face = 'determined', big = false, bottom_w = 760}) {
   const pr = proj([131.4, 33.3], 230);
   const A = PLACES_JP.hiroshima, B = PLACES_JP.nagasaki;
   const x1 = pr.sx(A[0]), y1 = pr.sy(A[1]), x2 = pr.sx(B[0]), y2 = pr.sy(B[1]);
@@ -504,11 +504,11 @@ export function YamArt({boxes = true, f = 0, top = 'HE SURVIVED BOTH', bottom = 
       <rect width={W} height={H} fill="#0B1F3A" opacity={0.25} />
       <path d={`M ${x1} ${y1} L ${x1 + (x2 - x1) * line} ${y1 + (y2 - y1) * line}`} stroke="#fff" strokeWidth={20} strokeLinecap="round" opacity={0.7} />
       <path d={`M ${x1} ${y1} L ${x1 + (x2 - x1) * line} ${y1 + (y2 - y1) * line}`} stroke="#E3232C" strokeWidth={10} strokeLinecap="round" strokeDasharray="26 14" />
-      {bursts[0] > 0 && <g transform={`translate(${x1} ${y1})`}><Burst r={70} k={bursts[0]} /></g>}
-      {bursts[1] > 0 && <g transform={`translate(${x2} ${y2})`}><Burst r={70} k={bursts[1]} /></g>}
-      <g transform="translate(1500 560)"><YBust who="yamaguchi" x={0} y={0} s={0.95} expr={face} f={f} seed={3} band turn={-0.35} look={-6} /></g>
+      {bursts[0] > 0 && <g transform={`translate(${x1} ${y1})`}><Burst r={big ? 100 : 70} k={bursts[0]} /></g>}
+      {bursts[1] > 0 && <g transform={`translate(${x2} ${y2})`}><Burst r={big ? 100 : 70} k={bursts[1]} /></g>}
+      <g transform={big ? 'translate(1480 600)' : 'translate(1500 560)'}><YBust who="yamaguchi" x={0} y={0} s={big ? 1.3 : 0.95} expr={face} f={f} seed={3} band turn={big ? -0.2 : -0.35} look={-6} /></g>
       {boxes && <><Box x={60} y={90} w={980} h={180} text={top} rot={-3} />
-        <Box x={60} y={290} w={760} h={200} text={bottom} fill="#E3232C" color="#fff" outline rot={-3} /></>}
+        <Box x={60} y={290} w={bottom_w} h={200} text={bottom} fill="#E3232C" color="#fff" outline rot={-3} /></>}
     </g>
   );
 }

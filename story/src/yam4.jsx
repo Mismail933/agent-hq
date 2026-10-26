@@ -254,8 +254,8 @@ function YWhy({f, len, line}) {
           <circle r={230} fill="#fff" {...st(8)} /><Txt x={0} y={-30} text={c} size={60} fill={INK} stroke="none" /><Txt x={0} y={60} text={t} size={56} fill="#E3232C" stroke="none" /></g>)}
       </g> : items.slice(0, show).map(([t, k], i) => {
         const a = i === 0 ? Math.min(at(line, (p.on || [])[0] || '', 0.1), 8) : at(line, (p.on || [])[i] || '', 0.3 + i * 0.25);
-        const n = Math.min(show, items.length), gap = Math.min(560, 1640 / n), k = Math.min(1, gap / 520);
-        return <g key={i} transform={`translate(${W / 2 + (i - (n - 1) / 2) * gap} 560) scale(${pz(f, a) * k})`}>
+        const n = Math.min(show, items.length), gap = Math.min(560, 1640 / n), fit = Math.min(1, gap / 520);
+        return <g key={i} transform={`translate(${W / 2 + (i - (n - 1) / 2) * gap} 560) scale(${pz(f, a) * fit})`}>
           <circle r={210} fill="#fff" {...st(8)} />{icon(k)}<Txt x={0} y={300} text={t} size={58} fill={INK} stroke="none" /></g>; })}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>

@@ -6,6 +6,7 @@ import {W, H, rng} from './kit';
 import {FONT_CSS} from './fonts';
 import {MegArt} from './meg';
 import {PiscesArt} from './ocean';
+import {YamArt} from './yam';
 
 const INK = '#141414';
 const OSWALD = "'Oswald', 'Impact', sans-serif";
@@ -147,7 +148,8 @@ export function JulianeArt({boxes = true}) {
   );
 }
 
-const STORIES = {juliane: JulianeArt, pisces: PiscesArt, meg: MegArt};
+const YamThumb = () => <YamArt top="HE SURVIVED BOTH" bottom="ATOMIC BOMBS" bottom_w={900} face="shock" big />;   // Storygraphics #4
+const STORIES = {juliane: JulianeArt, pisces: PiscesArt, meg: MegArt, yam: YamThumb};
 
 export const Thumb = ({id = 'juliane'}) => {
   const S = STORIES[id] || JulianeArt;
