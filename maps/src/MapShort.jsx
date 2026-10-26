@@ -66,7 +66,7 @@ const Text = ({x, y, children, size = 34, color = C.text, anchor = 'middle', op 
   );
 };
 
-export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = []}) => {
+export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = [], noEnd = false}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const at = (k, d = 0) => Math.round(((cues[k] ?? 0) + d) * fps);
@@ -209,7 +209,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
         }) : null}
       </svg>
       {cues.more ? <Bars f={f} at={at} km={km} source={source} /> : null}
-      {cues.more ? (
+      {cues.more && !noEnd ? (
         <div style={{...title, top: 70, opacity: on(at('q2'), 14), transform: `translateY(${(1 - on(at('q2'), 14)) * 14}px)`}}>
           <div style={{fontSize: 64}}>How did France come to hold<br />lands all over the world?</div>
           <div style={{fontSize: 64, color: C.accent, marginTop: 14, opacity: on(at('still'), 12)}}>And why are they still French?</div>

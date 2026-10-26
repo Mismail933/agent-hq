@@ -177,7 +177,17 @@ def prep():
         borders[key] = {"type": "Feature", "properties": {"km_drawn": km},
                         "geometry": {"type": "MultiLineString", "coordinates": lines}}
         print(f"border {key}: {len(lines)} line(s), {sum(len(l) for l in lines)} points, {km} km along Natural Earth's line")
-    data = {"world": {"type": "FeatureCollection", "features": world}, "detail": {"type": "FeatureCollection", "features": detail},
+    rv = json.loads((GEO / "ne_10m_rivers_lake_centerlines.geojson").read_text(encoding="utf-8"))
+    rivers = {}
+    for key, name in (("mississippi", "Mississippi"), ("stlawrence", "St. Lawrence"), ("ohio", "Ohio")):   # the long map stories (2.71.0)
+        lines = []
+        for f in rv["features"]:
+            if (f["properties"].get("name") or "") == name:
+                g = f["geometry"]
+                lines += [g["coordinates"]] if g["type"] == "LineString" else g["coordinates"]
+        lines = [np.round(_dp(np.asarray(l, float), 0.01), 3).tolist() for l in lines if len(l) > 1]
+        rivers[key] = {"type": "Feature", "properties": {}, "geometry": {"type": "MultiLineString", "coordinates": lines}}
+    data = {"world": {"type": "FeatureCollection", "features": world}, "rivers": rivers, "detail": {"type": "FeatureCollection", "features": detail},
             "borders": borders, "places": PLACES,
             "credit": "Map data: Natural Earth (public domain)"}
     APP.mkdir(parents=True, exist_ok=True)
