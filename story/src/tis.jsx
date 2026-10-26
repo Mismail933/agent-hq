@@ -117,6 +117,20 @@ export const CAST = {
   actor: {hair: '#4A3628', hairLight: '#6A5040', brow: '#33241A', dress: '#7A8B5A', dressShade: '#5E6D44', style: 'short', hat: 'cap', beard: true},   // the 2013 film's 'marine biologist'
   wilcox: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#0F766E', dressShade: '#0B5A54', style: 'long', lips: true},   // science writer
   bernard: {hair: '#7A4A26', hairLight: '#9A6236', brow: '#5A3418', dress: '#7C3AED', dressShade: '#5B21B6', style: 'bob', glasses: true, lips: true},   // museum curator
+  // Storygraphics #4: Tsutomu Yamaguchi (1945, in the civilian work uniform; and in old age), his Nagasaki boss, his family, the people around him
+  yamaguchi: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#8C7E58', dressShade: '#6F6344', style: 'short', pants: '#6F6344'},   // pants: Figure's legs in trousers
+  yamaguchi_old: {hair: '#D6D9DE', hairLight: '#F3F4F6', brow: '#A0A6AE', dress: '#3F4A5A', dressShade: '#2E3744', style: 'thin', glasses: true, pants: '#2E3744'},
+  boss: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#3A3F4A', dressShade: '#2A2E36', style: 'short', glasses: true, mustache: true, pants: '#2A2E36'},
+  hisako: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#4A5D7A', dressShade: '#384862', style: 'bob', lips: true},
+  ymother: {hair: '#8A8F98', hairLight: '#B0B5BD', brow: '#5A5F68', dress: '#6B5A48', dressShade: '#534537', style: 'bob'},
+  classmate: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#F8FAFC', dressShade: '#DDE3EA', style: 'short', glasses: true, pants: '#4B5563'},
+  colleague1: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#7D7454', dressShade: '#625B41', style: 'short', pants: '#625B41'},
+  colleague2: {hair: '#231A14', hairLight: '#3A2E24', brow: '#150F0B', dress: '#857A58', dressShade: '#6A6045', style: 'short', glasses: true, pants: '#6A6045'},
+  hisako_old: {hair: '#A8ADB5', hairLight: '#C9CDD3', brow: '#7A7F88', dress: '#4A5D7A', dressShade: '#384862', style: 'bob', lips: true, glasses: true},
+  toshiko_girl: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#C2410C', dressShade: '#9A3412', style: 'bob', lips: true},
+  toshiko: {hair: '#9CA3AF', hairLight: '#C4C9D0', brow: '#6B7280', dress: '#5B4A6B', dressShade: '#463852', style: 'bob', glasses: true, lips: true},
+  officer: {hair: '#7A5230', hairLight: '#9A6A40', brow: '#5A3A20', dress: '#5B6B3A', dressShade: '#46532C', style: 'short', hat: 'cap', pants: '#46532C'},   // a US occupation officer (no name)
+  visitor: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true, pants: '#111827'},
 };
 
 function HairBack({c, mode}) {
@@ -128,6 +142,8 @@ function HairBack({c, mode}) {
   return null;
 }
 function HairFront({c}) {
+  if (c.style === 'thin') return (<g fill={c.hair} {...ST}>   {/* receding: hair only over the ears and at the back */}
+    <path d="M -128 -10 C -134 -70 -118 -110 -92 -128 C -104 -96 -110 -60 -108 -16 Z" /><path d="M 128 -10 C 134 -70 118 -110 92 -128 C 104 -96 110 -60 108 -16 Z" /></g>);
   if (c.style === 'short') return <path d="M -126 -40 C -136 -150 -64 -196 0 -194 C 72 -196 140 -150 126 -40 C 116 -90 90 -124 40 -132 C 0 -138 -60 -136 -96 -110 C -112 -96 -122 -70 -126 -40 Z" fill={c.hair} {...ST} />;
   // a side part, hair swept over the forehead
   return <path d="M -128 -30 C -138 -150 -64 -198 0 -196 C 72 -198 142 -150 128 -30 C 118 -96 96 -132 56 -144 C 30 -110 -30 -96 -80 -100 C -108 -90 -122 -64 -128 -30 Z" fill={c.hair} {...ST} />;
@@ -299,7 +315,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
   }[pose] || [6, -6];
   const leg = (x, a, shoe) => (
     <g transform={`translate(${x} 600) rotate(${a})`}>
-      <path d="M -36 0 C -38 160 -32 300 -28 450 L 26 450 C 30 300 36 160 34 0 Z" fill={sk.light} {...ST} />
+      <path d="M -36 0 C -38 160 -32 300 -28 450 L 26 450 C 30 300 36 160 34 0 Z" fill={c.pants || sk.light} {...ST} />
       {dirty > 0 && <path d="M -24 300 L -6 330 M 4 380 L 20 400" stroke="#6B4423" strokeWidth={6} opacity={0.6} />}
       {shoe ? <path d="M -40 430 L 40 430 L 52 486 L -40 486 Z" fill="#3F2A1E" {...ST} />
         : <path d="M -34 440 C -40 470 -30 490 0 492 C 34 494 46 470 34 440 Z" fill={sk.light} {...ST} />}

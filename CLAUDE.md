@@ -1024,6 +1024,25 @@ Agents never spend money without the owner's explicit approval.
   one by one), faint '?' poll bars before the reveal, a growing crust on the rate card, the depth counter from 200 m, the A-E row and
   the food chain inside the frame, measure labels on the left (the date corner stays clear), m_next's end card laid out for YouTube's
   end screen (the next video's art on the left, SUBSCRIBE on the right; p.pause 12 = 12 s).
+- Storygraphics #4 (2.72.0): "He Survived Hiroshima. 3 Days Later He Was in Nagasaki." (Tsutomu Yamaguchi; the owner picked it
+  2026-10-21 and said "go for it ... do the video" on 10-26; the MV Builder chat made it). Script = episode 35, Calina's v3 -> v11
+  through the gate (Israa 8, Builder 8.5): rule script.gate_rounds stopped Calina after 4 fix rounds, so the Builder applied the last
+  notes himself as exact find/replace edits (`agents.apply_edits`, recorded in fix_history "by Builder", then `quality.review_batch` with
+  a no-op rewrite so Israa re-reviews without Calina; scratchpad ep35_builder_edits.py). Rehooks are spoken too (story_script leaves
+  them out of `script`). Off the ocean lane and no Pip (viewers have never met him). Scenes: `story/src/yam.jsx` (YBust = Torso+Head
+  with a 3/4 turn and bandages, B29 seen from below, Chute, Hanko 山口, House/Street/Morning (1940s wooden Japan), Field, Ruins, WhiteOut
+  (the flash; the picture ghosts through a long white), JapanLand/PLACES_JP (Natural Earth land), Burst, YMap, YamArt = title and
+  thumbnail), `yam2.jsx` (Delta = Hiroshima's river delta at 110 px/km with the 2 km / 3.5 km rings and his dot at 3 km, Eiffel
+  weight/height, gauges, the film leader, the ear, the shelter, the burning city, what he knew, the instruments plane, the river kept
+  abstract, people icons, Train), `yam3.jsx` (the stamp, the bomber, the fork, Harbour/Nagasaki, doctor, door, home, calendar,
+  Kokura->Nagasaki with fuel and the gap in the clouds, Everest, bars, the 43-second counter, Valley = the Urakami valley, glass,
+  textbooks, bandages, tunnel, black rain, counts, stadiums, sick week, radio, lanterns, years, YQuote), `yam4.jsx` (life after:
+  translator/teacher, his daughter growing, the hibakusha certificate one/wait/both, the old man, the altar, the memoir, the 165,
+  the UN, the record, the hospital, why he lived, the twin rings, the recap). Respect rules: no bodies, no wounds, nobody under a
+  mushroom cloud; the bombs are light, rings and numbers. CAST: yamaguchi (+ `pants`: Figure draws trousers), yamaguchi_old (style
+  `thin`: receding hair; white 'short' hair read as a cap), boss, hisako, hisako_old, ymother, classmate, colleague1/2, toshiko,
+  toshiko_girl, officer, visitor. Spec builder: scratchpad make_yam_full.py (sentences -> 137 lines; asserts the lines add up to the
+  script word for word) -> samples/yamaguchi-full.json + yamaguchi-opening.json (Owen, story style 160 wpm, stability 0.5).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

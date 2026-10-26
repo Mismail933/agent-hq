@@ -1153,7 +1153,7 @@ def scene_sound(lines, total, music, sfx):
             acc = (wt((p.get("rise_on") or "rises")) - 0.1, ["low rumble", "boom", "impact heavy"], 3.0, 0.7, {})
         elif l["shot"] == "m_take" and wt((p.get("pull_on") or "drags")) is not None:   # the jaws take the trap
             acc = (wt((p.get("pull_on") or "drags")) - 0.05, ["water splash", "water submerge"], 2.0, 0.7, {})
-        elif l["shot"] in ("p_title", "title", "m_title") and lines[0]["shot"] not in OPENING:
+        elif l["shot"] in ("p_title", "title", "m_title", "y_title") and lines[0]["shot"] not in OPENING:
             acc = ((wt(((p.get("top_on") or "") or "survived").lower()) or t0 + 0.3) - 0.05, ["bass drop", "boom", "impact heavy"], 3.0, 0.8, {})
         elif p.get("day") not in (None, "") and p.get("day") != day:
             acc = (t0 - 0.05, ["bass drop", "boom", "impact heavy"], 2.4, 0.7, {"k": 1})
@@ -1189,7 +1189,7 @@ def scene_sound(lines, total, music, sfx):
 # what each sound must SOUND like, in plain words (2.56.2: Tarek's Earshot check; file-name searches like "StairWellDoor" scored low
 # against themselves even when the sound was right)
 NEEDS = {"snag": "a metal hatch being ripped open", "flood": "water rushing in", "sink": "a heavy metal object hitting the seabed",
-         "p_title": "a deep cinematic hit", "title": "a deep cinematic hit", "m_title": "a deep cinematic hit",
+         "p_title": "a deep cinematic hit", "title": "a deep cinematic hit", "m_title": "a deep cinematic hit", "y_title": "a deep cinematic hit",
          "m_rise": "a deep low rumble rising from below", "m_take": "a big splash of water", "day": "a deep cinematic hit", "planes": "a plane flying overhead",
          "bed:sea": "calm ocean waves", "bed:deep": "a deep calm underwater ambience", "bed:jungle": "a calm rainforest ambience",
          "bed:night": "crickets at night", "bed:river": "a calm river", "bed:rain": "steady rain", "bed:cabin": "inside a plane in flight"}
