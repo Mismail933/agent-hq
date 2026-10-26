@@ -1101,6 +1101,8 @@ def run_design(what, brief="", name="", project=None):
         if checkpoint.get("options rendered") is None:
             _animate("design-render", folder, timeout=3600)
             checkpoint.done("options rendered")
+        if project:   # 2.70.5: copied as soon as it is rendered (v2 of STRATA was rendered, then Israa hit the weekly limit, and no copy came)
+            design.mirror(folder, project)
         checked = checkpoint.get("Israa's check")
         if checked is None:
             rv = design.review(folder, what, brief) if rules.get("review.design") else {}   # live rule: off = straight to the owner
