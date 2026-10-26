@@ -127,6 +127,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         }))}
         {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={40} color={C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
       </svg>
+      {line.photo ? <Photo line={line} f={f} fps={fps} /> : null}
       {dateText ? (
         <div style={{position: 'absolute', right: 60, top: 50, fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 84, color: C.white,
                      letterSpacing: 2, opacity: on(line.t0, 8), transform: `scale(${pop(line.t0)})`, transformOrigin: 'right top',
@@ -136,6 +137,35 @@ export const MapStory = ({lines = [], seconds = 10}) => {
       <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)'}} />
       <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}</div>
     </AbsoluteFill>
+  );
+};
+
+// a real picture of the time (public domain / CC0 / CC BY, credited on its frame): a framed print over the dimmed map, a slow push-in
+const Photo = ({line, f, fps}) => {
+  const ph = line.photo;
+  const a = Math.round((line.t0 + 0.35) * fps), b = Math.round((line.t1 + 0.25) * fps);
+  const op = interpolate(f, [a, a + 10, b - 8, b], [0, 1, 1, 0], clamp);
+  if (op <= 0.01) return null;
+  const [iw, ih] = ph.size || [4, 3];
+  const maxW = 900, maxH = 680;
+  const k = Math.min(maxW / iw, maxH / ih);
+  const w = Math.round(iw * k), h = Math.round(ih * k);
+  const left = ph.side === 'left' ? 90 : W - w - 90;
+  const top = Math.max(110, (H - h - 70) / 2);
+  const zoom = interpolate(f, [a, b], [1.0, 1.07], clamp);
+  return (
+    <>
+      <AbsoluteFill style={{background: 'rgba(2,6,14,0.42)', opacity: op}} />
+      <div style={{position: 'absolute', left, top, width: w, opacity: op, transform: `translateY(${(1 - op) * 18}px)`}}>
+        <div style={{width: w, height: h, overflow: 'hidden', border: '8px solid #F2EEE4', boxShadow: '0 18px 50px rgba(0,0,0,0.65)', background: '#111'}}>
+          <Img src={staticFile(`photos/${ph.key}.jpg`)} style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoom})`}} />
+        </div>
+        <div style={{background: '#F2EEE4', padding: '8px 14px 10px', fontFamily: 'Space Grotesk', color: '#1B2433'}}>
+          <div style={{fontSize: 26, fontWeight: 700}}>{ph.caption}</div>
+          <div style={{fontSize: 16, opacity: 0.75, marginTop: 2}}>{ph.credit}</div>
+        </div>
+      </div>
+    </>
   );
 };
 

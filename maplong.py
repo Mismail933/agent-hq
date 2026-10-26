@@ -113,6 +113,12 @@ def part(folder):
         clips.append(folder / "short.mp4")
     else:
         split = 0.0
+    # the part's real pictures (content/project-N/long/photos + credits.json) go into the app; each photo carries its size and credit
+    import shutil
+    from PIL import Image
+    pdir = folder.parent / "photos"
+    credits = json.loads((pdir / "credits.json").read_text(encoding="utf-8")) if (pdir / "credits.json").exists() else {}
+    (mapsample.APP / "public" / "photos").mkdir(parents=True, exist_ok=True)
     beats = []
     for s, l in zip(spec["story"], story):
         b = {k: v for k, v in s.items() if k not in ("text", "pins")}
@@ -120,6 +126,14 @@ def part(folder):
         b["pins"] = [{"label": p[0], "ll": [p[1], p[2]], "at": round(_cue_time(l, p[3]) - split, 3)} for p in s.get("pins", [])]
         if s.get("label"):
             b["label"] = [s["label"][0], s["label"][1], s["label"][2]]
+        if s.get("photo"):
+            key = s["photo"]["key"]
+            src = pdir / f"{key}.jpg"
+            shutil.copy(src, mapsample.APP / "public" / "photos" / src.name)
+            c = credits.get(key, {})
+            who = re.sub(r"\s+", " ", c.get("author") or "").strip()[:60]
+            b["photo"] = {"key": key, "caption": s["photo"]["caption"], "size": list(Image.open(src).size), "side": s["photo"].get("side", "right"),
+                          "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons"}
         beats.append(b)
     beats[0]["t0"] = 0.0
     secs = round(total - split, 2)
