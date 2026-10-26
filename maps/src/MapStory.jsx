@@ -108,7 +108,13 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     const op = (b ? r.k : 1 - r.k) * 0.62;
     const fill = b && a && r.k < 1 ? interpolateColor(a, b, r.k) : b || a;
     if (!fill || op <= 0.01) return null;
-    return <path key={`g${id}`} d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.62 : op} stroke={fill} strokeWidth={2} strokeDasharray="6 5" strokeOpacity={0.9} />;
+    // clipped to the real land, so coasts and lakes are true; a bright outline (Bassel: refined borders and an outline, not a blob)
+    return (
+      <g key={`g${id}`} clipPath="url(#land)">
+        <path d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.62 : op} />
+        <path d={path(r.ft)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeOpacity={(b ? r.k : 1 - r.k) * 0.95} strokeLinejoin="round" />
+      </g>
+    );
   });
   // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
   const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path}
@@ -125,6 +131,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
             <stop offset="1" stopColor={C.atmo} stopOpacity="0" />
           </radialGradient>
           <filter id="blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7" /></filter>
+          {Object.keys(regions).length ? <clipPath id="land">{[...WORLD, ...geo.detail.features].map((ft, i) => <path key={i} d={path(ft)} />)}</clipPath> : null}
         </defs>
         <circle cx={MAPX} cy={MAPY} r={cam[2] * 1.16} fill="url(#atmo)" />
         <path d={path({type: 'Sphere'})} fill={C.sea} stroke={`${C.atmo}66`} strokeWidth={2} />
