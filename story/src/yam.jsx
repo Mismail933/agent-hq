@@ -285,7 +285,7 @@ function YMap({f, len, line}) {
   return (
     <g>
       <JapanLand center={center} ppd={ppd} />
-      <text x={pr.sx(135.4)} y={pr.sy(35.6)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={110} fill="#fff" opacity={0.6} stroke={INK} strokeWidth={4} paintOrder="stroke">JAPAN</text>
+      <text x={pr.sx(135.4)} y={pr.sy(35.6)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={100} fill="#2A3A2A" stroke="#F5F5EE" strokeWidth={10} paintOrder="stroke" letterSpacing={8}>JAPAN</text>
       {(p.flash || []).map((k, i) => { const pl = PLACES_JP[k]; const a = at(line, (p.flash_on || [])[i] || '', 0.2 + i * 0.3);
         return f >= a ? <g key={k} transform={`translate(${pr.sx(pl[0])} ${pr.sy(pl[1])})`}><Burst r={44} k={clamp(pop(f, a, 120, 10), 0, 1.1)} /></g> : null; })}
       {p.route_on && <g>
@@ -353,8 +353,8 @@ function YMeet({f, len, line}) {
 function YSky({f, len, line}) {
   const p = P(line);
   const c = at(line, p.chute_on || 'two', 0.5), stop = at(line, p.look_on || 'stops', 0.8);
-  const bx = lin(f, 0, len, -300, 1600, (t) => t);
-  const cx = lin(c, 0, len, -300, 1600, (t) => t);
+  const bx = lin(f, 0, len, 160, 1500, (t) => t);
+  const cx = lin(c, 0, len, 160, 1500, (t) => t);
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.06} y={500}>
       <linearGradient id="yskyup" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2F6FB8" /><stop offset="1" stopColor="#BFD9EE" /></linearGradient>
@@ -402,7 +402,7 @@ function YFlash({f, len, line}) {
         {u >= 1 && f >= t && [...Array(8)].map((_, i) => { const q = clamp((f - t - 26) / 30, 0, 1); return <circle key={i} cx={1060 + Math.cos(i) * 90 * (0.4 + q)} cy={860 - Math.abs(Math.sin(i * 1.7)) * 60 * q} r={30 + 20 * q} fill="#8A6A4E" opacity={0.5 * (1 - q)} />; })}
       </Cam>
       <rect width={W} height={H} fill="#FFFDF2" opacity={white} />
-      <Labels line={line} f={f} x0={100} y0={100} />
+      <Labels line={{...line, p: {...p, labels: (p.labels || []).map((l) => ({...l, on: p.throw_on || 'throws'}))}}} f={f} x0={100} y0={100} />
     </g>
   );
 }
@@ -413,7 +413,7 @@ function YDark({f, len, line}) {
   const o = at(line, p.open_on || 'opens', 0.12), b = at(line, p.burn_on || 'burning', 0.45), r = at(line, p.ring_on || 'ring', 0.7);
   const burn = clamp((f - b) / 12, 0, 1) * (0.55 + 0.15 * Math.sin(f * 0.25));
   return (
-    <g><Cam f={f} len={len} a={1.1} b={1.0} x={1000} y={640}>
+    <g><Cam f={f} len={len} a={1.05} b={1.35} x={1030} y={790}>
       <DustSky f={f} k={1} />
       <Field y={700} dark={0.55} />
       <ellipse cx={1000} cy={800} rx={360} ry={150} fill="#F3D9B8" opacity={0.16} />
@@ -511,7 +511,7 @@ export function YamArt({boxes = true, f = 0, top = 'HE SURVIVED BOTH', bottom = 
         <g transform={`translate(${x1 - 340} ${y1 + 140}) scale(${tags})`}><rect x={0} y={-46} width={390} height={62} fill="#fff" {...st(5)} /><text x={195} y={0} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={44} fill={INK}>HIROSHIMA · 6 AUG</text></g>
         <g transform={`translate(${x2 - 100} ${y2 + 110}) scale(${tags})`}><rect x={0} y={-46} width={390} height={62} fill="#fff" {...st(5)} /><text x={195} y={0} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={44} fill={INK}>NAGASAKI · 9 AUG</text></g>
       </g>}
-      <g transform={big ? 'translate(1480 600)' : 'translate(1500 560)'}><YBust who="yamaguchi" x={0} y={0} s={big ? 1.3 : 0.95} expr={face} f={f} seed={3} band turn={big ? -0.2 : -0.35} look={-6} /></g>
+      <g transform={big ? 'translate(1480 600)' : 'translate(1540 560)'}><YBust who="yamaguchi" x={0} y={0} s={big ? 1.3 : 0.95} expr={face} f={f} seed={3} band turn={big ? -0.2 : -0.35} look={-6} /></g>
       {boxes && <><Box x={60} y={90} w={980} h={180} text={top} rot={-3} />
         <Box x={60} y={290} w={bottom_w} h={200} text={bottom} fill="#E3232C" color="#fff" outline rot={-3} /></>}
     </g>
@@ -528,6 +528,12 @@ function YTitle({f, len, line}) {
       </g>
       <Box x={60} y={90} w={p.top_w || 980} h={180} text={p.top || 'HE SURVIVED BOTH'} rot={-3} s={clamp(pop(f, a, 160, 12), 0, 1.1)} />
       <Box x={60} y={290} w={p.bottom_w || 760} h={200} text={p.bottom || '3 DAYS APART'} fill="#E3232C" color="#fff" outline rot={-3} s={clamp(pop(f, b, 160, 12), 0, 1.1)} />
+      {(() => { const said = (w) => (line.words || []).some((x) => x[0].toLowerCase().replace(/[^a-z]/g, '').startsWith(w)); const hk = !said(p.hour_on || 'hour') ? 0 : clamp(pop(f, at(line, p.hour_on || 'hour', 0.8), 150, 12), 0, 1.05); if (hk < 0.01) return null;
+        return <g transform={`translate(990 770) scale(${hk})`}><circle r={80} fill="#FBF7EC" {...st(7)} /><path d="M 0 0 L 0 -52 M 0 0 L 38 18" stroke={INK} strokeWidth={9} strokeLinecap="round" /><circle r={8} fill="#E3232C" /></g>; })()}
+      {(() => { const said = (w) => (line.words || []).some((x) => x[0].toLowerCase().replace(/[^a-z]/g, '').startsWith(w)); const rk = !said(p.rec_on || 'records') ? 0 : clamp(pop(f, at(line, p.rec_on || 'records', 0.9), 150, 12), 0, 1.05); if (rk < 0.01) return null;
+        return <g transform={`translate(1190 770) rotate(-5) scale(${rk})`}><rect x={-110} y={-80} width={220} height={160} fill="#FBF7EC" {...st(6)} />
+          {[0, 1, 2].map((i) => <rect key={i} x={-80} y={-50 + i * 30} width={i === 2 ? 90 : 160} height={12} fill="#CBD5E1" />)}
+          <g transform="translate(50 45) rotate(-12)"><rect x={-56} y={-22} width={112} height={44} fill="none" stroke="#C81E1E" strokeWidth={6} /><text x={0} y={12} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={30} fill="#C81E1E">RECORD</text></g></g>; })()}
       <Labels line={line} f={f} x0={100} y0={800} />
     </g>
   );
