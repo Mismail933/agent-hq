@@ -120,7 +120,7 @@ export const CAST = {
   // Storygraphics #4: Tsutomu Yamaguchi (1945, in the civilian work uniform; and in old age), his Nagasaki boss, his family, the people around him
   yamaguchi: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#8C7E58', dressShade: '#6F6344', style: 'short', pants: '#6F6344'},   // pants: Figure's legs in trousers
   yamaguchi_old: {hair: '#D6D9DE', hairLight: '#F3F4F6', brow: '#A0A6AE', dress: '#3F4A5A', dressShade: '#2E3744', style: 'thin', glasses: true, pants: '#2E3744'},
-  boss: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#3A3F4A', dressShade: '#2A2E36', style: 'short', glasses: true, mustache: true, pants: '#2A2E36'},
+  boss: {hair: '#3A3634', hairLight: '#55504C', brow: '#2A2624', dress: '#4A4F5A', dressShade: '#363A44', style: 'short', pants: '#363A44'},   // no round glasses + toothbrush moustache: too close to the wartime caricature (Israa)
   hisako: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#4A5D7A', dressShade: '#384862', style: 'bob', lips: true},
   ymother: {hair: '#8A8F98', hairLight: '#B0B5BD', brow: '#5A5F68', dress: '#6B5A48', dressShade: '#534537', style: 'bob'},
   classmate: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#F8FAFC', dressShade: '#DDE3EA', style: 'short', glasses: true, pants: '#4B5563'},

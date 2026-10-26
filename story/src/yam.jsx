@@ -144,12 +144,12 @@ export const Crane = ({x, y, s = 1, color = '#56677A'}) => (
   </g>
 );
 // a morning sky over Hiroshima: clear, a low sun, hills, the shipyard's cranes far off
-export const Morning = ({f = 0, id = 'ymorn', hills = true, cranes = true, dim = 0}) => (
+export const Morning = ({f = 0, id = 'ymorn', hills = true, cranes = true, dim = 0, clouds = true}) => (
   <g>
     <linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#4F8FD0" /><stop offset="1" stopColor="#E9F0F2" /></linearGradient>
     <rect width={W} height={H} fill={`url(#${id})`} />
     <circle cx={1650} cy={250} r={70} fill="#FFF3C4" /><circle cx={1650} cy={250} r={130} fill="#FFF3C4" opacity={0.3} />
-    <Cloud x={380 - f * 0.25} y={170} s={0.7} op={0.85} /><Cloud x={1150 - f * 0.3} y={250} s={0.55} op={0.75} />
+    {clouds && <><Cloud x={380 - f * 0.25} y={170} s={0.7} op={0.85} /><Cloud x={1150 - f * 0.3} y={250} s={0.55} op={0.75} /></>}
     {hills && <path d="M 0 640 C 200 520 380 560 560 590 C 760 520 960 540 1140 600 C 1340 520 1560 540 1920 600 L 1920 760 L 0 760 Z" fill="#8FAE98" opacity={0.75} />}
     {cranes && <g opacity={0.7}><Crane x={1480} y={700} s={0.55} /><Crane x={1700} y={700} s={0.45} /></g>}
     {dim > 0 && <rect width={W} height={H} fill="#1B1410" opacity={dim} />}
@@ -325,10 +325,10 @@ function YStreet({f, len, line}) {
 // 2. meet him: Yamaguchi, 29, and the people waiting at home (a photo of Hisako and the baby pops on "wife")
 function YMeet({f, len, line}) {
   const p = P(line);
-  const k = popAt(f, line, p.home_on || 'wife', 0.55);
+  const k = popAt(f, line, p.home_on || 'today', 0.4);
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.05}>
-      <Morning f={f} hills={false} cranes={false} dim={0.05} />
+      <Morning f={f} hills={false} cranes={false} dim={0.05} clouds={false} />
       <g opacity={0.5}><Street y={900} seed={4} /></g>
       <rect width={W} height={H} fill="#F3E7CC" opacity={0.55} />
       <YBust who="yamaguchi" x={p.x || 600} y={470} s={0.95} expr={p.expr || 'smile'} f={f} seed={3} turn={0.2} />
@@ -352,7 +352,7 @@ function YMeet({f, len, line}) {
 // 3. a single bomber across a clear sky, two small parachutes drift out of it; he stops to look up
 function YSky({f, len, line}) {
   const p = P(line);
-  const c = at(line, p.chute_on || 'parachutes', 0.55), stop = at(line, p.look_on || 'stops', 0.8);
+  const c = at(line, p.chute_on || 'two', 0.5), stop = at(line, p.look_on || 'stops', 0.8);
   const bx = lin(f, 0, len, -300, 1600, (t) => t);
   const cx = lin(c, 0, len, -300, 1600, (t) => t);
   return (
@@ -362,7 +362,7 @@ function YSky({f, len, line}) {
       <Cloud x={300} y={760} s={0.9} op={0.6} /><Cloud x={1250} y={820} s={0.7} op={0.5} />
       <g transform={`translate(${bx} 250) rotate(-6) scale(0.3)`}><B29 f={f} /></g>
       {f > c && [0, 1].map((i) => { const t = f - c - i * 8; if (t < 0) return null;
-        return <g key={i} transform={`translate(${cx - 60 - i * 110 + Math.sin(t * 0.05 + i) * 30} ${300 + t * 1.3 + i * 30})`}><Chute s={clamp(pop(t, 0, 120, 14), 0, 1) * 0.9} sway={Math.sin(t * 0.06 + i) * 10} /></g>; })}
+        return <g key={i} transform={`translate(${cx - 80 - i * 150 + Math.sin(t * 0.05 + i) * 30} ${320 + t * 1.1 + i * 40})`}><Chute s={clamp(pop(t, 0, 120, 14), 0, 1) * 1.4} sway={Math.sin(t * 0.06 + i) * 10} /></g>; })}
       <g>{[0, 1, 2, 3, 4, 5].map((i) => <g key={i} transform={`translate(${-60 + i * 330} 1080)`}><path d="M -200 0 L -150 -60 L -170 -60 L -120 -110 L 120 -110 L 170 -60 L 150 -60 L 200 0 Z" fill="#222831" /></g>)}</g>
       <YBust who="yamaguchi" x={1600} y={860} s={0.62} expr={f > stop ? 'worried' : 'calm'} f={f} seed={3} rot={-14} look={-14} />
     </Cam>
@@ -416,6 +416,7 @@ function YDark({f, len, line}) {
     <g><Cam f={f} len={len} a={1.1} b={1.0} x={1000} y={640}>
       <DustSky f={f} k={1} />
       <Field y={700} dark={0.55} />
+      <ellipse cx={1000} cy={800} rx={360} ry={150} fill="#F3D9B8" opacity={0.16} />
       <g transform="translate(900 800) rotate(-90) scale(0.5)">
         <Torso who="yamaguchi" arms="rest" f={f} />
         <ellipse cx={150} cy={360} rx={120} ry={330} fill="#FF6A3D" opacity={0.45 * burn} />
@@ -445,7 +446,7 @@ const OfficeRoom = ({f = 0, white = 0, clock = '11:00', blown = 0}) => (
       {white <= 0 && <g><path d="M 0 230 C 80 170 160 200 220 180 C 300 150 360 190 420 170 L 420 330 L 0 330 Z" fill="#7E9E78" /><rect y={280} width={420} height={50} fill="#5B8FC0" /></g>}
       {blown <= 0 && <path d="M 210 0 L 210 330 M 0 165 L 420 165" stroke={INK} strokeWidth={8} />}
     </g>
-    <g transform="translate(260 180)"><circle r={70} fill="#FBF7EC" {...st(7)} />
+    <g transform="translate(960 170)"><circle r={70} fill="#FBF7EC" {...st(7)} />
       {(() => { const [hh, mm] = clock.split(':').map(Number); const ma = mm / 60 * 360, ha = ((hh % 12) + mm / 60) / 12 * 360;
         return <g stroke={INK} strokeLinecap="round"><path d={`M 0 0 L ${Math.sin(ha * Math.PI / 180) * 36} ${-Math.cos(ha * Math.PI / 180) * 36}`} strokeWidth={8} /><path d={`M 0 0 L ${Math.sin(ma * Math.PI / 180) * 54} ${-Math.cos(ma * Math.PI / 180) * 54}`} strokeWidth={5} /></g>; })()}
     </g>
@@ -464,7 +465,7 @@ function YOffice({f, len, line}) {
     <g><Cam f={f} len={len} a={1.0} b={1.05}>
       <OfficeRoom f={f} clock={p.clock || '10:55'} />
       <YBust who="yamaguchi" x={600} y={430} s={0.85} expr={f < half ? 'worried' : 'shock'} talk={f < half && talk && p.he_talks !== false} f={f} seed={3} band turn={0.25} />
-      <YBust who="boss" x={1300} y={430} s={0.85} expr="grim" talk={f >= half && talk} f={f} seed={6} turn={-0.25} />
+      <YBust who="boss" x={1300} y={430} s={0.85} expr={f >= m - 4 && p.boss_talks !== false ? 'shock' : 'grim'} talk={f >= half && talk && f < m - 4} f={f} seed={6} turn={-0.25} />
       {p.ybubble && (() => { const q = clamp(pop(f, at(line, p.ybubble_on || '', 0.3), 150, 12), 0, 1.1); return q > 0.01 ? <g transform={`translate(560 190) scale(${q})`}>
         <path d="M 60 70 L 120 150 L -10 90" fill="#fff" {...ST} /><rect x={-330} y={-90} width={660} height={170} rx={60} fill="#fff" {...ST} />
         <text x={0} y={22} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={58} fill={INK}>{p.ybubble}</text></g> : null; })()}
@@ -494,7 +495,7 @@ function YWindow({f, len, line}) {
 
 // ───────────── THE TITLE (and the thumbnail) ─────────────
 // southern Japan, the red train line from Hiroshima to Nagasaki, a white burst over each city, Yamaguchi bandaged in front
-export function YamArt({boxes = true, f = 0, top = 'HE SURVIVED BOTH', bottom = '3 DAYS APART', bursts = [1, 1], line = 1, face = 'determined', big = false, bottom_w = 760}) {
+export function YamArt({boxes = true, f = 0, top = 'HE SURVIVED BOTH', bottom = '3 DAYS APART', bursts = [1, 1], line = 1, face = 'determined', big = false, bottom_w = 760, tags = 0}) {
   const pr = proj([131.4, 33.3], 230);
   const A = PLACES_JP.hiroshima, B = PLACES_JP.nagasaki;
   const x1 = pr.sx(A[0]), y1 = pr.sy(A[1]), x2 = pr.sx(B[0]), y2 = pr.sy(B[1]);
@@ -506,6 +507,10 @@ export function YamArt({boxes = true, f = 0, top = 'HE SURVIVED BOTH', bottom = 
       <path d={`M ${x1} ${y1} L ${x1 + (x2 - x1) * line} ${y1 + (y2 - y1) * line}`} stroke="#E3232C" strokeWidth={10} strokeLinecap="round" strokeDasharray="26 14" />
       {bursts[0] > 0 && <g transform={`translate(${x1} ${y1})`}><Burst r={big ? 100 : 70} k={bursts[0]} /></g>}
       {bursts[1] > 0 && <g transform={`translate(${x2} ${y2})`}><Burst r={big ? 100 : 70} k={bursts[1]} /></g>}
+      {tags > 0 && <g>
+        <g transform={`translate(${x1 - 340} ${y1 + 140}) scale(${tags})`}><rect x={0} y={-46} width={390} height={62} fill="#fff" {...st(5)} /><text x={195} y={0} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={44} fill={INK}>HIROSHIMA · 6 AUG</text></g>
+        <g transform={`translate(${x2 - 100} ${y2 + 110}) scale(${tags})`}><rect x={0} y={-46} width={390} height={62} fill="#fff" {...st(5)} /><text x={195} y={0} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={44} fill={INK}>NAGASAKI · 9 AUG</text></g>
+      </g>}
       <g transform={big ? 'translate(1480 600)' : 'translate(1500 560)'}><YBust who="yamaguchi" x={0} y={0} s={big ? 1.3 : 0.95} expr={face} f={f} seed={3} band turn={big ? -0.2 : -0.35} look={-6} /></g>
       {boxes && <><Box x={60} y={90} w={980} h={180} text={top} rot={-3} />
         <Box x={60} y={290} w={bottom_w} h={200} text={bottom} fill="#E3232C" color="#fff" outline rot={-3} /></>}
@@ -519,7 +524,7 @@ function YTitle({f, len, line}) {
   return (
     <g>
       <g transform={`translate(960 540) scale(${lin(f, 0, len, 1.08, 1.0)}) translate(-960 -540)`}>
-        <YamArt boxes={false} f={f} bursts={[h1, h2]} line={lin(f, Math.min(a, 10), b, 0, 1)} />
+        <YamArt boxes={false} f={f} bursts={[h1, h2]} line={lin(f, Math.min(a, 10), b, 0, 1)} tags={p.tags === false ? 0 : clamp(pop(f, b + 6, 150, 12), 0, 1.05)} />
       </g>
       <Box x={60} y={90} w={p.top_w || 980} h={180} text={p.top || 'HE SURVIVED BOTH'} rot={-3} s={clamp(pop(f, a, 160, 12), 0, 1.1)} />
       <Box x={60} y={290} w={p.bottom_w || 760} h={200} text={p.bottom || '3 DAYS APART'} fill="#E3232C" color="#fff" outline rot={-3} s={clamp(pop(f, b, 160, 12), 0, 1.1)} />
