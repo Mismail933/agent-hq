@@ -147,7 +147,7 @@ const Photo = ({line, f, fps}) => {
   const op = interpolate(f, [a, a + 10, b - 8, b], [0, 1, 1, 0], clamp);
   if (op <= 0.01) return null;
   const [iw, ih] = ph.size || [4, 3];
-  const maxW = 900, maxH = 680;
+  const maxW = 780, maxH = 580;   // smaller prints keep the named place free (Israa, part 1)
   const k = Math.min(maxW / iw, maxH / ih);
   const w = Math.round(iw * k), h = Math.round(ih * k);
   const left = ph.side === 'left' ? 90 : W - w - 90;
