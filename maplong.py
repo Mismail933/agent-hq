@@ -127,7 +127,8 @@ def part(folder):
     for s, l in zip(spec["story"], story):
         b = {k: v for k, v in s.items() if k not in ("text", "pins")}
         b["t0"], b["t1"] = round(l["t0"] - split, 3), round(l["t1"] - split, 3)
-        b["pins"] = [{"label": p[0], "ll": [p[1], p[2]], "at": round(_cue_time(l, p[3]) - split, 3)} for p in s.get("pins", [])]
+        b["pins"] = [{"label": p[0], "ll": [p[1], p[2]], "at": round(_cue_time(l, p[3]) - split, 3), **({"off": p[4]} if len(p) > 4 else {})}
+                     for p in s.get("pins", [])]
         if s.get("label"):
             b["label"] = [s["label"][0], s["label"][1], s["label"][2]]
         if s.get("photo"):

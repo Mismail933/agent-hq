@@ -3,14 +3,14 @@
 // Same look as MapShort (his pick: the globe, white borders, coloured countries). Times come from the voice (props.lines t0/t1, s).
 import React from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig, Img, staticFile} from 'remotion';
-import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance} from 'd3-geo';
+import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance, geoArea} from 'd3-geo';
 import geo from './geo.json';
 import {FONT_CSS} from './fonts';
 
 const W = 1920, H = 1080, MAPX = W * 0.5, MAPY = H * 0.54;
 const C = {
   bg: ['#0A1426', '#03060D'], sea: '#0C1D38', grat: 'rgba(120,180,230,0.10)', atmo: '#4FC9F0',
-  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#FF9B6A', uk: '#C8505A', es: '#E3B75A',
+  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#FF9B6A', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE',
   accent: '#FF6A3D', white: '#F2F7FF', text: '#EAF6FF', sub: '#C4DAE6', halo: 'rgba(3,8,16,0.85)',
 };
 const FRANCE = new Set(['FRA', 'GUF', 'FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);
@@ -89,6 +89,27 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     const k = fills[ft.properties.a3] || 0;
     return <path key={ft.properties.a3} d={path(ft)} fill={k > 0 ? (tint[ft.properties.a3] || C.fill) : C.world} fillOpacity={k > 0 ? 0.35 + 0.6 * k : 1} stroke={C.line} strokeWidth={1.1} />;
   });
+  // regions [{id, color, ring [[lon, lat]...]}]: a drawn historical area (approximate claims, not a modern border). It stays from its
+  // line on; a later line naming the same id recolours it (color 'none' hides it). Rings are turned the way d3 needs (small side filled).
+  const regions = {};
+  lines.forEach((l, i) => (l.regions || []).forEach((r) => {
+    if (i > li) return;
+    const was = regions[r.id];
+    let ring = r.ring || (was && was.ring);
+    if (!ring) return;
+    let ft = {type: 'Polygon', coordinates: [[...ring, ring[0]]]};
+    if (geoArea(ft) > 2 * Math.PI) ft = {type: 'Polygon', coordinates: [[...ring, ring[0]].reverse()]};
+    const k = i === li ? on(l.t0 + 0.2, 16) : 1;
+    regions[r.id] = {ring, ft, color: r.color, from: was ? was.color : 'none', k, label: r.label || (was && was.label)};
+  }));
+  const regionPaths = Object.entries(regions).map(([id, r]) => {
+    const col = (c) => (c === 'none' ? null : C[c] || c);
+    const a = col(r.from), b = col(r.color);
+    const op = (b ? r.k : 1 - r.k) * 0.62;
+    const fill = b && a && r.k < 1 ? interpolateColor(a, b, r.k) : b || a;
+    if (!fill || op <= 0.01) return null;
+    return <path key={`g${id}`} d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.62 : op} stroke={fill} strokeWidth={2} strokeDasharray="6 5" strokeOpacity={0.9} />;
+  });
   const dateText = line.date;
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 50% 45%, ${C.bg[0]}, ${C.bg[1]})`}}>
@@ -107,6 +128,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         <path d={path(GRAT)} fill="none" stroke={C.grat} strokeWidth={1} />
         {world}
         {detail}
+        {regionPaths}
         {lines.map((l, i) => (l.river && geo.rivers[l.river] && i === li ? (
           <g key={`r${i}`}>
             <Draw d={path(geo.rivers[l.river])} p={interpolate(f, [at(l.t0), at(l.t0) + 50], [0, 1], {...clamp, easing: ease})} color="#7FD7FF" width={4} />
@@ -132,10 +154,21 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         {(line.pins || []).map((p, k) => {
           if (!p.label || t < p.at - 0.05 || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
-          return <Text key={`n${k}`} x={x + 18} y={y - 16} size={34} anchor="start" op={on(p.at, 8)} pop={pop(p.at)}>{p.label}</Text>;
+          return <Text key={`n${k}`} x={x + 18 + (p.off ? p.off[0] : 0)} y={y - 16 + (p.off ? p.off[1] : 0)} size={34} anchor="start" op={on(p.at, 8)} pop={pop(p.at)}>{p.label}</Text>;
         })}
         {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={40} color={C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
+        {(line.regions || []).filter((r) => r.label && r.color !== 'none').map((r) => (
+          <Text key={`rl${r.id}`} {...xy(P(r.label[1]))} size={30} color={C.white} op={on(line.t0 + 0.5, 12)}>{r.label[0]}</Text>))}
       </svg>
+      {line.legend ? (
+        <div style={{position: 'absolute', left: 60, bottom: 60, fontFamily: 'Space Grotesk', fontSize: 28, color: C.white, opacity: on(line.t0 + 0.3, 12),
+                     background: 'rgba(3,8,16,0.72)', padding: '14px 20px', borderRadius: 8}}>
+          {line.legend.map(([c, txt]) => (
+            <div key={txt} style={{display: 'flex', alignItems: 'center', gap: 14, margin: '4px 0'}}>
+              <div style={{width: 30, height: 18, background: C[c] || c, opacity: 0.8, border: `2px dashed ${C[c] || c}`}} />{txt}
+            </div>))}
+          <div style={{fontSize: 16, opacity: 0.6, marginTop: 6}}>Areas approximate</div>
+        </div>) : null}
       {dateText ? (
         <div style={{position: 'absolute', right: 60, top: 50, fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 84, color: C.white,
                      letterSpacing: 2, opacity: on(line.t0, 8), transform: `scale(${pop(line.t0)})`, transformOrigin: 'right top',
@@ -176,6 +209,12 @@ const Photo = ({line, f, fps}) => {
     </>
   );
 };
+
+function interpolateColor(a, b, k) {
+  const h = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  const [x, y] = [h(a), h(b)];
+  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * k)).join(',')})`;
+}
 
 function xy([x, y]) {
   return {x, y};
