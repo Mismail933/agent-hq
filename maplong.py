@@ -105,6 +105,9 @@ def part(folder):
     clips = []
     if short:
         split = story[0]["t0"] - 0.3
+    if short and os.environ.get("HQ_KEEP_SHORT") == "1" and (folder / "short.mp4").exists():   # only the story section changed
+        clips.append(folder / "short.mp4")
+    elif short:
         words = [w for l in short for w in l["words"]]
         cues = mapsample.cues_v2(words, {"move": "also", "arrive": "borders", "clp": "uninhabited", "link": "still", "bars": "alone"})
         props = {"cues": cues, "seconds": split, "km": {"deu": 448, "esp": 623, "bra": 730},
