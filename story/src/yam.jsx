@@ -33,11 +33,11 @@ const BandArms = () => (
   </g>
 );
 // a person from the waist up, like tis.Bust, plus a 3/4 turn and the bandages
-export const YBust = ({who = 'yamaguchi', x = 0, y = 0, s = 1, expr = 'calm', f = 0, talk = false, arms = 'rest', turn = 0, look = 0, seed = 1, band = false, rot = 0}) => (
+export const YBust = ({who = 'yamaguchi', x = 0, y = 0, s = 1, expr = 'calm', f = 0, talk = false, arms = 'rest', turn = 0, look = 0, lookY = 0, seed = 1, band = false, rot = 0}) => (
   <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
     <Torso who={who} arms={arms} f={f} />
     {band && arms === 'rest' && <BandArms />}
-    <Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} turn={turn} />
+    <Head who={who} expr={expr} f={f} talk={talk} look={look} lookY={lookY} seed={seed} turn={turn} />
     {band && <BandHead turn={turn} />}
   </g>
 );
@@ -310,14 +310,18 @@ function YStreet({f, len, line}) {
   const wx = f < tn ? lin(f, 0, len, p.from || 1180, p.to || 820, (t) => t) : lin(tn, 0, len, p.from || 1180, p.to || 820, (t) => t) + (f - tn) * 2.4;
   const dir = f < tn ? -1 : 1;
   const k = popAt(f, line, p.seal_on || 'seal', 0.6);
+  const pu = p.push_on ? at(line, p.push_on, 0.3) : len + 1, ti = p.tight_on ? at(line, p.tight_on, 0.5) : len + 1;
+  const z = f >= ti ? 1.8 : f >= pu ? 1.03 + 0.37 * clamp((f - pu) / 30, 0, 1) : lin(f, 0, Math.min(len, pu), 1.0, 1.03);
+  const cy = f >= ti ? 600 : 620, hw = W / 2 / z, hh = H / 2 / z;
+  const view = `translate(${W / 2} ${H / 2}) scale(${z}) translate(${-clamp(wx + (f >= ti ? 120 : 0), hw, W - hw)} ${-clamp(cy, hh, H - hh)})`;
   return (
-    <g><Cam f={f} len={len} a={1.0} b={1.05} y={620}>
-      <Morning f={f} />
+    <g><g transform={view}>
+      <Morning f={f} clouds={false} />
       <Street y={760} seed={p.seed || 2} f={f} />
       {p.bag && <g transform={`translate(${wx - 60 * dir} 960)`}><rect x={-50} y={-70} width={100} height={70} rx={8} fill="#7A4A2A" {...st(5)} /><path d="M -20 -70 L -20 -86 L 20 -86 L 20 -70" stroke={INK} strokeWidth={6} fill="none" /></g>}
       <g transform={`translate(${wx} 1010) scale(0.5) translate(0 -1090)`}><Figure who="yamaguchi" pose="walk" dir={dir} f={f} expr={f < tn ? 'calm' : 'worried'} seed={3} /></g>
       {k > 0.01 && <g transform={`translate(${wx + 230} 380) scale(${k})`}><Hanko /></g>}
-    </Cam>
+    </g>
       <Labels line={line} f={f} x0={100} y0={100} /></g>
   );
 }
@@ -364,7 +368,7 @@ function YSky({f, len, line}) {
       {f > c && [0, 1].map((i) => { const t = f - c - i * 8; if (t < 0) return null;
         return <g key={i} transform={`translate(${cx - 80 - i * 150 + Math.sin(t * 0.05 + i) * 30} ${320 + t * 1.1 + i * 40})`}><Chute s={clamp(pop(t, 0, 120, 14), 0, 1) * 1.4} sway={Math.sin(t * 0.06 + i) * 10} /></g>; })}
       <g>{[0, 1, 2, 3, 4, 5].map((i) => <g key={i} transform={`translate(${-60 + i * 330} 1080)`}><path d="M -200 0 L -150 -60 L -170 -60 L -120 -110 L 120 -110 L 170 -60 L 150 -60 L 200 0 Z" fill="#222831" /></g>)}</g>
-      <YBust who="yamaguchi" x={1600} y={860} s={0.62} expr={f > stop ? 'worried' : 'calm'} f={f} seed={3} rot={-14} look={-14} />
+      <YBust who="yamaguchi" x={1600} y={860} s={0.62} expr={f > stop ? 'worried' : 'calm'} f={f} seed={3} rot={-14 - 12 * clamp((f - stop) / 12, 0, 1)} look={-16} lookY={-10 * clamp((f - stop) / 12, 0, 1)} />
     </Cam>
       <Labels line={line} f={f} x0={100} y0={100} /></g>
   );
@@ -464,8 +468,8 @@ function YOffice({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={p.focus === 'boss' ? 1.8 : 1.0} b={p.focus === 'boss' ? 1.9 : 1.05} x={p.focus === 'boss' ? 1320 : W / 2} y={p.focus === 'boss' ? 470 : H / 2}>
       <OfficeRoom f={f} clock={p.clock || '10:55'} />
-      <YBust who="yamaguchi" x={600} y={430} s={0.85} expr={f < half ? 'worried' : 'shock'} talk={f < half && talk && p.he_talks !== false} f={f} seed={3} band turn={0.25} />
-      <YBust who="boss" x={1300} y={430} s={0.85} expr={f >= m - 4 && p.boss_talks !== false ? 'shock' : 'grim'} talk={f >= half && talk && f < m - 4} f={f} seed={6} turn={-0.25} />
+      <YBust who="yamaguchi" x={600} y={430} s={0.85} expr={p.calm || f < half ? 'worried' : 'shock'} talk={f < half && talk && p.he_talks !== false} f={f} seed={3} band turn={0.25} />
+      <YBust who="boss" x={1300} y={430} s={0.85} expr={!p.calm && f >= m - 4 && p.boss_talks !== false ? 'shock' : 'grim'} talk={f >= half && talk && (p.calm || f < m - 4)} f={f} seed={6} turn={-0.25} />
       {p.ybubble && (() => { const q = clamp(pop(f, at(line, p.ybubble_on || '', 0.3), 150, 12), 0, 1.1); return q > 0.01 ? <g transform={`translate(400 120) scale(${q})`}>
         <path d="M 60 70 L 120 150 L -10 90" fill="#fff" {...ST} /><rect x={-330} y={-90} width={660} height={170} rx={60} fill="#fff" {...ST} />
         <text x={0} y={22} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={58} fill={INK}>{p.ybubble}</text></g> : null; })()}

@@ -121,6 +121,23 @@ def _card(ffmpeg, video, at, style, out):
     shot.unlink(missing_ok=True)
 
 
+def _headline(text, band, out):
+    """The top band's title: lines split at '|', white and yellow in turn, as big as fits, sitting just above the picture."""
+    from PIL import Image, ImageDraw
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    lines = [x.strip().upper() for x in text.split("|") if x.strip()]
+    size = 104
+    while size > 48 and max(d.textlength(x, font=_font(size)) for x in lines) > W - 100:
+        size -= 4
+    font, step = _font(size), int(size * 1.18)
+    y = band - 70 - step * (len(lines) - 1)
+    for i, x in enumerate(lines):
+        d.text((W // 2, y + i * step), x, font=font, fill=(255, 255, 255) if i % 2 == 0 else (255, 215, 0), anchor="mm",
+               stroke_width=8, stroke_fill=(16, 16, 16))
+    im.save(out)
+
+
 def _wrap(d, text, font, width):
     lines, cur = [], ""
     for word in text.split():
@@ -152,6 +169,9 @@ def cut(plan_path):
         vf = (f"[0:v]split=2[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=30:2,"
               f"eq=brightness=-0.18[bg];[b]scale={W}:{H}:force_original_aspect_ratio=decrease[fg];"
               f"[bg][fg]overlay=(W-w)/2:(H-h)/2,fps={FPS},setsar=1")
+        if style.get("headline"):   # a title in the top band, for the whole clip (Israa on the Yamaguchi Short: no hook in the first seconds)
+            _headline(style["headline"], (H - fh) // 2, folder / f"{name}-head.png")
+            vf = vf.replace("[bg][fg]overlay=(W-w)/2:(H-h)/2,", f"[bg][fg]overlay=(W-w)/2:(H-h)/2[pic];[pic][{3 if float(style.get('end_seconds') or 0) > 0 else 1}:v]overlay=0:0,")
         if caps and _ass(words, start, end, style, top, folder / f"{name}.ass"):
             vf += f",subtitles={name}.ass"   # a plain name: the clip runs with cwd = its folder (Windows paths break the filter)
         vf += f",format=yuv420p[v0];[0:a]aresample=48000,aformat=channel_layouts=stereo,afade=t=out:st={max(0, dur - 0.35):.2f}:d=0.35[a0]"
@@ -161,6 +181,8 @@ def cut(plan_path):
             _card(ffmpeg, video, end - 0.2, style, folder / f"{name}-card.png")
             cmd += ["-loop", "1", "-framerate", str(FPS), "-t", f"{card:.2f}", "-i", f"{name}-card.png",
                     "-f", "lavfi", "-t", f"{card:.2f}", "-i", "anullsrc=r=48000:cl=stereo"]
+        if style.get("headline"):
+            cmd += ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.2f}", "-i", f"{name}-head.png"]
             vf += (f";[1:v]scale={W}:{H},fps={FPS},setsar=1,format=yuv420p,fade=t=in:d=0.3[v1];"
                    "[2:a]aformat=channel_layouts=stereo[a1];[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]")
             maps = ["-map", "[v]", "-map", "[a]"]
@@ -168,7 +190,7 @@ def cut(plan_path):
             maps = ["-map", "[v0]", "-map", "[a0]"]
         _run(cmd + ["-filter_complex", vf, *maps, "-c:v", "libx264", "-preset", "medium", "-crf", "21", "-c:a", "aac", "-b:a", "160k",
                     "-movflags", "+faststart", f"{name}.mp4"], cwd=folder)
-        for junk in (folder / f"{name}-card.png",):
+        for junk in (folder / f"{name}-card.png", folder / f"{name}-head.png"):
             junk.unlink(missing_ok=True)
         f = folder / f"{name}.mp4"
         out.append({"n": n, "title": m.get("title", ""), "start": start, "end": end, "file": f.relative_to(ROOT).as_posix(),

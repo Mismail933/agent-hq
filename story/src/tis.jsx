@@ -36,7 +36,7 @@ const SKIN = {light: '#F2C29B', shade: '#D99C72', cheek: '#E8846A'};
 export const SKINS = {light: SKIN, tan: {light: '#C98E5F', shade: '#A9724A', cheek: '#B86B4E'}};
 const blinkAt = (f, seed) => ((f + seed * 41) % 100) < 4;
 
-function Eyes({expr, f, seed, look = 0}) {
+function Eyes({expr, f, seed, look = 0, lookY = 0}) {
   if (expr === 'closed') return (
     <g fill="none" stroke={INK} strokeWidth={7} strokeLinecap="round"><path d="M -82 -26 Q -50 -10 -18 -26" /><path d="M 18 -26 Q 50 -10 82 -26" /></g>
   );
@@ -47,8 +47,8 @@ function Eyes({expr, f, seed, look = 0}) {
   return [-50, 50].map((ex) => (
     <g key={ex}>
       <ellipse cx={ex} cy={-26} rx={rx} ry={blink ? 3 : ry} fill="#fff" {...ST} />
-      {!blink && <circle cx={ex + look + (big ? (ex < 0 ? 6 : -6) : 2)} cy={expr === 'sad' ? -18 : -24} r={pr} fill={INK} />}
-      {!blink && !big && <circle cx={ex + look + 6} cy={-29} r={3.5} fill="#fff" />}
+      {!blink && <circle cx={ex + look + (big ? (ex < 0 ? 6 : -6) : 2)} cy={(expr === 'sad' ? -18 : -24) + lookY} r={pr} fill={INK} />}
+      {!blink && !big && <circle cx={ex + look + 6} cy={-29 + lookY} r={3.5} fill="#fff" />}
       {half && !blink && <path d={`M ${ex - rx - 2} -28 Q ${ex} ${-26 - ry - 6} ${ex + rx + 2} -28 L ${ex + rx + 2} -60 L ${ex - rx - 2} -60 Z`} fill={SKIN.light} stroke="none" />}
       {half && !blink && <path d={`M ${ex - rx} -28 Q ${ex} -40 ${ex + rx} -28`} fill="none" {...ST} />}
     </g>
@@ -151,7 +151,7 @@ function HairFront({c}) {
 }
 
 // a head, chin at y≈176, centred on (0,0). expr: calm smile worried scared shock grim closed waking
-export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair = 'normal', look = 0, seed = 1, turn = 0}) {
+export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair = 'normal', look = 0, lookY = 0, seed = 1, turn = 0}) {
   const c = CAST[who] || CAST.passenger;
   const SKIN = SKINS[c.skin] || SKINS.light;
   return (
@@ -165,7 +165,7 @@ export function Head({who = 'juliane', expr = 'calm', f = 0, talk = false, hair 
       {c.beard && <path d="M -118 30 C -110 130 -60 196 0 198 C 60 196 110 130 118 30 C 90 70 60 84 30 76 C 10 70 -10 70 -30 76 C -60 84 -90 70 -118 30 Z" fill={c.hair} {...ST} />}
       <HairFront c={c} />
       <g transform={`translate(${turn * 34} 0)`}>
-      <Eyes expr={expr} f={f} seed={seed} look={look + turn * 8} />
+      <Eyes expr={expr} f={f} seed={seed} look={look + turn * 8} lookY={lookY} />
       {c.glasses && <g fill="none" {...st(6)}><rect x={-92} y={-62} width={84} height={68} rx={22} /><rect x={8} y={-62} width={84} height={68} rx={22} /><path d="M -8 -34 L 8 -34" /></g>}
       <Brows expr={expr} color={c.brow} />
       <path d="M -4 0 C -14 30 -22 46 -8 54 C 2 58 14 56 18 50" fill="none" stroke={INK} strokeWidth={6} strokeLinecap="round" />
