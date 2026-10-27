@@ -465,26 +465,29 @@ function YBridge({f, len, line}) {
 
 // ───────────── the crossing, kept abstract: grey water and one small swimmer, nothing else ─────────────
 function YRiver({f, len, line}) {
-  const x = lin(f, 0, len, 360, 1500, (t) => t);
+  const p = P(line);
+  const T = f + (line.start || 0);   // the river's own clock: waves, bob and stroke carry on from one line to the next (Israa: the swimmer restarted)
+  const x = lin(f, 0, len, p.x0 ?? 360, p.x1 ?? 1500, (t) => t);   // a crossing that spans lines: x0 of a line = x1 of the one before
+  const sk = (SKINS.light || {}).light || '#F1C9A5';
+  const st8 = 0.12 + ((T * 0.022) % 1) * 0.88, hx = 70 + 150 * st8, hy = 52 - Math.sin(Math.PI * st8) * 96, acx = (40 + hx) / 2, acy = Math.min(52, hy) - 54;
   return (
     <g>
       <rect width={W} height={H} fill="#55616C" />
       <rect y={0} width={W} height={150} fill="#6E6460" /><g opacity={0.8}><Ruins y={150} color="#3E3836" seed={52} /></g>
       <path d="M 0 150 C 600 170 1300 140 1920 160" stroke={INK} strokeWidth={6} fill="none" />
       <path d="M 0 1000 C 500 980 1400 1010 1920 990 L 1920 1080 L 0 1080 Z" fill="#6E6460" {...st(6)} />
-      {[...Array(12)].map((_, i) => <path key={i} d={`M ${-200 + ((i * 260 + f * 0.8) % 2300)} ${150 + i * 72} q 80 -18 160 0 t 160 0`} stroke="#6E7B86" strokeWidth={6} fill="none" opacity={0.7} />)}
+      {[...Array(12)].map((_, i) => <path key={i} d={`M ${-200 + ((i * 260 + T * 0.8) % 2300)} ${150 + i * 72} q 80 -18 160 0 t 160 0`} stroke="#6E7B86" strokeWidth={6} fill="none" opacity={0.7} />)}
       {/* a swimmer who is clearly alive (Israa: the dark blob read as a floating body): his face and head bandage, an arm mid-stroke, a wake behind */}
-      <g transform={`translate(${x} ${580 + Math.sin(f * 0.12) * 5}) scale(1.45)`}>
+      <g transform={`translate(${x} ${580 + Math.sin(T * 0.12) * 5}) scale(1.45)`}>
         {[0, 1].map((s) => <path key={s} d={`M -60 ${s ? 64 : 44} L -300 ${s ? 120 : -6}`} stroke="#9AA9B6" strokeWidth={7} strokeLinecap="round" opacity={0.8} />)}
-        {/* the crawl: the arm comes out behind his head, arcs over the water and reaches forward, ahead of the face (never over it) */}
-        {(() => { const t = 0.12 + ((f * 0.022) % 1) * 0.88, hx = 70 + 150 * t, hy = 52 - Math.sin(Math.PI * t) * 96, cx = (40 + hx) / 2, cy = Math.min(52, hy) - 54, sk = (SKINS.light || {}).light || '#F1C9A5';
-          return <g><path d={`M 40 54 Q ${cx} ${cy} ${hx} ${hy}`} stroke={INK} strokeWidth={30} fill="none" strokeLinecap="round" />
-            <path d={`M 40 54 Q ${cx} ${cy} ${hx} ${hy}`} stroke="#8C7E58" strokeWidth={20} fill="none" strokeLinecap="round" />
-            <circle cx={hx + 4} cy={hy + 2} r={15} fill={sk} {...st(4)} />
-            {hy > 40 && <ellipse cx={hx + 4} cy={56} rx={30} ry={8} fill="none" stroke="#9AA9B6" strokeWidth={5} />}</g>; })()}
-        <g transform="scale(0.36)"><Head who="yamaguchi" expr="determined" f={f} seed={3} turn={0.5} /><BandHead turn={0.5} /></g>
+        <g transform="scale(0.36)"><Head who="yamaguchi" expr="determined" f={T} seed={3} turn={0.5} /><BandHead turn={0.5} /></g>
         <rect x={-90} y={54} width={180} height={70} fill="#55616C" />
         <ellipse cx={0} cy={54} rx={100} ry={16} fill="none" stroke="#9AA9B6" strokeWidth={6} />
+        {/* the crawl, drawn in front of the head (Israa: behind it the arm read as a hook): out of the water at his shoulder, over, and forward */}
+        <path d={`M 40 54 Q ${acx} ${acy} ${hx} ${hy}`} stroke={INK} strokeWidth={30} fill="none" strokeLinecap="round" />
+        <path d={`M 40 54 Q ${acx} ${acy} ${hx} ${hy}`} stroke="#8C7E58" strokeWidth={20} fill="none" strokeLinecap="round" />
+        <circle cx={hx + 4} cy={hy + 2} r={15} fill={sk} {...st(4)} />
+        {hy > 40 && <ellipse cx={hx + 4} cy={56} rx={30} ry={8} fill="none" stroke="#9AA9B6" strokeWidth={5} />}
       </g>
       <rect width={W} height={H} fill="#1B2229" opacity={0.25} />
     </g>
@@ -508,7 +511,7 @@ function YPeople({f, len, line}) {
         <g key={i} transform={`translate(${W / 2 + (i - (n - 1) / 2) * gw} ${600}) scale(${pz(f, Math.min(a, 6) + i * 3) * (gw / 260)})`}>
           <Person c={grey ? '#5B6472' : '#F5F1E6'} />
           {p.mark === 'cross' && f > b + i * 4 && <g transform="translate(60 -40)"><circle r={44} fill="#fff" {...st(5)} /><path d="M -10 -28 L 10 -28 L 10 -10 L 28 -10 L 28 10 L 10 10 L 10 28 L -10 28 L -10 10 L -28 10 L -28 -10 L -10 -10 Z" fill="#E3232C" /></g>}</g>); })}
-      {p.value && <g transform={`translate(${W / 2} 230) scale(${pz(f, a)})`}><Txt x={0} y={30} text={(String(p.value).match(/^[^0-9]*/) || [''])[0] + Math.round(lin(f, a, a + 36, 0, v)).toLocaleString('en-US')} size={120} fill="#FFE11A" /></g>}
+      {p.value && <g transform={`translate(${W / 2} 160) scale(${pz(f, a)})`}>{/* up, clear of the title tag under it (Israa: they touched) */}<Txt x={0} y={30} text={(String(p.value).match(/^[^0-9]*/) || [''])[0] + Math.round(lin(f, a, a + 36, 0, v)).toLocaleString('en-US')} size={120} fill="#FFE11A" /></g>}
       {p.label && <g transform={`translate(${W / 2} 830) scale(${pz(f, b)})`}><Txt x={0} y={0} text={p.label} size={70} /></g>}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>

@@ -196,6 +196,24 @@ function course(pts) {
     return [dense[lo][0] + (dense[hi][0] - dense[lo][0]) * t, dense[lo][1] + (dense[hi][1] - dense[lo][1]) * t];
   };
 }
+// a smooth value through keys [[frame, value], ...] (monotone cubic: no overshoot, no stop at each key; flat at both ends)
+function smoothKeys(keys) {
+  const n = keys.length, x = keys.map((k) => k[0]), y = keys.map((k) => k[1]);
+  const d = x.slice(1).map((xi, i) => (y[i + 1] - y[i]) / (xi - x[i]));
+  const m = y.map((_, i) => {
+    if (i === 0 || i === n - 1 || d[i - 1] * d[i] <= 0) return 0;
+    const h0 = x[i] - x[i - 1], h1 = x[i + 1] - x[i], w1 = 2 * h1 + h0, w2 = h1 + 2 * h0;
+    return (w1 + w2) / (w1 / d[i - 1] + w2 / d[i]);
+  });
+  return (t) => {
+    if (t <= x[0]) return y[0];
+    if (t >= x[n - 1]) return y[n - 1];
+    let i = 0;
+    while (t > x[i + 1]) i++;
+    const h = x[i + 1] - x[i], s = (t - x[i]) / h, s2 = s * s, s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * y[i] + (s3 - 2 * s2 + s) * h * m[i] + (-2 * s3 + 3 * s2) * y[i + 1] + (s3 - s2) * h * m[i + 1];
+  };
+}
 // moved by hand in n hops: each hop eases, the piece lifts in an arc and is set down
 const hops = (u, n) => {
   const v = Math.max(0, Math.min(1, u)) * n, i = Math.min(n - 1, Math.floor(v)), t = v - i;
@@ -217,7 +235,7 @@ const Wake = ({ships, op = 1}) => ships.map((sh) => sh.wake.map((w) => (
 
 // one piece on the board: (x, y) in board pixels; it stands up (counter-tilt and counter-turn), keeps its screen size, casts a soft
 // shadow; lift = held above the board (px), fall = toppled (0..1)
-const Piece = ({x, y, s = 1, w, h, rise = 1, fall = 0, op = 1, turn = 0, lift = 0, children}) => (
+const Piece = ({x, y, s = 1, w, h, rise = 1, fall = 0, op = 1, turn = 0, lift = 0, tilt = TILT, children}) => (
   <>
     <div style={{position: 'absolute', left: x, top: y, width: 0, height: 0}}>
       <div style={{position: 'absolute', left: -w * s * 0.3, top: -h * s * 0.03, width: w * s * 0.9, height: w * s * 0.22, borderRadius: '50%',
@@ -225,7 +243,7 @@ const Piece = ({x, y, s = 1, w, h, rise = 1, fall = 0, op = 1, turn = 0, lift = 
                    transform: `rotateZ(${-turn}deg) translate(-20%, -50%) skewX(-30deg) scale(${1 + lift / 120})`}} />
     </div>
     <div style={{position: 'absolute', left: x - (w * s) / 2, top: y - h * s, width: w * s, height: h * s, transformOrigin: '50% 100%',
-                 transform: `rotateZ(${-turn}deg) rotateX(${-TILT}deg) translateY(${-lift}px) rotateZ(${fall * 84}deg) scale(${rise})`, opacity: op}}>
+                 transform: `rotateZ(${-turn}deg) rotateX(${-tilt}deg) translateY(${-lift}px) rotateZ(${fall * 84}deg) scale(${rise})`, opacity: op}}>
       <div style={{width: w, height: h, transform: `scale(${s})`, transformOrigin: '0 0'}}>{children}</div>
     </div>
   </>
@@ -271,10 +289,10 @@ const Board = ({path, children}) => (
     {children}
   </svg>
 );
-const Table = ({children, turn, lit, overlay}) => (
+const Table = ({children, turn, lit, overlay, tilt = TILT}) => (
   <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 30%, #2A2420 0%, #0B0907 75%)'}}>
     <div style={{position: 'absolute', left: (W - PW) / 2, top: (H - PH) / 2, width: PW, height: PH, transformStyle: 'preserve-3d', opacity: lit,
-                 transform: `perspective(1900px) rotateX(${TILT}deg) rotateZ(${turn}deg)`}}>
+                 transform: `perspective(1900px) rotateX(${tilt}deg) rotateZ(${turn}deg)`}}>
       <div style={{position: 'absolute', left: -140, top: -140, width: PW + 280, height: PH + 280, borderRadius: 18,
                    background: 'linear-gradient(135deg, #5A3A22, #2E1C10 60%, #1A0F08)', boxShadow: '0 40px 120px rgba(0,0,0,0.8)'}} />
       {children}
@@ -357,62 +375,86 @@ function PaintingCoda({f, len = 200}) {
 }
 
 // ───────── Quebec, 1608: Champlain sails from Honfleur; the Habitation goes up; trade with the First Nations; New France spreads
+// Bassel (10-27 18:48): the camera stays on the ships the whole way, slower, in by the water, and the land seen more from above. The
+// route is checked against the board's own land (scratchpad route_check.py): out of the Seine and round the Cotentin and Ushant, south
+// of Newfoundland, the Cabot Strait, the middle of the estuary, east of Ile aux Coudres, north of Ile d'Orleans, to the narrows. The
+// lead ship keeps an even pace on screen (brisk over the open ocean, slower in the Gulf and the river; scratchpad sim1608.py), the camera
+// zooms in as it goes and the table flattens; once they anchor the camera goes down to the town (the old timing from there on: g).
+const ROUTE_1608 = [[0.23, 49.45], [-0.5, 49.62], [-1.6, 49.92], [-3.2, 49.75], [-5.6, 48.8], [-12, 48.1], [-25, 47.2], [-38, 46.5], [-48, 46.0],
+  [-53.3, 46.15], [-56.6, 46.45], [-58.8, 46.95], [-59.9, 47.3], [-61.6, 48.3], [-64.0, 49.15], [-66.5, 49.3], [-68.3, 48.75], [-69.0, 48.42],
+  [-69.6, 48.0], [-69.75, 47.8], [-70.03, 47.6], [-70.2, 47.39], [-70.4, 47.3], [-70.52, 47.15], [-70.66, 47.05], [-70.8, 47.035], [-70.87, 47.038],
+  [-70.957, 47.0], [-71.043, 46.943], [-71.12, 46.896], [-71.18, 46.845], [-71.205, 46.828]];
+const SAIL_1608 = smoothKeys([[16, 0], [20, 0.00001], [30, 0.00151], [40, 0.00888], [50, 0.02205], [60, 0.03755], [70, 0.05475], [80, 0.07357],
+  [90, 0.09553], [100, 0.1305], [110, 0.17931], [120, 0.24407], [130, 0.33178], [140, 0.4411], [150, 0.54337], [160, 0.63806], [170, 0.72496],
+  [180, 0.78259], [190, 0.81649], [200, 0.84035], [210, 0.85886], [220, 0.87437], [230, 0.88799], [240, 0.9003], [250, 0.91163], [260, 0.92199],
+  [270, 0.9303], [280, 0.9372], [290, 0.94322], [300, 0.94863], [310, 0.95359], [320, 0.95819], [330, 0.96249], [340, 0.96654], [350, 0.97013],
+  [360, 0.9731], [370, 0.9757], [380, 0.97806], [390, 0.98025], [400, 0.98231], [410, 0.98425], [420, 0.98611], [430, 0.98788], [440, 0.98958],
+  [450, 0.9912], [460, 0.99268], [470, 0.99402], [480, 0.99527], [490, 0.99647], [500, 0.99761], [510, 0.99849], [520, 0.99905], [530, 0.9994],
+  [540, 0.99962], [560, 1]]);
+const ZOOM_1608 = smoothKeys([[0, 5.5], [0.0854, 4.0], [0.35, 1.6], [0.7262, 2.2], [0.818, 5.0], [0.918, 9.0], [0.967, 18.0], [0.991, 32.0], [1, 40.0]]
+  .map(([u, z]) => [u, Math.log(z)]));
+const ANCHOR_1608 = 550, D1608 = 374;   // the camera leaves the ships at 550; it is down at the town at 610 = the old frame 236
 function Quebec1608({f}) {
+  const g = f - D1608;
   const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[-74, 40], [3, 54]]}).scale();
   const QC = [-71.205, 46.818];
-  const route = [[0.23, 49.45], [-6, 48.6], [-20, 47.6], [-35, 46.9], [-48, 46.6], [-56, 47.2], [-61.5, 48.6], [-66.5, 49.3], [-69.6, 48.0], [-70.6, 47.15],
-                 [-71.0, 46.9], [-71.15, 46.83], [-71.19, 46.808]];
-  const along = course(route);
-  const trips = [0, 1].map((i) => (fr) => interpolate(fr, [16 + i * 18, 214 + i * 6], [0, 1], {...clamp, easing: Easing.inOut(Easing.sin)}) * (1 - i * 0.0006));
-  // the camera: over the lead ship's shoulder (a lag), then down to the river at Quebec; at the end it rises to show New France
+  const along = course(ROUTE_1608);
+  const trips = [0, 1].map((i) => (fr) => SAIL_1608(fr - i * 14) * (1 - i * 0.0004));
+  const zf = (fr) => Math.exp(ZOOM_1608(trips[0](fr)));
+  // the camera: on the lead ship (a short lag, so it sits a little ahead of the middle and never jerks), then down to the town; at the
+  // end it rises to show New France
   const lagged = (fr) => {
     let lo = 0, la = 0, w = 0;
-    for (let k = 0; k <= 36; k += 4) { const q = along(trips[0](fr - 8 - k)), wk = 1 / (1 + k / 10); lo += q[0] * wk; la += q[1] * wk; w += wk; }
-    return [lo / w, la / w - 0.6];
+    for (let k = 2; k <= 14; k += 2) { const q = along(trips[0](fr - k)), wk = 1 / (1 + k / 6); lo += q[0] * wk; la += q[1] * wk; w += wk; }
+    return [lo / w, la / w];
   };
-  const followZ = (fr) => lerp(fr, 0, 150, 1.1, 2.2);
-  const cam = f < 150 ? [0, lagged(f), followZ(f)]
-    : cameraAt(f, [[150, lagged(150), followZ(150)], [236, [QC[0] + 0.002, QC[1] + 0.004], 380], [372, [QC[0] + 0.004, QC[1] + 0.006], 400], [446, NF_VIEW[0], NF_VIEW[1]], [580, [NF_VIEW[0][0] - 0.6, NF_VIEW[0][1]], NF_VIEW[1] * 0.97]]);
-  const turn = lerp(f, 150, 236, 0, -24) + lerp(f, 372, 446, 0, 24);
+  const cam = f < ANCHOR_1608 ? [0, lagged(f), zf(f)]
+    : cameraAt(f, [[ANCHOR_1608, lagged(ANCHOR_1608), zf(ANCHOR_1608)], [236 + D1608, [QC[0] - 0.008, QC[1] + 0.012], 380], [372 + D1608, [QC[0] - 0.006, QC[1] + 0.014], 400],
+                   [446 + D1608, NF_VIEW[0], NF_VIEW[1]], [580 + D1608, [NF_VIEW[0][0] - 0.6, NF_VIEW[0][1]], NF_VIEW[1] * 0.97]]);
+  const turn = lerp(f, 330, 236 + D1608, 0, -24) + lerp(g, 372, 446, 0, 24);
+  const tilt = lerp(f, 300, 236 + D1608, 46, 16) + lerp(g, 372, 446, 0, 10);   // Bassel: the land seen from above, not at an angle
   const z = cam[2];
   const proj = geoMercator().scale(base * z).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
   const path = geoPath(proj);
   const P = (lon, lat) => proj([lon, lat]);
-  const ships = [0, 1].map((i) => sailing({along: (u) => { const q = along(u); return [q[0] + i * 0.035 * Math.pow(u, 30), q[1] + i * 0.012 * Math.pow(u, 30)]; },
-                                           trip: trips[i], f, P, turn, i}));
-  const zoomed = lerp(f, 200, 236, 0, 1) * (1 - lerp(f, 380, 420, 0, 1));   // the close pieces show only near the town
+  const ships = [0, 1].map((i) => sailing({along, trip: trips[i], f, P, turn, i}));
+  const zoomed = lerp(g, 200, 236, 0, 1) * (1 - lerp(g, 380, 420, 0, 1));   // the close pieces show only near the town
   // ashore: settlers step off and are moved up the bank in hops, staggered; then they work
-  const spots = [[-71.214, 46.826], [-71.198, 46.829], [-71.222, 46.836], [-71.19, 46.839]];
+  // all on the north shore (the board's own coast: the bank runs -71.216 at 46.82 to -71.196 at 46.85); they used to stand in the river
+  const spots = [[-71.228, 46.829], [-71.219, 46.834], [-71.234, 46.84], [-71.214, 46.843]];
   const settlers = spots.map((sp, k) => {
-    const a = 232 + k * 9, mv = hops(lerp(f, a, a + 34, 0, 1, (t) => t), 2);
-    const from = [-71.19 + k * 0.006, 46.81];
-    return {x: P(from[0] + (sp[0] - from[0]) * mv.u, from[1] + (sp[1] - from[1]) * mv.u), lift: mv.lift * 30, rise: lerp(f, a - 6, a + 4, 0, 1, Easing.out(Easing.back(1.4))), k};
+    const a = 232 + k * 9, mv = hops(lerp(g, a, a + 34, 0, 1, (t) => t), 2);
+    const from = [-71.206 + k * 0.003, 46.828 + k * 0.002];   // off the anchored ships
+    return {x: P(from[0] + (sp[0] - from[0]) * mv.u, from[1] + (sp[1] - from[1]) * mv.u), lift: mv.lift * 30, rise: lerp(g, a - 6, a + 4, 0, 1, Easing.out(Easing.back(1.4))), k};
   });
-  const houses = [[-71.207, 46.833, 0], [-71.2, 46.836, 1], [-71.213, 46.84, 2]].map(([lon, lat, i]) => ({x: P(lon, lat), build: lerp(f, 268 + i * 16, 300 + i * 16, 0, 1, Easing.out(Easing.quad)), i}));
+  const houses = [[-71.224, 46.835, 0], [-71.217, 46.839, 1], [-71.229, 46.844, 2]].map(([lon, lat, i]) => ({x: P(lon, lat), build: lerp(g, 268 + i * 16, 300 + i * 16, 0, 1, Easing.out(Easing.quad)), i}));
   // the First Nations traders come down the river by canoe, and step ashore to trade furs
-  const canoeU = lerp(f, 300, 352, 0, 1, Easing.out(Easing.cubic));
-  const canoePath = course([[-71.1, 46.9], [-71.15, 46.858], [-71.183, 46.836]]);
+  const canoeU = lerp(g, 300, 352, 0, 1, Easing.out(Easing.cubic));
+  const canoePath = course([[-71.12, 46.893], [-71.17, 46.86], [-71.198, 46.842]]);
   const cn = canoePath(canoeU), cnPrev = canoePath(Math.max(0, canoeU - 0.05));
   const traders = [0, 1].map((k) => {
-    const mv = hops(lerp(f, 352 + k * 8, 372 + k * 8, 0, 1, (t) => t), 1);
-    const a = [cn[0] - 0.004 + k * 0.006, cn[1] + 0.004], b = [-71.186 + k * 0.007, 46.83 + k * 0.004];
-    return {x: P(a[0] + (b[0] - a[0]) * mv.u, a[1] + (b[1] - a[1]) * mv.u), lift: mv.lift * 26, show: f >= 352 + k * 8, k};
+    const mv = hops(lerp(g, 352 + k * 8, 372 + k * 8, 0, 1, (t) => t), 1);
+    const a = [cn[0] - 0.004 + k * 0.006, cn[1] + 0.004], b = [-71.212 + k * 0.004, 46.847 + k * 0.003];
+    return {x: P(a[0] + (b[0] - a[0]) * mv.u, a[1] + (b[1] - a[1]) * mv.u), lift: mv.lift * 26, show: g >= 352 + k * 8, k};
   });
   // New France: the land France claimed, spreading out from Quebec along the river (by the 1700s), outlined
-  const spread = lerp(f, 420, 540, 0, 1, Easing.inOut(Easing.quad));
+  const spread = lerp(g, 420, 540, 0, 1, Easing.inOut(Easing.quad));
   const [qx, qy] = P(...QC);
   const nf = ringFeature(NEW_FRANCE);
   const field = (lon, lat, w, h, at) => {
-    const g = lerp(f, at, at + 26, 0, 1);
+    const gr = lerp(g, at, at + 26, 0, 1);
     const [x0, y0] = P(lon, lat), [x1, y1] = P(lon + w, lat - h);
-    return <rect x={x0} y={y0} width={(x1 - x0) * g} height={y1 - y0} fill="#7A8A4A" opacity={0.55 * zoomed} stroke="#B8C47A" strokeWidth={1} strokeOpacity={0.6 * zoomed} />;
+    return <rect x={x0} y={y0} width={(x1 - x0) * gr} height={y1 - y0} fill="#7A8A4A" opacity={0.55 * zoomed} stroke="#B8C47A" strokeWidth={1} strokeOpacity={0.6 * zoomed} />;
   };
+  const titles = [['1608: Champlain sails from Honfleur', 10, true, 220 + D1608], ['Into the Gulf of St. Lawrence', 186, false, 300], ['Up the St. Lawrence River', 312, false, 214 + D1608],
+                  ['Quebec, on the St. Lawrence, 3 July 1608', 232 + D1608, true, 440 + D1608], ['Trade with the First Nations', 330 + D1608, false, 396 + D1608],
+                  ['New France grows along the river', 404 + D1608]];
   return (
-    <Table turn={turn} lit={lerp(f, 0, 24, 0, 1)} overlay={<Title f={f} items={[['1608: Champlain sails from Honfleur', 10, true, 220], ['Quebec, on the St. Lawrence, 3 July 1608', 232, true, 440], ['Trade with the First Nations', 330, false, 396], ['New France grows along the river', 404]]} />}>
+    <Table turn={turn} tilt={tilt} lit={lerp(f, 0, 24, 0, 1)} overlay={<Title f={f} items={titles} />}>
       <Board path={path}>
-        {field(-71.232, 46.848, 0.012, 0.007, 330)}{field(-71.218, 46.852, 0.01, 0.006, 340)}{field(-71.196, 46.85, 0.012, 0.006, 350)}
-        <Wake ships={ships} op={1 - lerp(f, 214, 236, 0, 1)} />
-        {f > 300 && f < 380 && <Wake ships={[{i: 9, speed: (1 - canoeU) * 3, wake: [...Array(8)].map((_, k) => ({x: P(...canoePath(Math.max(0, canoeU - (k + 1) * 0.03)))[0], y: P(...canoePath(Math.max(0, canoeU - (k + 1) * 0.03)))[1], k}))}]} />}
+        {field(-71.25, 46.85, 0.012, 0.007, 330)}{field(-71.236, 46.855, 0.01, 0.006, 340)}{field(-71.222, 46.858, 0.012, 0.006, 350)}
+        <Wake ships={ships} op={1 - lerp(g, 214, 236, 0, 1)} />
+        {g > 300 && g < 380 && <Wake ships={[{i: 9, speed: (1 - canoeU) * 3, wake: [...Array(8)].map((_, k) => ({x: P(...canoePath(Math.max(0, canoeU - (k + 1) * 0.03)))[0], y: P(...canoePath(Math.max(0, canoeU - (k + 1) * 0.03)))[1], k}))}]} />}
         {spread > 0 && (
           <g clipPath="url(#landclip)">
             <defs>
@@ -430,23 +472,23 @@ function Quebec1608({f}) {
         {zoomed > 0.01 && (() => { const [px, py] = P(-71.228, 46.824);   // where this is (Israa): a pin by the settlement, its name clear of the pieces
           return <g opacity={zoomed}><circle cx={px} cy={py} r={12} fill="#FF6A3D" stroke="#F2F7FF" strokeWidth={3} />
             <text x={px - 26} y={py + 10} textAnchor="end" style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 44, letterSpacing: 4, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 9}}>QUÉBEC</text></g>; })()}
-        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1]} textAnchor="middle" opacity={lerp(f, 470, 490, 0, 1)}
+        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1]} textAnchor="middle" opacity={lerp(g, 470, 490, 0, 1)}
                                  style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 64, letterSpacing: 10, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 10}}>NEW FRANCE</text>}
       </Board>
       {/* pieces, back to front */}
-      {houses.map((h) => <Piece key={`h${h.i}`} {...xy(h.x)} turn={turn} s={0.95} w={150} h={190} op={zoomed} rise={h.build > 0 ? 1 : 0}><House build={h.build} f={f + h.i * 13} /></Piece>)}
-      {f >= 316 && <Piece {...xy(P(-71.204, 46.842))} turn={turn} s={0.9} w={80} h={200} op={zoomed} rise={lerp(f, 316, 326, 0, 1)}><Pole flag={<Bourbon />} f={f} raise={lerp(f, 320, 350, 0, 1, Easing.out(Easing.cubic))} /></Piece>}
-      {settlers.map((st) => f >= 226 + st.k * 9 && (
-        <Piece key={`s${st.k}`} {...xy(st.x)} turn={turn} s={0.82} w={120} h={200} op={zoomed} rise={st.rise} lift={st.lift}>
-          <Settler k={st.k} tool={st.k % 2 ? 'bundle' : 'axe'} swing={st.k % 2 ? 0 : Math.max(0, Math.sin((f - 280 - st.k * 7) / 5)) * (f > 280 ? 1 : 0)} />
+      {houses.map((h) => <Piece key={`h${h.i}`} {...xy(h.x)} turn={turn} tilt={tilt} s={0.95} w={150} h={190} op={zoomed} rise={h.build > 0 ? 1 : 0}><House build={h.build} f={g + h.i * 13} /></Piece>)}
+      {g >= 316 && <Piece {...xy(P(-71.221, 46.846))} turn={turn} tilt={tilt} s={0.9} w={80} h={200} op={zoomed} rise={lerp(g, 316, 326, 0, 1)}><Pole flag={<Bourbon />} f={f} raise={lerp(g, 320, 350, 0, 1, Easing.out(Easing.cubic))} /></Piece>}
+      {settlers.map((st) => g >= 226 + st.k * 9 && (
+        <Piece key={`s${st.k}`} {...xy(st.x)} turn={turn} tilt={tilt} s={0.82} w={120} h={200} op={zoomed} rise={st.rise} lift={st.lift}>
+          <Settler k={st.k} tool={st.k % 2 ? 'bundle' : 'axe'} swing={st.k % 2 ? 0 : Math.max(0, Math.sin((g - 280 - st.k * 7) / 5)) * (g > 280 ? 1 : 0)} />
         </Piece>))}
       {traders.map((t) => t.show && (
-        <Piece key={`t${t.k}`} {...xy(t.x)} turn={turn} s={0.82} w={120} h={200} op={zoomed} lift={t.lift} rise={lerp(f, 352 + t.k * 8, 360 + t.k * 8, 0, 1)}><Trader k={t.k} /></Piece>))}
-      {f >= 300 && f < 400 && <Piece {...xy(P(...cn))} turn={turn} s={0.9} w={200} h={110} op={zoomed * lerp(f, 300, 312, 0, 1)} lift={Math.sin(f / 9) * 2}>
+        <Piece key={`t${t.k}`} {...xy(t.x)} turn={turn} tilt={tilt} s={0.82} w={120} h={200} op={zoomed} lift={t.lift} rise={lerp(g, 352 + t.k * 8, 360 + t.k * 8, 0, 1)}><Trader k={t.k} /></Piece>))}
+      {g >= 300 && g < 400 && <Piece {...xy(P(...cn))} turn={turn} tilt={tilt} s={0.9} w={200} h={110} op={zoomed * lerp(g, 300, 312, 0, 1)} lift={Math.sin(f / 9) * 2}>
         <Canoe f={f} face={P(...cn)[0] >= P(...cnPrev)[0] ? 1 : -1} /></Piece>}
       {ships.map((sh) => (
-        <Piece key={`sh${sh.i}`} x={sh.x} y={sh.y} turn={turn} s={lerp(f, 200, 236, 0.62, 0.9)} w={170} h={210} op={lerp(f, sh.i * 10, 18 + sh.i * 10, 0, 1) * (1 - lerp(f, 384, 410, 0, 1))} lift={Math.sin((f + sh.i * 11) / 13) * 2}>
-          <Ship team="fr" face={sh.face} sail={f > 214 ? lerp(f, 214, 240, sh.sail, 0) : sh.sail} roll={Math.sin((f + sh.i * 17) / 16) * (1.2 + sh.speed * 0.5)} />
+        <Piece key={`sh${sh.i}`} x={sh.x} y={sh.y} turn={turn} tilt={tilt} s={lerp(g, 200, 236, 0.62, 0.9)} w={170} h={210} op={lerp(f, sh.i * 10, 18 + sh.i * 10, 0, 1) * (1 - lerp(g, 384, 410, 0, 1))} lift={Math.sin((f + sh.i * 11) / 13) * 2}>
+          <Ship team="fr" face={sh.face} sail={g > 214 ? lerp(g, 214, 240, sh.sail, 0) : sh.sail} roll={Math.sin((f + sh.i * 17) / 16) * (1.2 + sh.speed * 0.5)} />
         </Piece>))}
     </Table>
   );
@@ -793,14 +835,99 @@ function Sale1803({f}) {
   );
 }
 
+// ───────── Part 3. New Caledonia, 24 September 1853: a French ship comes in to the north-east coast and the tricolour is raised ashore;
+// the islands were already home to the Kanak, so their village stands there first (a round 'grande case' with its carved spire) and
+// its people watch from it. No fighting. At the end the camera rises over Grande Terre, outlined.
+const Case = ({big = false}) => (   // a Kanak round house: a low round wall, a tall conical thatched roof, a carved spire on its top
+  <svg width={130} height={210} viewBox="0 0 130 210" style={{overflow: 'visible'}}>
+    <defs><linearGradient id="thatch" x1="0" x2="1"><stop offset="0" stopColor="#C8A86A" /><stop offset="0.55" stopColor="#9A7A44" /><stop offset="1" stopColor="#5A4422" /></linearGradient>
+      <linearGradient id="cwall" x1="0" x2="1"><stop offset="0" stopColor="#A88A60" /><stop offset="1" stopColor="#5E4A30" /></linearGradient></defs>
+    <path d="M 8 176 L 8 184 C 8 196 122 196 122 184 L 122 176 Z" fill="#5A5246" /><ellipse cx={65} cy={176} rx={57} ry={10} fill="#8A8270" />
+    <path d="M 26 176 L 26 146 C 40 140 90 140 104 146 L 104 176 C 90 182 40 182 26 176 Z" fill="url(#cwall)" stroke="#3A2A18" />
+    <rect x={58} y={152} width={14} height={26} rx={2} fill="#21160C" />
+    <path d={`M 18 148 L 65 ${big ? 36 : 56} L 112 148 C 90 156 40 156 18 148 Z`} fill="url(#thatch)" stroke="#4A3618" strokeWidth={1} />
+    {[0.25, 0.5, 0.75].map((k) => <path key={k} d={`M ${18 + 94 * k - 47 * k * 0} ${148 - 8 * Math.sin(Math.PI * k)} L 65 ${big ? 40 : 60}`} stroke="#6E5430" strokeWidth={0.8} opacity={0.5} />)}
+    <rect x={62} y={big ? 10 : 30} width={6} height={big ? 30 : 30} fill="#4A3220" stroke="#2A1A0E" />
+    <ellipse cx={65} cy={big ? 12 : 32} rx={8} ry={5} fill="#5A3E26" stroke="#2A1A0E" />
+  </svg>
+);
+const Villager = ({k = 0}) => {   // a Kanak man or woman of the 1850s, drawn plainly: a wrap in earth tones, dark hair
+  const cloth = [['#8A5A3A', '#4A2E1C', '#B08460'], ['#6E6A4A', '#3A3826', '#9A9670'], ['#7A4A3A', '#40261C', '#A8705E']][k % 3];
+  return (
+    <svg width={120} height={200} viewBox="0 0 120 200" style={{overflow: 'visible'}}>
+      <defs><Lacquer id={`vl${k}`} c={cloth[0]} dark={cloth[1]} light={cloth[2]} />
+        <Lacquer id={`vs${k}`} c="#6A4430" dark="#3A2216" light="#946650" /></defs>
+      <Base team="ally" />
+      <path d="M 40 152 C 40 128 44 100 48 82 L 72 82 C 76 100 80 128 80 152 Z" fill={`url(#vs${k})`} stroke="#3A2216" strokeWidth={1.2} />
+      <path d="M 40 152 C 40 136 42 122 44 112 L 76 112 C 78 122 80 136 80 152 Z" fill={`url(#vl${k})`} stroke={cloth[1]} strokeWidth={1.2} />
+      <circle cx={60} cy={64} r={15} fill={`url(#vs${k})`} stroke="#2A160C" strokeWidth={1} />
+      <path d={k % 2 ? 'M 44 64 C 40 40 80 40 76 64 C 74 50 46 50 44 64 Z' : 'M 45 60 C 44 44 76 44 75 60 C 70 52 50 52 45 60 Z'} fill="#120C08" />
+      <ellipse cx={48} cy={62} rx={5} ry={12} fill="#FFFFFF" opacity={0.12} />
+    </svg>
+  );
+};
+function NewCal1853({f}) {
+  const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[163.6, -22.8], [168.2, -19.6]]}).scale();
+  const LAND = [164.47, -20.31];   // the north-east coast
+  const route = [[166.2, -18.9], [165.6, -19.45], [165.0, -19.92], [164.66, -20.17], [164.5, -20.282]];
+  const along = course(route);
+  const trip = (fr) => interpolate(fr, [10, 170], [0, 1], {...clamp, easing: Easing.inOut(Easing.sin)});
+  const lagged = (fr) => {
+    let lo = 0, la = 0, w = 0;
+    for (let k = 0; k <= 36; k += 4) { const q = along(trip(fr - 8 - k)), wk = 1 / (1 + k / 10); lo += q[0] * wk; la += q[1] * wk; w += wk; }
+    return [lo / w, la / w - 0.05];
+  };
+  const followZ = (fr) => lerp(fr, 0, 150, 2.2, 6);
+  const cam = f < 150 ? cameraAt(f, [[0, [165.4, -19.7], 0.95], [40, [165.4, -19.7], 1.0], [150, lagged(150), followZ(150)]])
+    : cameraAt(f, [[150, lagged(150), followZ(150)], [196, [LAND[0] + 0.01, LAND[1] - 0.004], 34], [262, [LAND[0] + 0.012, LAND[1] - 0.006], 36], [316, [165.6, -21.2], 1.0], [360, [165.6, -21.2], 0.98]]);
+  const turn = lerp(f, 150, 196, 0, -14) + lerp(f, 262, 316, 0, 14);
+  const proj = geoMercator().scale(base * cam[2]).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
+  const path = geoPath(proj);
+  const P = (lon, lat) => proj([lon, lat]);
+  const ship = sailing({along, trip, f, P, turn, i: 0});
+  const close = lerp(f, 176, 198, 0, 1) * (1 - lerp(f, 266, 292, 0, 1));
+  const rise = (at) => lerp(f, at, at + 14, 0, 1, Easing.out(Easing.cubic));
+  // the village is there before anyone lands
+  const huts = [[LAND[0] + 0.022, LAND[1] - 0.012, true], [LAND[0] + 0.034, LAND[1] - 0.006, false], [LAND[0] + 0.03, LAND[1] - 0.02, false]].map(([lo, la, big], i) => ({x: P(lo, la), big, i}));
+  const people = [[LAND[0] + 0.016, LAND[1] - 0.004], [LAND[0] + 0.02, LAND[1] + 0.001], [LAND[0] + 0.026, LAND[1] - 0.001]].map((ll, k) => ({x: P(...ll), k}));
+  // two sailors come ashore in hops, the flag goes up between them
+  const crew = [0, 1].map((k) => {
+    const a = 206 + k * 10, mv = hops(lerp(f, a, a + 30, 0, 1, (t) => t), 2);
+    const from = [LAND[0] - 0.006 + k * 0.004, LAND[1] + 0.01], to = [LAND[0] - 0.004 + k * 0.008, LAND[1] - 0.003];
+    return {x: P(from[0] + (to[0] - from[0]) * mv.u, from[1] + (to[1] - from[1]) * mv.u), lift: mv.lift * 26, show: f >= a - 4, k};
+  });
+  const flagAt = P(LAND[0], LAND[1] - 0.006);
+  const ncl = geo.detail.features.find((ft) => ft.properties.a3 === 'NCL') || geo.world.features.find((ft) => ft.properties.a3 === 'NCL');
+  const outline = lerp(f, 290, 316, 0, 1);
+  const stand = [
+    ...huts.map((h) => ({y: h.x[1], el: <Piece key={`c${h.i}`} {...xy(h.x)} turn={turn} s={1.05} w={130} h={210} op={close} rise={rise(178 + h.i * 4)}><Case big={h.big} /></Piece>})),
+    ...people.map((p) => ({y: p.x[1], el: <Piece key={`v${p.k}`} {...xy(p.x)} turn={turn} s={0.9} w={120} h={200} op={close} rise={rise(184 + p.k * 5)}><Villager k={p.k} /></Piece>})),
+    ...crew.filter((c) => c.show).map((c) => ({y: c.x[1], el: <Piece key={`cr${c.k}`} {...xy(c.x)} turn={turn} s={0.9} w={120} h={200} op={close} lift={c.lift} rise={rise(202 + c.k * 10)}><Settler k={c.k + 1} tool="bundle" /></Piece>})),
+    ...(f >= 226 ? [{y: flagAt[1], el: <Piece key="flag" {...xy(flagAt)} turn={turn} s={1.1} w={80} h={200} op={close} rise={rise(226)}><Pole flag={<Tricolore />} f={f} raise={lerp(f, 232, 262, 0, 1, Easing.out(Easing.cubic))} /></Piece>}] : []),
+  ].sort((a, b) => a.y - b.y);
+  return (
+    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<Title f={f} items={[['New Caledonia, 24 September 1853', 8, true], ['The home of the Kanak people', 186, false, 300], ['France takes possession', 236, false]]} />}>
+      <Board path={path}>
+        {ncl && <g opacity={outline}><path d={path(ncl)} fill="#3FB8DE" fillOpacity={0.42} /><path d={path(ncl)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeLinejoin="round" /></g>}
+        {f >= 300 && <BoardLabel P={P} ll={[165.9, -21.0]} text="NEW CALEDONIA" size={60} op={lerp(f, 304, 322, 0, 1)} />}
+        <Wake ships={[ship]} op={1 - lerp(f, 176, 200, 0, 1)} />
+      </Board>
+      {stand.map((p) => p.el)}
+      <Piece x={ship.x} y={ship.y} turn={turn} s={lerp(f, 150, 196, 0.62, 0.95)} w={170} h={210} op={lerp(f, 0, 14, 0, 1) * (1 - lerp(f, 280, 300, 0, 1))} lift={Math.sin(f / 13) * 2}>
+        <Ship team="fr" face={ship.face} sail={f > 170 ? lerp(f, 170, 196, ship.sail, 0) : ship.sail} roll={Math.sin(f / 16) * (1.2 + ship.speed * 0.5)} />
+      </Piece>
+    </Table>
+  );
+}
+
 const Quebec1608Sample = ({f}) => (
   <AbsoluteFill>
-    {f < 604 && <Quebec1608 f={f} />}
-    {f >= 580 && <AbsoluteFill style={{opacity: lerp(f, 580, 604, 0, 1)}}><PaintingCoda f={f - 580} len={220} /></AbsoluteFill>}
+    {f < 604 + D1608 && <Quebec1608 f={f} />}
+    {f >= 580 + D1608 && <AbsoluteFill style={{opacity: lerp(f, 580 + D1608, 604 + D1608, 0, 1)}}><PaintingCoda f={f - 580 - D1608} len={220} /></AbsoluteFill>}
   </AbsoluteFill>
 );
-const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803};
-export const WAR_FRAMES = {quebec1608: 760, quebec1608map: 600, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330};
+const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803, newcal1853: NewCal1853};
+export const WAR_FRAMES = {quebec1608: 760 + D1608, quebec1608map: 600 + D1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();

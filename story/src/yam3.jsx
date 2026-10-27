@@ -5,7 +5,7 @@
 import React from 'react';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, Figure, Torso, Head, Box, Cloud, at, Labels} from './tis';
 import {P, Txt, Cam, popAt, popBy} from './meg2';
-import {YBust, B29, Chute, Hanko, House, Morning, Street, Field, Ruins, Burst, JapanLand, PLACES_JP, Baby, Crane} from './yam';
+import {YBust, B29, Chute, Hanko, House, Morning, Street, Field, Ruins, Burst, JapanLand, PLACES_JP, Baby, Crane, BandHead} from './yam';
 
 const OSW = "'Oswald', sans-serif";
 const pz = (f, a, k = 140) => clamp(pop(f, a, k, 12), 0, 1.1);
@@ -431,8 +431,9 @@ function YGlass({f, len, line}) {
       <g transform="translate(1380 120)"><rect width={420} height={330} fill="#F2EEDC" {...st(8)} /><path d="M 0 0 L 60 80 L 0 160 M 420 0 L 360 120 L 420 200" stroke={INK} strokeWidth={6} fill="none" /></g>
       {shards.map(([x, y, r, s, k], i) => { const x2 = x - 900 * t * (0.4 + k), y2 = y + 300 * t * k; return <path key={i} d={`M ${x2} ${y2} l ${s} ${s * 0.3} l ${-s * 0.4} ${s}`} fill="#DDEFFA" stroke={INK} strokeWidth={3} transform={`rotate(${r + f * 3} ${x2} ${y2})`} />; })}
       {[...Array(16)].map((_, i) => { const q = ((f / 60) + i / 16) % 1; return <circle key={'d' + i} cx={200 + R() * 1500} cy={300 + R() * 500 - q * 100} r={30 + q * 50} fill="#9E8E74" opacity={0.35 * (1 - q)} />; })}
-      <g transform="translate(1180 905) rotate(-90) scale(0.38)"><Torso who="boss" arms="rest" f={f} /><Head who="boss" expr="closed" f={f} seed={6} /></g>
-      <g transform="translate(760 900) rotate(-90) scale(0.42)"><Torso who="yamaguchi" arms="rest" f={f} /><Head who="yamaguchi" expr="closed" f={f} seed={3} /></g>
+      {/* down on the floor but alive (Israa: flat with closed eyes read as two dead men): crouched low, bent away from the window, eyes open */}
+      <g transform="translate(1420 830) rotate(-28) scale(0.4)"><Torso who="boss" arms="flail" f={f} /><Head who="boss" expr="scared" f={f} seed={6} turn={-0.3} /></g>
+      <g transform="translate(1020 820) rotate(-24) scale(0.44)"><Torso who="yamaguchi" arms="flail" f={f} /><Head who="yamaguchi" expr="scared" f={f} seed={3} turn={-0.3} /><BandHead turn={-0.3} /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );

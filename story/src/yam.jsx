@@ -490,8 +490,9 @@ function YWindow({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.18} x={1100} y={460}>
       <OfficeRoom f={f} clock="11:02" white={f >= w ? 1 : 0} />
-      <YBust who="boss" x={640} y={560} s={0.7} expr={f >= w ? 'shock' : 'grim'} f={f} seed={6} turn={0.4} look={10} />
-      <YBust who="yamaguchi" x={1180} y={560} s={0.7} expr={f >= w ? 'shock' : 'worried'} f={f} seed={3} band turn={0.6} look={10} />
+      {/* the same sides as every other office shot (Israa: they swapped at the climax): Yamaguchi left, the boss right */}
+      <YBust who="yamaguchi" x={640} y={560} s={0.7} expr={f >= w ? 'shock' : 'worried'} f={f} seed={3} band turn={0.4} look={10} />
+      <YBust who="boss" x={1180} y={560} s={0.7} expr={f >= w ? 'shock' : 'grim'} f={f} seed={6} turn={0.6} look={10} />
     </Cam>
       {f >= w && <rect width={W} height={H} fill="#FFFDF2" opacity={clamp((f - w) / 14, 0, 1)} />}
       <Labels line={line} f={f} x0={100} y0={100} /></g>

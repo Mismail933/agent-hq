@@ -104,7 +104,9 @@ function YOld({f, len, line}) {
     <g><Cam f={f} len={len} a={1.0} b={1.05}>
       <rect width={W} height={H} fill={p.color || '#DDE3E6'} />
       <rect x={1200} y={120} width={520} height={360} fill="#B9D3E6" {...st(8)} /><path d="M 1460 120 L 1460 480 M 1200 300 L 1720 300" stroke={INK} strokeWidth={7} />
-      {p.cane && <path d="M 1010 1080 L 960 560 C 958 520 1000 510 1010 540" stroke="#6B4228" strokeWidth={22} fill="none" strokeLinecap="round" />}
+      {/* his walking stick rests against the window frame, its crook over the sill (Israa: standing on its own it floated) */}
+      {p.cane && <g><path d="M 1330 1080 L 1262 506 C 1258 470 1222 462 1214 492" stroke={INK} strokeWidth={30} fill="none" strokeLinecap="round" />
+        <path d="M 1330 1080 L 1262 506 C 1258 470 1222 462 1214 492" stroke="#6B4228" strokeWidth={20} fill="none" strokeLinecap="round" /></g>}
       <YBust who="yamaguchi_old" x={760} y={470} s={1.0} expr={p.expr || 'calm'} f={f} seed={3} turn={0.25} talk={!!p.talk && Math.floor(f / 5) % 2 === 0} />
     </Cam>
       <Labels line={line} f={f} x0={W - 100} y0={560} align="right" /></g>
@@ -203,7 +205,8 @@ function YRecord({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.04}>
       <rect width={W} height={H} fill="#0B1F3A" />
-      <g transform={`translate(${e ? lin(f, 0, 18, 960, 640) : 960} 520) scale(${e ? 1 : pz(f, a)})`}>
+      {/* 'empty' waits out the 8-frame crossfade on the same spot (Israa: sliding during it showed two plaques, the text doubled) */}
+      <g transform={`translate(${e ? lin(f, 9, 27, 960, 640) : 960} 520) scale(${e ? 1 : pz(f, a)})`}>
         <rect x={-420} y={-300} width={840} height={600} rx={20} fill="#C9A227" {...st(10)} />
         <rect x={-380} y={-260} width={760} height={520} rx={10} fill="#1F2937" {...st(6)} />
         <Txt x={0} y={-150} text="WORLD RECORD" size={70} fill="#C9A227" />
