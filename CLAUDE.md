@@ -1060,6 +1060,12 @@ Agents never spend money without the owner's explicit approval.
   (props.captions). samples/yamaguchi-short.json = the opening's 9 lines, its last line "... His full story, hour by hour, is on the
   channel."; made vertical with `clipper.py cut` (picture in the middle, big captions under it, an end card). Script v13: the title
   line is now "This is his story, hour by hour." (the owner couldn't follow the old one).
+  2.72.8 (Israa on the Short, redo 7; Tarek's 2 rounds on it): `clipper.py` style `headline` ("line|line", white/yellow) = a title
+  in the vertical top band for the whole clip (no hook in the first seconds otherwise); YStreet `push_on` (slow push in) and `tight_on`
+  (a cut to his face); Head/Eyes `lookY` (pupils up: he looks up at the plane); YOffice `calm` (no gag faces, no '?!'); the Short's
+  labels are `big`. Tarek: title hit 'Impact Hit Rapid Chord Reverb', music -6.5 dB, voice wpm 145 / pace_spread 0.1, the Short's
+  accent_gain 0.7 (its boom was 24 dB under the voice). His "12 words lost" in the Short was a whole-file Whisper artifact: Whisper on
+  the 10 s segment heard every word in the voice stem and in the mix (check a segment before re-voicing).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

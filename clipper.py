@@ -112,7 +112,7 @@ def _card(ffmpeg, video, at, style, out):
     d = ImageDraw.Draw(im)
     big, small = _font(96), _font(64)
     y = 760
-    for line in _wrap(d, style["end_text"].upper(), big, W - 160):
+    for line in [x for part in style["end_text"].upper().split("|") for x in _wrap(d, part.strip(), big, W - 160)]:   # '|' = a line break
         d.text((W // 2, y), line, font=big, fill=(255, 255, 255), anchor="mm", stroke_width=6, stroke_fill=(16, 16, 16))
         y += 116
     if style.get("channel"):
