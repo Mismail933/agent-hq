@@ -1052,6 +1052,14 @@ Agents never spend money without the owner's explicit approval.
   blasts = 'Interior Thunder Rumble', the title = the trailer booms, accent_gap_db -12, accent_gain 0.55; a beat (p.pause) after
   the short heavy lines he found rushed. Test stills of changed scenes: scratchpad yam_grid.py with an ABSOLUTE out folder
   (a relative one lands in ~/.agent-hq-anim/story, Remotion's cwd).
+  2.72.7 (the owner 2026-10-27 01:35/01:40 via Atlas: the opening becomes a Short with real pictures and an ending pointing to the full
+  story; then the full video with the same pictures): 7 public-domain 1945 photos, US government works only (the owner approved the
+  downloads in the Builder chat; no free photo of Yamaguchi exists, so he stays drawn), in content/project-5/photos/ + credits.json:
+  the Hiroshima and Nagasaki clouds (Caron, Levy / NARA), Hiroshima from the air (US Navy), Nagasaki before/after (NARA), Enola Gay
+  (USAF), Bockscar (USAF Museum), the Nagasaki valley in September (USMC). story_sample spec `"captions": false` = no burned captions
+  (props.captions). samples/yamaguchi-short.json = the opening's 9 lines, its last line "... His full story, hour by hour, is on the
+  channel."; made vertical with `clipper.py cut` (picture in the middle, big captions under it, an end card). Script v13: the title
+  line is now "This is his story, hour by hour." (the owner couldn't follow the old one).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

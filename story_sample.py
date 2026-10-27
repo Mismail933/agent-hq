@@ -1442,7 +1442,7 @@ def run(a, spec, folder):
     story.ensure_app()
     shutil.copy(wav, story.APP / "public" / "opening-mix.wav")
     props = {"lines": [{**l, "words": [[w, int(round(s * FPS))] for w, s, e in l["words"]]} for l in lines], "audio": "opening-mix.wav",
-             "frames": int(round(total * FPS))}
+             "frames": int(round(total * FPS)), "captions": spec.get("captions", True) is not False}   # false: a Short's layout adds its own
     (folder / "props.json").write_text(json.dumps(props, ensure_ascii=False, indent=1), encoding="utf-8")
     if a.prep:
         say("RESULT " + json.dumps({"props": str(folder / "props.json"), "seconds": round(total, 1)}))
