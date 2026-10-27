@@ -65,8 +65,12 @@ def _ass(words, start, end, style, top, path):
     """Captions for one clip: groups of style.words words, the spoken word yellow (style.highlight), times relative to the clip."""
     ws = [w for w in words if w["s"] >= start - 0.05 and w["e"] <= end + 0.3 and str(w["w"]).strip()]
     groups, cur = [], []
+    small = {"a", "an", "the", "at", "in", "on", "of", "to", "is", "it", "he", "his", "and", "but", "or", "be", "will", "was", "for", "with", "by", "as"}
     for w in ws:
-        if cur and (len(cur) >= style["words"] or re.search(r"[.!?;:,]$", cur[-1]["w"])):
+        last = re.sub(r"[^a-z]", "", str(cur[-1]["w"]).lower()) if cur else ""
+        # a chunk doesn't end on a small word ("EIGHT IN THE"): it may run up to 2 words longer to reach a real one
+        full = len(cur) >= style["words"] and (last not in small or len(cur) >= style["words"] + 2)
+        if cur and (full or re.search(r"[.!?;:,]$", cur[-1]["w"])):
             groups.append(cur)
             cur = []
         cur.append(w)
@@ -167,7 +171,7 @@ def cut(plan_path):
         dur = end - start
         name = f"clip-{n}"
         vf = (f"[0:v]split=2[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=30:2,"
-              f"eq=brightness=-0.18[bg];[b]scale={W}:{H}:force_original_aspect_ratio=decrease[fg];"
+              f"eq=brightness=-0.32:saturation=0.35[bg];[b]scale={W}:{H}:force_original_aspect_ratio=decrease[fg];"
               f"[bg][fg]overlay=(W-w)/2:(H-h)/2,fps={FPS},setsar=1")
         if style.get("headline"):   # a title in the top band, for the whole clip (Israa on the Yamaguchi Short: no hook in the first seconds)
             _headline(style["headline"], (H - fh) // 2, folder / f"{name}-head.png")

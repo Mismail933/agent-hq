@@ -291,7 +291,7 @@ function YMap({f, len, line}) {
       {p.route_on && <g>
         <path d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#fff" strokeWidth={18} strokeDasharray={`${d} ${L}`} strokeLinecap="round" opacity={0.7} />
         <path d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#E3232C" strokeWidth={9} strokeDasharray={`${d} ${L}`} strokeLinecap="round" />
-        {p.km && f > ka && <g transform={`translate(${(x1 + x2) / 2 - 40} ${(y1 + y2) / 2 + 80}) rotate(-8) scale(${clamp(pop(f, ka, 150, 12), 0, 1.1)})`}>
+        {p.km && f > ka && <g transform={`translate(${(x1 + x2) / 2 + 30} ${(y1 + y2) / 2 - 80}) rotate(-8) scale(${clamp(pop(f, ka, 150, 12), 0, 1.1)})`}>
           <rect x={-120} y={-52} width={240} height={88} fill="#fff" {...st(6)} /><Txt x={0} y={20} text={p.km} size={66} fill={INK} stroke="none" /></g>}
       </g>}
       {p.target && (() => { const pl = PLACES_JP[p.target]; const a = at(line, p.target_on || '', 0.4); return f > a ? [0, 1].map((i) => { const q = ((f - a) / 40 + i / 2) % 1;

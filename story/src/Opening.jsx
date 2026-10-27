@@ -318,7 +318,7 @@ const PhotoLayer = ({line, len}) => {
   const lab = clamp(pop(f, a + 8, 150, 12), 0, 1.1) * (1 - clamp((f - b) / 8, 0, 1));
   return (
     <AbsoluteFill>
-      <div style={{position: 'absolute', inset: 0, background: '#050A14', opacity: 0.38 * clamp((f - a) / 8, 0, 1) * (1 - clamp((f - b) / 8, 0, 1))}} />
+      <div style={{position: 'absolute', inset: 0, background: '#050A14', opacity: (ph.dim != null ? ph.dim : 0.38) * clamp((f - a) / 8, 0, 1) * (1 - clamp((f - b) / 8, 0, 1))}} />
       <div style={{position: 'absolute', left: cx - w / 2 - pad, top: cy - h / 2 - pad, width: w + 2 * pad, height: h + pad + strip, background: '#FBFAF6',
         border: `6px solid ${INK}`, boxShadow: '12px 16px 0 rgba(0,0,0,0.38)', transform: `rotate(${rot}deg) scale(${k})`, transformOrigin: '50% 50%'}}>
         <div style={{position: 'absolute', left: pad - 6, top: pad - 6, width: w, height: h, overflow: 'hidden', border: `4px solid ${INK}`, background: '#ddd'}}>
@@ -439,7 +439,7 @@ export const Opening = ({lines = [], audio, captions = true}) => (
       const shifted = {...l, idx: i, cont, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
       return (
         <Sequence key={i} from={from} durationInFrames={Math.max(1, to - from)} layout="none">
-          <FadeIn on={i > 0}>{blurOf(l) ? <CameraMotionBlur shutterAngle={200} samples={6}><ShotLayer line={shifted} len={to - from} /></CameraMotionBlur>
+          <FadeIn on={i > 0 && !(l.p || {}).cut}>{blurOf(l) ? <CameraMotionBlur shutterAngle={200} samples={6}><ShotLayer line={shifted} len={to - from} /></CameraMotionBlur>
             : <ShotLayer line={shifted} len={to - from} />}</FadeIn>
         </Sequence>
       );
