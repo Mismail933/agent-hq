@@ -378,6 +378,17 @@ Agents never spend money without the owner's explicit approval.
   Garneray's painting, which is now still (no water/flag displacement: it looked broken); new scene 'sugar' (Saint-Domingue: cane cut
   row by row by enslaved workers, bundles carried to a windmill, barrels, an overseer at the edge; no violence shown); Part 1 uses
   events/settle-1608.mp4 (frames 150-700: from the ships in the river) and events/sugar-1700s.mp4.
+  2.73.1 (Israa on that Part 1: redo 6.3; Tarek): MapStory line fields `views` [{at, view}] (the camera moves on mid-line), `dates`
+  [[s, text]] (the chip changes on its words), `labels` [{text, ll, at}] (area names), pins wait for a follow line's ship and take
+  `until` (a name gives way: Bourbon -> Reunion, Saint-Domingue -> Haiti), photos `at`/`until` and by default last until the next line,
+  `photo2` (a second print on its word), the date chip on a dark backing; maplong's script takes them as cue words (pins [label, lon,
+  lat, cue, offset, until-cue], dates [[cue, text]], labels [[text, lon, lat, cue]], views [[cue, view]], photo on/off). The music is
+  two copies crossfaded (the 3:40 track restarted abruptly at 3:36) and lifted +8 dB (`SWELL`) where the narrator is silent over 2 s.
+  `mapsample.DETAIL` adds HTI, DOM, CUB, JAM, PRI (re-run prep); WarTable's board leaves out a detailed country's coarse shape. Sugar
+  redone: tall carved cane that falls to stubble as it is cut, workers in earth tones bent over cutting, three carrying bundles, a
+  cattle mill (two oxen walk the beam round), the overseer apart in a pale coat with a coiled whip, low light, no bounce, the camera
+  close on the cutters then along to the mill (360 frames). 1608 scene: a QUÉBEC pin, 'on the St. Lawrence' in its title; Part 1 uses
+  frames 176-700. sound_agent's command line loads the owner's limits (cp.init: it judged against the code's $4).
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen

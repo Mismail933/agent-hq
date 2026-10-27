@@ -484,6 +484,9 @@ def review(sample, video=None, fix=True, rounds=None):
 
 if __name__ == "__main__":
     a = sys.argv[1:]
+    if a and a[0] in ("listen", "review"):
+        import control_plane as cp
+        cp.init()   # the owner's limits from hq.db apply on the command line too (allowance.Tarek; it judged against the code default)
     if not a:
         print(__doc__)
     elif a[0] == "voice":

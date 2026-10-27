@@ -47,19 +47,31 @@ function camera(f, lines, fps) {
     if (f < a) break;
     const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.view;
     const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
-    const e = interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease});
-    const far = geoDistance(prev.slice(0, 2), next.slice(0, 2));
-    const la = Math.log(prev[2]), lb = Math.log(next[2]);
-    const bump = far > 0.5 ? Math.max(0, (la + lb) / 2 - Math.log(360)) : 0;
-    const c = geoInterpolate(prev.slice(0, 2), next.slice(0, 2))(e);
-    cur = e >= 1 ? next : [c[0], c[1], Math.exp(la + (lb - la) * e - bump * Math.sin(Math.PI * e))];
+    cur = move(prev, next, interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease}));
     if (l.follow && l.ship) {
-      const [s0, s1] = sailFrames(l, fps);
+      const [s0] = sailFrames(l, fps);
       if (f >= s0) cur = followView(l, sailP(l, f, fps));
+    }
+    // views [{at, view}]: the camera moves on mid-line (e.g. from Pondicherry to Saint-Louis on 'the island of Saint Louis')
+    let base = l.view;
+    for (const v of l.views || []) {
+      const va = Math.round(v.at * fps);
+      if (f < va) break;
+      cur = move(base, v.view, interpolate(f, [va, va + 40], [0, 1], {...clamp, easing: ease}));
+      base = v.view;
     }
   }
   return cur;
 }
+function move(prev, next, e) {
+  const far = geoDistance(prev.slice(0, 2), next.slice(0, 2));
+  const la = Math.log(prev[2]), lb = Math.log(next[2]);
+  const bump = far > 0.5 ? Math.max(0, (la + lb) / 2 - Math.log(360)) : 0;
+  const c = geoInterpolate(prev.slice(0, 2), next.slice(0, 2))(e);
+  return e >= 1 ? next : [c[0], c[1], Math.exp(la + (lb - la) * e - bump * Math.sin(Math.PI * e))];
+}
+// a pin on a follow line shows once the ship is there (Israa: 'Fort Maurepas' appeared in Ohio while the ship was mid-Atlantic)
+const pinAt = (l, p, fps) => (l.follow && l.ship ? Math.max(p.at, sailFrames(l, fps)[1] / fps - 0.3) : p.at);
 // the voyage of a ship line: frames it sails between (a follow line takes most of its line, up to 11 s), and how far along it is
 function sailFrames(l, fps) {
   if (!l.follow) return [Math.round((l.t0 + 0.2) * fps), Math.round(Math.min(l.t1, l.t0 + 4.2) * fps)];
@@ -173,7 +185,10 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   });
   // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
   const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} /> : null;
-  const dateText = line.date;
+  // dates [[seconds, text]]: the chip changes on its words (1642 -> 1665 -> Today)
+  let dateText = line.date, dateAt = line.t0;
+  (line.dates || []).forEach(([s, txt]) => { if (t >= s) { dateText = txt; dateAt = s; } });
+  const nextT0 = li + 1 < lines.length ? lines[li + 1].t0 : line.t1 + 0.4;
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 50% 45%, ${C.bg[0]}, ${C.bg[1]})`}}>
       <style>{FONT_CSS}</style>
@@ -202,25 +217,30 @@ export const MapStory = ({lines = [], seconds = 10}) => {
           <Draw key={`a${i}`} d={path({type: 'LineString', coordinates: Array.from({length: 41}, (_, k) => geoInterpolate(l.arc[0], l.arc[1])(k / 40))})}
                 p={interpolate(f, [at(l.t0), at(l.t0) + 40], [0, 1], {...clamp, easing: ease})} color={C.accent} width={4} />) : null))}
         {lines.flatMap((l, i) => (l.pins || []).map((p, k) => {
-          if (i > li || t < p.at - 0.05) return null;
+          if (i > li || t < pinAt(l, p, fps) - 0.05) return null;
           if (geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
-          const ring = 10 + 26 * (((f - at(p.at)) % 45) / 45);
+          const pa = pinAt(l, p, fps), ring = 10 + 26 * (((f - at(pa)) % 45) / 45);
           return (
             <g key={`p${i}-${k}`}>
-              {i === li ? <circle cx={x} cy={y} r={ring} fill="none" stroke={C.accent} strokeWidth={2} opacity={1 - (((f - at(p.at)) % 45) / 45)} /> : null}
-              <circle cx={x} cy={y} r={8} fill={C.accent} stroke={C.white} strokeWidth={2} opacity={on(p.at, 6)} />
+              {i === li ? <circle cx={x} cy={y} r={ring} fill="none" stroke={C.accent} strokeWidth={2} opacity={1 - (((f - at(pa)) % 45) / 45)} /> : null}
+              <circle cx={x} cy={y} r={8} fill={C.accent} stroke={C.white} strokeWidth={2} opacity={on(pa, 6)} />
             </g>
           );
         }))}
       </svg>
-      {line.photo ? <Photo line={line} f={f} fps={fps} /> : null}
+      {line.photo ? <Photo ph={line.photo} a={line.photo.at != null ? line.photo.at : line.t0 + 0.35}
+                           b={line.photo.until != null ? line.photo.until : line.photo2 ? line.photo2.at - 0.1 : nextT0 - 0.15} f={f} fps={fps} /> : null}
+      {line.photo2 ? <Photo ph={line.photo2} a={line.photo2.at} b={nextT0 - 0.15} f={f} fps={fps} /> : null}
       <svg width={W} height={H} style={{position: 'absolute'}}>
         {(line.pins || []).map((p, k) => {
-          if (!p.label || t < p.at - 0.05 || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
+          const pa = pinAt(line, p, fps);
+          if (!p.label || t < pa - 0.05 || (p.until != null && t >= p.until) || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
-          return <Text key={`n${k}`} x={x + 18 + (p.off ? p.off[0] : 0)} y={y - 16 + (p.off ? p.off[1] : 0)} size={34} anchor="start" op={on(p.at, 8)} pop={pop(p.at)}>{p.label}</Text>;
+          return <Text key={`n${k}`} x={x + 18 + (p.off ? p.off[0] : 0)} y={y - 16 + (p.off ? p.off[1] : 0)} size={34} anchor="start" op={on(pa, 8)} pop={pop(pa)}>{p.label}</Text>;
         })}
+        {(line.labels || []).map((lb, k) => (t >= lb.at - 0.05 && geoDistance(cam.slice(0, 2), lb.ll) < 1.45
+          ? <Text key={`lb${k}`} {...xy(P(lb.ll))} size={34} color={C.sub} op={on(lb.at, 12)}>{lb.text}</Text> : null))}
         {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={40} color={C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
         {(line.regions || []).filter((r) => r.label && r.color !== 'none').map((r) => (
           <Text key={`rl${r.id}`} {...xy(P(r.label[1]))} size={30} color={C.white} op={on(line.t0 + 0.5, 12)}>{r.label[0]}</Text>))}
@@ -236,7 +256,8 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         </div>) : null}
       {dateText ? (
         <div style={{position: 'absolute', right: 60, top: 50, fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 84, color: C.white,
-                     letterSpacing: 2, opacity: on(line.t0, 8), transform: `scale(${pop(line.t0)})`, transformOrigin: 'right top',
+                     letterSpacing: 2, opacity: on(line.t0, 8), transform: `scale(${pop(dateAt)})`, transformOrigin: 'right top',
+                     background: 'rgba(3,8,16,0.55)', padding: '0 22px', borderRadius: 10,   /* a backing: it sat on the globe's edge (Israa) */
                      textShadow: '0 2px 18px rgba(0,0,0,0.7)'}}>{dateText}</div>
       ) : null}
       <Img src={staticFile('grain.png')} style={{position: 'absolute', width: W, height: H, objectFit: 'cover', opacity: 0.04, mixBlendMode: 'overlay'}} />
@@ -247,10 +268,10 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   );
 };
 
-// a real picture of the time (public domain / CC0 / CC BY, credited on its frame): a framed print over the dimmed map, a slow push-in
-const Photo = ({line, f, fps}) => {
-  const ph = line.photo;
-  const a = Math.round((line.t0 + 0.35) * fps), b = Math.round((line.t1 + 0.25) * fps);
+// a real picture of the time (public domain / CC0 / CC BY, credited on its frame): a framed print over the dimmed map, a slow push-in;
+// up from `a` to `b` seconds (by default from just after the line starts until the next line: Israa, a print gone before its line ended)
+const Photo = ({ph, a: as, b: bs, f, fps}) => {
+  const a = Math.round(as * fps), b = Math.max(a + 30, Math.round(bs * fps));
   const op = interpolate(f, [a, a + 10, b - 8, b], [0, 1, 1, 0], clamp);
   if (op <= 0.01) return null;
   const [iw, ih] = ph.size || [4, 3];

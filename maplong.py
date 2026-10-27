@@ -86,19 +86,27 @@ def _cue_time(line, word):
 def mix(folder):
     """Only the sound and the sheet again, on the already rendered picture.mp4 (or story.mp4)."""
     folder = Path(folder)
-    total = json.loads((folder / "voice.json").read_text(encoding="utf-8"))["seconds"]
+    v = json.loads((folder / "voice.json").read_text(encoding="utf-8"))
     pic = folder / "picture.mp4" if (folder / "picture.mp4").exists() else folder / "story.mp4"
-    _mux(folder, pic, total)
+    _mux(folder, pic, v["seconds"], v["lines"])
 
 
-def _mux(folder, pic, total):
+SWELL = 1.5   # the music x2.5 (+8 dB) where the narrator is silent for over 2 s (an event scene plays): Tarek, the 'holes'
+
+
+def _mux(folder, pic, total, lines=()):
     import shorts
     ff = shorts.find_ffmpeg()
     out = folder / "part.mp4"
+    gaps = [(a["t1"] + 0.3, b["t0"] - 0.2) for a, b in zip(lines, lines[1:]) if b["t0"] - a["t1"] > 2.0]
+    lift = "+".join(f"clip(min(t-{a:.2f},{b:.2f}-t)/1.2,0,1)" for a, b in gaps) or "0"
+    # the track is 3:40: two copies crossfaded make a seamless bed (it used to restart abruptly at 3:36)
     flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
-           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,highpass=f=120,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
+           "[2:a][3:a]acrossfade=d=6:c1=tri:c2=tri[ml];"
+           f"[ml]atrim=4:{4 + total},asetpts=N/SR/TB,highpass=f=120,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9,"
+           f"volume='1+{SWELL}*({lift})':eval=frame[m];"
            "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
-    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-stream_loop", "-1", "-i", str(MUSIC),
+    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-i", str(MUSIC), "-i", str(MUSIC),
                     "-filter_complex", flt, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(total), str(out)],
                    check=True)
     mapsample.sheet(out, folder / "sheet.png", every=3.0, cols=5)
@@ -135,24 +143,35 @@ def part(folder):
     (mapsample.APP / "public" / "photos").mkdir(parents=True, exist_ok=True)
     beats = []
     for s, l in zip(spec["story"], story):
+        cue = lambda w: round(_cue_time(l, w) - split, 3)
         b = {k: v for k, v in s.items() if k not in ("text", "pins")}
         b["t0"], b["t1"] = round(l["t0"] - split, 3), round(l["t1"] - split, 3)
-        b["pins"] = [{"label": p[0], "ll": [p[1], p[2]], "at": round(_cue_time(l, p[3]) - split, 3), **({"off": p[4]} if len(p) > 4 else {})}
-                     for p in s.get("pins", [])]
+        # pins [label, lon, lat, cue, offset?, until-cue?]; dates [[cue, text]]; labels [[text, lon, lat, cue]]; views [[cue, view]]
+        b["pins"] = [{"label": p[0], "ll": [p[1], p[2]], "at": cue(p[3]), **({"off": p[4]} if len(p) > 4 and p[4] else {}),
+                      **({"until": cue(p[5])} if len(p) > 5 else {})} for p in s.get("pins", [])]
+        if s.get("dates"):
+            b["dates"] = [[cue(w), txt] for w, txt in s["dates"]]
+        if s.get("labels"):
+            b["labels"] = [{"text": x[0], "ll": [x[1], x[2]], "at": cue(x[3])} for x in s["labels"]]
+        if s.get("views"):
+            b["views"] = [{"at": cue(w), "view": v} for w, v in s["views"]]
         if s.get("label"):
             b["label"] = [s["label"][0], s["label"][1], s["label"][2]]
         if s.get("event"):   # an animated event scene (story app, FranceEvent) made beforehand into long/events/<key>.mp4
             src = folder.parent / "events" / f"{s['event']['key']}.mp4"
             (mapsample.APP / "public" / "events").mkdir(parents=True, exist_ok=True)
             shutil.copy(src, mapsample.APP / "public" / "events" / src.name)
-        if s.get("photo"):
-            key = s["photo"]["key"]
+        for slot in ("photo", "photo2"):   # photo2: a second print on its word (e.g. Saint-Louis after Pondicherry)
+            if not s.get(slot):
+                continue
+            key = s[slot]["key"]
             src = pdir / f"{key}.jpg"
             shutil.copy(src, mapsample.APP / "public" / "photos" / src.name)
             c = credits.get(key, {})
             who = re.sub(r"\s+", " ", c.get("author") or "").strip()[:60]
-            b["photo"] = {"key": key, "caption": s["photo"]["caption"], "size": list(Image.open(src).size), "side": s["photo"].get("side", "right"),
-                          "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons"}
+            b[slot] = {"key": key, "caption": s[slot]["caption"], "size": list(Image.open(src).size), "side": s[slot].get("side", "right"),
+                       "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons",
+                       **({"at": cue(s[slot]["on"])} if s[slot].get("on") else {}), **({"until": cue(s[slot]["off"])} if s[slot].get("off") else {})}
         beats.append(b)
     beats[0]["t0"] = 0.0
     secs = round(total - split, 2)
@@ -171,15 +190,8 @@ def part(folder):
         subprocess.run([ff, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(pic)], check=True)
     else:
         pic = clips[0]
-    out = folder / "part.mp4"
-    flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
-           f"[2:a]atrim=4:{4 + total},asetpts=N/SR/TB,highpass=f=120,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9[m];"
-           "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
-    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-stream_loop", "-1", "-i", str(MUSIC), "-filter_complex", flt,
-                    "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(total), str(out)], check=True)
-    mapsample.sheet(out, folder / "sheet.png", every=3.0, cols=5)
     (folder / "beats.json").write_text(json.dumps(beats, indent=1), encoding="utf-8")
-    print("PART", out, round(total, 1), "s")
+    _mux(folder, pic, total, lines)
 
 
 if __name__ == "__main__":

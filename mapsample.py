@@ -31,7 +31,8 @@ FPS, W, H = 30, 1920, 1080
 LOOKS = ["midnight", "paper", "globe", "editorial", "bold", "bassel"]
 
 # countries drawn in detail (the rest of the world is a light backdrop)
-DETAIL = {"FRA", "ESP", "DEU", "BEL", "LUX", "CHE", "ITA", "AND", "MCO", "GBR", "PRT", "NLD", "AUT", "IRL", "BRA", "SUR", "GUY", "VEN"}
+DETAIL = {"FRA", "ESP", "DEU", "BEL", "LUX", "CHE", "ITA", "AND", "MCO", "GBR", "PRT", "NLD", "AUT", "IRL", "BRA", "SUR", "GUY", "VEN",
+          "HTI", "DOM", "CUB", "JAM", "PRI"}   # the Caribbean too: Saint-Domingue's coast was a low-poly blob (Israa, Bassel Part 1)
 OVERSEAS = {"MAF", "NCL", "SPM", "PYF", "ATF", "BLM", "WLF", "CLP"}   # France outside Europe (Natural Earth admin-0 units), drawn finely
 PLACES = {"paris": [2.35, 48.86], "cayenne": [-52.33, 4.92], "kourou": [-52.65, 5.16]}
 

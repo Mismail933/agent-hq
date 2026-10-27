@@ -251,7 +251,8 @@ const Title = ({f, items}) => {
 };
 
 // the table and the map under the pieces; land = the detailed St Lawrence cut + the rest of the world
-const OTHER = [...geo.world.features, ...geo.detail.features].filter((ft) => !['CAN', 'USA', 'SPM'].includes(ft.properties.a3));
+const DETAILED = new Set(geo.detail.features.map((ft) => ft.properties.a3));   // a country drawn in detail: not its coarse world shape too
+const OTHER = [...geo.world.features.filter((ft) => !DETAILED.has(ft.properties.a3)), ...geo.detail.features].filter((ft) => !['CAN', 'USA', 'SPM'].includes(ft.properties.a3));
 const Board = ({path, children}) => (
   <svg width={PW} height={PH} style={{position: 'absolute', left: 0, top: 0}}>
     <defs>
@@ -406,7 +407,7 @@ function Quebec1608({f}) {
     return <rect x={x0} y={y0} width={(x1 - x0) * g} height={y1 - y0} fill="#7A8A4A" opacity={0.55 * zoomed} stroke="#B8C47A" strokeWidth={1} strokeOpacity={0.6 * zoomed} />;
   };
   return (
-    <Table turn={turn} lit={lerp(f, 0, 24, 0, 1)} overlay={<Title f={f} items={[['1608: Champlain sails from Honfleur', 10, true, 220], ['Quebec, 3 July 1608', 232, true, 440], ['Trade with the First Nations', 330, false, 396], ['New France grows along the river', 404]]} />}>
+    <Table turn={turn} lit={lerp(f, 0, 24, 0, 1)} overlay={<Title f={f} items={[['1608: Champlain sails from Honfleur', 10, true, 220], ['Quebec, on the St. Lawrence, 3 July 1608', 232, true, 440], ['Trade with the First Nations', 330, false, 396], ['New France grows along the river', 404]]} />}>
       <Board path={path}>
         {field(-71.232, 46.848, 0.012, 0.007, 330)}{field(-71.218, 46.852, 0.01, 0.006, 340)}{field(-71.196, 46.85, 0.012, 0.006, 350)}
         <Wake ships={ships} op={1 - lerp(f, 214, 236, 0, 1)} />
@@ -425,6 +426,9 @@ function Quebec1608({f}) {
             </g>
           </g>
         )}
+        {zoomed > 0.01 && (() => { const [px, py] = P(-71.228, 46.824);   // where this is (Israa): a pin by the settlement, its name clear of the pieces
+          return <g opacity={zoomed}><circle cx={px} cy={py} r={12} fill="#FF6A3D" stroke="#F2F7FF" strokeWidth={3} />
+            <text x={px - 26} y={py + 10} textAnchor="end" style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 44, letterSpacing: 4, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 9}}>QUÉBEC</text></g>; })()}
         {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1]} textAnchor="middle" opacity={lerp(f, 470, 490, 0, 1)}
                                  style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 64, letterSpacing: 10, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 10}}>NEW FRANCE</text>}
       </Board>
@@ -490,48 +494,83 @@ function Quebec1759({f}) {
 }
 
 // ───────── Saint-Domingue, the 1700s: sugar, worked by enslaved Africans (Bassel, 10-27: "people cultivating sugarcane ... show the labour
-// as it is"; the owner: real, like a chess thing, never the Storygraphics cast). Carved pieces on the table, no violence shown: the cane
-// is cut row by row, bundles are carried to the mill, barrels of sugar stack up, an overseer stands at the edge of the field.
-const WOOD = ['#6A5A48', '#3A3026', '#9A8A74'];
-const Worker = ({k = 0, swing = 0, carry = false}) => {
-  const cloth = [['#E8E2D2', '#9E9682', '#FFFFFF'], ['#C9BFA8', '#7E765F', '#EDE6D2'], ['#B8A88A', '#6E6248', '#E0D2B4']][k % 3];
+// as it is"; the owner: real, like a chess thing, never the Storygraphics cast). Carved pieces, no violence shown. Israa's redo: tall
+// cane that falls to stubble as it is cut, workers bent over cutting, a row carrying bundles to a cattle mill (oxen walk the beam
+// round), the overseer apart in a pale coat with a coiled whip; a slow camera, low light, nothing bounces.
+const WOOD = ['#5A4A38', '#2E2418', '#86745E'];
+const SKIN_D = ['#5E3A26', '#2E1A10', '#8A5A3E'];
+const CLOTH = [['#8C6A48', '#4E3A26', '#B08C68'], ['#6E6A5A', '#3E3A30', '#9A9686'], ['#7A5E42', '#45331F', '#A2845F'], ['#5E5648', '#322C22', '#8A806C']];
+const WoodBase = ({id}) => (
+  <g><defs><linearGradient id={id} x1="0" x2="1"><stop offset="0" stopColor={WOOD[2]} /><stop offset="0.4" stopColor={WOOD[0]} /><stop offset="1" stopColor={WOOD[1]} /></linearGradient></defs>
+    <path d="M 10 168 L 10 182 C 10 196 110 196 110 182 L 110 168 Z" fill={`url(#${id})`} /><ellipse cx={60} cy={168} rx={50} ry={11} fill={WOOD[0]} stroke={WOOD[1]} strokeWidth={1.5} /></g>
+);
+// an enslaved worker: earth-toned clothes, bent over the cane (cut 0..1 = the knife's stroke), or upright with a bundle on the shoulder
+const Worker = ({k = 0, cut = 0, carry = false}) => {
+  const cl = CLOTH[k % 4];
+  const bend = carry ? 4 : 18 + cut * 10;
   return (
     <svg width={120} height={200} viewBox="0 0 120 200" style={{overflow: 'visible'}}>
-      <defs><Lacquer id={`wk${k}`} c={cloth[0]} dark={cloth[1]} light={cloth[2]} /><Lacquer id={`wsk${k}`} c="#6B4430" dark="#3A2216" light="#9A6A4E" />
-        <linearGradient id="bwood" x1="0" x2="1"><stop offset="0" stopColor={WOOD[2]} /><stop offset="0.4" stopColor={WOOD[0]} /><stop offset="1" stopColor={WOOD[1]} /></linearGradient></defs>
-      <path d="M 10 168 L 10 182 C 10 196 110 196 110 182 L 110 168 Z" fill="url(#bwood)" /><ellipse cx={60} cy={168} rx={50} ry={11} fill={WOOD[0]} stroke={WOOD[1]} strokeWidth={1.5} />
-      <g transform={carry ? '' : `rotate(${8 + swing * 6} 60 160)`}>
-        <path d="M 38 160 C 38 128 43 98 48 82 L 72 82 C 77 98 82 128 82 160 Z" fill={`url(#wk${k})`} stroke={cloth[1]} strokeWidth={1.2} />
-        <rect x={44} y={118} width={32} height={4} fill="#6E6248" />
-        <circle cx={60} cy={66} r={15} fill={`url(#wsk${k})`} stroke="#2A160C" strokeWidth={1} />
-        {k % 2 === 0 && <path d="M 45 62 C 45 46 75 46 75 62 C 68 55 52 55 45 62 Z" fill="#D8CDB2" stroke="#8E846C" strokeWidth={1} />}
+      <defs><Lacquer id={`wk${k}`} c={cl[0]} dark={cl[1]} light={cl[2]} /><Lacquer id={`wsk${k}`} c={SKIN_D[0]} dark={SKIN_D[1]} light={SKIN_D[2]} /></defs>
+      <WoodBase id={`wb${k}`} />
+      <path d="M 42 166 L 46 120 L 58 120 L 56 166 Z M 64 166 L 62 120 L 74 120 L 78 166 Z" fill={`url(#wk${k})`} stroke={cl[1]} strokeWidth={1} />
+      <g transform={`rotate(${bend} 60 122)`}>
+        <path d="M 40 124 C 40 104 44 92 48 84 L 72 84 C 76 92 80 104 80 124 Z" fill={`url(#wk${k})`} stroke={cl[1]} strokeWidth={1.2} />
+        <circle cx={60} cy={70} r={14} fill={`url(#wsk${k})`} stroke={SKIN_D[1]} strokeWidth={1} />
+        {k % 2 === 0 && <path d="M 46 66 C 46 52 74 52 74 66 C 67 60 53 60 46 66 Z" fill={cl[2]} stroke={cl[1]} strokeWidth={1} />}
         {carry
-          ? <g>{[0, 1, 2, 3, 4].map((i) => <rect key={i} x={30 + i * 3} y={36 + (i % 2) * 3} width={62} height={5} rx={2} fill={i % 2 ? '#8AAA52' : '#6E8E3E'} stroke="#3E5A22" strokeWidth={0.8} />)}</g>
-          : <g transform={`rotate(${-50 + swing * 95} 74 100)`}><rect x={72} y={70} width={5} height={34} rx={2} fill="#5A3A22" /><path d="M 70 72 L 80 72 L 86 38 L 76 36 Z" fill="#B8C0C6" stroke="#5A6268" strokeWidth={0.8} /></g>}
+          ? <g transform="rotate(-24 60 80)">{[0, 1, 2, 3, 4, 5].map((i) => <rect key={i} x={22 + (i % 3) * 3} y={58 + i * 3.4} width={84} height={5} rx={2} fill={i % 2 ? '#8AA452' : '#6E8A3A'} stroke="#3E5A22" strokeWidth={0.8} />)}</g>
+          : <g transform={`rotate(${-70 + cut * 120} 72 98)`}><path d="M 70 98 L 72 72" stroke={SKIN_D[0]} strokeWidth={7} strokeLinecap="round" />
+              <rect x={70} y={58} width={5} height={16} rx={2} fill="#4A3020" /><path d="M 68 60 L 78 60 L 88 22 L 80 20 Z" fill="#AEB6BC" stroke="#4E565C" strokeWidth={0.8} /></g>}
       </g>
-      <ellipse cx={48} cy={64} rx={5} ry={12} fill="#FFFFFF" opacity={0.14} />
     </svg>
   );
 };
+// the overseer, set apart: a pale coat, a dark hat, a coiled whip hanging from his hand (shown, never used)
 const Overseer = () => (
-  <svg width={120} height={200} viewBox="0 0 120 200" style={{overflow: 'visible'}}>
-    <defs><Lacquer id="ovc" c="#2E3E5E" dark="#141C2E" light="#6A7EA6" /><Skin id="ovs" /><Lacquer id="ovh" c="#2A2622" dark="#0C0A08" light="#6A625A" /></defs>
-    <path d="M 10 168 L 10 182 C 10 196 110 196 110 182 L 110 168 Z" fill={WOOD[1]} /><ellipse cx={60} cy={168} rx={50} ry={11} fill={WOOD[0]} stroke={WOOD[1]} strokeWidth={1.5} />
-    <path d="M 34 160 C 34 126 40 96 46 80 L 74 80 C 80 96 86 126 86 160 Z" fill="url(#ovc)" stroke="#141C2E" strokeWidth={1.2} />
-    <circle cx={60} cy={64} r={15} fill="url(#ovs)" stroke="#6E4630" strokeWidth={1} />
-    <path d="M 40 54 C 46 40 74 40 80 54 C 70 50 50 50 40 54 Z" fill="url(#ovh)" /><path d="M 44 52 C 52 36 68 36 76 52" fill="url(#ovh)" />
+  <svg width={120} height={220} viewBox="0 0 120 220" style={{overflow: 'visible'}}>
+    <defs><Lacquer id="ovc" c="#D8CCB0" dark="#8E8268" light="#F4ECD8" /><Skin id="ovs" /><Lacquer id="ovh" c="#2A2622" dark="#0C0A08" light="#6A625A" /></defs>
+    <path d="M 0 196 L 0 206 C 0 220 120 220 120 206 L 120 196 Z" fill="#4A3C2A" /><ellipse cx={60} cy={196} rx={60} ry={14} fill="#6A5A40" />
+    <path d="M 10 170 L 10 182 C 10 196 110 196 110 182 L 110 170 Z" fill={WOOD[1]} /><ellipse cx={60} cy={170} rx={50} ry={11} fill={WOOD[0]} />
+    <path d="M 44 168 L 46 126 L 58 126 L 56 168 Z M 64 168 L 62 126 L 74 126 L 76 168 Z" fill="#3A3028" />
+    <path d="M 34 132 C 34 106 40 92 46 82 L 74 82 C 80 92 86 106 86 132 Z" fill="url(#ovc)" stroke="#8E8268" strokeWidth={1.2} />
+    <circle cx={60} cy={66} r={15} fill="url(#ovs)" stroke="#6E4630" strokeWidth={1} />
+    <path d="M 40 56 C 46 42 74 42 80 56 C 70 52 50 52 40 56 Z" fill="url(#ovh)" /><path d="M 44 54 C 52 38 68 38 76 54" fill="url(#ovh)" />
+    <path d="M 84 104 C 96 110 98 124 90 130 C 82 136 74 126 82 118 C 88 112 96 118 92 124" fill="none" stroke="#2A1C10" strokeWidth={2.6} />
   </svg>
 );
-const Mill = ({f}) => (   // a stone windmill: the sails turn
-  <svg width={170} height={240} viewBox="0 0 170 240" style={{overflow: 'visible'}}>
-    <defs><linearGradient id="stone" x1="0" x2="1"><stop offset="0" stopColor="#D8CDB6" /><stop offset="0.55" stopColor="#A89A80" /><stop offset="1" stopColor="#6A5E4A" /></linearGradient></defs>
-    <path d="M 20 214 L 20 226 C 20 238 150 238 150 226 L 150 214 Z" fill={WOOD[1]} /><ellipse cx={85} cy={214} rx={65} ry={12} fill={WOOD[0]} />
-    <path d="M 52 212 L 60 96 L 110 96 L 118 212 Z" fill="url(#stone)" stroke="#5A4E3C" strokeWidth={1.4} />
-    <path d="M 56 98 L 85 70 L 114 98 Z" fill="#5A3A22" stroke="#2E1C10" />
-    <rect x={76} y={170} width={18} height={42} fill="#2E1C10" />
-    <g transform={`translate(85 96) rotate(${f * 2.4})`}>
-      {[0, 90, 180, 270].map((a) => <g key={a} transform={`rotate(${a})`}><rect x={-3} y={-78} width={6} height={78} fill="#4A3020" /><rect x={3} y={-74} width={20} height={56} fill="#EDE4CC" stroke="#8A7A5A" strokeWidth={0.8} /></g>)}
-      <circle r={7} fill="#2E1C10" />
+// sugar cane: a clump of tall jointed stalks with long leaves, or the stubble left once it is cut
+const Cane = ({cut = false, sway = 0}) => (
+  <svg width={70} height={170} viewBox="0 0 70 170" style={{overflow: 'visible'}}>
+    {cut ? <g>{[16, 28, 40, 52].map((x, i) => <rect key={i} x={x} y={150 - (i % 2) * 4} width={5} height={14 + (i % 2) * 4} fill="#A89060" stroke="#6E5A34" strokeWidth={0.8} />)}
+      {[0, 1, 2].map((i) => <path key={'l' + i} d={`M ${12 + i * 18} 166 l 16 -4`} stroke="#9A8A4E" strokeWidth={2} />)}</g>
+      : <g transform={`rotate(${sway} 35 166)`}>{[12, 22, 32, 42, 52].map((x, i) => {
+          const top = 18 + (i % 3) * 10;
+          return <g key={i}><rect x={x} y={top} width={5} height={166 - top} fill={i % 2 ? '#8CA44E' : '#A2B65A'} stroke="#4E6228" strokeWidth={0.8} />
+            {[0, 1, 2, 3].map((j) => <rect key={j} x={x - 0.5} y={top + 26 + j * 30} width={6} height={2.5} fill="#5E7230" />)}
+            <path d={`M ${x + 2} ${top + 4} q ${i % 2 ? 22 : -22} -6 ${i % 2 ? 30 : -30} 14`} fill="none" stroke="#5E8A38" strokeWidth={4} strokeLinecap="round" />
+            <path d={`M ${x + 2} ${top + 30} q ${i % 2 ? -20 : 20} -4 ${i % 2 ? -28 : 28} 12`} fill="none" stroke="#4A7A2A" strokeWidth={3.5} strokeLinecap="round" /></g>; })}</g>}
+  </svg>
+);
+// the mill house of a cattle mill: rollers under a thatched roof (the beam and the oxen go round it on the board)
+const MillHouse = () => (
+  <svg width={170} height={200} viewBox="0 0 170 200" style={{overflow: 'visible'}}>
+    <defs><linearGradient id="mhw" x1="0" x2="1"><stop offset="0" stopColor="#A88A5E" /><stop offset="0.6" stopColor="#7A5E3A" /><stop offset="1" stopColor="#4A3620" /></linearGradient></defs>
+    <path d="M 20 176 L 20 186 C 20 198 150 198 150 186 L 150 176 Z" fill={WOOD[1]} /><ellipse cx={85} cy={176} rx={65} ry={12} fill={WOOD[0]} />
+    <rect x={44} y={96} width={82} height={80} fill="url(#mhw)" stroke="#3A2A16" strokeWidth={1.2} />
+    {[0, 1, 2].map((i) => <rect key={i} x={56 + i * 20} y={132} width={14} height={44} rx={6} fill="#5A4630" stroke="#2E2214" />)}
+    <path d="M 30 100 L 85 46 L 140 100 Z" fill="#B89A58" stroke="#6E5A30" strokeWidth={1.2} />
+    {[0, 1, 2, 3].map((i) => <path key={i} d={`M ${44 + i * 14} ${88 - i * 8} L ${126 - i * 14} ${88 - i * 8}`} stroke="#8E7440" strokeWidth={2} />)}
+  </svg>
+);
+const Ox = ({face = 1, step = 0}) => (
+  <svg width={140} height={110} viewBox="0 0 140 110" style={{overflow: 'visible'}}>
+    <defs><Lacquer id="oxc" c="#7A5A3A" dark="#3E2A18" light="#A8845E" /></defs>
+    <ellipse cx={70} cy={100} rx={46} ry={8} fill="rgba(0,0,0,0.3)" />
+    <g transform={`translate(70 0) scale(${face} 1) translate(-70 0)`}>
+      {[34, 50, 90, 104].map((x, i) => <rect key={i} x={x} y={66} width={8} height={30 + (i % 2 ? step : -step) * 2} fill="#4A3220" />)}
+      <ellipse cx={70} cy={58} rx={44} ry={22} fill="url(#oxc)" stroke="#3E2A18" strokeWidth={1.2} />
+      <path d="M 108 52 C 120 46 130 50 132 60 C 132 70 122 74 112 70 Z" fill="url(#oxc)" stroke="#3E2A18" />
+      <path d="M 118 46 C 116 36 124 34 128 38 M 112 48 C 106 38 112 34 116 38" fill="none" stroke="#E8DCC0" strokeWidth={3} />
     </g>
   </svg>
 );
@@ -554,62 +593,77 @@ const Barrel = () => (
 function Sugar({f}) {
   const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[-74.6, 17.6], [-68.2, 20.1]]}).scale();
   const C = [-72.28, 19.64];
-  const cam = cameraAt(f, [[0, [-72.6, 19.0], 1.0], [44, [-72.6, 19.0], 1.08], [118, C, 40], [330, [C[0] + 0.004, C[1] + 0.002], 42]]);
-  const turn = lerp(f, 40, 118, 0, -16);
-  const z = cam[2];
-  const proj = geoMercator().scale(base * z).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
+  // down close on the cutters at work, then along the track to the mill where the bundles arrive
+  const cam = cameraAt(f, [[0, [-72.6, 19.0], 1.0], [34, [-72.6, 19.0], 1.04], [126, [C[0] - 0.034, C[1] + 0.001], 96], [210, [C[0] - 0.027, C[1] + 0.001], 98],
+    [300, [C[0] + 0.018, C[1] + 0.001], 82], [360, [C[0] + 0.021, C[1] + 0.001], 82]]);
+  const turn = lerp(f, 34, 126, 0, -14);
+  const proj = geoMercator().scale(base * cam[2]).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
   const path = geoPath(proj);
   const P = (lon, lat) => proj([lon, lat]);
-  const close = lerp(f, 84, 118, 0, 1);   // the pieces show once the camera is down on the plain
-  const hti = [...geo.detail.features, ...geo.world.features].find((ft) => ft.properties.a3 === 'HTI');
-  // the field: rows of cane, cut from the left as the work goes on (stubble behind the cutters)
+  const close = lerp(f, 92, 126, 0, 1);
+  const rise = (at) => lerp(f, at, at + 14, 0, 1, Easing.out(Easing.cubic));   // set down, no bounce
+  const hti = geo.detail.features.find((ft) => ft.properties.a3 === 'HTI') || geo.world.features.find((ft) => ft.properties.a3 === 'HTI');
+  // the field: 5 rows of cane, 10 clumps a row; the cutters work along each row from the left (stubble behind them)
   const L0 = C[0] - 0.05, L1 = C[0] + 0.012, rows = [0, 1, 2, 3, 4].map((r) => C[1] + 0.016 - r * 0.0075);
-  const cut = lerp(f, 120, 320, 0.08, 0.62, (t) => t);
-  const field = rows.map((lat, r) => {
-    const [x0, y0] = P(L0, lat), [x1, y1] = P(L1, lat - 0.0045), xc = x0 + (x1 - x0) * Math.min(1, cut + (r % 2) * 0.04);
-    return (
-      <g key={r} opacity={close}>
-        <rect x={x0} y={y0} width={xc - x0} height={y1 - y0} fill="#8A7448" stroke="#5E4E2E" strokeWidth={1} />
-        <rect x={xc} y={y0} width={x1 - xc} height={y1 - y0} fill="#5E8A38" stroke="#3E5E22" strokeWidth={1} />
-        {[...Array(40)].map((_, i) => { const x = x0 + ((i + 0.5) / 40) * (x1 - x0); return x > xc ? <path key={i} d={`M ${x} ${y1} L ${x + 3} ${y0 + 4}`} stroke="#9CC45E" strokeWidth={3} opacity={0.8} /> : null; })}
-      </g>
-    );
-  });
-  // the cutters, one at the edge of each row, a little apart in time
+  const cutAt = (r) => lerp(f, 130 + r * 6, 350, 0.12, 0.6, (t) => t) + (r % 2) * 0.03;
+  const clumps = [];
+  rows.forEach((lat, r) => [...Array(10)].forEach((_, c) => {
+    const u = (c + 0.5) / 10;
+    clumps.push({x: P(L0 + (L1 - L0) * u, lat - 0.002), cut: u < cutAt(r), r, c});
+  }));
   const cutters = rows.map((lat, r) => {
-    const xL = L0 + (L1 - L0) * Math.min(1, cut + (r % 2) * 0.04) + 0.002;
-    return {x: P(xL, lat - 0.0022), swing: Math.max(0, Math.sin((f - r * 7) / 4.5)), rise: lerp(f, 100 + r * 5, 112 + r * 5, 0, 1, Easing.out(Easing.back(1.4))), k: r};
+    const u = cutAt(r);
+    return {x: P(L0 + (L1 - L0) * u - 0.0025, lat - 0.0045), cut: Math.max(0, Math.sin((f - r * 9) / 7)), k: r, at: 112 + r * 6};
   });
-  // two carry bundles to the mill and walk back, moved like pieces in hops
-  const MILL = [C[0] + 0.03, C[1] + 0.006];
-  const carriers = [0, 1].map((k) => {
-    const period = 90, t0 = 140 + k * 45, ph = f < t0 ? 0 : ((f - t0) % period) / period;
+  // the cattle mill: the beam turns, two oxen walk its ends round the mill house
+  const MILL = [C[0] + 0.03, C[1] + 0.004];
+  const ang = (f - 100) * 0.018, R0 = 0.0085;
+  const oxen = [0, Math.PI].map((d, i) => {
+    const a = ang + d, lon = MILL[0] + Math.cos(a) * R0 * 1.06, lat = MILL[1] + Math.sin(a) * R0;
+    const [x1] = P(MILL[0] + Math.cos(a + 0.05) * R0, lat);
+    const [x0] = P(lon, lat);
+    return {x: P(lon, lat), face: x1 >= x0 ? 1 : -1, step: Math.sin(f / 4 + i), i};
+  });
+  // carriers: a row of three bring bundles from the field to the mill and walk back, moved like pieces in hops
+  const carriers = [0, 1, 2].map((k) => {
+    const period = 100, t0 = 150 + k * 32, ph = f < t0 ? 0 : ((f - t0) % period) / period;
     const go = ph < 0.5, mv = hops(go ? ph * 2 : (ph - 0.5) * 2, 2);
-    const a = [L1 + 0.004, C[1] - 0.004 - k * 0.008], b = [MILL[0] - 0.009, MILL[1] - 0.006 - k * 0.006];
+    const A = [L1 + 0.004, C[1] - 0.003 - k * 0.006], B = [MILL[0] - 0.012, MILL[1] - 0.004 - k * 0.004];
     const u = go ? mv.u : 1 - mv.u;
-    return {x: P(a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u), lift: mv.lift * 26, carry: go && f >= t0, show: f >= 128, k: k + 3};
+    return {x: P(A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u), lift: mv.lift * 22, carry: go && f >= t0, show: f >= 136, k: k + 5};
   });
-  const barrels = [0, 1, 2, 3, 4].map((i) => ({x: P(MILL[0] + 0.006 + (i % 3) * 0.004, MILL[1] - 0.01 - Math.floor(i / 3) * 0.004), at: 190 + i * 26}));
+  const barrels = [0, 1, 2, 3, 4].map((i) => ({x: P(MILL[0] + 0.014 + (i % 3) * 0.004, MILL[1] - 0.012 - Math.floor(i / 3) * 0.004), at: 210 + i * 28}));
   const [hx, hy] = P(-73.35, 19.2);
-  // the plantation: its earth, a track to the mill, palms round the edge
-  const G0 = P(L0 - 0.016, C[1] + 0.03), G1 = P(MILL[0] + 0.024, C[1] - 0.034);
-  const palms = [[L0 - 0.012, C[1] - 0.026], [L0 + 0.01, C[1] + 0.026], [C[0] + 0.004, C[1] + 0.027], [MILL[0] + 0.018, C[1] + 0.02], [MILL[0] + 0.02, C[1] - 0.03]];
+  const G0 = P(L0 - 0.016, C[1] + 0.03), G1 = P(MILL[0] + 0.026, C[1] - 0.034);
+  const palms = [[L0 - 0.012, C[1] - 0.026], [L0 + 0.01, C[1] + 0.026], [C[0] + 0.004, C[1] + 0.027], [MILL[0] + 0.02, C[1] + 0.022], [MILL[0] + 0.022, C[1] - 0.03]];
+  const ring = [...Array(49)].map((_, i) => { const a = (i / 48) * 2 * Math.PI; return P(MILL[0] + Math.cos(a) * R0 * 1.06, MILL[1] + Math.sin(a) * R0); });
+  const [mx, my] = P(...MILL), beam = [0, Math.PI].map((d) => P(MILL[0] + Math.cos(ang + d) * R0 * 1.06, MILL[1] + Math.sin(ang + d) * R0));
+  // back to front: everything that stands on the board, sorted by its screen y
+  const stand = [
+    ...clumps.map((c) => ({y: c.x[1], el: <Piece key={`cn${c.r}-${c.c}`} {...xy(c.x)} turn={turn} s={1.3} w={70} h={170} op={close} rise={rise(100 + c.c * 2)}><Cane cut={c.cut} sway={Math.sin(f / 20 + c.c + c.r) * 2} /></Piece>})),
+    ...cutters.map((c) => ({y: c.x[1], el: <Piece key={`w${c.k}`} {...xy(c.x)} turn={turn} s={1.35} w={120} h={200} op={close} rise={rise(c.at)}><Worker k={c.k} cut={c.cut} /></Piece>})),
+    ...carriers.filter((c) => c.show).map((c) => ({y: c.x[1], el: <Piece key={`k${c.k}`} {...xy(c.x)} turn={turn} s={1.35} w={120} h={200} op={close} lift={c.lift} rise={rise(136 + c.k * 4)}><Worker k={c.k} carry={c.carry} /></Piece>})),
+    ...oxen.map((o) => ({y: o.x[1], el: <Piece key={`ox${o.i}`} {...xy(o.x)} turn={turn} s={1.3} w={140} h={110} op={close} rise={rise(104)}><Ox face={o.face} step={o.step} /></Piece>})),
+    {y: my, el: <Piece key="mill" x={mx} y={my} turn={turn} s={1.5} w={170} h={200} op={close} rise={rise(100)}><MillHouse /></Piece>},
+    ...barrels.filter((b) => f >= b.at).map((b, i) => ({y: b.x[1], el: <Piece key={`b${i}`} {...xy(b.x)} turn={turn} s={1.0} w={60} h={80} op={close} rise={rise(b.at)}><Barrel /></Piece>})),
+    ...palms.map(([lo, la], i) => { const q = P(lo, la); return {y: q[1], el: <Piece key={`p${i}`} {...xy(q)} turn={turn} s={0.8} w={120} h={220} op={close} rise={rise(98 + i * 3)}><Palm f={f + i * 9} /></Piece>}; }),
+    (() => { const q = P(L0 + 0.004, C[1] + 0.021); return {y: q[1], el: <Piece key="ov" {...xy(q)} turn={turn} s={1.35} w={120} h={220} op={close} rise={rise(122)}><Overseer /></Piece>}; })(),
+  ].sort((p1, p2) => p1.y - p2.y);
   return (
-    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<Title f={f} items={[['Saint-Domingue, the 1700s', 6, true], ['Sugar', 96, false], ['Worked by enslaved Africans', 132, true], ['Nearly half a million enslaved by 1789', 214]]} />}>
+    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1) * 0.86} overlay={<><AbsoluteFill style={{background: 'rgba(10,6,2,0.22)'}} />
+      <Title f={f} items={[['Saint-Domingue, the 1700s', 6, true], ['Sugar', 100, false], ['Worked by enslaved Africans', 140, true], ['Nearly half a million enslaved by 1789', 230]]} /></>}>
       <Board path={path}>
         {hti && <g opacity={1 - close * 0.85}><path d={path(hti)} fill="#3FB8DE" fillOpacity={0.42 * lerp(f, 8, 30, 0, 1)} /><path d={path(hti)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeOpacity={lerp(f, 8, 30, 0, 1)} /></g>}
-        {f < 110 && <text x={hx} y={hy} textAnchor="middle" opacity={lerp(f, 14, 30, 0, 1) * (1 - close)}
+        {f < 118 && <text x={hx} y={hy} textAnchor="middle" opacity={lerp(f, 14, 30, 0, 1) * (1 - close)}
                           style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 64, letterSpacing: 8, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 10}}>SAINT-DOMINGUE</text>}
         <rect x={G0[0]} y={G0[1]} width={G1[0] - G0[0]} height={G1[1] - G0[1]} rx={40} fill="#8C7A4E" fillOpacity={0.72 * close} stroke="#5A4A30" strokeWidth={4} strokeOpacity={close} />
-        <path d={`M ${P(L1 + 0.002, C[1] - 0.004)[0]} ${P(L1 + 0.002, C[1] - 0.004)[1]} L ${P(MILL[0] - 0.006, MILL[1] - 0.004)[0]} ${P(MILL[0] - 0.006, MILL[1] - 0.004)[1]}`} stroke="#A89470" strokeWidth={26} strokeLinecap="round" opacity={0.7 * close} />
-        {field}
+        {rows.map((lat, r) => { const [x0, y0] = P(L0, lat), [x1, y1] = P(L1, lat - 0.0045);
+          return <rect key={r} x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill="#6E5A36" opacity={0.8 * close} stroke="#4E3E22" strokeWidth={1} />; })}
+        <path d={`M ${P(L1 + 0.002, C[1] - 0.004)[0]} ${P(L1 + 0.002, C[1] - 0.004)[1]} L ${P(MILL[0] - 0.012, MILL[1] - 0.004)[0]} ${P(MILL[0] - 0.012, MILL[1] - 0.004)[1]}`} stroke="#A89470" strokeWidth={26} strokeLinecap="round" opacity={0.7 * close} />
+        <path d={`M ${ring.map((q) => q.join(' ')).join(' L ')}`} fill="none" stroke="#A89470" strokeWidth={22} opacity={0.75 * close} />
+        <path d={`M ${beam[0].join(' ')} L ${beam[1].join(' ')}`} stroke="#4A3020" strokeWidth={10} strokeLinecap="round" opacity={close} />
       </Board>
-      {palms.map(([lo, la], i) => <Piece key={`p${i}`} {...xy(P(lo, la))} turn={turn} s={0.8} w={120} h={220} op={close} rise={lerp(f, 98 + i * 3, 110 + i * 3, 0, 1, Easing.out(Easing.back(1.3)))}><Palm f={f + i * 9} /></Piece>)}
-      <Piece {...xy(P(...MILL))} turn={turn} s={0.95} w={170} h={240} op={close} rise={lerp(f, 96, 110, 0, 1, Easing.out(Easing.back(1.3)))}><Mill f={f} /></Piece>
-      {barrels.map((b, i) => f >= b.at && <Piece key={`b${i}`} {...xy(b.x)} turn={turn} s={0.7} w={60} h={80} op={close} rise={lerp(f, b.at, b.at + 10, 0, 1, Easing.out(Easing.back(1.6)))}><Barrel /></Piece>)}
-      {[...cutters].reverse().map((c) => <Piece key={`c${c.k}`} {...xy(c.x)} turn={turn} s={0.76} w={120} h={200} op={close} rise={c.rise}><Worker k={c.k} swing={c.swing} /></Piece>)}
-      {carriers.map((c) => c.show && <Piece key={`k${c.k}`} {...xy(c.x)} turn={turn} s={0.76} w={120} h={200} op={close} lift={c.lift} rise={lerp(f, 128, 140, 0, 1)}><Worker k={c.k} carry={c.carry} /></Piece>)}
-      <Piece {...xy(P(L0 - 0.006, C[1] + 0.004))} turn={turn} s={0.8} w={120} h={200} op={close} rise={lerp(f, 116, 128, 0, 1, Easing.out(Easing.back(1.4)))}><Overseer /></Piece>
+      {stand.map((p) => p.el)}
     </Table>
   );
 }
@@ -621,7 +675,7 @@ const Quebec1608Sample = ({f}) => (
   </AbsoluteFill>
 );
 const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar};
-export const WAR_FRAMES = {quebec1608: 760, quebec1608map: 600, quebec1759: 390, sugar: 330};
+export const WAR_FRAMES = {quebec1608: 760, quebec1608map: 600, quebec1759: 390, sugar: 360};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();
