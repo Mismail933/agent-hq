@@ -469,7 +469,7 @@ function YRiver({f, len, line}) {
   const T = f + (line.start || 0);   // the river's own clock: waves, bob and stroke carry on from one line to the next (Israa: the swimmer restarted)
   const x = lin(f, 0, len, p.x0 ?? 360, p.x1 ?? 1500, (t) => t);   // a crossing that spans lines: x0 of a line = x1 of the one before
   const sk = (SKINS.light || {}).light || '#F1C9A5';
-  const st8 = 0.12 + ((T * 0.022) % 1) * 0.88, hx = 70 + 150 * st8, hy = 52 - Math.sin(Math.PI * st8) * 96, acx = (40 + hx) / 2, acy = Math.min(52, hy) - 54;
+  const st8 = 0.12 + ((T * 0.022) % 1) * 0.88, hx = 96 + 150 * st8, hy = 52 - Math.sin(Math.PI * st8) * 96, acx = (66 + hx) / 2, acy = Math.min(52, hy) - 54;
   return (
     <g>
       <rect width={W} height={H} fill="#55616C" />
@@ -483,9 +483,9 @@ function YRiver({f, len, line}) {
         <g transform="scale(0.36)"><Head who="yamaguchi" expr="determined" f={T} seed={3} turn={0.5} /><BandHead turn={0.5} /></g>
         <rect x={-90} y={54} width={180} height={70} fill="#55616C" />
         <ellipse cx={0} cy={54} rx={100} ry={16} fill="none" stroke="#9AA9B6" strokeWidth={6} />
-        {/* the crawl, drawn in front of the head (Israa: behind it the arm read as a hook): out of the water at his shoulder, over, and forward */}
-        <path d={`M 40 54 Q ${acx} ${acy} ${hx} ${hy}`} stroke={INK} strokeWidth={30} fill="none" strokeLinecap="round" />
-        <path d={`M 40 54 Q ${acx} ${acy} ${hx} ${hy}`} stroke="#8C7E58" strokeWidth={20} fill="none" strokeLinecap="round" />
+        {/* the crawl: the arm comes out of the water just ahead of his chin (not from his face), arcs over and reaches forward */}
+        <path d={`M 66 56 Q ${acx} ${acy} ${hx} ${hy}`} stroke={INK} strokeWidth={30} fill="none" strokeLinecap="round" />
+        <path d={`M 66 56 Q ${acx} ${acy} ${hx} ${hy}`} stroke="#8C7E58" strokeWidth={20} fill="none" strokeLinecap="round" />
         <circle cx={hx + 4} cy={hy + 2} r={15} fill={sk} {...st(4)} />
         {hy > 40 && <ellipse cx={hx + 4} cy={56} rx={30} ry={8} fill="none" stroke="#9AA9B6" strokeWidth={5} />}
       </g>
