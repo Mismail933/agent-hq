@@ -395,6 +395,8 @@ const chunksOf = (l) => {
   const ws = l.words || [], out = [];
   let cur = [];
   ws.forEach((w, i) => {
+    const prevNum = cur.length && /^[\d][\d.,]*$/.test(ws[cur[cur.length - 1]][0]);
+    if (cur.length >= 2 && !prevNum && cur.map((k) => ws[k][0]).join(' ').length + 1 + w[0].length > 40) { out.push(cur); cur = []; }
     cur.push(i);
     const end = /[.,!?;:\u2014]$/.test(w[0]) || /["\u201d]$/.test(w[0]);
     const num = /^[\d][\d.,]*$/.test(w[0]) && i + 1 < ws.length;   // 2.61.1: "35 | METRES" split a number from its unit

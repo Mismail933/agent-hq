@@ -59,7 +59,8 @@ function YGrow({f, len, line}) {
       <rect width={W} height={H} fill="#E8DCC2" />
       <rect y={860} width={W} height={220} fill="#C9B48E" /><path d="M 0 860 L 1920 860" {...st(6)} />
       <YBust who="yamaguchi" x={620} y={440} s={0.9} expr="calm" f={f} seed={3} band turn={0.3} />
-      <g transform={`translate(1220 860) scale(${k * 0.5}) translate(0 -1090)`}><Figure who="toshiko_girl" pose="stand" f={f} expr="smile" seed={14} /></g>
+      {age < 2 ? <g transform="translate(1220 790)"><Baby s={0.9} f={f} /></g>
+        : <g transform={`translate(1220 860) scale(${k * 0.5}) translate(0 -1090)`}><Figure who="toshiko_girl" pose="stand" f={f} expr="smile" seed={14} /></g>}
       <g transform="translate(1600 300)"><circle r={120} fill="#0B1F3A" {...st(8)} /><Txt x={0} y={30} text={`AGE ${age}`} size={60} fill="#FFE11A" /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
@@ -166,7 +167,7 @@ function Y165({f, len, line}) {
       {[A, B].map((c, i) => <g key={i} transform={`translate(${sx(c[0])} ${sy(c[1])})`}><Burst r={30} /></g>)}
       {dots.slice(0, shown).map(([x, y], i) => <circle key={i} cx={x} cy={y} r={8} fill="#FFE11A" stroke={INK} strokeWidth={2.5} />)}
       <g transform={`translate(1580 820) scale(${pz(f, a)})`}><rect x={-230} y={-110} width={460} height={200} fill="#0B1F3A" {...st(8)} /><Txt x={0} y={10} text={String(shown)} size={120} fill="#FFE11A" /><Txt x={0} y={70} text="IN BOTH CITIES" size={38} /></g>
-      {p.icons && ['A TRAIN', 'A ROAD', 'AN ERRAND'].map((t, i) => <Plate key={i} x={420 + i * 400} y={840} w={340} h={90} text={t} s={pz(f, at(line, ['train', 'road', 'errand'][i], 0.3 + i * 0.2))} fill="#fff" size={46} />)}
+      {p.icons && ['A TRAIN', 'A ROAD', 'AN ERRAND'].map((t, i) => <Plate key={i} x={300 + i * 370} y={840} w={340} h={90} text={t} s={pz(f, at(line, ['train', 'road', 'errand'][i], 0.3 + i * 0.2))} fill="#fff" size={46} />)}
       <Labels line={line} f={f} x0={100} y0={90} />
     </g>
   );
@@ -194,10 +195,11 @@ function YUN({f, len, line}) {
 function YRecord({f, len, line}) {
   const p = P(line);
   const a = Math.min(at(line, p.on || 'guinness', 0.2), 10);
+  const e = p.mode === 'empty', nb = at(line, p.b_on || 'nobody', 0.5);
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.04}>
       <rect width={W} height={H} fill="#0B1F3A" />
-      <g transform={`translate(${p.mode === 'empty' ? 640 : 960} 520) scale(${pz(f, a)})`}>
+      <g transform={`translate(${e ? lin(f, nb - 18, nb, 960, 640) : 960} 520) scale(${e ? 1 : pz(f, a)})`}>
         <rect x={-420} y={-300} width={840} height={600} rx={20} fill="#C9A227" {...st(10)} />
         <rect x={-380} y={-260} width={760} height={520} rx={10} fill="#1F2937" {...st(6)} />
         <Txt x={0} y={-150} text="WORLD RECORD" size={70} fill="#C9A227" />
@@ -221,7 +223,7 @@ function YHospital({f, len, line}) {
   const p = P(line);
   const v = p.mode === 'visitor';
   return (
-    <g><Cam f={f} len={len} a={1.0} b={1.05}>
+    <g><Cam f={f} len={len} a={v ? 1.0 : 1.02} b={v ? 1.05 : 1.16} x={v ? W / 2 : 760} y={v ? H / 2 : 560}>
       <rect width={W} height={H} fill="#DDE7EA" />
       <rect y={820} width={W} height={260} fill="#A7B8BC" /><path d="M 0 820 L 1920 820" {...st(6)} />
       <rect x={1340} y={130} width={420} height={320} fill="#B9D7EA" {...st(8)} /><path d="M 1550 130 L 1550 450" stroke={INK} strokeWidth={6} />
@@ -266,7 +268,7 @@ function YWhy({f, len, line}) {
 function YTwin({f, len, line}) {
   const a = Math.min(at(line, 'distance', 0.1), 8);
   const panel = (child, x, title) => (
-    <g transform={`translate(${x} 560) scale(${pz(f, a + (x > 900 ? 8 : 0))})`}>
+    <g transform={`translate(${x} 560) scale(${x > 900 ? clamp(0.9 + 0.1 * pz(f, a + 6), 0, 1.05) : 1})`}>
       <svg x={-420} y={-300} width={840} height={600} viewBox="380 -40 1100 790">{child}</svg>
       <rect x={-420} y={-300} width={840} height={600} fill="none" {...st(8)} />
       <Txt x={0} y={-330} text={title} size={56} />

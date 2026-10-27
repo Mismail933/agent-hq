@@ -120,7 +120,7 @@ function YDelta({f, len, line}) {
           <circle r={20} fill="#FFE11A" {...st(6)} />
           <Tag x={-30} y={70} text="YAMAGUCHI" f={f} a={Math.min(a, 8)} size={40} anchor="end" color="#fff" />
         </g>}
-        {(mode === 'rings' || mode === 'him') && <g>
+        {mode === 'rings' && <g>
           <Tag x={HYPO[0] + 2 * KM * 0.75} y={HYPO[1] - 2 * KM * 0.45} text={p.r2 || '2 KM: HOUSES FLATTENED'} f={f} a={mode === 'him' ? 2 : a + 18} size={40} color="#F97316" />
           <Tag x={HYPO[0] + 3.5 * KM * 0.62} y={HYPO[1] + 3.5 * KM * 0.72} text={p.r35 || '3.5 KM: BURNS'} f={f} a={mode === 'him' ? 4 : b + 18} size={40} color="#E3232C" ink="#fff" />
         </g>}
@@ -131,7 +131,11 @@ function YDelta({f, len, line}) {
         <Txt x={0} y={-10} text={Math.round(lin(f, a, a + 40, 0, 150000)).toLocaleString('en-US')} size={86} fill="#FFE11A" /><Txt x={0} y={58} text="FLED THE CITY" size={40} /></g>}
       {mode === 'dist' && <g transform={`translate(1560 820) scale(${pz(f, b)})`}><rect x={-250} y={-80} width={500} height={150} fill="#fff" {...st(6)} />
         <Txt x={0} y={-6} text="≈ 40 MINUTES" size={66} fill={INK} stroke="none" /><Txt x={0} y={52} text="ON FOOT" size={40} fill="#475569" stroke="none" /></g>}
-      {mode === 'blast' && <g transform={`translate(1640 140) scale(${pz(f, Math.min(a, 6))})`}><rect x={-170} y={-60} width={340} height={110} fill="#0B1F3A" {...st(6)} /><Txt x={0} y={30} text={p.clock || '8:15 AM'} size={84} fill="#FFE11A" /></g>}
+      {mode === 'him' && <g>
+        <Tag x={1250} y={220} text={p.r2 || '2 KM: HOUSES FLATTENED'} f={f} a={2} size={40} color="#F97316" />
+        <Tag x={1250} y={300} text={p.r35 || '3.5 KM: BURNS'} f={f} a={6} size={40} color="#E3232C" ink="#fff" />
+      </g>}
+      {mode === 'blast' && p.clock && <g transform={`translate(1640 230) scale(${pz(f, Math.min(a, 6))})`}><rect x={-170} y={-60} width={340} height={110} fill="#0B1F3A" {...st(6)} /><Txt x={0} y={30} text={p.clock} size={84} fill="#FFE11A" /></g>}
       <rect width={W} height={H} fill="#FFFDF2" opacity={mode === 'blast' ? clamp(1 - Math.abs(f - a - 3) / 10, 0, 1) * 0.85 : 0} />
       <Labels line={line} f={f} x0={100} y0={90} />
     </g>
@@ -404,7 +408,7 @@ function YInstruments({f, len, line}) {
     <g><Cam f={f} len={len} a={1.0} b={1.04}>
       <linearGradient id="yinsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2F6FB8" /><stop offset="1" stopColor="#BFD9EE" /></linearGradient>
       <rect width={W} height={H} fill="url(#yinsky)" />
-      <g transform={`translate(${bx + 260} 200) rotate(-4) scale(0.24)`}><B29 f={f} /></g>
+      <g transform={`translate(${bx + 480} 170) rotate(-4) scale(0.24)`}><B29 f={f} /></g>
       <g transform={`translate(${bx} 330) rotate(-4) scale(0.24)`}><B29 f={f} /></g>
       {f > d && [0, 1].map((i) => { const t = f - d - i * 10; if (t < 0) return null; const x0 = lin(d + i * 10, 0, len, 300, 1300, (q) => q);
         return <g key={i} transform={`translate(${x0 - 40 + Math.sin(t * 0.05 + i) * 20} ${360 + t * 1.6})`}><Chute s={clamp(pop(t, 0, 120, 14), 0, 1) * 1.1} sway={Math.sin(t * 0.06 + i) * 10} /></g>; })}
@@ -496,7 +500,7 @@ function YPeople({f, len, line}) {
           <Person c={grey ? '#5B6472' : '#F5F1E6'} />
           {p.mark === 'cross' && f > b + i * 4 && <g transform="translate(60 -40)"><circle r={44} fill="#fff" {...st(5)} /><path d="M -10 -28 L 10 -28 L 10 -10 L 28 -10 L 28 10 L 10 10 L 10 28 L -10 28 L -10 10 L -28 10 L -28 -10 L -10 -10 Z" fill="#E3232C" /></g>}</g>); })}
       {p.value && <g transform={`translate(${W / 2} 230) scale(${pz(f, a)})`}><Txt x={0} y={30} text={(String(p.value).match(/^[^0-9]*/) || [''])[0] + Math.round(lin(f, a, a + 36, 0, v)).toLocaleString('en-US')} size={120} fill="#FFE11A" /></g>}
-      {p.label && <g transform={`translate(${W / 2} 920) scale(${pz(f, b)})`}><Txt x={0} y={0} text={p.label} size={70} /></g>}
+      {p.label && <g transform={`translate(${W / 2} 830) scale(${pz(f, b)})`}><Txt x={0} y={0} text={p.label} size={70} /></g>}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -539,16 +543,15 @@ function YTrain({f, len, line}) {
   }
   const face = popAt(f, line, p.face_on || 'gets', 0.6);
   return (
-    <g><Cam f={f} len={len} a={1.0} b={1.06} x={1100} y={560}>
+    <g><Cam f={f} len={len} a={1.0} b={1.06}>
       <rect width={W} height={H} fill="#A9A6A2" />
       <path d="M 0 120 L 600 120 L 680 200 L 760 140 L 900 210 L 1100 130 L 1920 130 L 1920 230 L 0 230 Z" fill="#5A5357" {...st(6)} />
       {[200, 700, 1200, 1700].map((x) => <rect key={x} x={x - 14} y={230} width={28} height={560} fill="#6B6A6E" {...st(5)} />)}
       <rect y={790} width={W} height={290} fill="#7E776F" /><path d="M 0 790 L 1920 790" {...st(6)} />
       <g transform="translate(1700 790) scale(1.05)"><Train f={f} /></g>
-      {face > 0.01 && <g transform="translate(1200 560)">
-        <clipPath id="ywin"><rect x={-90} y={-110} width={190} height={170} /></clipPath>
-        <g clipPath="url(#ywin)"><g transform={`translate(0 ${lin(face, 0, 1, 160, 0)})`}><YBust who="yamaguchi" x={0} y={-10} s={0.36} expr="worried" f={f} seed={3} band turn={0.3} /></g></g>
-      </g>}
+      {(() => { const g = at(line, p.face_on || 'gets', 0.6); const t = clamp((f - g + 50) / 70, 0, 1), gone = clamp((f - g - 24) / 12, 0, 1);
+        return <g opacity={1 - gone} transform={`translate(${lin(t, 0, 1, 520, 1010, (q) => q)} 1000) scale(0.24) translate(0 -1090)`}>
+          <Figure who="yamaguchi" pose={t < 1 ? 'walk' : 'stand'} dir={1} f={f} expr="worried" seed={3} /></g>; })()}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );

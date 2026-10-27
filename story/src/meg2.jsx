@@ -16,7 +16,10 @@ export const Txt = ({x, y, text, size = 60, fill = '#fff', anchor = 'middle', st
 export const Cam = ({f, len, a = 1, b = 1.06, x = W / 2, y = H / 2, shake = 0, hand = 0, children}) => {
   const z = lin(f, 0, len, a, b);
   const [sx, sy] = camShake(f, shake, hand);
-  return <g transform={`translate(${W / 2 + sx} ${H / 2 + sy}) scale(${z}) translate(${-x} ${-y})`}>{children}</g>;
+  // the centre is kept where the zoomed view stays inside the 1920x1080 picture (x 1100 at zoom 1.0 showed 140 px of black)
+  const hw = W / 2 / Math.max(z, 1), hh = H / 2 / Math.max(z, 1);
+  const cx = clamp(x, hw, W - hw), cy = clamp(y, hh, H - hh);
+  return <g transform={`translate(${W / 2 + sx} ${H / 2 + sy}) scale(${z}) translate(${-cx} ${-cy})`}>{children}</g>;
 };
 export const BG = ({c = '#0F2A44'}) => <rect width={W} height={H} fill={c} />;
 // a shape popping in on a spoken word (frame a = the word's frame)

@@ -397,7 +397,7 @@ function YFlash({f, len, line}) {
         <g opacity={0.6}><Ruins y={762} /></g>
         <Field y={760} dark={0.3} />
         {tumble && f < t ? <g transform="translate(520 1000) scale(0.42) translate(0 -1090)"><Figure who="yamaguchi" pose="stand" f={f} expr="shock" seed={3} /></g>
-          : u < 1 ? <g transform={`translate(${fx} ${fy}) rotate(${u * 520}) scale(0.32)`}><YBust who="yamaguchi" x={0} y={-300} s={1} expr="scared" f={f} arms="flail" seed={3} /></g>
+          : u < 1 ? <g transform={`translate(${fx} ${fy}) rotate(${u * 520}) scale(0.32)`}><YBust who="yamaguchi" x={0} y={-300} s={1} expr="closed" f={f} seed={3} /></g>
           : <g transform="translate(980 880) rotate(-90) scale(0.42)"><YBust who="yamaguchi" x={0} y={0} s={1} expr="closed" f={f} seed={3} /></g>}
         {u >= 1 && f >= t && [...Array(8)].map((_, i) => { const q = clamp((f - t - 26) / 30, 0, 1); return <circle key={i} cx={1060 + Math.cos(i) * 90 * (0.4 + q)} cy={860 - Math.abs(Math.sin(i * 1.7)) * 60 * q} r={30 + 20 * q} fill="#8A6A4E" opacity={0.5 * (1 - q)} />; })}
       </Cam>
@@ -462,11 +462,11 @@ function YOffice({f, len, line}) {
   const talk = Math.floor(f / 5) % 2 === 0;
   const k = clamp(pop(f, m, 150, 12), 0, 1.1);
   return (
-    <g><Cam f={f} len={len} a={1.0} b={1.05}>
+    <g><Cam f={f} len={len} a={p.focus === 'boss' ? 1.55 : 1.0} b={p.focus === 'boss' ? 1.65 : 1.05} x={p.focus === 'boss' ? 1320 : W / 2} y={p.focus === 'boss' ? 470 : H / 2}>
       <OfficeRoom f={f} clock={p.clock || '10:55'} />
       <YBust who="yamaguchi" x={600} y={430} s={0.85} expr={f < half ? 'worried' : 'shock'} talk={f < half && talk && p.he_talks !== false} f={f} seed={3} band turn={0.25} />
       <YBust who="boss" x={1300} y={430} s={0.85} expr={f >= m - 4 && p.boss_talks !== false ? 'shock' : 'grim'} talk={f >= half && talk && f < m - 4} f={f} seed={6} turn={-0.25} />
-      {p.ybubble && (() => { const q = clamp(pop(f, at(line, p.ybubble_on || '', 0.3), 150, 12), 0, 1.1); return q > 0.01 ? <g transform={`translate(560 190) scale(${q})`}>
+      {p.ybubble && (() => { const q = clamp(pop(f, at(line, p.ybubble_on || '', 0.3), 150, 12), 0, 1.1); return q > 0.01 ? <g transform={`translate(400 120) scale(${q})`}>
         <path d="M 60 70 L 120 150 L -10 90" fill="#fff" {...ST} /><rect x={-330} y={-90} width={660} height={170} rx={60} fill="#fff" {...ST} />
         <text x={0} y={22} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={58} fill={INK}>{p.ybubble}</text></g> : null; })()}
       {k > 0.01 && p.bubble !== false && <g transform={`translate(1500 230) scale(${k})`}>

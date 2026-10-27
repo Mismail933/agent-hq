@@ -264,7 +264,7 @@ function YTargets({f, len, line}) {
         </g>
       </g>}
       {mode === 'kokura' && <Plate x={1560} y={860} w={460} h={130} text="PRIMARY TARGET" s={pz(f, Math.min(a, 8))} fill="#fff" />}
-      <Labels line={line} f={f} x0={100} y0={90} />
+      <Labels line={line} f={f} x0={100} y0={560} />
     </g>
   );
 }
@@ -289,7 +289,7 @@ function YEverest({f, len, line}) {
       <g opacity={pz(f, b) > 0.5 ? 1 : 0}><Txt x={1080} y={y0 - 8849 * px + 120} text="EVEREST 8,849 M" size={50} /></g>
       <path d={`M 200 ${y0 - 9600 * px} L 1760 ${y0 - 9600 * px}`} stroke="#FFE11A" strokeWidth={6} strokeDasharray="22 14" opacity={pz(f, Math.min(a, 8))} />
       <g transform={`translate(${lin(f, 0, len, 1300, 1500)} ${y0 - 9600 * px - 10}) rotate(-6) scale(0.17)`} opacity={pz(f, Math.min(a, 8))}><B29 f={f} /></g>
-      <Txt x={1500} y={y0 - 9600 * px - 70} text="9,600 M" size={64} fill="#FFE11A" op={pz(f, Math.min(a, 8))} />
+      <Txt x={420} y={y0 - 9600 * px - 40} text="9,600 M" size={64} fill="#FFE11A" op={pz(f, Math.min(a, 8))} />
       <rect y={y0} width={W} height={H - y0} fill="#6E9A6A" />
     </Cam>
       <Labels line={line} f={f} x0={100} y0={600} /></g>
@@ -392,7 +392,7 @@ function YValley({f, len, line}) {
       {mode === 'rings' && <g>
         <g transform={`translate(${HY[0]} ${HY[1]})`}><path d="M -22 -22 L 22 22 M 22 -22 L -22 22" stroke={INK} strokeWidth={12} strokeLinecap="round" /></g>
         {ring > 1 && <circle cx={HY[0]} cy={HY[1]} r={ring} fill="none" stroke="#E3232C" strokeWidth={8} strokeDasharray="26 16" />}
-        <Tag x={HY[0] + 3 * KMV * 0.75} y={HY[1] - 3 * KMV * 0.7} text="3 KM" s={pz(f, a + 20)} />
+        <Tag x={HY[0] - 3 * KMV - 130} y={HY[1] + 20} text="3 KM" s={pz(f, a + 20)} />
         <Tag x={HY[0] - 520} y={HY[1] - 120} text="HILLS" s={pz(f, b)} color="#fff" /><Tag x={HY[0] + 340} y={HY[1] - 120} text="HILLS" s={pz(f, b + 4)} color="#fff" />
         <Tag x={HY[0] - 130} y={HY[1] - 330} text="URAKAMI VALLEY" s={pz(f, b + 10)} />
       </g>}
@@ -410,14 +410,15 @@ function YGlass({f, len, line}) {
   const t = clamp(f / 20, 0, 1);
   const shards = [...Array(26)].map(() => [1380 + R() * 420, 120 + R() * 330, R() * 360, 20 + R() * 40, R()]);
   return (
-    <g><Cam f={f} len={len} a={1.06} b={1.0} shake={f < 18 ? 12 : 0}>
+    <g><Cam f={f} len={len} a={1.0} b={1.14} x={900} y={640} shake={f < 18 ? 12 : 0}>
       <rect width={W} height={H} fill="#BBAA88" />
       <rect y={0} width={W} height={60} fill="#A8987A" />
       <rect y={820} width={W} height={260} fill="#7A5C40" />
       <g transform="translate(1380 120)"><rect width={420} height={330} fill="#F2EEDC" {...st(8)} /><path d="M 0 0 L 60 80 L 0 160 M 420 0 L 360 120 L 420 200" stroke={INK} strokeWidth={6} fill="none" /></g>
       {shards.map(([x, y, r, s, k], i) => { const x2 = x - 900 * t * (0.4 + k), y2 = y + 300 * t * k; return <path key={i} d={`M ${x2} ${y2} l ${s} ${s * 0.3} l ${-s * 0.4} ${s}`} fill="#DDEFFA" stroke={INK} strokeWidth={3} transform={`rotate(${r + f * 3} ${x2} ${y2})`} />; })}
       {[...Array(16)].map((_, i) => { const q = ((f / 60) + i / 16) % 1; return <circle key={'d' + i} cx={200 + R() * 1500} cy={300 + R() * 500 - q * 100} r={30 + q * 50} fill="#9E8E74" opacity={0.35 * (1 - q)} />; })}
-      <g transform="translate(760 900) rotate(-90) scale(0.42)"><Torso who="yamaguchi" arms="rest" f={f} /><Head who="yamaguchi" expr="scared" f={f} seed={3} /></g>
+      <g transform="translate(1180 905) rotate(-90) scale(0.38)"><Torso who="boss" arms="rest" f={f} /><Head who="boss" expr="closed" f={f} seed={6} /></g>
+      <g transform="translate(760 900) rotate(-90) scale(0.42)"><Torso who="yamaguchi" arms="rest" f={f} /><Head who="yamaguchi" expr="closed" f={f} seed={3} /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -483,7 +484,7 @@ function YTunnel({f, len, line}) {
       <path d="M 520 1080 L 520 640 C 520 360 1400 360 1400 640 L 1400 1080 Z" fill="#1A1410" {...st(10)} />
       <path d="M 520 1080 L 520 640 C 520 360 1400 360 1400 640 L 1400 1080" fill="none" stroke="#9C8B70" strokeWidth={30} />
       <rect width={W} height={H} fill="#FFFDF2" opacity={fl * 0.7} />
-      <YBust who="hisako" x={900} y={700} s={0.7} expr={f > w ? 'scared' : 'worried'} f={f} seed={5} turn={0.2} />
+      <YBust who="hisako" x={900} y={700} s={0.7} expr={f > w ? 'closed' : 'worried'} f={f} seed={5} turn={0.2} />
       <g transform="translate(1040 900)"><Baby s={0.75} f={f} /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
@@ -541,8 +542,8 @@ function YStadium({f, len, line}) {
       <rect width={W} height={H} fill="#0B1F3A" />
       <g transform="translate(520 520)"><Stadium fill={lin(f, a, a + 30, 0, 0.82)} color="#E3232C" /></g>
       <g transform={`translate(1400 520) scale(${pz(f, b)})`}><Stadium fill={lin(f, b, b + 30, 0, 0.65)} color="#F59E0B" /></g>
-      <Txt x={520} y={840} text="90,000 SEATS: 82% FULL" size={52} op={pz(f, a)} />
-      <Txt x={1400} y={840} text="A SECOND ONE: 65%" size={52} op={pz(f, b)} />
+      <Txt x={520} y={810} text="WEMBLEY · 90,000 SEATS" size={50} op={pz(f, a)} /><Txt x={520} y={880} text="82% FULL" size={56} fill="#FFE11A" op={pz(f, a)} />
+      <Txt x={1400} y={810} text="A SECOND STADIUM" size={50} op={pz(f, b)} /><Txt x={1400} y={880} text="65% FULL" size={56} fill="#FFE11A" op={pz(f, b)} />
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
