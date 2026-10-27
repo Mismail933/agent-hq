@@ -1094,7 +1094,7 @@ Agents never spend money without the owner's explicit approval.
   on); Hisako's own bust in the black rain + a name label; the shelter's colleague screams only on the first beat (`scared`); pupils
   at desks; radio waves fade in and out; JAPAN clear of the chip; no SOUND tick; OfficeRoom `noClock` in the boss close-up; Toshiko
   grey-haired in 2010; the fall counter says "SHOWN FASTER / THE REAL FALL: 47 SECONDS".
-  2.72.13 (Israa on the second full render: redo 8, "a short patch"): the fall note on a dark plate (it sat on white clouds); YStadium
+  2.73.0 (Israa on the second full render: redo 8, "a short patch"): the fall note on a dark plate (it sat on white clouds); YStadium
   fills the first stadium to FULL with the injured on top of the dead (a legend) and the second to 65% (82% + 65% was the wrong
   total); the swimmer is a face with his head bandage, an arm mid-stroke and a wake (the dark blob read as a body); YTargets draws the
   gap (light through it, an 'A GAP' tag) from 'small'; YBars `land_on` (the Nagasaki bar grows from 'bigger' and lands on its number);
