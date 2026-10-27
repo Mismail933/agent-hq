@@ -368,7 +368,7 @@ function PaintingCoda({f, len = 200}) {
       <div style={{position: 'absolute', left: 70, bottom: 60, background: 'rgba(8,12,20,0.72)', borderLeft: '6px solid #C9A227', padding: '10px 18px',
                    color: '#F4EEDC', fontFamily: 'Space Grotesk', opacity: lerp(f, 10, 24, 0, 1)}}>
         <div style={{fontSize: 30, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase'}}>The founding of Quebec, 1608</div>
-        <div style={{fontSize: 18, opacity: 0.8, marginTop: 4}}>As imagined by Ambroise-Louis Garneray, 1848 (public domain, Wikimedia Commons)</div>
+        <div style={{fontSize: 26, opacity: 0.85, marginTop: 4}}>Ambroise-Louis Garneray, 1848 · public domain</div>
       </div>
     </AbsoluteFill>
   );
@@ -380,55 +380,57 @@ function PaintingCoda({f, len = 200}) {
 // of Newfoundland, the Cabot Strait, the middle of the estuary, east of Ile aux Coudres, north of Ile d'Orleans, to the narrows. The
 // lead ship keeps an even pace on screen (brisk over the open ocean, slower in the Gulf and the river; scratchpad sim1608.py), the camera
 // zooms in as it goes and the table flattens; once they anchor the camera goes down to the town (the old timing from there on: g).
-const ROUTE_1608 = [[0.23, 49.45], [-0.5, 49.62], [-1.6, 49.92], [-3.2, 49.75], [-5.6, 48.8], [-12, 48.1], [-25, 47.2], [-38, 46.5], [-48, 46.0],
-  [-53.3, 46.15], [-56.6, 46.45], [-58.8, 46.95], [-59.9, 47.3], [-61.6, 48.3], [-64.0, 49.15], [-66.5, 49.3], [-68.3, 48.75], [-69.0, 48.42],
-  [-69.6, 48.0], [-69.75, 47.8], [-70.03, 47.6], [-70.2, 47.39], [-70.4, 47.3], [-70.52, 47.15], [-70.66, 47.05], [-70.8, 47.035], [-70.87, 47.038],
-  [-70.957, 47.0], [-71.043, 46.943], [-71.12, 46.896], [-71.18, 46.845], [-71.198, 46.828]];
+const ROUTE_1608 = [[0.23, 49.45], [-0.5, 49.62], [-1.6, 49.92], [-3.2, 49.75], [-5.6, 48.8], [-12, 48.1], [-25, 47.2], [-38, 46.5], [-48, 46],
+  [-53.3, 46.15], [-56.6, 46.25], [-58.8, 46.8], [-59.9, 47.3], [-61.6, 48.3], [-64, 49.32], [-66.5, 49.45], [-68.3, 48.75], [-69, 48.42],
+  [-69.6, 48], [-69.75, 47.8], [-70.03, 47.6], [-70.2, 47.39], [-70.4, 47.3], [-70.52, 47.15], [-70.66, 47.05], [-70.8, 47.035], [-70.87, 47.038],
+  [-70.957, 47], [-71.043, 46.943], [-71.12, 46.896], [-71.18, 46.845], [-71.198, 46.828]];
 const SAIL_1608 = smoothKeys([[16, 0], [20, 0.00001], [30, 0.00134], [40, 0.00788], [50, 0.01951], [60, 0.03312], [70, 0.04811], [80, 0.06435], [90, 0.08186],
   [100, 0.1031], [110, 0.13165], [120, 0.16745], [130, 0.21179], [140, 0.2678], [150, 0.34221], [160, 0.43097], [170, 0.51211], [180, 0.58645],
   [190, 0.655], [200, 0.71842], [210, 0.76719], [220, 0.7985], [230, 0.82165], [240, 0.84], [250, 0.85547], [260, 0.86911], [270, 0.88146],
   [280, 0.89284], [290, 0.90343], [300, 0.91336], [310, 0.92252], [320, 0.93008], [330, 0.93651], [340, 0.9422], [350, 0.94732], [360, 0.95202],
-  [370, 0.95636], [380, 0.96041], [390, 0.9642], [400, 0.96776], [410, 0.9708], [420, 0.97339], [430, 0.97567], [440, 0.97772], [450, 0.9796],
-  [460, 0.98133], [470, 0.98294], [480, 0.98444], [490, 0.98586], [500, 0.98719], [510, 0.98846], [520, 0.98966], [530, 0.9908], [540, 0.99184],
-  [550, 0.99273], [560, 0.99354], [570, 0.99429], [580, 0.995], [590, 0.99568], [600, 0.99633], [610, 0.99696], [620, 0.99756], [630, 0.99814],
-  [640, 0.99871], [650, 0.99918], [660, 0.99948], [670, 0.99967], [690, 1]]);
+  [370, 0.95636], [380, 0.96041], [390, 0.9642], [400, 0.96776], [410, 0.97074], [420, 0.97321], [430, 0.97535], [440, 0.97726], [450, 0.97897],
+  [460, 0.98054], [470, 0.98199], [480, 0.98333], [490, 0.98459], [500, 0.98577], [510, 0.98688], [520, 0.98792], [530, 0.98892], [540, 0.98986],
+  [550, 0.99076], [560, 0.99159], [570, 0.99233], [580, 0.993], [590, 0.99363], [600, 0.99424], [610, 0.99482], [620, 0.99539], [630, 0.99595],
+  [640, 0.99649], [650, 0.99702], [660, 0.99754], [670, 0.99805], [680, 0.99855], [690, 0.99904], [700, 0.99939], [710, 0.99962], [730, 1]]);
 // Israa: the ships were wider than the channels near Quebec: closer in the river (and smaller ships, shipS)
-const ZOOM_1608 = smoothKeys([[0, 5.5], [0.0854, 4.0], [0.35, 1.3], [0.7262, 2.0], [0.818, 5.0], [0.918, 9.0], [0.967, 20.0], [0.991, 55.0], [1, 90.0]]
+const ZOOM_1608 = smoothKeys([[0, 5.5], [0.0854, 4.0], [0.35, 1.3], [0.7262, 2.0], [0.818, 5.0], [0.918, 9.0], [0.967, 20.0], [0.991, 70.0], [1, 100.0]]
   .map(([u, z]) => [u, Math.log(z)]));
-const ANCHOR_1608 = 660, D1608 = 499;   // the camera leaves the ships at 660 and goes down to the town over 75 frames (735 = the old frame 236)
+const ANCHOR_1608 = 700, D1608 = 539, H1608 = 60;   // the camera leaves the ships at 700 and goes down to the town by 775 (= the old 236);
+// H1608: the trade beat holds 2 s longer before the camera rises (Israa: it was on screen for about a second)
 function Quebec1608({f}) {
-  const g = f - D1608;
+  const g = f - D1608, g2 = g - H1608;   // g: the town's old clock; g2: everything after the trade beat
   const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[-74, 40], [3, 54]]}).scale();
   const QC = [-71.205, 46.818];
   const along = course(ROUTE_1608);
   const along2 = course([...ROUTE_1608.slice(0, -1), [-71.188, 46.842]]);   // the second ship anchors beside the first, not on it
   const trips = [0, 1].map((i) => (fr) => SAIL_1608(fr - i * 20));   // single file, 20 frames apart (they merged into one blob)
-  const shipS = (u) => interpolate(u, [0.918, 0.967, 0.991], [0.62, 0.42, 0.34], clamp);   // smaller in the river: inside the channel
+  const shipS = (u) => interpolate(u, [0.6, 0.7, 0.918, 0.967, 0.991], [0.62, 0.46, 0.44, 0.38, 0.3], clamp);   // smaller in the Gulf and the river: clear of the islands, inside the channels
   const zf = (fr) => Math.exp(ZOOM_1608(trips[0](fr)));
   // the camera: on the lead ship (a short lag, so it sits a little ahead of the middle and never jerks), then down to the town; at the
   // end it rises to show New France
   const lagged = (fr) => {
     let lo = 0, la = 0, w = 0;
-    for (let k = 2; k <= 14; k += 2) { const q = along(trips[0](fr - k)), wk = 1 / (1 + k / 6); lo += q[0] * wk; la += q[1] * wk; w += wk; }
+    // a little AHEAD of the ship (Israa: they rode high in the frame, the camera seemed to run behind): open water in front of them
+    for (let k = -4; k <= 14; k += 2) { const q = along(trips[0](fr + k)), wk = 1; lo += q[0] * wk; la += q[1] * wk; w += wk; }
     return [lo / w, la / w];
   };
   const cam = f < ANCHOR_1608 ? [0, lagged(f), zf(f)]
-    : cameraAt(f, [[ANCHOR_1608, lagged(ANCHOR_1608), zf(ANCHOR_1608)], [236 + D1608, [-71.217, 46.842], 380], [372 + D1608, [-71.215, 46.843], 400],
-                   [446 + D1608, NF_VIEW[0], NF_VIEW[1]], [580 + D1608, [NF_VIEW[0][0] - 0.6, NF_VIEW[0][1]], NF_VIEW[1] * 0.97]]);
-  const turn = lerp(f, 330, 236 + D1608, 0, -24) + lerp(g, 372, 446, 0, 24);
-  const tilt = lerp(f, 300, 236 + D1608, 46, 16) + lerp(g, 372, 446, 0, 10);   // Bassel: the land seen from above, not at an angle
+    : cameraAt(f, [[ANCHOR_1608, lagged(ANCHOR_1608), zf(ANCHOR_1608)], [236 + D1608, [-71.217, 46.842], 380], [372 + D1608 + H1608, [-71.215, 46.843], 400],
+                   [446 + D1608 + H1608, NF_VIEW[0], NF_VIEW[1]], [580 + D1608 + H1608, [NF_VIEW[0][0] - 0.6, NF_VIEW[0][1]], NF_VIEW[1] * 0.97]]);
+  const turn = lerp(f, 330, 236 + D1608, 0, -24) + lerp(g2, 372, 446, 0, 24);
+  const tilt = lerp(f, 300, 236 + D1608, 46, 16) + lerp(g2, 372, 446, 0, 10);   // Bassel: the land seen from above, not at an angle
   const z = cam[2];
   const proj = geoMercator().scale(base * z).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
   const path = geoPath(proj);
   const P = (lon, lat) => proj([lon, lat]);
   const ships = [0, 1].map((i) => sailing({along: i ? along2 : along, trip: trips[i], f, P, turn, i}));
-  const zoomed = lerp(g, 200, 236, 0, 1) * (1 - lerp(g, 380, 420, 0, 1));   // the close pieces show only near the town
+  const zoomed = lerp(g, 200, 236, 0, 1) * (1 - lerp(g2, 380, 420, 0, 1));   // the close pieces show only near the town
   // ashore: settlers step off and are moved up the bank in hops, staggered; then they work
   // all on the north shore (the board's own coast: the bank runs -71.216 at 46.82 to -71.196 at 46.85); they used to stand in the river
   const spots = [[-71.228, 46.829], [-71.219, 46.834], [-71.234, 46.84], [-71.214, 46.843]];
   const settlers = spots.map((sp, k) => {
     const a = 232 + k * 9, mv = hops(lerp(g, a, a + 34, 0, 1, (t) => t), 2);
-    const from = [-71.206 + k * 0.003, 46.828 + k * 0.002];   // off the anchored ships
+    const from = [-71.214 - k * 0.002, 46.832 + k * 0.003];   // they appear on the bank by the ships (Israa: standing in the water looked wrong)
     return {x: P(from[0] + (sp[0] - from[0]) * mv.u, from[1] + (sp[1] - from[1]) * mv.u), lift: mv.lift * 30, rise: lerp(g, a - 6, a + 4, 0, 1, Easing.out(Easing.back(1.4))), k};
   });
   const houses = [[-71.224, 46.835, 0], [-71.217, 46.839, 1], [-71.229, 46.844, 2]].map(([lon, lat, i]) => ({x: P(lon, lat), build: lerp(g, 268 + i * 16, 300 + i * 16, 0, 1, Easing.out(Easing.quad)), i}));
@@ -442,17 +444,20 @@ function Quebec1608({f}) {
     return {x: P(a[0] + (b[0] - a[0]) * mv.u, a[1] + (b[1] - a[1]) * mv.u), lift: mv.lift * 26, show: g >= 352 + k * 8, k};
   });
   // New France: the land France claimed, spreading out from Quebec along the river (by the 1700s), outlined
-  const spread = lerp(g, 420, 540, 0, 1, Easing.inOut(Easing.quad));
+  const spread = lerp(g2, 420, 540, 0, 1, Easing.inOut(Easing.quad));
   const [qx, qy] = P(...QC);
   const nf = ringFeature(NEW_FRANCE);
   const field = (lon, lat, w, h, at) => {
     const gr = lerp(g, at, at + 26, 0, 1);
     const [x0, y0] = P(lon, lat), [x1, y1] = P(lon + w, lat - h);
-    return <rect x={x0} y={y0} width={(x1 - x0) * gr} height={y1 - y0} fill="#7A8A4A" opacity={0.55 * zoomed} stroke="#B8C47A" strokeWidth={1} strokeOpacity={0.6 * zoomed} />;
+    // a low tile set on the table (Israa: flat see-through squares looked like placeholders): a shadow, a solid top, furrows
+    return <g opacity={zoomed}><rect x={x0 + 5} y={y0 + 7} width={(x1 - x0) * gr} height={y1 - y0} fill="#000" opacity={0.45} />
+      <rect x={x0} y={y0} width={(x1 - x0) * gr} height={y1 - y0} fill="#6E7E3E" stroke="#2F3A18" strokeWidth={2.5} />
+      {[0.25, 0.5, 0.75].map((q) => <path key={q} d={`M ${x0} ${y0 + (y1 - y0) * q} L ${x0 + (x1 - x0) * gr} ${y0 + (y1 - y0) * q}`} stroke="#4E5C2A" strokeWidth={2} />)}</g>;
   };
   const titles = [['1608: Champlain sails from Honfleur', 10, true, 220 + D1608], ['Into the Gulf of St. Lawrence', 226, false, 330], ['Up the St. Lawrence River', 330, false, 214 + D1608],
-                  ['Quebec, on the St. Lawrence, 3 July 1608', 232 + D1608, true, 376 + D1608], ['Trade with the First Nations', 330 + D1608, false, 376 + D1608],
-                  ['New France by about 1700', 404 + D1608, true]];   // Israa: the big shape is New France decades later, so it says when
+                  ['Quebec, on the St. Lawrence, 3 July 1608', 232 + D1608, true, 376 + D1608 + H1608], ['Trade with the First Nations', 326 + D1608, false, 376 + D1608 + H1608],
+                  ['Canada, the heart of New France, about 1700', 404 + D1608 + H1608, true]];   // Israa: the shape is the St. Lawrence colony decades later (not Acadia or Louisiana), so it says what and when
   return (
     <Table turn={turn} tilt={tilt} lit={lerp(f, 0, 24, 0, 1)} overlay={<Title f={f} items={titles} />}>
       <Board path={path}>
@@ -476,10 +481,10 @@ function Quebec1608({f}) {
         {zoomed > 0.01 && (() => { const [px, py] = P(-71.238, 46.835);   // the pin beside the Habitation (it sat south of it), its name upright
           return <g opacity={zoomed} transform={`rotate(${-turn} ${px} ${py})`}><circle cx={px} cy={py} r={12} fill="#FF6A3D" stroke="#F2F7FF" strokeWidth={3} />
             <text x={px - 26} y={py + 10} textAnchor="end" style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 44, letterSpacing: 4, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 9}}>QUÉBEC</text></g>; })()}
-        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1]} textAnchor="middle" opacity={lerp(g, 470, 490, 0, 1)}
-                                 style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 64, letterSpacing: 10, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 10}}>NEW FRANCE</text>}
-        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1] + 58} textAnchor="middle" opacity={lerp(g, 476, 496, 0, 1)}
-                                 style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 34, letterSpacing: 6, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 8}}>BY ABOUT 1700</text>}
+        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1]} textAnchor="middle" opacity={lerp(g2, 470, 490, 0, 1)}
+                                 style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 64, letterSpacing: 10, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 10}}>CANADA</text>}
+        {spread > 0.25 && <text x={P(-80, 47.6)[0]} y={P(-80, 47.6)[1] + 58} textAnchor="middle" opacity={lerp(g2, 476, 496, 0, 1)}
+                                 style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 34, letterSpacing: 6, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 8}}>HEART OF NEW FRANCE · ABOUT 1700</text>}
       </Board>
       {/* pieces, back to front */}
       {houses.map((h) => <Piece key={`h${h.i}`} {...xy(h.x)} turn={turn} tilt={tilt} s={0.95} w={150} h={190} op={zoomed} rise={h.build > 0 ? 1 : 0}><House build={h.build} f={g + h.i * 13} /></Piece>)}
@@ -490,11 +495,11 @@ function Quebec1608({f}) {
         </Piece>))}
       {traders.map((t) => t.show && (
         <Piece key={`t${t.k}`} {...xy(t.x)} turn={turn} tilt={tilt} s={0.82} w={120} h={200} op={zoomed} lift={t.lift} rise={lerp(g, 352 + t.k * 8, 360 + t.k * 8, 0, 1)}><Trader k={t.k} /></Piece>))}
-      {g >= 300 && g < 400 && <Piece {...xy(P(...cn))} turn={turn} tilt={tilt} s={0.9} w={200} h={110} op={zoomed * lerp(g, 300, 312, 0, 1)} lift={Math.sin(f / 9) * 2}>
+      {g >= 300 && g2 < 400 && <Piece {...xy(P(...cn))} turn={turn} tilt={tilt} s={0.9} w={200} h={110} op={zoomed * lerp(g, 300, 312, 0, 1)} lift={Math.sin(f / 9) * 2}>
         <Canoe f={f} face={P(...cn)[0] >= P(...cnPrev)[0] ? 1 : -1} /></Piece>}
       {ships.map((sh) => (
-        <Piece key={`sh${sh.i}`} x={sh.x} y={sh.y} turn={turn} tilt={tilt} s={g < 200 ? shipS(trips[sh.i](f)) : lerp(g, 200, 236, shipS(1), 0.9)} w={170} h={210} op={lerp(f, sh.i * 10, 18 + sh.i * 10, 0, 1) * (1 - lerp(g, 384, 410, 0, 1))} lift={Math.sin((f + sh.i * 11) / 13) * 2}>
-          <Ship team="fr" face={sh.face} sail={g > 214 ? lerp(g, 214, 240, sh.sail, 0) : sh.sail} roll={Math.sin((f + sh.i * 17) / 16) * (1.2 + sh.speed * 0.5)} />
+        <Piece key={`sh${sh.i}`} x={sh.x} y={sh.y} turn={turn} tilt={tilt} s={g < 200 ? shipS(trips[sh.i](f)) : lerp(g, 200, 236, shipS(1), 0.9)} w={170} h={210} op={lerp(f, sh.i * 10, 18 + sh.i * 10, 0, 1) * (1 - lerp(g2, 384, 410, 0, 1))} lift={Math.sin((f + sh.i * 11) / 13) * 2}>
+          <Ship team="fr" face={sh.face} sail={f > 600 ? (g < 236 ? Math.max(sh.sail, 0.7) : lerp(g, 236, 262, 0.7, 0)) : sh.sail} roll={Math.sin((f + sh.i * 17) / 16) * (1.2 + sh.speed * 0.5)} />
         </Piece>))}
     </Table>
   );
@@ -928,12 +933,12 @@ function NewCal1853({f}) {
 
 const Quebec1608Sample = ({f}) => (
   <AbsoluteFill>
-    {f < 604 + D1608 && <Quebec1608 f={f} />}
-    {f >= 580 + D1608 && <AbsoluteFill style={{opacity: lerp(f, 580 + D1608, 604 + D1608, 0, 1)}}><PaintingCoda f={f - 580 - D1608} len={220} /></AbsoluteFill>}
+    {f < 604 + D1608 + H1608 && <Quebec1608 f={f} />}
+    {f >= 580 + D1608 + H1608 && <AbsoluteFill style={{opacity: lerp(f, 580 + D1608 + H1608, 604 + D1608 + H1608, 0, 1)}}><PaintingCoda f={f - 580 - D1608 - H1608} len={220} /></AbsoluteFill>}
   </AbsoluteFill>
 );
 const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803, newcal1853: NewCal1853};
-export const WAR_FRAMES = {quebec1608: 760 + D1608, quebec1608map: 600 + D1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360};
+export const WAR_FRAMES = {quebec1608: 760 + D1608 + H1608, quebec1608map: 600 + D1608 + H1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();
