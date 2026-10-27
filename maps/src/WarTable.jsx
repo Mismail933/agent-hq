@@ -931,14 +931,65 @@ function NewCal1853({f}) {
   );
 }
 
+// ───────── Part 4. 1960, the year of independence: a tricolour stands in each capital; through the year, on each country's own date, its
+// flag is lowered and lifted off the board and the country turns from French blue to its own colour, its name and date on the map.
+const IND_1960 = [   // [ISO3, capital lon, lat, day of 1960, name] (Decolonization of Africa, Wikipedia)
+  ['CMR', 11.52, 3.87, 1, 'Cameroon'], ['TGO', 1.22, 6.13, 118, 'Togo'], ['SEN', -17.45, 14.69, 172, 'Senegal'], ['MLI', -8.0, 12.65, 172, 'Mali'],
+  ['MDG', 47.52, -18.91, 178, 'Madagascar'], ['BEN', 2.6, 6.5, 214, 'Dahomey'], ['NER', 2.11, 13.51, 216, 'Niger'],
+  ['BFA', -1.53, 12.37, 218, 'Upper Volta'], ['CIV', -4.02, 5.35, 220, 'Ivory Coast'], ['TCD', 15.04, 12.13, 224, 'Chad'],
+  ['CAF', 18.56, 4.39, 226, 'C. African Rep.'], ['COG', 15.28, -4.27, 228, 'Congo'], ['GAB', 9.45, 0.39, 230, 'Gabon'],
+  ['MRT', -15.98, 18.09, 333, 'Mauritania']];
+const NAME_DX = {TGO: -40, BEN: 46, SEN: -30, MRT: 0, CMR: -30, CAF: 40};   // neighbours' names kept apart
+const NAME_DY = {TGO: 30, BEN: -96, SEN: 10, CAF: -70, NER: -80};
+const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+function Africa1960({f}) {
+  const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[-18, -22], [50, 24]]}).scale();
+  const cam = cameraAt(f, [[0, [12, 4], 0.94], [150, [17, -2], 0.86], [200, [19, -4], 0.84], [330, [18, -3], 0.86]]);   // Madagascar is in frame in June
+  const turn = lerp(f, 0, 330, 3, -3, Easing.inOut(Easing.sin));
+  const proj = geoMercator().scale(base * cam[2]).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
+  const path = geoPath(proj);
+  const P = (lon, lat) => proj([lon, lat]);
+  const day = (fr) => interpolate(fr, [40, 300], [0, 366], clamp);   // the year runs across the scene
+  const frameOf = (d) => 40 + (d / 366) * 260;
+  const feat = (a3) => geo.detail.features.find((ft) => ft.properties.a3 === a3) || geo.world.features.find((ft) => ft.properties.a3 === a3);
+  const month = MONTHS[Math.min(11, Math.floor((day(f) / 366) * 12))];
+  const done = IND_1960.filter((c) => f >= frameOf(c[3])).length;
+  const poles = IND_1960.map(([a3, lon, lat, d, name], i) => {
+    const at = frameOf(d), down = lerp(f, at, at + 16, 1, 0, Easing.inOut(Easing.quad)), gone = lerp(f, at + 16, at + 30, 0, 1, Easing.in(Easing.quad));
+    return {a3, name, i, x: P(lon, lat), at, down, gone};
+  });
+  const stand = poles.filter((p) => p.gone < 1).map((p) => ({y: p.x[1], el: (
+    <Piece key={`p${p.i}`} {...xy(p.x)} turn={turn} s={0.85} w={80} h={200} lift={p.gone * 80} op={(1 - p.gone) * lerp(f, 4 + p.i, 20 + p.i, 0, 1)}>
+      <Pole flag={<Tricolore />} f={f + p.i * 9} raise={p.down} />
+    </Piece>)})).sort((a, b) => a.y - b.y);
+  return (
+    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<>
+      <Title f={f} items={[['1960: the year of independence', 6, true], [`${done} of 14 independent`, 40, false]]} />
+      <div style={{position: 'absolute', right: 70, top: 60, background: 'rgba(8,12,20,0.78)', borderRight: '6px solid #C9A227', padding: '10px 22px', color: '#F4EEDC',
+                   fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 44, letterSpacing: 4, opacity: lerp(f, 30, 44, 0, 1) * (1 - lerp(f, 304, 318, 0, 1))}}>{month} 1960</div></>}>
+      <Board path={path}>
+        <g clipPath="url(#landclip)">
+          {poles.map((p) => { const ft = feat(p.a3); if (!ft) return null; const k = lerp(f, p.at + 6, p.at + 22, 0, 1);
+            return <g key={`c${p.i}`}><path d={path(ft)} fill="#3FB8DE" fillOpacity={0.4 * (1 - k)} /><path d={path(ft)} fill="#E3B75A" fillOpacity={0.42 * k} />
+              <path d={path(ft)} fill="none" stroke="#F4FBFF" strokeWidth={3} strokeLinejoin="round" opacity={0.85} /></g>; })}
+        </g>
+        {poles.map((p) => { const op = lerp(f, p.at + 10, p.at + 24, 0, 1); if (op <= 0) return null; const [x, y] = p.x;
+          return <text key={`n${p.i}`} x={x + (NAME_DX[p.a3] || 0)} y={y + 46 + (NAME_DY[p.a3] || 0)} textAnchor="middle" opacity={op}
+                       style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 26, letterSpacing: 1, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.85)', strokeWidth: 7}}>{p.name}</text>; })}
+      </Board>
+      {stand.map((p) => p.el)}
+    </Table>
+  );
+}
+
 const Quebec1608Sample = ({f}) => (
   <AbsoluteFill>
     {f < 604 + D1608 + H1608 && <Quebec1608 f={f} />}
     {f >= 580 + D1608 + H1608 && <AbsoluteFill style={{opacity: lerp(f, 580 + D1608 + H1608, 604 + D1608 + H1608, 0, 1)}}><PaintingCoda f={f - 580 - D1608 - H1608} len={220} /></AbsoluteFill>}
   </AbsoluteFill>
 );
-const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803, newcal1853: NewCal1853};
-export const WAR_FRAMES = {quebec1608: 760 + D1608 + H1608, quebec1608map: 600 + D1608 + H1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360};
+const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803, newcal1853: NewCal1853, africa1960: Africa1960};
+export const WAR_FRAMES = {quebec1608: 760 + D1608 + H1608, quebec1608map: 600 + D1608 + H1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360, africa1960: 330};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();
