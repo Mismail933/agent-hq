@@ -389,6 +389,19 @@ Agents never spend money without the owner's explicit approval.
   cattle mill (two oxen walk the beam round), the overseer apart in a pale coat with a coiled whip, low light, no bounce, the camera
   close on the cutters then along to the mill (360 frames). 1608 scene: a QUÉBEC pin, 'on the St. Lawrence' in its title; Part 1 uses
   frames 176-700. sound_agent's command line loads the owner's limits (cp.init: it judged against the code's $4).
+  2.73.2 (Bassel on the 1608 sample, 10-27 18:48: keep the boats in frame, slower, into Quebec by water, the land seen from above;
+  he sees the revised sample BEFORE it goes into Part 1): WarTable `ROUTE_1608` is checked against the board's own land (scratchpad
+  route_check.py + route_draw.py: Catmull-Rom like `course`, point-in-polygon on war_stl + world; the old route crossed Normandy,
+  Newfoundland's south coast, the north shore at Ile aux Coudres and Ile d'Orleans): out of the Seine, round the Cotentin and Ushant,
+  south of Newfoundland, the Cabot Strait, mid-estuary, east of Ile aux Coudres, the north channel of Ile d'Orleans. `smoothKeys`
+  (monotone cubic through [frame, value] keys) drives `SAIL_1608` (the lead ship's place on the route by frame, simulated for an even
+  on-screen pace: brisk over the ocean, slower in the Gulf and the river; scratchpad sim1608.py) and `ZOOM_1608` (log zoom by place: 5.5 at
+  Honfleur, 1.6 mid-ocean, 5 at the Cabot Strait, 40 at Quebec); the camera sits on the lead ship (2-14 frame lag) until it anchors
+  (550), then goes down to the town (380 at 610 = the old 236; `D1608` = 374 shifts everything after the landing). Table and Piece take
+  `tilt` (default TILT 50): 1608 goes 46 -> 16 as they come in (top-down), 26 for New France. The settlement (houses, flag, settlers,
+  fields, traders, canoe) moved onto the north shore (it stood in the river). Titles 'Into the Gulf of St. Lawrence' / 'Up the St.
+  Lawrence River'. The sample is 1134 frames; Part 1 uses 186-1073 (29.6 s) with the event on line 3 at delay -11: line 2 holds 10.78 s
+  (the voyage under music), line 3 lands on the arrival, line 4 'father of New France' on the spread, line 5 after the painting.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
@@ -1120,6 +1133,14 @@ Agents never spend money without the owner's explicit approval.
   Test before a long render: scratchpad stills12.py (the last props.json's real word times + the new spec's shots, DEV source).
   story_sample: a line's `p.voice_db` raises or lowers that line's ElevenLabs clip (Tarek: 'Outside, the city is on fire' came out 5 dB
   under its neighbours); no re-voice. Tarek's second-render voice notes: lines 8 and 65 slowed with ellipses in eleven_say.
+  2.73.2 (Israa on the third render: release 8.5; polish): YWindow puts Yamaguchi left and the boss right like every other office shot
+  (they swapped at the climax); YRecord 'empty' waits out the 8-frame crossfade before sliding (two plaques showed doubled text);
+  YRiver runs on the line's absolute clock (`line.start`) with `x0`/`x1` per line, so the swimmer crosses once over two lines, the
+  arm drawn in front of the head; YGlass: both men crouched, eyes open, arms up (flat with closed eyes read as dead); YOld's cane leans
+  on the window frame; YPeople's number sits higher (it touched the title tag). Spec: the 0:44 Hiroshima print on the left, away
+  from him; ✓ 1957 on 'Nagasaki'; no 'Tell us in the comments' tag (the caption says it). A finished video is patched without a full
+  render: scratchpad yam_patch.py (after story_sample --prep: only the changed lines from 8 frames before their cut, spliced
+  frame-exact with ffmpeg trim/concat, the sound kept; checks the frame count, then sheets + motion report).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
