@@ -129,7 +129,7 @@ export const CAST = {
   hisako_old: {hair: '#A8ADB5', hairLight: '#C9CDD3', brow: '#7A7F88', dress: '#4A5D7A', dressShade: '#384862', style: 'bob', lips: true, glasses: true},
   toshiko_girl: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#C2410C', dressShade: '#9A3412', style: 'bob', lips: true},
   toshiko: {hair: '#4A4038', hairLight: '#6A5E54', brow: '#2E2620', dress: '#7A3E5A', dressShade: '#5E2E45', style: 'long', lips: true},   // long dark hair, no glasses: not Hisako's grey bob (Israa)
-  katsutoshi: {hair: '#6B7078', hairLight: '#8E939B', brow: '#4A4F57', dress: '#1F2A3A', dressShade: '#151D29', style: 'short', glasses: true},   // the son at 59: greying, glasses, a dark suit (not his father)
+  katsutoshi: {hair: '#43464D', hairLight: '#686C75', brow: '#2E3036', dress: '#B9CCE0', dressShade: '#94A9C2', style: 'short'},   // the son at 59: dark grey hair, no glasses, a light shirt (not his father, young or old)
   officer: {hair: '#7A5230', hairLight: '#9A6A40', brow: '#5A3A20', dress: '#5B6B3A', dressShade: '#46532C', style: 'short', hat: 'cap', pants: '#46532C'},   // a US occupation officer (no name)
   visitor: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true, pants: '#111827'},
 };

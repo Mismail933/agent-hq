@@ -1043,6 +1043,15 @@ Agents never spend money without the owner's explicit approval.
   `thin`: receding hair; white 'short' hair read as a cap), boss, hisako, hisako_old, ymother, classmate, colleague1/2, toshiko,
   toshiko_girl, officer, visitor. Spec builder: scratchpad make_yam_full.py (sentences -> 137 lines; asserts the lines add up to the
   script word for word) -> samples/yamaguchi-full.json + yamaguchi-opening.json (Owen, story style 160 wpm, stability 0.5).
+  2.72.6 (Israa on the first full render, redo 7; the Builder's own look at its 20 sheets): meg2's `Cam` keeps its centre where the
+  zoomed view stays inside the picture (a centre near an edge showed a black strip: the station, the window, the dark field); the
+  caption phrase also ends before ~40 letters (a long 6-word phrase wrapped onto two lines); CAST katsutoshi (the son's altar photo
+  was a copy of young Yamaguchi); calm closed eyes at the bomb moments (thrown, the office floor, Hisako in the tunnel); the record
+  card holds on its second line; Toshiko is a baby until 2; the ring tags in Delta 'him' sit in a legend; YOffice `focus: 'boss'` =
+  a close shot. Fact fix after the gate: Fat Man fell 47 s, not 43 (script v12, one edit "by Builder"). Tarek's 2 rounds: the two
+  blasts = 'Interior Thunder Rumble', the title = the trailer booms, accent_gap_db -12, accent_gain 0.55; a beat (p.pause) after
+  the short heavy lines he found rushed. Test stills of changed scenes: scratchpad yam_grid.py with an ABSOLUTE out folder
+  (a relative one lands in ~/.agent-hq-anim/story, Remotion's cwd).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

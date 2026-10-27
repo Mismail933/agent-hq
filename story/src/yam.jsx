@@ -462,14 +462,14 @@ function YOffice({f, len, line}) {
   const talk = Math.floor(f / 5) % 2 === 0;
   const k = clamp(pop(f, m, 150, 12), 0, 1.1);
   return (
-    <g><Cam f={f} len={len} a={p.focus === 'boss' ? 1.55 : 1.0} b={p.focus === 'boss' ? 1.65 : 1.05} x={p.focus === 'boss' ? 1320 : W / 2} y={p.focus === 'boss' ? 470 : H / 2}>
+    <g><Cam f={f} len={len} a={p.focus === 'boss' ? 1.8 : 1.0} b={p.focus === 'boss' ? 1.9 : 1.05} x={p.focus === 'boss' ? 1320 : W / 2} y={p.focus === 'boss' ? 470 : H / 2}>
       <OfficeRoom f={f} clock={p.clock || '10:55'} />
       <YBust who="yamaguchi" x={600} y={430} s={0.85} expr={f < half ? 'worried' : 'shock'} talk={f < half && talk && p.he_talks !== false} f={f} seed={3} band turn={0.25} />
       <YBust who="boss" x={1300} y={430} s={0.85} expr={f >= m - 4 && p.boss_talks !== false ? 'shock' : 'grim'} talk={f >= half && talk && f < m - 4} f={f} seed={6} turn={-0.25} />
       {p.ybubble && (() => { const q = clamp(pop(f, at(line, p.ybubble_on || '', 0.3), 150, 12), 0, 1.1); return q > 0.01 ? <g transform={`translate(400 120) scale(${q})`}>
         <path d="M 60 70 L 120 150 L -10 90" fill="#fff" {...ST} /><rect x={-330} y={-90} width={660} height={170} rx={60} fill="#fff" {...ST} />
         <text x={0} y={22} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={58} fill={INK}>{p.ybubble}</text></g> : null; })()}
-      {k > 0.01 && p.bubble !== false && <g transform={`translate(1500 230) scale(${k})`}>
+      {k > 0.01 && p.bubble !== false && <g transform={`translate(${p.focus === 'boss' ? 1580 : 1500} ${p.focus === 'boss' ? 330 : 230}) scale(${k})`}>
         <path d="M -90 60 L -150 150 L -20 80" fill="#fff" {...ST} />
         <ellipse rx={170} ry={110} fill="#fff" {...ST} />
         <Txt x={0} y={30} text={p.bubble || '?!'} size={Math.min(110, 560 / Math.max(1, String(p.bubble || '?!').length))} fill="#E3232C" stroke="none" />
