@@ -809,7 +809,7 @@ function Sale1803({f}) {
     ...onlookers.map((o) => ({y: o.x[1], el: <Piece key={`o${o.k}`} {...xy(o.x)} turn={turn} s={0.95} w={120} h={200} op={close}><Settler k={o.k} tool="bundle" /></Piece>})),
   ].sort((a, b) => a.y - b.y);
   return (
-    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<Title f={f} items={[['New Orleans, 20 December 1803', 6, true, 164], ['The French flag comes down', 30, false, 130], ['Louisiana: sold to the United States', 170, true], ['About 2.1 million km²', 226, false]]} />}>
+    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<Title f={f} items={[['Louisiana Purchase, 1803', 6, true, 164], ['New Orleans, 20 December: the French flag comes down', 30, false, 130], ['Sold to the United States for $15 million', 170, true], ['About 2.1 million km²', 226, false]]} />}>
       <Board path={path}>
         {close > 0 && <rect x={P(...SQ)[0] - 470} y={P(...SQ)[1] - 200} width={920} height={360} rx={20} fill="#7C6E52" opacity={0.55 * close} stroke="#A89470" strokeWidth={4} strokeOpacity={close} />}
         {spread > 0 && (
@@ -821,7 +821,7 @@ function Sale1803({f}) {
               <mask id="sale" maskUnits="userSpaceOnUse" x={-2000} y={-2000} width={PW + 4000} height={PH + 4000}><rect x={-2000} y={-2000} width={PW + 4000} height={PH + 4000} fill="url(#saleg)" /></mask>
             </defs>
             <g mask="url(#sale)">
-              <path d={path(lou)} fill="#8E9FBF" fillOpacity={0.5} />
+              <path d={path(lou)} fill="#5E7BB0" fillOpacity={0.42} />
               <path d={path(lou)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeLinejoin="round" />
             </g>
           </g>
