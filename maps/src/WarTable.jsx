@@ -386,7 +386,7 @@ const SAIL_1608 = smoothKeys([[16,0.0],[20,1e-05],[30,0.00123],[40,0.0072],[50,0
 // Israa: the ships were wider than the channels near Quebec: closer in the river (and smaller ships, shipS)
 const ZOOM_1608 = smoothKeys([[0.0,5.5],[0.0854,4.0],[0.35,1.3],[0.7262,2.0],[0.80,6.0],[0.83,11.0],[0.88,14.0],[0.918,22.0],[0.967,50.0],[0.991,160.0],[0.9925,230.0],[1.0,250.0]]
   .map(([u, z]) => [u, Math.log(z)]));
-const ANCHOR_1608 = 780, D1608 = 634, H1608 = 60;   // the camera leaves the ships at 700 and goes down to the town by 775 (= the old 236);
+const ANCHOR_1608 = 840, D1608 = 694, H1608 = 60;   // the camera leaves the ships only once they have arrived (~840)   // the camera leaves the ships at 700 and goes down to the town by 775 (= the old 236);
 // H1608: the trade beat holds 2 s longer before the camera rises (Israa: it was on screen for about a second)
 function Quebec1608({f}) {
   const g = f - D1608, g2 = g - H1608;   // g: the town's old clock; g2: everything after the trade beat
@@ -394,7 +394,7 @@ function Quebec1608({f}) {
   const QC = [-71.205, 46.818];
   const along = course(ROUTE_1608);
   const along2 = course([...ROUTE_1608.slice(0, -1), [-71.188, 46.842]]);   // the second ship anchors beside the first, not on it
-  const trips = [0, 1].map((i) => (fr) => SAIL_1608(fr - i * 12));   // single file, 12 frames apart: both stay in frame (Israa 6/10)
+  const trips = [SAIL_1608, (fr) => Math.max(0, SAIL_1608(fr) - 0.09 / Math.exp(ZOOM_1608(SAIL_1608(fr))))];   // the second ship a fixed distance ON SCREEN behind (a gap in frames grew huge at the river's zoom: Israa 6.5)
   const shipS = (u) => interpolate(u, [0.7262, 0.80, 1], [0.62, 0.8, 0.85], clamp);   // Israa: specks in the river; now readable, the camera closer instead   // smaller in the Gulf and the river: clear of the islands, inside the channels
   const zf = (fr) => Math.exp(ZOOM_1608(trips[0](fr)));
   // the camera: on the lead ship (a short lag, so it sits a little ahead of the middle and never jerks), then down to the town; at the
@@ -409,7 +409,7 @@ function Quebec1608({f}) {
     : cameraAt(f, [[ANCHOR_1608, lagged(ANCHOR_1608), zf(ANCHOR_1608)], [236 + D1608, [-71.217, 46.842], 380], [372 + D1608 + H1608, [-71.215, 46.843], 400],
                    [500 + D1608 + H1608, NF_VIEW[0], NF_VIEW[1]], [580 + D1608 + H1608, [NF_VIEW[0][0] - 0.6, NF_VIEW[0][1]], NF_VIEW[1] * 0.97]]);
   const turn = lerp(f, 330, 236 + D1608, 0, -24) + lerp(g2, 380, 500, 0, 24);
-  const tilt = lerp(f, 300, 236 + D1608, 46, 16) + lerp(g2, 380, 500, 0, 10);   // Bassel: the land seen from above, not at an angle
+  const tilt = lerp(f, 150, 250, 46, 14) + lerp(f, 250, 236 + D1608, 0, 2) + lerp(g2, 380, 500, 0, 10);   // Bassel: from above; flat before the Gulf (Israa 6.5: 0:09-0:11 still tilted)   // Bassel: the land seen from above, not at an angle
   const z = cam[2];
   const proj = geoMercator().scale(base * z).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
   const path = geoPath(proj);
