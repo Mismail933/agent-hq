@@ -329,6 +329,8 @@ function YTimer({f, len, line}) {
       <rect x={-300} y={-170} width={600} height={340} rx={30} fill="#111827" {...st(10)} />
       <Txt x={0} y={80} text={`0:${String(v).padStart(2, '0')}`} size={210} fill={v <= 5 ? '#E3232C' : '#FFE11A'} stroke="none" />
       <Txt x={0} y={-110} text="TIME TO FALL" size={44} fill="#9BE1FF" stroke="none" />
+      <Txt x={0} y={240} text="SHOWN FASTER" size={44} fill="#F1F5F9" />
+      <Txt x={0} y={294} text={`THE REAL FALL: ${p.total || 47} SECONDS`} size={44} fill="#F1F5F9" />
     </g>
   );
   return (
@@ -499,9 +501,9 @@ function YBlackRain({f, len, line}) {
       <rect width={W} height={H} fill="#5E5A58" />
       <Harbour f={f} grey={1} dim={0.5} />
       <rect width={W} height={H} fill="#1A1614" opacity={0.25} />
+      <YBust who="hisako" x={960} y={520} s={0.62} expr="worried" f={f} seed={5} turn={0.15} lookY={-8} />
       {[...Array(140)].map((_, i) => { const x = R() * (W + 200), y0 = R() * H, sp = 20 + R() * 12; const y = ((y0 + f * sp) % (H + 100)) - 60;
         return <path key={i} d={`M ${x} ${y} l -10 54`} stroke="#0B0908" strokeWidth={10} opacity={0.85} strokeLinecap="round" />; })}
-      <g transform="translate(980 1000) scale(0.36) translate(0 -1090)"><Figure who="hisako" pose="stand" f={f} expr="worried" seed={5} /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -585,8 +587,9 @@ function YRadio({f, len, line}) {
         {[...Array(7)].map((_, i) => <path key={i} d={`M ${-200 + i * 66} -150 L ${-200 + i * 66} 120`} stroke="#B89A72" strokeWidth={10} />)}
         <circle cx={-170} cy={180} r={26} fill="#3A2A1A" {...st(4)} /><circle cx={170} cy={180} r={26} fill="#3A2A1A" {...st(4)} />
       </g>
-      {[0, 1, 2].map((i) => { const q = ((f / 30) + i / 3) % 1; return <g key={i}><path d={`M ${1320 + q * 200} ${380} C ${1360 + q * 220} 480 ${1360 + q * 220} 640 ${1320 + q * 200} 740`} stroke="#FFE11A" strokeWidth={12} fill="none" opacity={1 - q} strokeLinecap="round" />
-        <path d={`M ${600 - q * 200} ${380} C ${560 - q * 220} 480 ${560 - q * 220} 640 ${600 - q * 200} 740`} stroke="#FFE11A" strokeWidth={12} fill="none" opacity={1 - q} strokeLinecap="round" /></g>; })}
+      {[0, 1, 2].map((i) => { const q = ((f / 48) + i / 3) % 1, o = Math.sin(Math.PI * q);   // each wave fades in and out: no pop (the motion check called the old ones uneven)
+        return <g key={i}><path d={`M ${1320 + q * 200} ${380} C ${1360 + q * 220} 480 ${1360 + q * 220} 640 ${1320 + q * 200} 740`} stroke="#FFE11A" strokeWidth={12} fill="none" opacity={o} strokeLinecap="round" />
+        <path d={`M ${600 - q * 200} ${380} C ${560 - q * 220} 480 ${560 - q * 220} 640 ${600 - q * 200} 740`} stroke="#FFE11A" strokeWidth={12} fill="none" opacity={o} strokeLinecap="round" /></g>; })}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -645,14 +648,22 @@ function YQuote({f, len, line}) {
   const fs = rows.length > 5 ? 58 : 70, lh = fs * 1.2;
   const h = 110 + rows.length * lh, bw = p.who === 'none' ? 1300 : 1000;
   const x0 = p.who === 'none' ? W / 2 - bw / 2 : 100;
+  // a quote of 3+ rows is written out row by row as the voice reaches each row's first word (Israa: 11-14 s of a still card)
+  const norm = (w) => String(w).toLowerCase().replace(/[^a-z0-9']/g, '');
+  const qw = words.map(norm), lw = (line.words || []).map((w) => [norm(w[0]), w[1] - line.start]);
+  let j = -1;
+  for (let i = 0; rows.length >= 3 && i + 2 < lw.length; i++) if (lw[i][0] === qw[0] && lw[i + 1][0] === qw[1] && lw[i + 2][0] === qw[2]) { j = i; break; }
+  let k0 = 0;
+  const rowAt = rows.map((r) => { const k = k0; k0 += r.split(' ').length; return j < 0 ? -1 : (lw[j + k] ? lw[j + k][1] - 4 : -1); });
+  if (rowAt.length) rowAt[0] = Math.min(rowAt[0], a);
   return (
-    <g><Cam f={f} len={len} a={1.0} b={1.05}>
+    <g><Cam f={f} len={len} a={1.0} b={j >= 0 ? 1.1 : 1.05}>
       <rect width={W} height={H} fill={p.color || '#0F2A44'} />
-      {p.who !== 'none' && <YBust who={p.who || 'yamaguchi_old'} x={1500} y={p.y || 480} s={p.s || 0.9} expr={p.expr || 'calm'} f={f} talk={p.talk !== false && f >= a && f < len - 8} seed={3} band={!!p.band} turn={-0.3} />}
+      {p.who !== 'none' && !p.photo && <YBust who={p.who || 'yamaguchi_old'} x={1500} y={p.y || 480} s={p.s || 0.9} expr={p.expr || 'calm'} f={f} talk={p.talk !== false && f >= a && f < len - 8} seed={3} band={!!p.band} turn={-0.3} />}
       <g transform={`translate(${x0} ${500 - h / 2}) scale(${s})`}>
         <rect x={10} y={12} width={bw} height={h} fill="#000" opacity={0.35} /><rect width={bw} height={h} fill="#fff" {...ST} />
         <rect x={30} y={30} width={14} height={h - 60} fill="#E3232C" />
-        {rows.map((r, i) => <text key={i} x={80} y={80 + fs * 0.6 + i * lh} fontFamily={OSW} fontWeight={700} fontSize={fs} fill={INK}>{(i === 0 ? '“' : '') + r + (i === rows.length - 1 ? '”' : '')}</text>)}
+        {rows.map((r, i) => <text key={i} x={80} y={80 + fs * 0.6 + i * lh} opacity={clamp((f - rowAt[i]) / 6, 0, 1)} fontFamily={OSW} fontWeight={700} fontSize={fs} fill={INK}>{(i === 0 ? '“' : '') + r + (i === rows.length - 1 ? '”' : '')}</text>)}
       </g>
       {p.who_label && <g transform={`translate(${x0} ${500 + h / 2 + 40}) scale(${pz(f, a + 8, 170)})`}><rect width={String(p.who_label).length * 30 + 50} height={70} fill="#FFE11A" {...st(5)} /><text x={25} y={52} fontFamily={OSW} fontWeight={700} fontSize={50} fill={INK}>{String(p.who_label).toUpperCase()}</text></g>}
     </Cam></g>

@@ -30,7 +30,9 @@ function YLife({f, len, line}) {
         <text x={280} y={440} fontFamily={OSW} fontWeight={700} fontSize={90} fill="#F1F5F9" opacity={0.9}>{'1 + 1 = 2'}</text>
         <rect y={820} width={W} height={260} fill="#9C7B54" />
         <YBust who="yamaguchi" x={1500} y={460} s={0.85} expr="calm" talk={Math.floor(f / 5) % 2 === 0} f={f} seed={3} turn={-0.3} />
-        {[0, 1, 2, 3].map((i) => <g key={i} transform={`translate(${240 + i * 300} 860) scale(0.36)`}><Head who={['colleague1', 'colleague2', 'hisako', 'colleague1'][i]} expr="calm" f={f} seed={20 + i} /></g>)}
+        {[0, 1, 2, 3].map((i) => <g key={i}><YBust who={['colleague1', 'colleague2', 'hisako', 'colleague1'][i]} x={240 + i * 300} y={850} s={0.32} expr="calm" f={f} seed={20 + i} />
+          <path d={`M ${120 + i * 300} 975 L ${360 + i * 300} 975 L ${380 + i * 300} 1010 L ${100 + i * 300} 1010 Z`} fill="#6B4A2E" {...st(5)} />
+          <rect x={130 + i * 300} y={1010} width={16} height={70} fill="#4A3424" /><rect x={334 + i * 300} y={1010} width={16} height={70} fill="#4A3424" /></g>)}
       </Cam>
         <Labels line={line} f={f} x0={100} y0={90} /></g>
     );
@@ -159,14 +161,14 @@ function Y165({f, len, line}) {
   const a = at(line, p.on || 'one', 0.4);
   const R = rng(165);
   const dots = [...Array(165)].map(() => { const t = R(); return [sx(A[0] + (B[0] - A[0]) * t) + (R() - 0.5) * 60, sy(A[1] + (B[1] - A[1]) * t) + (R() - 0.5) * 60]; });
-  const shown = Math.floor(lin(f, a, a + 40, 0, 165));
+  const shown = p.held ? 165 : Math.floor(lin(f, a, a + 40, 0, 165));   // held: the line after the count keeps every dot up
   return (
     <g>
       <JapanLand center={center} ppd={ppd} />
       <path d={`M ${sx(A[0])} ${sy(A[1])} L ${sx(B[0])} ${sy(B[1])}`} stroke="#E3232C" strokeWidth={8} strokeDasharray="20 12" />
       {[A, B].map((c, i) => <g key={i} transform={`translate(${sx(c[0])} ${sy(c[1])})`}><Burst r={30} /></g>)}
       {dots.slice(0, shown).map(([x, y], i) => <circle key={i} cx={x} cy={y} r={8} fill="#FFE11A" stroke={INK} strokeWidth={2.5} />)}
-      <g transform={`translate(1580 820) scale(${pz(f, a)})`}><rect x={-230} y={-110} width={460} height={200} fill="#0B1F3A" {...st(8)} /><Txt x={0} y={10} text={String(shown)} size={120} fill="#FFE11A" /><Txt x={0} y={70} text="IN BOTH CITIES" size={38} /></g>
+      <g transform={`translate(1580 820) scale(${p.held ? 1 : pz(f, a)})`}><rect x={-230} y={-110} width={460} height={200} fill="#0B1F3A" {...st(8)} /><Txt x={0} y={10} text={String(shown)} size={120} fill="#FFE11A" /><Txt x={0} y={70} text="IN BOTH CITIES" size={38} /></g>
       {p.icons && ['A TRAIN', 'A ROAD', 'AN ERRAND'].map((t, i) => <Plate key={i} x={300 + i * 370} y={840} w={340} h={90} text={t} s={pz(f, at(line, ['train', 'road', 'errand'][i], 0.3 + i * 0.2))} fill="#fff" size={46} />)}
       <Labels line={line} f={f} x0={100} y0={90} />
     </g>
@@ -196,16 +198,17 @@ function YRecord({f, len, line}) {
   const p = P(line);
   const a = Math.min(at(line, p.on || 'guinness', 0.2), 10);
   const e = p.mode === 'empty', nb = at(line, p.b_on || 'nobody', 0.5);
+  const row = (word, frac) => (e ? 1 : clamp((f - at(line, word, frac) + 4) / 6, 0, 1));   // the plaque fills in on its words
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.04}>
       <rect width={W} height={H} fill="#0B1F3A" />
-      <g transform={`translate(${e ? lin(f, nb - 18, nb, 960, 640) : 960} 520) scale(${e ? 1 : pz(f, a)})`}>
+      <g transform={`translate(${e ? lin(f, 0, 18, 960, 640) : 960} 520) scale(${e ? 1 : pz(f, a)})`}>
         <rect x={-420} y={-300} width={840} height={600} rx={20} fill="#C9A227" {...st(10)} />
         <rect x={-380} y={-260} width={760} height={520} rx={10} fill="#1F2937" {...st(6)} />
         <Txt x={0} y={-150} text="WORLD RECORD" size={70} fill="#C9A227" />
-        <Txt x={0} y={-30} text="FIRST CONFIRMED PERSON" size={50} />
-        <Txt x={0} y={40} text="TO SURVIVE TWO" size={50} />
-        <Txt x={0} y={110} text="NUCLEAR ATTACKS" size={50} />
+        <g opacity={row('first', 0.4)}><Txt x={0} y={-30} text="FIRST CONFIRMED PERSON" size={50} /></g>
+        <g opacity={row('survive', 0.6)}><Txt x={0} y={40} text="TO SURVIVE TWO" size={50} /></g>
+        <g opacity={row('nuclear', 0.75)}><Txt x={0} y={110} text="NUCLEAR ATTACKS" size={50} /></g>
         <Txt x={0} y={210} text="26 MARCH 2009" size={40} fill="#9BE1FF" />
       </g>
       {p.mode === 'empty' && <g transform={`translate(1460 520) scale(${pz(f, at(line, p.b_on || 'nobody', 0.5))})`}>
@@ -246,6 +249,19 @@ function YWhy({f, len, line}) {
   const show = p.show != null ? p.show : items.length;
   const icon = (k) => k === 'ring' ? <g><circle r={90} fill="none" stroke="#E3232C" strokeWidth={10} strokeDasharray="20 12" /><circle r={50} fill="#F97316" opacity={0.6} {...st(5)} /><circle cx={70} cy={0} r={16} fill="#FFE11A" {...st(5)} /></g>
     : k === 'roof' ? <g><path d="M -110 0 L 0 -90 L 110 0 Z" fill="#475569" {...st(7)} /><rect x={-80} y={0} width={160} height={90} fill="#C2B48C" {...st(6)} /></g>
+      : k === 'field' ? <g><rect x={-130} y={-40} width={260} height={130} rx={10} fill="#8B6A43" {...st(6)} />
+          {[-5, 35, 75].map((y) => <path key={y} d={`M -120 ${y} L 120 ${y}`} stroke="#6B4F30" strokeWidth={8} />)}
+          {[-5, 35, 75].map((y) => [-90, -30, 30, 90].map((x) => <path key={x + '-' + y} d={`M ${x} ${y} q -18 -26 -30 -18 q 14 10 30 18 q 6 -30 26 -30 q -4 22 -26 30`} fill="#4F8A3A" {...st(3)} />))}</g>
+      : k === 'shelter' ? <g><path d="M -140 80 Q -120 -100 0 -100 Q 120 -100 140 80 Z" fill="#7A6A50" {...st(7)} />
+          <path d="M -46 80 L -46 10 Q -46 -36 0 -36 Q 46 -36 46 10 L 46 80 Z" fill="#1A120C" {...st(5)} />
+          {[-80, -40, 0, 40, 80].map((x) => <path key={x} d={`M ${x - 20} ${-60 + Math.abs(x) * 0.5} q 20 -14 40 0`} stroke="#5E5040" strokeWidth={6} fill="none" />)}</g>
+      : k === 'desk' ? <g><rect x={-140} y={40} width={280} height={56} fill="#8A6A48" {...st(6)} />
+          {[-70, 0, 70].map((x) => <path key={x} d={`M ${x} 40 L ${x} 96`} stroke="#6B4F30" strokeWidth={5} />)}
+          <rect x={-100} y={-40} width={200} height={26} fill="#6B4A2E" {...st(6)} /><rect x={-90} y={-14} width={16} height={56} fill="#4A3424" /><rect x={74} y={-14} width={16} height={56} fill="#4A3424" />
+          <rect x={-50} y={-62} width={70} height={22} fill="#F4EEE0" {...st(4)} transform="rotate(-6 -15 -51)" /></g>
+      : k === 'tunnel' ? <g><path d="M -140 80 L -140 -10 Q -70 -110 0 -110 Q 70 -110 140 -10 L 140 80 Z" fill="#6E9A6A" {...st(7)} />
+          <path d="M -60 80 L -60 0 Q -60 -60 0 -60 Q 60 -60 60 0 L 60 80 Z" fill="#1A120C" {...st(6)} />
+          <path d="M -76 80 L -76 0 Q -76 -76 0 -76 Q 76 -76 76 0 L 76 80" fill="none" stroke="#9A9184" strokeWidth={14} /></g>
       : <path d="M 0 80 C -120 0 -110 -90 -50 -90 C -20 -90 0 -60 0 -40 C 0 -60 20 -90 50 -90 C 110 -90 120 0 0 80 Z" fill="#E3232C" {...st(7)} />;
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.03}>

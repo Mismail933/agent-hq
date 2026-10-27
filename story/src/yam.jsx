@@ -13,7 +13,7 @@ const R2 = (seed) => rng(seed);
 
 // ───────────── people ─────────────
 // bandages over the head (the forehead and his left cheek: our right) and both forearms (Torso's 'rest' arms)
-const BandHead = ({turn = 0}) => (
+export const BandHead = ({turn = 0}) => (
   <g>
     <path d="M -130 -104 C -60 -126 60 -126 130 -104 L 128 -64 C 60 -86 -60 -86 -128 -64 Z" fill={PAPER} {...st(5)} />
     <path d="M -100 -96 L -80 -72 M -40 -110 L -24 -80 M 30 -110 L 44 -80 M 90 -100 L 104 -74" stroke="#D9D2C1" strokeWidth={4} />
@@ -285,7 +285,7 @@ function YMap({f, len, line}) {
   return (
     <g>
       <JapanLand center={center} ppd={ppd} />
-      <text x={pr.sx(135.4)} y={pr.sy(35.6)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={100} fill="#2A3A2A" stroke="#F5F5EE" strokeWidth={10} paintOrder="stroke" letterSpacing={8}>JAPAN</text>
+      <text x={pr.sx(135.0)} y={pr.sy(35.15)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={100} fill="#2A3A2A" stroke="#F5F5EE" strokeWidth={10} paintOrder="stroke" letterSpacing={8}>JAPAN</text>
       {(p.flash || []).map((k, i) => { const pl = PLACES_JP[k]; const a = at(line, (p.flash_on || [])[i] || '', 0.2 + i * 0.3);
         return f >= a ? <g key={k} transform={`translate(${pr.sx(pl[0])} ${pr.sy(pl[1])})`}><Burst r={44} k={clamp(pop(f, a, 120, 10), 0, 1.1)} /></g> : null; })}
       {p.route_on && <g>
@@ -439,7 +439,7 @@ function YDark({f, len, line}) {
 }
 
 // the Nagasaki office: plain walls, a window over the harbour, a clock, the boss's desk
-const OfficeRoom = ({f = 0, white = 0, clock = '11:00', blown = 0}) => (
+const OfficeRoom = ({f = 0, white = 0, clock = '11:00', blown = 0, noClock = false}) => (
   <g>
     <rect width={W} height={H} fill="#DCCDB0" />
     <rect y={0} width={W} height={60} fill="#C8B795" />
@@ -450,10 +450,10 @@ const OfficeRoom = ({f = 0, white = 0, clock = '11:00', blown = 0}) => (
       {white <= 0 && <g><path d="M 0 230 C 80 170 160 200 220 180 C 300 150 360 190 420 170 L 420 330 L 0 330 Z" fill="#7E9E78" /><rect y={280} width={420} height={50} fill="#5B8FC0" /></g>}
       {blown <= 0 && <path d="M 210 0 L 210 330 M 0 165 L 420 165" stroke={INK} strokeWidth={8} />}
     </g>
-    <g transform="translate(960 170)"><circle r={70} fill="#FBF7EC" {...st(7)} />
+    {!noClock && <g transform="translate(960 170)"><circle r={70} fill="#FBF7EC" {...st(7)} />
       {(() => { const [hh, mm] = clock.split(':').map(Number); const ma = mm / 60 * 360, ha = ((hh % 12) + mm / 60) / 12 * 360;
         return <g stroke={INK} strokeLinecap="round"><path d={`M 0 0 L ${Math.sin(ha * Math.PI / 180) * 36} ${-Math.cos(ha * Math.PI / 180) * 36}`} strokeWidth={8} /><path d={`M 0 0 L ${Math.sin(ma * Math.PI / 180) * 54} ${-Math.cos(ma * Math.PI / 180) * 54}`} strokeWidth={5} /></g>; })()}
-    </g>
+    </g>}
     <path d="M 560 760 L 1320 760 L 1360 830 L 520 830 Z" fill="#6B4A2E" {...st(7)} />
     <rect x={640} y={720} width={180} height={40} fill="#F4EEE0" {...st(4)} transform="rotate(-4 730 740)" />
   </g>
@@ -467,7 +467,7 @@ function YOffice({f, len, line}) {
   const k = clamp(pop(f, m, 150, 12), 0, 1.1);
   return (
     <g><Cam f={f} len={len} a={p.focus === 'boss' ? 1.8 : 1.0} b={p.focus === 'boss' ? 1.9 : 1.05} x={p.focus === 'boss' ? 1320 : W / 2} y={p.focus === 'boss' ? 470 : H / 2}>
-      <OfficeRoom f={f} clock={p.clock || '10:55'} />
+      <OfficeRoom f={f} clock={p.clock || '10:55'} noClock={p.focus === 'boss'} />
       <YBust who="yamaguchi" x={600} y={430} s={0.85} expr={p.calm || f < half ? 'worried' : 'shock'} talk={f < half && talk && p.he_talks !== false} f={f} seed={3} band turn={0.25} />
       <YBust who="boss" x={1300} y={430} s={0.85} expr={!p.calm && f >= m - 4 && p.boss_talks !== false ? 'shock' : 'grim'} talk={f >= half && talk && (p.calm || f < m - 4)} f={f} seed={6} turn={-0.25} />
       {p.ybubble && (() => { const q = clamp(pop(f, at(line, p.ybubble_on || '', 0.3), 150, 12), 0, 1.1); return q > 0.01 ? <g transform={`translate(400 120) scale(${q})`}>

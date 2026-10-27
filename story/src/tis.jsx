@@ -128,7 +128,7 @@ export const CAST = {
   colleague2: {hair: '#231A14', hairLight: '#3A2E24', brow: '#150F0B', dress: '#857A58', dressShade: '#6A6045', style: 'short', glasses: true, pants: '#6A6045'},
   hisako_old: {hair: '#A8ADB5', hairLight: '#C9CDD3', brow: '#7A7F88', dress: '#4A5D7A', dressShade: '#384862', style: 'bob', lips: true, glasses: true},
   toshiko_girl: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#C2410C', dressShade: '#9A3412', style: 'bob', lips: true},
-  toshiko: {hair: '#4A4038', hairLight: '#6A5E54', brow: '#2E2620', dress: '#7A3E5A', dressShade: '#5E2E45', style: 'long', lips: true},   // long dark hair, no glasses: not Hisako's grey bob (Israa)
+  toshiko: {hair: '#6B645D', hairLight: '#A39B92', brow: '#4A4038', dress: '#7A3E5A', dressShade: '#5E2E45', style: 'long', lips: true},   // 2010, in her sixties: grey in the long hair   // long dark hair, no glasses: not Hisako's grey bob (Israa)
   katsutoshi: {hair: '#43464D', hairLight: '#686C75', brow: '#2E3036', dress: '#B9CCE0', dressShade: '#94A9C2', style: 'short'},   // the son at 59: dark grey hair, no glasses, a light shirt (not his father, young or old)
   officer: {hair: '#7A5230', hairLight: '#9A6A40', brow: '#5A3A20', dress: '#5B6B3A', dressShade: '#46532C', style: 'short', hat: 'cap', pants: '#46532C'},   // a US occupation officer (no name)
   visitor: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true, pants: '#111827'},
@@ -305,7 +305,7 @@ export function Canopy({y0 = 700, f = 0, drift = 0, seed = 5, rows = 5, river = 
 
 // ───────────────── a whole person, front view (2.50.0) ─────────────────
 // head centre at (0,0) like Head; feet at y≈1100 (sitting/hugging: ≈800). pose: stand walk limp run wade signal shade hold push hug lie
-export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, lookY = 0, oneShoe = false, dir = 0}) {
+export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, lookY = 0, oneShoe = false, dir = 0, headExtra = null}) {
   const c = CAST[who] || CAST.passenger;
   const sk = SKINS[c.skin] || SKINS.light;
   const walk = pose === 'walk' || pose === 'limp' || pose === 'run' || pose === 'push';
@@ -351,7 +351,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
         <ellipse cx={80} cy={470} rx={88} ry={110} fill={sk.light} {...ST} />
         <path d="M -170 300 C -200 420 -150 500 0 500 C 150 500 200 420 170 300" fill="none" stroke={sk.light} strokeWidth={56} strokeLinecap="round" />
         <path d="M -170 300 C -200 420 -150 500 0 500 C 150 500 200 420 170 300" fill="none" stroke={INK} strokeWidth={70} strokeLinecap="round" opacity={0} />
-        <g transform="translate(0 60) rotate(-4)"><Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} /></g>
+        <g transform="translate(0 60) rotate(-4)"><Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} />{headExtra}</g>
       </g>
     );
   }
@@ -364,7 +364,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
         {leg(-dir * 22, legR, !oneShoe)}{leg(dir * 22, legL, true)}
         <g transform="scale(0.74 1)">{dress}</g>
         {arm(dir * 40, dir * aw + dir * 4, 'near')}
-        <Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} turn={dir} />
+        <Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} turn={dir} />{headExtra}
       </g>
     );
   }
@@ -375,7 +375,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
       {arm(-150, arms[0], 'l')}
       {dress}
       {arm(150, arms[1], 'r')}
-      <g transform={pose === 'shade' ? 'rotate(-6)' : ''}><Head who={who} expr={expr} f={f} talk={talk} look={look} lookY={lookY} seed={seed} /></g>
+      <g transform={pose === 'shade' ? 'rotate(-6)' : ''}><Head who={who} expr={expr} f={f} talk={talk} look={look} lookY={lookY} seed={seed} />{headExtra}</g>
     </g>
   );
 }

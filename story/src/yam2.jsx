@@ -4,7 +4,7 @@
 import React from 'react';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, Figure, Box, Cloud, at, Labels} from './tis';
 import {P, Txt, Cam, popAt, popBy} from './meg2';
-import {YBust, B29, Chute, Hanko, House, Morning, Street, Field, Ruins, Burst} from './yam';
+import {YBust, B29, Chute, Hanko, House, Morning, Street, Field, Ruins, Burst, BandHead} from './yam';
 
 const OSW = "'Oswald', sans-serif";
 const pz = (f, a, k = 140) => clamp(pop(f, a, k, 12), 0, 1.1);
@@ -219,7 +219,6 @@ function YGauge({f, len, line}) {
           <g transform={`rotate(${ang})`}><path d="M -16 0 L 0 -260 L 16 0 Z" fill="#E3232C" {...st(5)} /></g>
           <circle r={34} fill={INK} />
           <Txt x={0} y={170} text={`${Math.round(280 * v)} M/S`} size={84} fill={INK} stroke="none" />
-          <Txt x={235} y={-200} text="SOUND" size={30} fill="#E3232C" stroke="none" />
         </g>
         <g transform={`translate(1420 400) scale(${pz(f, b)})`}><rect x={-300} y={-80} width={600} height={150} fill="#fff" {...st(6)} /><Txt x={0} y={20} text={p.big || '≈ 1,000 KM/H'} size={76} fill={INK} stroke="none" /></g>
         <g transform={`translate(1420 640) scale(${pz(f, at(line, p.c_on || 'eighty', 0.8))})`}><rect x={-300} y={-70} width={600} height={130} fill="#FFE11A" {...st(6)} /><Txt x={0} y={14} text={p.small || '82% OF THE SPEED OF SOUND'} size={44} fill={INK} stroke="none" /></g>
@@ -345,7 +344,7 @@ function YShelter({f, len, line}) {
       </g>
       <rect width={W} height={H} fill="#F97316" opacity={0.08 * g} />
       <YBust who="colleague1" x={420} y={560} s={0.62} expr="worried" f={f} seed={7} turn={0.3} />
-      <YBust who="colleague2" x={1210} y={560} s={0.62} expr="scared" f={f} seed={8} turn={-0.3} />
+      <YBust who="colleague2" x={1210} y={560} s={0.62} expr={p.scared && f < 45 ? 'scared' : 'worried'} f={f} seed={8} turn={-0.3} />
       <YBust who="yamaguchi" x={810} y={600} s={0.72} expr={p.expr || 'worried'} f={f} seed={3} />
       <ellipse cx={890} cy={590} rx={60} ry={110} fill="#FF6A3D" opacity={0.25} />
       {names && <>
@@ -431,7 +430,7 @@ function YDawn({f, len, line}) {
       <Ruins y={770} color="#3A3036" seed={21} />
       <rect y={770} width={W} height={310} fill="#7A6A64" />
       <path d="M -20 950 C 400 880 900 900 1300 850 C 1600 820 1800 830 1940 800" stroke="#9C8B80" strokeWidth={60} fill="none" />
-      <g transform={`translate(${x} 900) scale(0.3) translate(0 -1090)`}><Figure who="yamaguchi" pose="limp" dir={1} f={f} expr="worried" seed={3} /></g>
+      <g transform={`translate(${x} 900) scale(0.3) translate(0 -1090)`}><Figure who="yamaguchi" pose="limp" dir={1} f={f} expr="worried" seed={3} headExtra={<BandHead turn={1} />} /></g>
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -551,7 +550,7 @@ function YTrain({f, len, line}) {
       <g transform="translate(1700 790) scale(1.05)"><Train f={f} /></g>
       {(() => { const g = at(line, p.face_on || 'gets', 0.6); const t = clamp((f - g + 50) / 70, 0, 1), gone = clamp((f - g - 24) / 12, 0, 1);
         return <g opacity={1 - gone} transform={`translate(${lin(t, 0, 1, 520, 1010, (q) => q)} 1000) scale(0.24) translate(0 -1090)`}>
-          <Figure who="yamaguchi" pose={t < 1 ? 'walk' : 'stand'} dir={1} f={f} expr="worried" seed={3} /></g>; })()}
+          <Figure who="yamaguchi" pose={t < 1 ? 'walk' : 'stand'} dir={1} f={f} expr="worried" seed={3} headExtra={<BandHead turn={t < 1 ? 1 : 0} />} /></g>; })()}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );

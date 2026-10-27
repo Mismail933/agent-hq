@@ -1066,6 +1066,21 @@ Agents never spend money without the owner's explicit approval.
   labels are `big`. Tarek: title hit 'Impact Hit Rapid Chord Reverb', music -6.5 dB, voice wpm 145 / pace_spread 0.1, the Short's
   accent_gain 0.7 (its boom was 24 dB under the voice). His "12 words lost" in the Short was a whole-file Whisper artifact: Whisper on
   the 10 s segment heard every word in the voice stem and in the mix (check a segment before re-voicing).
+  2.72.9-2.72.11 (Israa's 2nd and 3rd looks at the Short, 7.5 then release 8): Opening.jsx line `p.cut` = a hard cut into that shot
+  (no 8-frame crossfade; the flash), photo `dim` (default 0.38; 0 = the photo pops on the white flash with no dark veil); clipper.py
+  darker greyer side bands, caption chunks that don't end on a small word (up to 2 words longer) and keep an object pronoun with its
+  verb ("TELLING HIM"), '|' = a line break in end_text, style `card_boxes` + `card_font` (an end card in the channel's look: each '|'
+  part in its own white/yellow/red box, condensed type); Figure `lookY`. The Short: content/project-5/upload/04-survived-both-atomic-
+  bombs/short/ (post after the full video is public; Related video = the full one).
+  2.72.12 (Israa on the full render, redo 7.5, 15 notes; the Builder's own look at its 20 sheets): photo `w`/`y`/`x` per print so its
+  label never runs off the top and the print never covers a label or the map's point (Bockscar small at the top left, before/after
+  small at the bottom left); the date chip (DateLayer) fades out while a print with its own label is up; a line's `date: ""` hides the
+  chip where the picture isn't that time (flashback plane, the train to catch, lanterns, the year counter); Y165 `held`; YQuote reveals
+  a quote of 3+ rows row by row as the voice reaches each row (and no bust when the line has a photo); YRecord fills in on its words
+  and 'empty' slides at once; YWhy icons field/shelter/desk/tunnel; Figure `headExtra` (BandHead exported: bandaged from the dawn walk
+  on); Hisako's own bust in the black rain + a name label; the shelter's colleague screams only on the first beat (`scared`); pupils
+  at desks; radio waves fade in and out; JAPAN clear of the chip; no SOUND tick; OfficeRoom `noClock` in the boss close-up; Toshiko
+  grey-haired in 2010; the fall counter says "SHOWN FASTER / THE REAL FALL: 47 SECONDS".
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

@@ -361,13 +361,24 @@ const DateLayer = ({lines}) => {
     const d = (l.p || {}).date;
     if (d !== undefined && d !== date) { if (date) { prev = date; gone = from; } date = d; since = from; }
   }
+  // a print with its own label is up: the chip steps aside (two dates on screen read as a contradiction)
+  let hide = 0;
+  const cur = [...lines].reverse().find((l) => (l.cut != null ? l.cut : l.start) <= frame);
+  const ph = cur && (cur.p || {}).photo;
+  if (ph && ph.label) {
+    const wf = (word) => { const w = String(word || '').toLowerCase(); const hit = w && (cur.words || []).find((x) => x[0].toLowerCase().replace(/[^a-z0-9']/g, '').startsWith(w)); return hit ? hit[1] : null; };
+    const i = lines.indexOf(cur), nx = lines[i + 1];
+    const A = wf(ph.on) != null ? wf(ph.on) : (cur.cut != null ? cur.cut : cur.start);
+    const B = wf(ph.off) != null ? wf(ph.off) : (nx ? nx.cut : cur.end + 30);
+    hide = clamp((frame - A + 2) / 8, 0, 1) * (1 - clamp((frame - B - 2) / 8, 0, 1));
+  }
   const chip = (text, s, op) => (
     <div style={{position: 'absolute', right: 40, top: 22, transform: `scale(${s})`, transformOrigin: '100% 0%', opacity: op, background: '#0B1F3A',
       border: `5px solid ${INK}`, boxShadow: '6px 8px 0 rgba(0,0,0,0.35)', padding: '0 18px', fontFamily: OSWALD, fontWeight: 700, fontSize: 46,
       color: '#FDE047', letterSpacing: 2, whiteSpace: 'nowrap'}}>{String(text).toUpperCase()}</div>
   );
-  if (!date) return prev && frame - gone < 8 ? <AbsoluteFill>{chip(prev, 1, 1 - (frame - gone) / 8)}</AbsoluteFill> : null;
-  return <AbsoluteFill>{chip(date, clamp(pop(frame - since, 0, 170, 12), 0, 1.1), 1)}</AbsoluteFill>;
+  if (!date) return prev && frame - gone < 8 ? <AbsoluteFill>{chip(prev, 1, (1 - (frame - gone) / 8) * (1 - hide))}</AbsoluteFill> : null;
+  return <AbsoluteFill>{chip(date, clamp(pop(frame - since, 0, 170, 12), 0, 1.1), 1 - hide)}</AbsoluteFill>;
 };
 
 // the day: a big red card when it changes (line.p.day), then small in the corner until the next change (or day "" to clear)
