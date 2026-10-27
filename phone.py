@@ -381,10 +381,24 @@ def _fit_video(path):
     except Exception:
         ffmpeg = "ffmpeg"
     import subprocess
-    for crf in (28, 33):
-        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", "scale=-2:'min(1280,ih)'", "-c:v", "libx264",
-                        "-preset", "veryfast", "-crf", str(crf), "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(small)],
-                       capture_output=True, timeout=1800, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    quiet = {"capture_output": True, "timeout": 1800, "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
+    for crf in (28, 33):   # 720p (it said 720p but kept 1080: the height was capped at 1280)
+        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", "scale=-2:'min(720,ih)'", "-c:v", "libx264",
+                        "-preset", "veryfast", "-crf", str(crf), "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(small)], **quiet)
+        if small.exists() and small.stat().st_size <= MAX_VIDEO:
+            return small
+    # a long video: a bitrate sized from its length (2.73.4: a 21-minute video came out at 54 MB at crf 33 and never reached the phone)
+    probe = str(Path(ffmpeg).with_name("ffprobe" + Path(ffmpeg).suffix)) if os.sep in str(ffmpeg) or "/" in str(ffmpeg) else "ffprobe"
+    try:
+        secs = float(subprocess.run([probe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)], text=True, **quiet).stdout.strip())
+    except (ValueError, OSError, subprocess.SubprocessError):
+        secs = 0
+    if secs > 0:
+        vk = max(120, int(MAX_VIDEO * 0.88 * 8 / secs / 1000) - 48)   # kbit/s for the picture; 48k mono for the voice
+        h = 720 if vk >= 900 else 480
+        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", f"scale=-2:'min({h},ih)'", "-c:v", "libx264", "-preset", "veryfast",
+                        "-b:v", f"{vk}k", "-maxrate", f"{int(vk * 1.3)}k", "-bufsize", f"{vk * 2}k", "-c:a", "aac", "-b:a", "48k", "-ac", "1",
+                        "-movflags", "+faststart", str(small)], **quiet)
         if small.exists() and small.stat().st_size <= MAX_VIDEO:
             return small
     raise TelegramError("too big for the phone even after compressing")

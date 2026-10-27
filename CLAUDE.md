@@ -1147,6 +1147,9 @@ Agents never spend money without the owner's explicit approval.
   flip-flopped between Booms 011 and 214 (kept 214); his remaining notes are delivery notes that need a paid re-voice). His "starts
   mid-sound" flags: check with Whisper on a 4 s cut of the FINISHED video from 0.6 s before the line (scratchpad hear_starts.py): every
   first word was whole.
+  2.73.4: `phone._fit_video` really makes 720p (the height was capped at 1280, so 1080p stayed) and, when crf 28/33 don't fit a
+  long video, sizes a bitrate from its length (480p under ~900 kbit/s, mono 48k): the 21-minute Storygraphics #4 came out at 54 MB and
+  never reached the phone; tested on megalodon-full (20 min) -> 42.7 MB.
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
