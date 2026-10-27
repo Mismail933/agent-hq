@@ -38,6 +38,7 @@ def voice(spec, folder):
     cache = folder / "_lines"
     cache.mkdir(exist_ok=True)
     texts = list(spec.get("short") or []) + [s["text"] for s in spec["story"]]
+    says = list(spec.get("short") or []) + [s.get("say") or s["text"] for s in spec["story"]]   # `say`: a respelling for Kokoro (names)
     n_short = len(spec.get("short") or [])
     holds = [0.0] * n_short + [float(s.get("hold") or 0) for s in spec["story"]]   # silence after a line, e.g. while an event scene plays
     seq, t, lines = [np.zeros(int(SR * 0.3), np.float32)], 0.3, []
@@ -47,9 +48,9 @@ def voice(spec, folder):
         speed = SHORT_Q_SPEED if text.rstrip().endswith("?") else SHORT_SPEED
         if i >= n_short:   # the story (not the approved short): Bassel asked for a slightly faster pace
             speed = 0.96 if i == len(texts) - 1 else STORY_SPEED
-        f = cache / (hashlib.sha1(f"am_michael|{speed}|{text}".encode()).hexdigest()[:16] + ".wav")
+        f = cache / (hashlib.sha1(f"am_michael|{speed}|{says[i]}".encode()).hexdigest()[:16] + ".wav")
         if not f.exists():
-            a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(text, voice="am_michael", speed=speed)])
+            a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(says[i], voice="am_michael", speed=speed)])
             sf.write(f, a, SR)
         a, _ = sf.read(f, dtype="float32")
         env = np.convolve(np.abs(a), np.ones(240) / 240, mode="same")
