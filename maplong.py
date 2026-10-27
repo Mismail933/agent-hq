@@ -48,6 +48,7 @@ def voice(spec, folder):
         speed = SHORT_Q_SPEED if text.rstrip().endswith("?") else SHORT_SPEED
         if i >= n_short:   # the story (not the approved short): Bassel asked for a slightly faster pace
             speed = 0.96 if i == len(texts) - 1 else STORY_SPEED
+            speed = float(spec["story"][i - n_short].get("speed") or speed)   # a line's own pace (Tarek: short key lines read too fast)
         f = cache / (hashlib.sha1(f"am_michael|{speed}|{says[i]}".encode()).hexdigest()[:16] + ".wav")
         if not f.exists():
             a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(says[i], voice="am_michael", speed=speed)])
