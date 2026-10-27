@@ -312,7 +312,7 @@ function YStreet({f, len, line}) {
   const k = popAt(f, line, p.seal_on || 'seal', 0.6);
   const pu = p.push_on ? at(line, p.push_on, 0.3) : len + 1, ti = p.tight_on ? at(line, p.tight_on, 0.5) : len + 1;
   const z = f >= ti ? 1.8 : f >= pu ? 1.03 + 0.37 * clamp((f - pu) / 30, 0, 1) : lin(f, 0, Math.min(len, pu), 1.0, 1.03);
-  const cy = f >= ti ? 600 : 620, hw = W / 2 / z, hh = H / 2 / z;
+  const cy = f >= ti ? 520 : 620, hw = W / 2 / z, hh = H / 2 / z;   // tight: the seal's bubble stays inside the frame
   const view = `translate(${W / 2} ${H / 2}) scale(${z}) translate(${-clamp(wx + (f >= ti ? 120 : 0), hw, W - hw)} ${-clamp(cy, hh, H - hh)})`;
   return (
     <g><g transform={view}>
@@ -384,7 +384,7 @@ function YFlash({f, len, line}) {
       <g>
         <Morning f={f} />
         <Street y={760} seed={2} />
-        <g transform="translate(900 1010) scale(0.5) translate(0 -1090)"><Figure who="yamaguchi" pose="stand" f={f} expr={f > w ? 'shock' : 'worried'} seed={3} /></g>
+        <g transform="translate(900 1010) scale(0.5) translate(0 -1090)"><Figure who="yamaguchi" pose="stand" f={f} expr={f > w ? 'shock' : 'worried'} lookY={f > w ? 0 : -12} look={f > w ? 0 : -10} seed={3} /></g>
         <WhiteOut f={f} at={w} x={760} y={-300} />
         {f >= w && <g opacity={clamp(1 - (f - w - 10) / 30, 0.15, 1)}><Labels line={line} f={f} x0={100} y0={100} /></g>}
         {f < w && <Labels line={line} f={f} x0={100} y0={100} />}

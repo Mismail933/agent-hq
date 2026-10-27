@@ -66,7 +66,11 @@ def _ass(words, start, end, style, top, path):
     ws = [w for w in words if w["s"] >= start - 0.05 and w["e"] <= end + 0.3 and str(w["w"]).strip()]
     groups, cur = [], []
     small = {"a", "an", "the", "at", "in", "on", "of", "to", "is", "it", "he", "his", "and", "but", "or", "be", "will", "was", "for", "with", "by", "as"}
+    objects = {"him", "her", "them", "me", "us"}   # an object pronoun stays with the verb before it ("TELLING HIM", not "HIM HE IS MAD")
     for w in ws:
+        if cur and re.sub(r"[^a-z]", "", str(w["w"]).lower()) in objects and not re.search(r"[.!?;:,]$", cur[-1]["w"]):
+            cur.append(w)
+            continue
         last = re.sub(r"[^a-z]", "", str(cur[-1]["w"]).lower()) if cur else ""
         # a chunk doesn't end on a small word ("EIGHT IN THE"): it may run up to 2 words longer to reach a real one
         full = len(cur) >= style["words"] and (last not in small or len(cur) >= style["words"] + 2)
@@ -114,6 +118,11 @@ def _card(ffmpeg, video, at, style, out):
     im = im.crop(((im.width - W) // 2, (im.height - H) // 2, (im.width - W) // 2 + W, (im.height - H) // 2 + H))
     im = ImageEnhance.Brightness(im.filter(ImageFilter.GaussianBlur(28))).enhance(0.45)
     d = ImageDraw.Draw(im)
+    if style.get("card_boxes"):
+        _card_boxes(d, style)
+        im.save(out)
+        shot.unlink(missing_ok=True)
+        return
     big, small = _font(96), _font(64)
     y = 760
     for line in [x for part in style["end_text"].upper().split("|") for x in _wrap(d, part.strip(), big, W - 160)]:   # '|' = a line break
@@ -140,6 +149,41 @@ def _headline(text, band, out):
         d.text((W // 2, y + i * step), x, font=font, fill=(255, 255, 255) if i % 2 == 0 else (255, 215, 0), anchor="mm",
                stroke_width=8, stroke_fill=(16, 16, 16))
     im.save(out)
+
+
+def _card_boxes(d, style):
+    """The end card in the channel's look: each '|' part in its own box (yellow with dark type, then red with white type, in turn),
+    condensed bold type (style.card_font, e.g. Oswald), the channel's name under them."""
+    from PIL import ImageFont
+
+    def font(size):
+        try:
+            f = ImageFont.truetype(style["card_font"], size)
+            try:
+                f.set_variation_by_axes([700])
+            except Exception:
+                pass
+            return f
+        except Exception:
+            return _font(size)
+    parts = [x.strip().upper() for x in style["end_text"].split("|") if x.strip()]
+    boxes = []
+    for i, t in enumerate(parts):
+        size = 96 if i else 70
+        while size > 44 and d.textlength(t, font=font(size)) > W - 200:
+            size -= 4
+        boxes.append((t, font(size), size))
+    y = 700
+    for i, (t, f, size) in enumerate(boxes):
+        tw = d.textlength(t, font=f)
+        x0, x1, y0, y1 = W / 2 - tw / 2 - 28, W / 2 + tw / 2 + 28, y, y + size * 1.3
+        fill, ink = ((255, 255, 255), (16, 16, 16)) if i == 0 else (((255, 225, 26), (26, 20, 16)) if i % 2 else ((227, 35, 44), (255, 255, 255)))
+        d.rectangle([x0 + 10, y0 + 12, x1 + 10, y1 + 12], fill=(0, 0, 0))
+        d.rectangle([x0, y0, x1, y1], fill=fill, outline=(26, 20, 16), width=8)
+        d.text((W / 2, (y0 + y1) / 2), t, font=f, fill=ink, anchor="mm")
+        y = y1 + 34
+    if style.get("channel"):
+        d.text((W // 2, y + 60), style["channel"], font=font(72), fill=(255, 225, 26), anchor="mm", stroke_width=6, stroke_fill=(16, 16, 16))
 
 
 def _wrap(d, text, font, width):

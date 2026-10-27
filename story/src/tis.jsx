@@ -305,7 +305,7 @@ export function Canopy({y0 = 700, f = 0, drift = 0, seed = 5, rows = 5, river = 
 
 // ───────────────── a whole person, front view (2.50.0) ─────────────────
 // head centre at (0,0) like Head; feet at y≈1100 (sitting/hugging: ≈800). pose: stand walk limp run wade signal shade hold push hug lie
-export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, oneShoe = false, dir = 0}) {
+export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, lookY = 0, oneShoe = false, dir = 0}) {
   const c = CAST[who] || CAST.passenger;
   const sk = SKINS[c.skin] || SKINS.light;
   const walk = pose === 'walk' || pose === 'limp' || pose === 'run' || pose === 'push';
@@ -375,7 +375,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
       {arm(-150, arms[0], 'l')}
       {dress}
       {arm(150, arms[1], 'r')}
-      <g transform={pose === 'shade' ? 'rotate(-6)' : ''}><Head who={who} expr={expr} f={f} talk={talk} look={look} seed={seed} /></g>
+      <g transform={pose === 'shade' ? 'rotate(-6)' : ''}><Head who={who} expr={expr} f={f} talk={talk} look={look} lookY={lookY} seed={seed} /></g>
     </g>
   );
 }
