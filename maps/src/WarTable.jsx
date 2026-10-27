@@ -382,11 +382,11 @@ function PaintingCoda({f, len = 200}) {
 // lead ship keeps an even pace on screen (brisk over the open ocean, slower in the Gulf and the river; scratchpad sim1608.py), the camera
 // zooms in as it goes and the table flattens; once they anchor the camera goes down to the town (the old timing from there on: g).
 const ROUTE_1608 = [[0.23, 49.45], [-0.5, 49.62], [-1.6, 49.92], [-3.2, 49.75], [-5.6, 48.8], [-12, 48.1], [-25, 47.2], [-38, 46.5], [-48, 46], [-53.3, 46.15], [-56.6, 46.25], [-58.8, 46.8], [-59.9, 47.3], [-61.4, 48.15], [-63.0, 48.62], [-64.5, 49.2], [-66.5, 49.42], [-68.3, 48.75], [-69, 48.42], [-69.6, 48], [-69.75, 47.8], [-70.03, 47.6], [-70.2, 47.39], [-70.4, 47.3], [-70.52, 47.15], [-70.66, 47.05], [-70.8, 47.037], [-70.87, 47.039], [-70.957, 47], [-71.043, 46.943], [-71.12, 46.896], [-71.18, 46.845], [-71.198, 46.828]];   // south of Anticosti, mid-channel by Ile d'Orleans (Israa 7/10; scratchpad plan1608.py: the hull keeps water on both sides)
-const SAIL_1608 = smoothKeys([[16,0.0],[20,1e-05],[30,0.00123],[40,0.0072],[50,0.01783],[60,0.03032],[70,0.04416],[80,0.05927],[90,0.07573],[100,0.09366],[110,0.11344],[120,0.13549],[130,0.16034],[140,0.18876],[150,0.22193],[160,0.26164],[170,0.311],[180,0.37468],[190,0.4413],[200,0.50606],[210,0.56914],[220,0.6306],[230,0.69047],[240,0.74637],[250,0.78069],[260,0.80336],[270,0.81947],[280,0.83163],[290,0.8424],[300,0.85278],[310,0.8628],[320,0.87249],[330,0.88187],[340,0.89061],[350,0.89862],[360,0.90601],[370,0.91288],[380,0.91928],[390,0.92518],[400,0.93059],[410,0.93559],[420,0.94023],[430,0.94456],[440,0.94863],[450,0.95245],[460,0.95607],[470,0.95949],[480,0.96274],[490,0.96584],[500,0.96875],[510,0.97132],[520,0.97359],[530,0.97561],[540,0.97744],[550,0.9791],[560,0.98062],[570,0.98202],[580,0.98332],[590,0.98454],[600,0.98568],[610,0.98675],[620,0.98777],[630,0.98872],[640,0.98964],[650,0.9905],[660,0.99132],[670,0.99202],[680,0.99262],[690,0.99317],[700,0.99372],[710,0.99425],[720,0.99478],[730,0.9953],[740,0.99581],[750,0.99631],[760,0.99681],[770,0.99729],[780,0.99777],[790,0.99824],[800,0.99871],[810,0.99915],[820,0.99947],[830,0.99966],[850,1.0]]);
+const SAIL_1608 = smoothKeys([[16, 0], [30, 0.012], [212, 0.992], [226, 1]]);   // Bassel 23:46: 7 s, one even ground pace (time scaled to distance)
 // Israa: the ships were wider than the channels near Quebec: closer in the river (and smaller ships, shipS)
-const ZOOM_1608 = smoothKeys([[0.0,5.5],[0.0854,4.0],[0.35,1.3],[0.7262,2.0],[0.80,6.0],[0.83,11.0],[0.88,14.0],[0.918,22.0],[0.967,50.0],[0.991,160.0],[0.9925,230.0],[1.0,250.0]]
+const ZOOM_1608 = smoothKeys([[0, 5.5], [0.0854, 4.0], [0.35, 1.3], [0.7262, 2.0], [0.818, 3.6], [0.918, 7.0], [0.967, 16.0], [1, 46.0]]
   .map(([u, z]) => [u, Math.log(z)]));
-const ANCHOR_1608 = 840, D1608 = 694, H1608 = 60;   // the camera leaves the ships only once they have arrived (~840)   // the camera leaves the ships at 700 and goes down to the town by 775 (= the old 236);
+const ANCHOR_1608 = 232, D1608 = 86, H1608 = 60;   // anchored by 232, in the town by 322 (3 s)
 // H1608: the trade beat holds 2 s longer before the camera rises (Israa: it was on screen for about a second)
 function Quebec1608({f}) {
   const g = f - D1608, g2 = g - H1608;   // g: the town's old clock; g2: everything after the trade beat
@@ -395,7 +395,7 @@ function Quebec1608({f}) {
   const along = course(ROUTE_1608);
   const along2 = course([...ROUTE_1608.slice(0, -1), [-71.188, 46.842]]);   // the second ship anchors beside the first, not on it
   const trips = [SAIL_1608, (fr) => Math.max(0, SAIL_1608(fr) - 0.09 / Math.exp(ZOOM_1608(SAIL_1608(fr))))];   // the second ship a fixed distance ON SCREEN behind (a gap in frames grew huge at the river's zoom: Israa 6.5)
-  const shipS = (u) => interpolate(u, [0.7262, 0.80, 1], [0.62, 0.8, 0.85], clamp);   // Israa: specks in the river; now readable, the camera closer instead   // smaller in the Gulf and the river: clear of the islands, inside the channels
+  const shipS = (u) => interpolate(u, [0.7262, 0.918, 1], [0.62, 0.5, 0.42], clamp);   // smaller up the river: on the water at this zoom
   const zf = (fr) => Math.exp(ZOOM_1608(trips[0](fr)));
   // the camera: on the lead ship (a short lag, so it sits a little ahead of the middle and never jerks), then down to the town; at the
   // end it rises to show New France
@@ -408,8 +408,8 @@ function Quebec1608({f}) {
   const cam = f < ANCHOR_1608 ? [0, lagged(f), zf(f)]
     : cameraAt(f, [[ANCHOR_1608, lagged(ANCHOR_1608), zf(ANCHOR_1608)], [236 + D1608, [-71.217, 46.842], 380], [372 + D1608 + H1608, [-71.215, 46.843], 400],
                    [500 + D1608 + H1608, NF_VIEW[0], NF_VIEW[1]], [580 + D1608 + H1608, [NF_VIEW[0][0] - 0.6, NF_VIEW[0][1]], NF_VIEW[1] * 0.97]]);
-  const turn = lerp(f, 330, 236 + D1608, 0, -24) + lerp(g2, 380, 500, 0, 24);
-  const tilt = lerp(f, 150, 250, 46, 14) + lerp(f, 250, 236 + D1608, 0, 2) + lerp(g2, 380, 500, 0, 10);   // Bassel: from above; flat before the Gulf (Israa 6.5: 0:09-0:11 still tilted)   // Bassel: the land seen from above, not at an angle
+  const turn = lerp(f, ANCHOR_1608 - 40, 236 + D1608, 0, -24) + lerp(g2, 380, 500, 0, 24);
+  const tilt = lerp(f, 100, 180, 46, 14) + lerp(f, 180, 236 + D1608, 0, 2) + lerp(g2, 380, 500, 0, 10);   // Bassel: from above; flat before the Gulf (Israa 6.5: 0:09-0:11 still tilted)   // Bassel: the land seen from above, not at an angle
   const z = cam[2];
   const proj = geoMercator().scale(base * z).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
   const path = geoPath(proj);
@@ -446,7 +446,7 @@ function Quebec1608({f}) {
       <rect x={x0} y={y0} width={(x1 - x0) * gr} height={y1 - y0} fill="#6E7E3E" stroke="#2F3A18" strokeWidth={2.5} />
       {[0.25, 0.5, 0.75].map((q) => <path key={q} d={`M ${x0} ${y0 + (y1 - y0) * q} L ${x0 + (x1 - x0) * gr} ${y0 + (y1 - y0) * q}`} stroke="#4E5C2A" strokeWidth={2} />)}</g>;
   };
-  const titles = [['1608: Champlain sails from Honfleur', 10, true, 220 + D1608], ['Into the Gulf of St. Lawrence', 226, false, 330], ['Up the St. Lawrence River', 370, false, 214 + D1608],
+  const titles = [['1608: Champlain sails from Honfleur', 10, true, 220 + D1608], ['Into the Gulf of St. Lawrence', 160, false, 196], ['Up the St. Lawrence River', 196, false, 214 + D1608],
                   ['Quebec, on the St. Lawrence, 3 July 1608', 232 + D1608, true, 376 + D1608 + H1608], ['Trade with the First Nations', 326 + D1608, false, 376 + D1608 + H1608],
                   ['Canada, the heart of New France, in the 1700s', 404 + D1608 + H1608, true]];   // Israa: the shape is the St. Lawrence colony decades later (not Acadia or Louisiana), so it says what and when
   return (
