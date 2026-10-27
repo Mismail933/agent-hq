@@ -1,0 +1,88 @@
+{
+ "date": "2026-10-27",
+ "focus": "reliability",
+ "note": "No new idea today. Claude Code 2.1.311 has small reliability fixes (no retry of non-retryable API errors), nothing we must act on. One reminder, not a new idea: Atlas's backup model claude-haiku-4-5-20251001 has a tentative retirement 'not sooner than 15 Oct 2026', now passed, with no notice yet. Idea 2026-10-08-1 (move to Haiku 5.5) still covers it. This run was short: no web searches, 10 pages read.",
+ "research": {
+  "searches": 0,
+  "pages_read": 10,
+  "minutes": 10,
+  "questions": [
+   "Did Claude Code 2.1.307-2.1.311 change anything about claude -p retries, timeouts or sessions that our workers rely on?",
+   "Is any model we use deprecated or near retirement?",
+   "Any new small repos for agent reliability worth watching?"
+  ],
+  "gaps": [
+   "No keyword web searches run (below the 15-search target)",
+   "YouTube policy sources not checked (not a results day)",
+   "Did not read the second half of the env-vars page"
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.311: no retries for errors the API marks not retryable (also in unattended watchdog mode); interrupt works even when an MCP read hangs",
+  "Claude Code 2.1.310: -p/SDK uses less memory in compaction; 2.1.307: unparseable tool calls retried twice, fork subagents on by default in -p",
+  "API 2026-10-21: new SDK majors (Apache 2.0), temperature/top_p/top_k now a 400 error on that API version",
+  "Sonnet 4.5 deprecated, retires 2026-11-30 (we do not use it)",
+  "claude-haiku-4-5-20251001 (Atlas backup) tentative retirement 'not sooner than 2026-10-15': date passed, still Active",
+  "Anthropic news: S-1 filed for IPO (2026-10-26); Agent Skills donated to Agentic AI Foundation (10-22); no new models"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new that needs action",
+   "why": "2.1.311 reliability fixes only"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new that needs action",
+   "why": "API 2026-10-21 removes sampling params; we do not set them via CLI, but llm.py should be checked if the SDK is upgraded"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "no models or products"
+  },
+  {
+   "title": "Model deprecations",
+   "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+   "tier": "A",
+   "result": "used",
+   "why": "Haiku 4.5 retirement window passed; Sonnet 4.5 not used"
+  },
+  {
+   "title": "Claude Code env vars",
+   "url": "https://code.claude.com/docs/en/env-vars",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "watchdog and timeout vars unchanged"
+  },
+  {
+   "title": "GitHub search: claude code hooks reliability",
+   "url": "https://api.github.com/search/repositories?q=claude+code+hooks+reliability",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "tiny repos (under 35 stars)"
+  },
+  {
+   "title": "GitHub search: llm agent observability watchdog",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+observability+watchdog",
+   "tier": "B",
+   "result": "rejected",
+   "why": "only an archived 0-star repo with no licence"
+  },
+  {
+   "title": "GitHub search: youtube shorts automation ffmpeg",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+ffmpeg+captions",
+   "tier": "B",
+   "result": "rejected",
+   "why": "all under 3 stars"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}

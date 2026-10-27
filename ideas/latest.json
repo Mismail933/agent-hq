@@ -1,145 +1,86 @@
 {
- "date": "2026-10-23",
- "focus": "results",
- "note": "No idea today. The new YouTube items I found (Shorts originality update, July policy wording, custom Shorts thumbnails, first-frame view counts) are either already covered by ideas you said yes to, or don't touch our channel yet.",
+ "date": "2026-10-27",
+ "focus": "reliability",
+ "note": "No new idea today. Claude Code 2.1.311 has small reliability fixes (no retry of non-retryable API errors), nothing we must act on. One reminder, not a new idea: Atlas's backup model claude-haiku-4-5-20251001 has a tentative retirement 'not sooner than 15 Oct 2026', now passed, with no notice yet. Idea 2026-10-08-1 (move to Haiku 5.5) still covers it. This run was short: no web searches, 10 pages read.",
  "research": {
-  "searches": 16,
-  "pages_read": 16,
-  "minutes": 15,
+  "searches": 0,
+  "pages_read": 10,
+  "minutes": 10,
   "questions": [
-   "Did YouTube change anything for Shorts reach or monetization since 2026-10-13 that affects a faceless history channel?",
-   "Do first-frame views (Aug 24) change what Omar or Calina should measure?",
-   "Is 'viewed vs swiped away' readable through the Analytics API, so Omar could track the hook automatically?",
-   "Do Shorts custom thumbnails help us now?"
+   "Did Claude Code 2.1.307-2.1.311 change anything about claude -p retries, timeouts or sessions that our workers rely on?",
+   "Is any model we use deprecated or near retirement?",
+   "Any new small repos for agent reliability worth watching?"
   ],
   "gaps": [
-   "No real history-Shorts channel case study with before/after numbers found; only vendor blogs.",
-   "Could not confirm from official docs whether 'viewed vs swiped away' is in the Analytics API (no doc found).",
-   "The Oct 22 'Agent Skills donated to Agentic AI Foundation' news item: only the headline was seen on anthropic.com/news; a search did not confirm it.",
-   "The 'API version 2026-10-21 / Apache 2.0 SDK' note: the release-notes page says it, a search could not corroborate; no action needed.",
-   "Claude Code changelog: only the top 4 versions read."
+   "No keyword web searches run (below the 15-search target)",
+   "YouTube policy sources not checked (not a results day)",
+   "Did not read the second half of the env-vars page"
   ]
  },
  "new_today": [
-  "Claude Code 2.1.306-2.1.309: fixes only (claude -p login in cloud sessions, permissions, compaction); nothing we must act on",
-  "Claude API: Opus 5.5 fast mode GA (Oct 15/22), API version 2026-10-21 with new SDK/CLI defaults, Sonnet 5.5 cache reads $0.10/M since Oct 7",
-  "Anthropic news Oct 22: Agent Skills standard donated to the Agentic AI Foundation (headline only)",
-  "YouTube Oct 1-2: Shorts recommendations reduce reach of channels mainly re-uploading others' videos (TeamYouTube; secondary coverage)",
-  "YouTube Aug 24: views count from the first frame; old definition renamed 'engaged view'; YPP and analytics unchanged (official blog)",
-  "YouTube Jul 24: custom Shorts thumbnails for YPP creators; not shown in the Shorts feed (secondary sources disagree on A/B testing)"
+  "Claude Code 2.1.311: no retries for errors the API marks not retryable (also in unattended watchdog mode); interrupt works even when an MCP read hangs",
+  "Claude Code 2.1.310: -p/SDK uses less memory in compaction; 2.1.307: unparseable tool calls retried twice, fork subagents on by default in -p",
+  "API 2026-10-21: new SDK majors (Apache 2.0), temperature/top_p/top_k now a 400 error on that API version",
+  "Sonnet 4.5 deprecated, retires 2026-11-30 (we do not use it)",
+  "claude-haiku-4-5-20251001 (Atlas backup) tentative retirement 'not sooner than 2026-10-15': date passed, still Active",
+  "Anthropic news: S-1 filed for IPO (2026-10-26); Agent Skills donated to Agentic AI Foundation (10-22); no new models"
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "nothing new",
-   "why": "2.1.306-2.1.309 are small fixes"
+   "result": "nothing new that needs action",
+   "why": "2.1.311 reliability fixes only"
   },
   {
-   "title": "Claude Platform release notes",
+   "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "nothing new",
-   "why": "fast mode, API version, no model or caching change for us"
+   "result": "nothing new that needs action",
+   "why": "API 2026-10-21 removes sampling params; we do not set them via CLI, but llm.py should be checked if the SDK is upgraded"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "no new models"
+   "why": "no models or products"
   },
   {
-   "title": "YouTube Help: inauthentic / mass-produced content",
-   "url": "https://support.google.com/youtube/answer/1311392",
+   "title": "Model deprecations",
+   "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
    "tier": "A",
    "result": "used",
-   "why": "confirms generic-AI-template and AI-expert-persona rules; already in idea 2026-10-18-1"
+   "why": "Haiku 4.5 retirement window passed; Sonnet 4.5 not used"
   },
   {
-   "title": "YouTube blog: engaged views explained",
-   "url": "https://blog.youtube/inside-youtube/engaged-views-youtube-explained/",
-   "tier": "A",
-   "result": "used",
-   "why": "first-frame views from Aug 24; analytics and YPP unchanged"
-  },
-  {
-   "title": "YouTube blog index",
-   "url": "https://blog.youtube/news-and-events/",
+   "title": "Claude Code env vars",
+   "url": "https://code.claude.com/docs/en/env-vars",
    "tier": "A",
    "result": "nothing new",
-   "why": "page gave no dated list"
+   "why": "watchdog and timeout vars unchanged"
   },
   {
-   "title": "MediaPost: YouTube alters Shorts algorithm for originality",
-   "url": "https://www.mediapost.com/publications/article/418466/",
+   "title": "GitHub search: claude code hooks reliability",
+   "url": "https://api.github.com/search/repositories?q=claude+code+hooks+reliability",
    "tier": "B",
-   "result": "used",
-   "why": "quotes TeamYouTube; targets re-uploaders, not original narrated work"
+   "result": "nothing new",
+   "why": "tiny repos (under 35 stars)"
   },
   {
-   "title": "Tubefilter: July 2026 monetization wording",
-   "url": "https://www.tubefilter.com/2026/07/13/youtube-inauthentic-content-monetization-policy-update/amp/",
-   "tier": "B",
-   "result": "used",
-   "why": "three categories; already covered by 2026-10-18-1"
-  },
-  {
-   "title": "Tubefilter: Shorts custom thumbnails",
-   "url": "https://www.tubefilter.com/2026/07/24/youtube-shorts-custom-thumbnails-neal-mohan-feature-update/amp/",
+   "title": "GitHub search: llm agent observability watchdog",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+observability+watchdog",
    "tier": "B",
    "result": "rejected",
-   "why": "YPP only; says A/B testing exists"
+   "why": "only an archived 0-star repo with no licence"
   },
   {
-   "title": "ppc.land: Shorts thumbnails",
-   "url": "https://ppc.land/youtube-ends-2-year-wait-for-shorts-thumbnails-but-blocks-a-b-testing/",
+   "title": "GitHub search: youtube shorts automation ffmpeg",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+ffmpeg+captions",
    "tier": "B",
    "result": "rejected",
-   "why": "says no A/B testing, not shown in Shorts feed, desktop upload only: too little value for us now; sources disagree"
-  },
-  {
-   "title": "Tubefilter: YPP changes Feb 2027",
-   "url": "https://www.tubefilter.com/2026/08/10/youtube-partner-program-ad-eligibility-requirements-shorts/",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "already in idea 2026-10-08-2 (search snippet only, page not opened)"
-  },
-  {
-   "title": "YouTube Analytics API revision history (search listing)",
-   "url": "https://developers.google.com/youtube/analytics/revision_history",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "no new Shorts retention metric found; page not opened directly"
-  },
-  {
-   "title": "Shortimize / Bytecap / vidIQ Shorts retention guides",
-   "url": "https://www.shortimize.com/blog/youtube-shorts-retention-rate",
-   "tier": "C",
-   "result": "rejected",
-   "why": "vendor rules of thumb, no method; not a base for an idea"
-  },
-  {
-   "title": "GitHub search: youtube shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "upload/browser-automation or no licence; none fit our read-only rule"
-  },
-  {
-   "title": "GitHub search: claude code subagents hooks",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+hooks",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "skill/hook collections; reference only"
-  },
-  {
-   "title": "GitHub search: text to speech captions ffmpeg",
-   "url": "https://api.github.com/search/repositories?q=text+to+speech+captions+ffmpeg",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "3 tiny repos"
+   "why": "all under 3 stars"
   }
  ],
  "repo_watch": [],
