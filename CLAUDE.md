@@ -365,6 +365,19 @@ Agents never spend money without the owner's explicit approval.
   (`Bars`) with Germany/Spain then back with Brazil, the tour of France's lands outside Europe (`TOUR` camera keys, `TERR` pins; the
   Natural Earth overseas units + FRO = France's overseas departments are now in geo.json and drawn as France), the ending question
   and 'find out in the full story'. Free voice = Chatterbox lines with word times from the assembly (not Whisper: it drifts at pauses).
+  Long version (2.71.x, Ocean): `maplong.py part <content/project-6/long/part-N>` = script.json {short: [lines] (the approved short,
+  re-voiced, MapShort noEnd), story: [{text, view, date, pins, fill, river, ship, follow, event, hold, photo, regions, legend}]} ->
+  Kokoro am_michael per line (cached in _lines/), MapShort + MapStory, events/<key>.mp4 laid over the map, Convergence under.
+  `maps/src/WarTable.jsx` = the war-table scenes (the owner: "real like a chess thing"; NEVER the Storygraphics cast or kit for Bassel).
+  2.73.0 (Bassel's GO on Part 1, voice note 10-27 11:34; the MV chat took it over from Ocean): the opening back to ~63 s (`SHORT_SPEED`
+  1.03, questions `SHORT_Q_SPEED` 0.95, pauses x`SHORT_GAP_SCALE` 0.55); a story line's `hold` = seconds of silence after it (an event
+  plays); MapStory `follow` {from, mid} on a ship line: the camera starts close on France, pulls back to `mid` and follows the ship
+  (`followView`, `courseOf`, `sailFrames`: the voyage takes most of the line, up to 11 s) and lands on the line's view; one ship per
+  region (Canada, Guadeloupe + Martinique at scale 7500 so their outlines show, Reunion round the Cape at sea, Louisiana through the
+  Yucatan Channel); WarTable 'quebec1608' ends on all of New France (`NF_VIEW`), spreads slower (420-540, radius 1500) and holds before
+  Garneray's painting, which is now still (no water/flag displacement: it looked broken); new scene 'sugar' (Saint-Domingue: cane cut
+  row by row by enslaved workers, bundles carried to a windmill, barrels, an overseer at the edge; no violence shown); Part 1 uses
+  events/settle-1608.mp4 (frames 150-700: from the ships in the river) and events/sugar-1700s.mp4.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
@@ -1094,6 +1107,8 @@ Agents never spend money without the owner's explicit approval.
   Times quote as the old man, ✓ 1957 on 'one', Leukaemia on 'age', a 'not a journalist / not an anniversary / a funeral' beat before
   the altar, the documentary under 2006, the last years as a 1945 -> 2010 counter (TELLING THE WORLD), not the lanterns.
   Test before a long render: scratchpad stills12.py (the last props.json's real word times + the new spec's shots, DEV source).
+  story_sample: a line's `p.voice_db` raises or lowers that line's ElevenLabs clip (Tarek: 'Outside, the city is on fire' came out 5 dB
+  under its neighbours); no re-voice. Tarek's second-render voice notes: lines 8 and 65 slowed with ellipses in eleven_say.
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

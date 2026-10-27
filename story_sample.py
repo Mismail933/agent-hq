@@ -207,6 +207,9 @@ def voice_eleven(spec, folder):
         for j, i in enumerate(g):
             clip, ws = clips[j]
             a48 = np.interp(np.arange(int(len(clip) * SR / 24000)) / SR, np.arange(len(clip)) / 24000, clip).astype("float32")
+            vdb = float((spec["lines"][i].get("p") or {}).get("voice_db", 0))   # a take that came out quieter than its neighbours (Tarek)
+            if vdb:
+                a48 = (a48 * 10 ** (vdb / 20)).astype("float32")
             out[i] = {"audio": a48, "words": ws, "secs": len(a48) / SR, "joined": j < len(g) - 1}
     if billed:
         cp.init()

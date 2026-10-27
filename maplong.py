@@ -1,6 +1,7 @@
 """Bassel's long version (2026-10-26): parts of ~3 minutes, each a script.json (content/project-6/long/part-N/):
   short: [lines] = the validated short, re-voiced, WITHOUT its on-screen ending (MapShort noEnd), only in part 1
-  story: [{text, view [lon, lat, scale], date, pins [[label, lon, lat, cue word]], fill [ISO3], river, arc, label}] = MapStory
+  story: [{text, view [lon, lat, scale], date, pins [[label, lon, lat, cue word]], fill [ISO3], river, arc, label, ship, follow, event,
+          hold}] = MapStory (hold = seconds of silence after the line, e.g. while an event scene plays)
 FREE voice (Bassel: free only for now): Kokoro am_michael, line by line, word times from the assembly.
     python maplong.py part <folder>      (shorts venv) -> voice.wav, voice.json, short.mp4 / story.mp4, part.mp4, sheet.png
 """
@@ -20,6 +21,11 @@ import mapsample  # noqa: E402
 
 SR = 24000
 GAP_SHORT = {1: 0.75, 2: 0.8, 3: 0.55, 5: 0.35, 6: 0.3, 7: 0.7, 8: 0.45, 12: 0.5, 13: 0.25}
+# Bassel (10-27 11:34): the borders opening took 1:10 in the long version against 1:03 in his short: shorter pauses, the questions
+# barely slowed, the rest a touch quicker
+SHORT_GAP_SCALE = 0.55
+SHORT_SPEED = 1.03
+SHORT_Q_SPEED = 0.95
 STORY_SPEED = 1.08
 GAP_STORY = 0.32   # Bassel (10-26 20:50): the story a little faster
 MUSIC = Path.home() / ".agent-hq-anim" / "music" / "scott-buckley" / "convergence.mp3"
@@ -33,11 +39,12 @@ def voice(spec, folder):
     cache.mkdir(exist_ok=True)
     texts = list(spec.get("short") or []) + [s["text"] for s in spec["story"]]
     n_short = len(spec.get("short") or [])
+    holds = [0.0] * n_short + [float(s.get("hold") or 0) for s in spec["story"]]   # silence after a line, e.g. while an event scene plays
     seq, t, lines = [np.zeros(int(SR * 0.3), np.float32)], 0.3, []
     import hashlib
     for i, text in enumerate(texts):
         # Tarek (part 1): questions and the closing line were rushed: read them a little slower
-        speed = (0.8 if len(text.split()) > 6 else 0.88) if text.rstrip().endswith("?") or i == len(texts) - 1 else 1.0
+        speed = SHORT_Q_SPEED if text.rstrip().endswith("?") else SHORT_SPEED
         if i >= n_short:   # the story (not the approved short): Bassel asked for a slightly faster pace
             speed = 0.96 if i == len(texts) - 1 else STORY_SPEED
         f = cache / (hashlib.sha1(f"am_michael|{speed}|{text}".encode()).hexdigest()[:16] + ".wav")
@@ -56,9 +63,9 @@ def voice(spec, folder):
         w = np.array([len(x) + 2 for x in toks], float)
         edges = np.concatenate([[0], np.cumsum(w) / w.sum()]) * (dur - lead - tail) + t + lead
         words = [[x, round(float(edges[k]), 3), round(float(edges[k + 1]), 3)] for k, x in enumerate(toks)]
-        pause = 0.22 + (GAP_SHORT.get(i, 0) if i < n_short else GAP_STORY)
+        pause = 0.2 + (GAP_SHORT.get(i, 0) * SHORT_GAP_SCALE if i < n_short else GAP_STORY) + holds[i]
         if i == n_short - 1:
-            pause = 0.9   # the short's last question, then the history begins
+            pause = 0.7   # the short's last question, then the history begins
         lines.append({"text": text, "t0": round(t, 3), "t1": round(t + dur, 3), "words": words, "short": i < n_short})
         seq += [a, np.zeros(int(SR * pause), np.float32)]
         t += dur + pause

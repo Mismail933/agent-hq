@@ -36,21 +36,76 @@ const Draw = ({d, p, color, width}) => {
 };
 
 // the camera at frame f: each line's view, reached by a move that starts just before the line (a far move zooms out on the way)
+// A line with `follow` {from, mid} and a ship rides with it (Bassel, 10-27: "zoom on France, go with the ship with a bit of zooming out",
+// then land close on the destination): the camera cuts in close on the port (zoom `from`), pulls back to `mid` while the ship is at sea,
+// following it with a little lag, and comes down on the line's view at the end of the voyage.
 function camera(f, lines, fps) {
   let cur = lines[0].view;
   for (let i = 1; i < lines.length; i++) {
-    const a = Math.round((lines[i].t0 - 0.15) * fps);
+    const l = lines[i];
+    const a = Math.round((l.t0 - 0.15) * fps);
     if (f < a) break;
-    const prev = cur, next = lines[i].view;
-    const dur = Math.max(18, Math.min(48, Math.round((lines[i].t1 - lines[i].t0) * fps * 0.5)));
+    const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.view;
+    const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
     const e = interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease});
     const far = geoDistance(prev.slice(0, 2), next.slice(0, 2));
     const la = Math.log(prev[2]), lb = Math.log(next[2]);
     const bump = far > 0.5 ? Math.max(0, (la + lb) / 2 - Math.log(360)) : 0;
     const c = geoInterpolate(prev.slice(0, 2), next.slice(0, 2))(e);
     cur = e >= 1 ? next : [c[0], c[1], Math.exp(la + (lb - la) * e - bump * Math.sin(Math.PI * e))];
+    if (l.follow && l.ship) {
+      const [s0, s1] = sailFrames(l, fps);
+      if (f >= s0) cur = followView(l, sailP(l, f, fps));
+    }
   }
   return cur;
+}
+// the voyage of a ship line: frames it sails between (a follow line takes most of its line, up to 11 s), and how far along it is
+function sailFrames(l, fps) {
+  if (!l.follow) return [Math.round((l.t0 + 0.2) * fps), Math.round(Math.min(l.t1, l.t0 + 4.2) * fps)];
+  const s0 = l.t0 + 0.9, s1 = Math.max(s0 + 2.4, Math.min(l.t1 - 0.6, l.t0 + 11.6));
+  return [Math.round(s0 * fps), Math.round(s1 * fps)];
+}
+function sailP(l, f, fps) {
+  const [s0, s1] = sailFrames(l, fps);
+  return interpolate(f, [s0, s1], [0, 1], {...clamp, easing: Easing.inOut(Easing.quad)});
+}
+// a course along great-circle legs between the waypoints, walked at even speed
+const COURSES = {};
+function courseOf(pts) {
+  const key = JSON.stringify(pts);
+  if (COURSES[key]) return COURSES[key];
+  const dense = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const g = geoInterpolate(pts[i], pts[i + 1]);
+    for (let k = 0; k < 40; k++) dense.push(g(k / 40));
+  }
+  dense.push(pts[pts.length - 1]);
+  const cum = [0];
+  for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + geoDistance(dense[i - 1], dense[i]));
+  const at = (p) => {
+    const want = cum[cum.length - 1] * Math.max(0, Math.min(1, p));
+    let j = 1;
+    while (j < dense.length - 1 && cum[j] < want) j++;
+    const u = (want - cum[j - 1]) / Math.max(1e-9, cum[j] - cum[j - 1]);
+    return {here: geoInterpolate(dense[j - 1], dense[j])(Math.min(1, Math.max(0, u))), j};
+  };
+  return (COURSES[key] = {dense, at});
+}
+function followView(l, p) {
+  const {at} = courseOf(l.ship);
+  const fol = l.follow, end = l.view;
+  let lo = 0, la = 0, w = 0;   // the camera trails the ship a little
+  for (let k = 0; k < 5; k++) { const q = at(p - k * 0.012).here, wk = 1 / (1 + k); lo += q[0] * wk; la += q[1] * wk; w += wk; }
+  let c = [lo / w, la / w];
+  const lz = (x, y, e) => Math.exp(Math.log(x) + (Math.log(y) - Math.log(x)) * e);
+  let z = p < 0.3 ? lz(fol.from, fol.mid, ease(p / 0.3)) : fol.mid;
+  if (p > 0.72) {
+    const e = ease((p - 0.72) / 0.28);
+    c = geoInterpolate(c, end.slice(0, 2))(e);
+    z = lz(fol.mid, end[2], e);
+  }
+  return [c[0], c[1], z];
 }
 
 export const MapStory = ({lines = [], seconds = 10}) => {
@@ -117,8 +172,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     );
   });
   // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
-  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path}
-    p={interpolate(f, [at(line.t0 + 0.2), at(Math.min(line.t1, line.t0 + 4.2))], [0, 1], {...clamp, easing: Easing.inOut(Easing.quad)})} f={f} /> : null;
+  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} /> : null;
   const dateText = line.date;
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 50% 45%, ${C.bg[0]}, ${C.bg[1]})`}}>
@@ -142,7 +196,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         {voyage}
         {lines.map((l, i) => (l.river && geo.rivers[l.river] && i === li ? (
           <g key={`r${i}`}>
-            <Draw d={path(geo.rivers[l.river])} p={interpolate(f, [at(l.t0), at(l.t0) + 50], [0, 1], {...clamp, easing: ease})} color="#7FD7FF" width={4} />
+            <Draw d={path(geo.rivers[l.river])} p={interpolate(f, [l.follow && l.ship ? sailFrames(l, fps)[1] : at(l.t0), (l.follow && l.ship ? sailFrames(l, fps)[1] : at(l.t0)) + 50], [0, 1], {...clamp, easing: ease})} color="#7FD7FF" width={4} />
           </g>) : null))}
         {lines.map((l, i) => (l.arc && i <= li ? (
           <Draw key={`a${i}`} d={path({type: 'LineString', coordinates: Array.from({length: 41}, (_, k) => geoInterpolate(l.arc[0], l.arc[1])(k / 40))})}
@@ -235,20 +289,9 @@ function EventClip({ev, t0, f, fps}) {
   );
 }
 
-function Voyage({pts, proj, path, p, f}) {
-  const dense = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const g = geoInterpolate(pts[i], pts[i + 1]);
-    for (let k = 0; k < 40; k++) dense.push(g(k / 40));
-  }
-  dense.push(pts[pts.length - 1]);
-  const cum = [0];
-  for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + geoDistance(dense[i - 1], dense[i]));
-  const want = cum[cum.length - 1] * p;
-  let j = 1;
-  while (j < dense.length - 1 && cum[j] < want) j++;
-  const u = (want - cum[j - 1]) / Math.max(1e-9, cum[j] - cum[j - 1]);
-  const here = geoInterpolate(dense[j - 1], dense[j])(Math.min(1, Math.max(0, u)));
+function Voyage({pts, proj, path, p, f, big = false}) {
+  const {dense, at} = courseOf(pts);
+  const {here, j} = at(p);
   const done = [...dense.slice(0, j), here];
   const a = proj(here), b = proj(dense[Math.min(dense.length - 1, j + 1)]) || a;
   if (!a) return null;
@@ -257,7 +300,7 @@ function Voyage({pts, proj, path, p, f}) {
   return (
     <g>
       <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#F2EEE4" strokeWidth={3} strokeDasharray="10 8" opacity={0.85} />
-      <g transform={`translate(${a[0]} ${a[1] + bob}) scale(${dir} 1)`} opacity={p > 0 ? 1 : 0}>
+      <g transform={`translate(${a[0]} ${a[1] + bob}) scale(${dir * (big ? 1.35 : 1)} ${big ? 1.35 : 1})`} opacity={p > 0 ? 1 : 0}>
         <ellipse cx={0} cy={14} rx={30} ry={6} fill="rgba(0,0,0,0.35)" />
         <path d="M-28 2 L28 2 L20 14 L-22 14 Z" fill="#7A4A2A" stroke="#F2EEE4" strokeWidth={2} />
         <line x1={-4} y1={2} x2={-4} y2={-38} stroke="#F2EEE4" strokeWidth={2.5} />
