@@ -450,7 +450,7 @@ const OfficeRoom = ({f = 0, white = 0, clock = '11:00', blown = 0, noClock = fal
       {white <= 0 && <g><path d="M 0 230 C 80 170 160 200 220 180 C 300 150 360 190 420 170 L 420 330 L 0 330 Z" fill="#7E9E78" /><rect y={280} width={420} height={50} fill="#5B8FC0" /></g>}
       {blown <= 0 && <path d="M 210 0 L 210 330 M 0 165 L 420 165" stroke={INK} strokeWidth={8} />}
     </g>
-    {!noClock && <g transform="translate(960 170)"><circle r={70} fill="#FBF7EC" {...st(7)} />
+    {!noClock && <g transform="translate(1120 190) scale(0.86)"><circle r={70} fill="#FBF7EC" {...st(7)} />
       {(() => { const [hh, mm] = clock.split(':').map(Number); const ma = mm / 60 * 360, ha = ((hh % 12) + mm / 60) / 12 * 360;
         return <g stroke={INK} strokeLinecap="round"><path d={`M 0 0 L ${Math.sin(ha * Math.PI / 180) * 36} ${-Math.cos(ha * Math.PI / 180) * 36}`} strokeWidth={8} /><path d={`M 0 0 L ${Math.sin(ma * Math.PI / 180) * 54} ${-Math.cos(ma * Math.PI / 180) * 54}`} strokeWidth={5} /></g>; })()}
     </g>}
@@ -490,6 +490,7 @@ function YWindow({f, len, line}) {
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.18} x={1100} y={460}>
       <OfficeRoom f={f} clock="11:02" white={f >= w ? 1 : 0} />
+      <YBust who="boss" x={640} y={560} s={0.7} expr={f >= w ? 'shock' : 'grim'} f={f} seed={6} turn={0.4} look={10} />
       <YBust who="yamaguchi" x={1180} y={560} s={0.7} expr={f >= w ? 'shock' : 'worried'} f={f} seed={3} band turn={0.6} look={10} />
     </Cam>
       {f >= w && <rect width={W} height={H} fill="#FFFDF2" opacity={clamp((f - w) / 14, 0, 1)} />}

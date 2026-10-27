@@ -2,7 +2,7 @@
 // Eiffel Tower comparisons, the gauges, the film leader he compared it to, the ear, the shelter, what he knew, the instruments, the
 // walk at dawn, the broken bridge, the river (abstract), the people counter, the train. Every scene takes {f, len, line}.
 import React from 'react';
-import {W, H, INK, ST, st, clamp, lin, pop, rng, Figure, Box, Cloud, at, Labels} from './tis';
+import {W, H, INK, ST, st, clamp, lin, pop, rng, Figure, Head, SKINS, Box, Cloud, at, Labels} from './tis';
 import {P, Txt, Cam, popAt, popBy} from './meg2';
 import {YBust, B29, Chute, Hanko, House, Morning, Street, Field, Ruins, Burst, BandHead} from './yam';
 
@@ -132,8 +132,8 @@ function YDelta({f, len, line}) {
       {mode === 'dist' && <g transform={`translate(1560 820) scale(${pz(f, b)})`}><rect x={-250} y={-80} width={500} height={150} fill="#fff" {...st(6)} />
         <Txt x={0} y={-6} text="≈ 40 MINUTES" size={66} fill={INK} stroke="none" /><Txt x={0} y={52} text="ON FOOT" size={40} fill="#475569" stroke="none" /></g>}
       {mode === 'him' && <g>
-        <Tag x={1250} y={220} text={p.r2 || '2 KM: HOUSES FLATTENED'} f={f} a={2} size={40} color="#F97316" />
-        <Tag x={1250} y={300} text={p.r35 || '3.5 KM: BURNS'} f={f} a={6} size={40} color="#E3232C" ink="#fff" />
+        <Tag x={1250} y={740} text={p.r2 || '2 KM: HOUSES FLATTENED'} f={f} a={2} size={40} color="#F97316" />
+        <Tag x={1250} y={820} text={p.r35 || '3.5 KM: BURNS'} f={f} a={6} size={40} color="#E3232C" ink="#fff" />
       </g>}
       {mode === 'blast' && p.clock && <g transform={`translate(1640 230) scale(${pz(f, Math.min(a, 6))})`}><rect x={-170} y={-60} width={340} height={110} fill="#0B1F3A" {...st(6)} /><Txt x={0} y={30} text={p.clock} size={84} fill="#FFE11A" /></g>}
       <rect width={W} height={H} fill="#FFFDF2" opacity={mode === 'blast' ? clamp(1 - Math.abs(f - a - 3) / 10, 0, 1) * 0.85 : 0} />
@@ -168,17 +168,19 @@ function YEiffel({f, len, line}) {
   const mode = p.mode || 'weight';
   const a = at(line, p.on || 'eiffel', 0.2), b = at(line, p.b_on || 'half', 0.5);
   if (mode === 'height') {
-    const t1 = pz(f, Math.min(a, 6)), t2 = pz(f, b);
+    // the ground at G (clear of the captions), the burst and its 600 m line from the first words, the second tower stacked on 'two'
+    const G = 860, TH = 380, top = G - 2 * TH - 10;
+    const t1 = pz(f, Math.min(a, 6)), t2 = pz(f, b), t3 = pz(f, Math.min(a, 6) + 10);
     return (
       <g><Cam f={f} len={len} a={1.0} b={1.04}>
         <Morning f={f} hills={false} cranes={false} />
-        <g transform="translate(0 1000) scale(1 0.5) translate(0 -1000)" opacity={0.9}><Street y={1000} seed={5} /></g>
-        <g transform={`translate(760 1000)`}><g transform={`scale(1 ${t1})`}><Eiffel h={410} /></g></g>
-        <g transform={`translate(760 590)`}><g transform={`scale(1 ${t2})`}><Eiffel h={410} /></g></g>
-        <path d="M 900 160 L 1800 160" stroke="#E3232C" strokeWidth={8} strokeDasharray="24 14" opacity={t2 > 0.5 ? 1 : 0} />
-        {t2 > 0.5 && <g transform="translate(1350 160)"><Burst r={44} /></g>}
-        <path d="M 1700 980 L 1700 170 M 1680 190 L 1700 160 L 1720 190 M 1680 960 L 1700 990 L 1720 960" stroke={INK} strokeWidth={8} fill="none" opacity={t2 > 0.5 ? 1 : 0} />
-        <Txt x={1580} y={600} text="600 M" size={90} fill="#FFE11A" op={t2 > 0.5 ? 1 : 0} />
+        <g transform={`translate(0 ${G}) scale(1 0.5) translate(0 ${-G})`} opacity={0.9}><Street y={G} seed={5} /></g>
+        <g transform={`translate(760 ${G})`}><g transform={`scale(1 ${t1})`}><Eiffel h={TH} /></g></g>
+        <g transform={`translate(760 ${G - TH})`}><g transform={`scale(1 ${t2})`}><Eiffel h={TH} /></g></g>
+        <path d={`M 940 ${top} L 1560 ${top}`} stroke="#E3232C" strokeWidth={8} strokeDasharray="24 14" opacity={t3} />
+        {t3 > 0.5 && <g transform={`translate(1250 ${top})`}><Burst r={44} /></g>}
+        <path d={`M 1600 ${G - 6} L 1600 ${top + 6} M 1580 ${top + 30} L 1600 ${top + 2} L 1620 ${top + 30} M 1580 ${G - 30} L 1600 ${G - 2} L 1620 ${G - 30}`} stroke={INK} strokeWidth={8} fill="none" opacity={t3} />
+        <Txt x={1440} y={G - TH + 30} text="600 M" size={90} fill="#FFE11A" op={t3} />
       </Cam>
         <Labels line={line} f={f} x0={100} y0={90} /></g>
     );
@@ -471,10 +473,18 @@ function YRiver({f, len, line}) {
       <path d="M 0 150 C 600 170 1300 140 1920 160" stroke={INK} strokeWidth={6} fill="none" />
       <path d="M 0 1000 C 500 980 1400 1010 1920 990 L 1920 1080 L 0 1080 Z" fill="#6E6460" {...st(6)} />
       {[...Array(12)].map((_, i) => <path key={i} d={`M ${-200 + ((i * 260 + f * 0.8) % 2300)} ${150 + i * 72} q 80 -18 160 0 t 160 0`} stroke="#6E7B86" strokeWidth={6} fill="none" opacity={0.7} />)}
-      <g transform={`translate(${x} 560)`}>
-        <ellipse cx={0} cy={20} rx={110} ry={20} fill="#46525C" />
-        <circle cx={0} cy={0} r={34} fill="#1E1A18" />
-        <path d={`M 20 10 Q ${60 + Math.sin(f * 0.15) * 20} ${-40 - Math.cos(f * 0.15) * 20} ${100} ${10}`} stroke="#1E1A18" strokeWidth={22} fill="none" strokeLinecap="round" />
+      {/* a swimmer who is clearly alive (Israa: the dark blob read as a floating body): his face and head bandage, an arm mid-stroke, a wake behind */}
+      <g transform={`translate(${x} ${580 + Math.sin(f * 0.12) * 5}) scale(1.45)`}>
+        {[0, 1].map((s) => <path key={s} d={`M -60 ${s ? 64 : 44} L -300 ${s ? 120 : -6}`} stroke="#9AA9B6" strokeWidth={7} strokeLinecap="round" opacity={0.8} />)}
+        {/* the crawl: the arm comes out behind his head, arcs over the water and reaches forward, ahead of the face (never over it) */}
+        {(() => { const t = 0.12 + ((f * 0.022) % 1) * 0.88, hx = 70 + 150 * t, hy = 52 - Math.sin(Math.PI * t) * 96, cx = (40 + hx) / 2, cy = Math.min(52, hy) - 54, sk = (SKINS.light || {}).light || '#F1C9A5';
+          return <g><path d={`M 40 54 Q ${cx} ${cy} ${hx} ${hy}`} stroke={INK} strokeWidth={30} fill="none" strokeLinecap="round" />
+            <path d={`M 40 54 Q ${cx} ${cy} ${hx} ${hy}`} stroke="#8C7E58" strokeWidth={20} fill="none" strokeLinecap="round" />
+            <circle cx={hx + 4} cy={hy + 2} r={15} fill={sk} {...st(4)} />
+            {hy > 40 && <ellipse cx={hx + 4} cy={56} rx={30} ry={8} fill="none" stroke="#9AA9B6" strokeWidth={5} />}</g>; })()}
+        <g transform="scale(0.36)"><Head who="yamaguchi" expr="determined" f={f} seed={3} turn={0.5} /><BandHead turn={0.5} /></g>
+        <rect x={-90} y={54} width={180} height={70} fill="#55616C" />
+        <ellipse cx={0} cy={54} rx={100} ry={16} fill="none" stroke="#9AA9B6" strokeWidth={6} />
       </g>
       <rect width={W} height={H} fill="#1B2229" opacity={0.25} />
     </g>

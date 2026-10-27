@@ -1081,6 +1081,19 @@ Agents never spend money without the owner's explicit approval.
   on); Hisako's own bust in the black rain + a name label; the shelter's colleague screams only on the first beat (`scared`); pupils
   at desks; radio waves fade in and out; JAPAN clear of the chip; no SOUND tick; OfficeRoom `noClock` in the boss close-up; Toshiko
   grey-haired in 2010; the fall counter says "SHOWN FASTER / THE REAL FALL: 47 SECONDS".
+  2.72.13 (Israa on the second full render: redo 8, "a short patch"): the fall note on a dark plate (it sat on white clouds); YStadium
+  fills the first stadium to FULL with the injured on top of the dead (a legend) and the second to 65% (82% + 65% was the wrong
+  total); the swimmer is a face with his head bandage, an arm mid-stroke and a wake (the dark blob read as a body); YTargets draws the
+  gap (light through it, an 'A GAP' tag) from 'small'; YBars `land_on` (the Nagasaki bar grows from 'bigger' and lands on its number);
+  YEiffel 'height' stands on ground at y 860 (clear of the captions), the burst and 600 M from the first words, the second tower on
+  'two'; YValley 'aim' is a close view (`AZ` 3.2, `zs`): the burst 500 m north of the crosshair, a dashed line and the tag on 'five',
+  TENNIS COURT; YQuote brings the card up when the voice reaches the quote (`c0`; with who 'none', at once) and the speaker talks
+  from then; the office clock sits right of centre (labels ran over it); the boss is in the room before the flash (YWindow); his
+  mother has a bun (`style: 'bun'`), steps back, no screaming mouth, a plain white bubble; the 'him' ring tags sit bottom right; the
+  165 tags and the recap train pop from 80% size (no tiny first frame); YYears `big_on` and a plate that fits its text. Spec: the
+  Times quote as the old man, ✓ 1957 on 'one', Leukaemia on 'age', a 'not a journalist / not an anniversary / a funeral' beat before
+  the altar, the documentary under 2006, the last years as a 1945 -> 2010 counter (TELLING THE WORLD), not the lanterns.
+  Test before a long render: scratchpad stills12.py (the last props.json's real word times + the new spec's shots, DEV source).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

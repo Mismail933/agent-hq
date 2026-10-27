@@ -122,7 +122,7 @@ export const CAST = {
   yamaguchi_old: {hair: '#D6D9DE', hairLight: '#F3F4F6', brow: '#A0A6AE', dress: '#3F4A5A', dressShade: '#2E3744', style: 'thin', glasses: true, pants: '#2E3744'},
   boss: {hair: '#3A3634', hairLight: '#55504C', brow: '#2A2624', dress: '#4A4F5A', dressShade: '#363A44', style: 'short', pants: '#363A44'},   // no round glasses + toothbrush moustache: too close to the wartime caricature (Israa)
   hisako: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#4A5D7A', dressShade: '#384862', style: 'bob', lips: true},
-  ymother: {hair: '#8A8F98', hairLight: '#B0B5BD', brow: '#5A5F68', dress: '#6B5A48', dressShade: '#534537', style: 'bob'},
+  ymother: {hair: '#5F5A55', hairLight: '#8A847E', brow: '#4A4540', dress: '#6B5A48', dressShade: '#534537', style: 'bun'},   // a bun, darker: not Hisako's grey bob
   classmate: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#F8FAFC', dressShade: '#DDE3EA', style: 'short', glasses: true, pants: '#4B5563'},
   colleague1: {hair: '#16110E', hairLight: '#2E2620', brow: '#0E0A08', dress: '#7D7454', dressShade: '#625B41', style: 'short', pants: '#625B41'},
   colleague2: {hair: '#231A14', hairLight: '#3A2E24', brow: '#150F0B', dress: '#857A58', dressShade: '#6A6045', style: 'short', glasses: true, pants: '#6A6045'},
@@ -140,6 +140,7 @@ function HairBack({c, mode}) {
     <g stroke={c.hairLight} strokeWidth={6} fill="none" strokeLinecap="round"><path d="M -130 -170 C -148 -250 -152 -330 -146 -380" /><path d="M -60 -220 C -66 -300 -50 -390 -28 -460" /><path d="M 30 -240 C 50 -320 90 -400 136 -450" /><path d="M 120 -190 C 160 -250 210 -300 256 -340" /></g></g>);
   if (c.style === 'long') return <path d="M -136 -60 C -150 40 -150 160 -170 270 L 170 270 C 150 160 150 40 136 -60 C 120 -150 60 -196 0 -196 C -60 -196 -120 -150 -136 -60 Z" fill={c.hair} {...ST} />;
   if (c.style === 'bob') return <path d="M -140 -50 C -150 40 -140 110 -120 140 L 120 140 C 140 110 150 40 140 -50 C 124 -150 64 -196 0 -196 C -64 -196 -124 -150 -140 -50 Z" fill={c.hair} {...ST} />;
+  if (c.style === 'bun') return <g><circle cx={0} cy={-206} r={62} fill={c.hair} {...ST} /><path d="M -38 -236 Q 0 -252 38 -236" stroke={c.hairLight} strokeWidth={6} fill="none" /></g>;
   return null;
 }
 function HairFront({c}) {

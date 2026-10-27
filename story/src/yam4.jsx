@@ -169,7 +169,8 @@ function Y165({f, len, line}) {
       {[A, B].map((c, i) => <g key={i} transform={`translate(${sx(c[0])} ${sy(c[1])})`}><Burst r={30} /></g>)}
       {dots.slice(0, shown).map(([x, y], i) => <circle key={i} cx={x} cy={y} r={8} fill="#FFE11A" stroke={INK} strokeWidth={2.5} />)}
       <g transform={`translate(1580 820) scale(${p.held ? 1 : pz(f, a)})`}><rect x={-230} y={-110} width={460} height={200} fill="#0B1F3A" {...st(8)} /><Txt x={0} y={10} text={String(shown)} size={120} fill="#FFE11A" /><Txt x={0} y={70} text="IN BOTH CITIES" size={38} /></g>
-      {p.icons && ['A TRAIN', 'A ROAD', 'AN ERRAND'].map((t, i) => <Plate key={i} x={300 + i * 370} y={840} w={340} h={90} text={t} s={pz(f, at(line, ['train', 'road', 'errand'][i], 0.3 + i * 0.2))} fill="#fff" size={46} />)}
+      {p.icons && ['A TRAIN', 'A ROAD', 'AN ERRAND'].map((t, i) => { const q = pz(f, at(line, ['train', 'road', 'errand'][i], 0.3 + i * 0.2));
+        return q > 0.01 ? <g key={i} opacity={clamp(q * 3, 0, 1)}><Plate x={300 + i * 370} y={840} w={340} h={90} text={t} s={0.8 + 0.2 * q} fill="#fff" size={46} /></g> : null; })}
       <Labels line={line} f={f} x0={100} y0={90} />
     </g>
   );
@@ -312,7 +313,7 @@ function YRecap({f, len, line}) {
     <g>
       <g transform={`translate(960 540) scale(${lin(f, 0, len, 1.0, 1.06)}) translate(-960 -540)`}><YamArt boxes={false} f={f} bursts={[1, 1]} line={1} /></g>
       {s1 > 0.01 && <g transform={`translate(380 300) scale(${s1 * 0.9})`}><Hanko /></g>}
-      {s2 > 0.01 && <g transform={`translate(560 880) scale(${s2 * 0.32})`}><Train f={f} /></g>}
+      {s2 > 0.01 && <g opacity={clamp(s2 * 3, 0, 1)} transform={`translate(600 880) scale(${(0.8 + 0.2 * s2) * 0.38})`}><Train f={f} /></g>}
       <Labels line={line} f={f} x0={100} y0={90} />
     </g>
   );

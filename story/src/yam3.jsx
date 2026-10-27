@@ -170,9 +170,9 @@ function YDoor({f, len, line}) {
       <rect x={980} y={120} width={720} height={960} fill="#4A3A2A" {...st(8)} />
       <rect x={1020} y={160} width={640} height={920} fill="#E8DCC2" />
       {[1180, 1340, 1500].map((x) => <path key={x} d={`M ${x} 160 L ${x} 1080`} stroke="#B8A27A" strokeWidth={6} />)}
-      <YBust who="ymother" x={1340} y={470} s={0.85} expr={g > 0.5 ? 'scared' : 'shock'} f={f} seed={11} turn={-0.4} />
+      <YBust who="ymother" x={1340 + 70 * clamp(g, 0, 1)} y={470} s={0.85} expr={g > 0.5 ? 'shock' : 'worried'} f={f} seed={11} turn={-0.4} />
       <YBust who="yamaguchi" x={520} y={520} s={0.95} expr="sad" f={f} seed={3} band turn={0.5} />
-      {g > 0.01 && <g transform={`translate(1600 200) scale(${g})`}><path d="M -80 60 L -150 150 L -20 80" fill="#fff" {...ST} /><ellipse rx={190} ry={100} fill="#fff" {...ST} /><Txt x={0} y={30} text="A GHOST?" size={70} fill="#7C3AED" stroke="none" /></g>}
+      {g > 0.01 && <g transform={`translate(1600 200) scale(${g})`}><path d="M -80 60 L -150 150 L -20 80" fill="#fff" {...ST} /><ellipse rx={190} ry={100} fill="#fff" {...ST} /><Txt x={0} y={30} text="A GHOST?" size={70} fill={INK} stroke="none" /></g>}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -255,6 +255,11 @@ function YTargets({f, len, line}) {
       {route > 0 && <path d={`M ${kx} ${ky} Q ${(kx + nx) / 2 + 120} ${(ky + ny) / 2 - 40} ${nx} ${ny}`} stroke="#E3232C" strokeWidth={10} fill="none" strokeDasharray={`${route * 900} 900`} strokeLinecap="round" />}
       {mode === 'nagasaki' && <g>
         {[[-150, -30], [-30, -80], [100, -30], [-90, 60], [60, 60]].map(([dx, dy], i) => { const away = hole * 220; const d = Math.hypot(dx, dy) || 1; return <g key={i}>{cloud(nx + dx + away * dx / d, ny + dy + away * dy / d, 1.0, 0.95 - hole * 0.25)}</g>; })}
+        {hole > 0 && <g opacity={hole}>   {/* the opening: sunlight through the gap onto the city, and a tag (Israa: the turning point had no picture) */}
+          <path d={`M ${nx - 120} ${ny - 520} L ${nx + 20} ${ny - 520} L ${nx + 44} ${ny} L ${nx - 44} ${ny} Z`} fill="#FFF7C2" opacity={0.55} />
+          <circle cx={nx} cy={ny} r={74} fill="#FFF7C2" opacity={0.5} />
+          <g transform={`translate(${nx + 210} ${ny + 110})`}><rect x={-140} y={-44} width={280} height={70} fill="#fff" {...st(5)} /><Txt x={0} y={10} text="A GAP" size={48} fill={INK} stroke="none" /></g>
+        </g>}
         <g transform={`translate(${nx} ${ny - 150})`}><rect x={-140} y={-44} width={280} height={70} fill="#FFE11A" {...st(5)} /><Txt x={0} y={10} text="NAGASAKI" size={48} fill={INK} stroke="none" /></g>
         <g transform={`translate(1600 820) scale(${pz(f, fuel)})`}>
           <path d="M -150 60 A 150 150 0 0 1 150 60" fill="#fff" {...st(8)} />
@@ -306,7 +311,8 @@ function YBars({f, len, line}) {
       <rect width={W} height={H} fill="#0B1F3A" />
       <Txt x={W / 2} y={150} text={p.title || 'TONS OF TNT'} size={70} fill="#9BE1FF" />
       {bars.map(([lab, v], i) => { const a = i === 0 ? Math.min(at(line, (p.on || [])[0] || '', 0.1), 8) : at(line, (p.on || [])[i] || '', 0.3 + i * 0.3);
-        const k = lin(f, a, a + 26, 0, 1); const wv = 1100 * (v / max) * k; const y = 330 + i * 260;
+        const land = i > 0 && p.land_on ? Math.max(a + 26, at(line, p.land_on, 0.7) + 8) : a + 26;
+        const k = lin(f, a, land, 0, 1); const wv = 1100 * (v / max) * k; const y = 330 + i * 260;
         return (<g key={i}>
           <Txt x={420} y={y + 70} text={lab} size={64} anchor="end" />
           <rect x={460} y={y} width={wv} height={110} fill={i === bars.length - 1 ? '#E3232C' : '#FFE11A'} {...st(6)} />
@@ -329,8 +335,9 @@ function YTimer({f, len, line}) {
       <rect x={-300} y={-170} width={600} height={340} rx={30} fill="#111827" {...st(10)} />
       <Txt x={0} y={80} text={`0:${String(v).padStart(2, '0')}`} size={210} fill={v <= 5 ? '#E3232C' : '#FFE11A'} stroke="none" />
       <Txt x={0} y={-110} text="TIME TO FALL" size={44} fill="#9BE1FF" stroke="none" />
-      <Txt x={0} y={240} text="SHOWN FASTER" size={44} fill="#F1F5F9" />
-      <Txt x={0} y={294} text={`THE REAL FALL: ${p.total || 47} SECONDS`} size={44} fill="#F1F5F9" />
+      <rect x={-330} y={194} width={660} height={122} rx={18} fill="#111827" opacity={0.88} />
+      <Txt x={0} y={240} text="SHOWN FASTER" size={44} fill="#F1F5F9" stroke="none" />
+      <Txt x={0} y={294} text={`THE REAL FALL: ${p.total || 47} SECONDS`} size={44} fill="#FFE11A" stroke="none" />
     </g>
   );
   return (
@@ -363,6 +370,7 @@ function YTimer({f, len, line}) {
 // ───────────── Nagasaki's Urakami valley (diagram): aim (the aiming point and the burst 500 m north) | rings (3 km, the hills) ─────────────
 const KMV = 110;
 const HY = [920, 330], AIM = [920, 330 + 0.5 * KMV], OFF = [920 + 120, 330 + 311];   // his office about 3 km south, by the harbour
+const AZ = 3.2, zs = ([x, y]) => [960 + (x - 915) * AZ, 560 + (y - 358) * AZ];   // the 'aim' close view (500 m = 176 px)
 export const Valley = ({f = 0, blast = 0}) => (
   <g>
     <rect width={W} height={H} fill="#4E86B8" />
@@ -384,13 +392,17 @@ function YValley({f, len, line}) {
   const Tag = ({x, y, text, s, color = '#FFE11A', ink = INK}) => s > 0.01 ? <g transform={`translate(${x} ${y}) scale(${s})`}><rect x={-6} y={-48} width={String(text).length * 23 + 40} height={60} fill={color} {...st(5)} /><text x={14} y={0} fontFamily={OSW} fontWeight={700} fontSize={44} fill={ink}>{text}</text></g> : null;
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.05}>
-      <Valley f={f} blast={mode === 'rings' ? clamp((f - b) / 20, 0, 1) : 0} />
-      {mode === 'aim' && <g>
-        <g transform={`translate(${AIM[0]} ${AIM[1]})`} opacity={pz(f, Math.min(a, 8))}><circle r={36} fill="none" stroke={INK} strokeWidth={8} /><path d="M -50 0 L 50 0 M 0 -50 L 0 50" stroke={INK} strokeWidth={6} /></g>
-        <Tag x={AIM[0] + 60} y={AIM[1] + 40} text="AIMING POINT" s={pz(f, Math.min(a, 8) + 4)} color="#fff" />
-        {f > b && <g transform={`translate(${HY[0]} ${HY[1]})`}><Burst r={70} k={pz(f, b, 120)} /></g>}
-        <Tag x={HY[0] + 70} y={HY[1] - 40} text="500 M NORTH" s={pz(f, b + 8)} color="#E3232C" ink="#fff" />
-      </g>}
+      {mode === 'aim' ? <g transform={`translate(960 560) scale(${AZ}) translate(-915 -358)`}><Valley f={f} /></g>
+        : <Valley f={f} blast={mode === 'rings' ? clamp((f - b) / 20, 0, 1) : 0} />}
+      {mode === 'aim' && (() => { const A = zs(AIM), B = zs(HY), n = at(line, p.n_on || 'five', 0.75), d = clamp((f - n) / 14, 0, 1), tn = at(line, p.t_on || 'tennis', 0.4);
+        return <g>
+          <g transform={`translate(${A[0]} ${A[1]})`} opacity={pz(f, Math.min(a, 8))}><circle r={40} fill="none" stroke={INK} strokeWidth={8} /><path d="M -56 0 L 56 0 M 0 -56 L 0 56" stroke={INK} strokeWidth={6} /></g>
+          <Tag x={A[0] - 400} y={A[1] + 20} text="AIMING POINT" s={pz(f, Math.min(a, 8) + 4)} color="#fff" />
+          {f > b && <g transform={`translate(${B[0]} ${B[1]})`}><Burst r={56} k={pz(f, b, 120)} /></g>}
+          <Tag x={B[0] + 90} y={B[1] - 10} text="TENNIS COURT" s={pz(f, tn)} color="#fff" />
+          {d > 0 && <path d={`M ${A[0]} ${A[1] - 52} L ${A[0]} ${A[1] - 52 - (A[1] - B[1] - 112) * d}`} stroke="#E3232C" strokeWidth={9} strokeDasharray="18 12" />}
+          <Tag x={A[0] + 50} y={(A[1] + B[1]) / 2 + 24} text="500 M NORTH" s={pz(f, n + 6)} color="#E3232C" ink="#fff" />
+        </g>; })()}
       {mode === 'rings' && <g>
         <g transform={`translate(${HY[0]} ${HY[1]})`}><path d="M -22 -22 L 22 22 M 22 -22 L -22 22" stroke={INK} strokeWidth={12} strokeLinecap="round" /></g>
         {ring > 1 && <circle cx={HY[0]} cy={HY[1]} r={ring} fill="none" stroke="#E3232C" strokeWidth={8} strokeDasharray="26 16" />}
@@ -527,11 +539,12 @@ function YCounts({f, len, line}) {
 }
 
 // ───────────── two stadiums: most of one filled (the dead), a second more than half (the injured) ─────────────
-const Stadium = ({fill = 0, color = '#E3232C'}) => (
+const Stadium = ({fill = 0, color = '#E3232C', top = 0}) => (
   <g>
     <ellipse cx={0} cy={0} rx={380} ry={210} fill="#9CA3AF" {...st(8)} />
     <clipPath id={`yst${color.slice(1)}`}><ellipse cx={0} cy={0} rx={380} ry={210} /></clipPath>
-    <g clipPath={`url(#yst${color.slice(1)})`}><rect x={-380} y={210 - 420 * fill} width={760} height={420 * fill} fill={color} opacity={0.75} /></g>
+    <g clipPath={`url(#yst${color.slice(1)})`}><rect x={-380} y={210 - 420 * fill} width={760} height={420 * fill} fill={color} opacity={0.75} />
+      {top > 0 && <rect x={-380} y={210 - 420 * (fill + top)} width={760} height={420 * top} fill="#F59E0B" opacity={0.75} />}</g>
     <ellipse cx={0} cy={0} rx={220} ry={110} fill="#4D9A55" {...st(6)} />
     <path d="M -380 0 C -380 120 380 120 380 0" fill="none" stroke={INK} strokeWidth={5} opacity={0.5} />
   </g>
@@ -539,13 +552,17 @@ const Stadium = ({fill = 0, color = '#E3232C'}) => (
 function YStadium({f, len, line}) {
   const p = P(line);
   const a = at(line, p.on || 'wembley', 0.2), b = at(line, p.b_on || 'injured', 0.6);
+  // 73,884 dead = 82% of 90,000; with the 74,909 injured the first is full and 58,793 more fill a second to 65% (Israa: 82% + 65% was the wrong total)
+  const b2 = b + 14, full = f >= b + 12, leg = clamp((f - b) / 8, 0, 1);
   return (
     <g><Cam f={f} len={len} a={1.0} b={1.03}>
       <rect width={W} height={H} fill="#0B1F3A" />
-      <g transform="translate(520 520)"><Stadium fill={lin(f, a, a + 30, 0, 0.82)} color="#E3232C" /></g>
-      <g transform={`translate(1400 520) scale(${pz(f, b)})`}><Stadium fill={lin(f, b, b + 30, 0, 0.65)} color="#F59E0B" /></g>
-      <Txt x={520} y={810} text="WEMBLEY · 90,000 SEATS" size={50} op={pz(f, a)} /><Txt x={520} y={880} text="82% FULL" size={56} fill="#FFE11A" op={pz(f, a)} />
-      <Txt x={1400} y={810} text="A SECOND STADIUM" size={50} op={pz(f, b)} /><Txt x={1400} y={880} text="65% FULL" size={56} fill="#FFE11A" op={pz(f, b)} />
+      <g transform="translate(520 520)"><Stadium fill={lin(f, a, a + 30, 0, 0.82)} color="#E3232C" top={lin(f, b, b + 16, 0, 0.18)} /></g>
+      <g transform={`translate(1400 520) scale(${pz(f, b2)})`}><Stadium fill={lin(f, b2, b2 + 30, 0, 0.65)} color="#F59E0B" /></g>
+      <Txt x={520} y={810} text="WEMBLEY · 90,000 SEATS" size={50} op={pz(f, a)} /><Txt x={520} y={880} text={full ? 'FULL' : '82% FULL'} size={56} fill="#FFE11A" op={pz(f, a)} />
+      <Txt x={1400} y={810} text="A SECOND STADIUM" size={50} op={pz(f, b2)} /><Txt x={1400} y={880} text="65% FULL" size={56} fill="#FFE11A" op={pz(f, b2)} />
+      {leg > 0 && <g opacity={leg}><rect x={690} y={112} width={44} height={44} fill="#E3232C" {...st(4)} /><Txt x={750} y={152} text="DEAD" size={48} anchor="start" />
+        <rect x={960} y={112} width={44} height={44} fill="#F59E0B" {...st(4)} /><Txt x={1020} y={152} text="INJURED" size={48} anchor="start" /></g>}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -628,7 +645,8 @@ function YYears({f, len, line}) {
       <rect width={W} height={H} fill="#E4DCC8" />
       <YBust who={old > 0.6 ? 'yamaguchi_old' : 'yamaguchi'} x={620} y={480} s={0.95} expr="calm" f={f} seed={3} turn={0.2} />
       <g transform="translate(1340 520)"><rect x={-330} y={-150} width={660} height={260} fill="#0B1F3A" {...st(8)} /><Txt x={0} y={60} text={String(y)} size={190} fill="#FFE11A" /></g>
-      <g transform={`translate(1340 780) scale(${pz(f, a + 10)})`}><rect x={-300} y={-60} width={600} height={110} fill="#fff" {...st(6)} /><Txt x={0} y={16} text={p.big || 'SAYS VERY LITTLE'} size={56} fill={INK} stroke="none" /></g>
+      {(() => { const t = p.big || 'SAYS VERY LITTLE', bw = Math.max(600, t.length * 31 + 60);
+        return <g transform={`translate(1340 780) scale(${pz(f, p.big_on ? at(line, p.big_on, 0.7) : a + 10)})`}><rect x={-bw / 2} y={-60} width={bw} height={110} fill="#fff" {...st(6)} /><Txt x={0} y={16} text={t} size={56} fill={INK} stroke="none" /></g>; })()}
     </Cam>
       <Labels line={line} f={f} x0={100} y0={90} /></g>
   );
@@ -638,7 +656,6 @@ function YYears({f, len, line}) {
 function YQuote({f, len, line}) {
   const p = P(line);
   const a = Math.min(at(line, p.on || '', 0.1), 10);
-  const s = pz(f, a);
   const words = String(p.text || '').split(' ');
   const width = p.who === 'none' ? 34 : 26;
   const rows = [];
@@ -655,17 +672,22 @@ function YQuote({f, len, line}) {
   for (let i = 0; rows.length >= 3 && i + 2 < lw.length; i++) if (lw[i][0] === qw[0] && lw[i + 1][0] === qw[1] && lw[i + 2][0] === qw[2]) { j = i; break; }
   let k0 = 0;
   const rowAt = rows.map((r) => { const k = k0; k0 += r.split(' ').length; return j < 0 ? -1 : (lw[j + k] ? lw[j + k][1] - 4 : -1); });
-  if (rowAt.length) rowAt[0] = Math.min(rowAt[0], a);
+  let jq = j;
+  for (let i = 0; jq < 0 && qw.length >= 2 && i + 1 < lw.length; i++) if (lw[i][0] === qw[0] && lw[i + 1][0] === qw[1]) jq = i;
+  // the card comes up when the voice reaches the quote (Israa: 'The reason that I hate...' was up during the lead-in); with no speaker drawn, at once
+  const c0 = p.who !== 'none' && jq > 0 && lw[jq] ? Math.max(a, lw[jq][1] - 6) : a;
+  const s = pz(f, c0);
+  if (rowAt.length) rowAt[0] = Math.min(rowAt[0], c0);
   return (
     <g><Cam f={f} len={len} a={1.0} b={j >= 0 ? 1.1 : 1.05}>
       <rect width={W} height={H} fill={p.color || '#0F2A44'} />
-      {p.who !== 'none' && !p.photo && <YBust who={p.who || 'yamaguchi_old'} x={1500} y={p.y || 480} s={p.s || 0.9} expr={p.expr || 'calm'} f={f} talk={p.talk !== false && f >= a && f < len - 8} seed={3} band={!!p.band} turn={-0.3} />}
+      {p.who !== 'none' && !p.photo && <YBust who={p.who || 'yamaguchi_old'} x={1500} y={p.y || 480} s={p.s || 0.9} expr={p.expr || 'calm'} f={f} talk={p.talk !== false && f >= c0 && f < len - 8} seed={3} band={!!p.band} turn={-0.3} />}
       <g transform={`translate(${x0} ${500 - h / 2}) scale(${s})`}>
         <rect x={10} y={12} width={bw} height={h} fill="#000" opacity={0.35} /><rect width={bw} height={h} fill="#fff" {...ST} />
         <rect x={30} y={30} width={14} height={h - 60} fill="#E3232C" />
         {rows.map((r, i) => <text key={i} x={80} y={80 + fs * 0.6 + i * lh} opacity={clamp((f - rowAt[i]) / 6, 0, 1)} fontFamily={OSW} fontWeight={700} fontSize={fs} fill={INK}>{(i === 0 ? '“' : '') + r + (i === rows.length - 1 ? '”' : '')}</text>)}
       </g>
-      {p.who_label && <g transform={`translate(${x0} ${500 + h / 2 + 40}) scale(${pz(f, a + 8, 170)})`}><rect width={String(p.who_label).length * 30 + 50} height={70} fill="#FFE11A" {...st(5)} /><text x={25} y={52} fontFamily={OSW} fontWeight={700} fontSize={50} fill={INK}>{String(p.who_label).toUpperCase()}</text></g>}
+      {p.who_label && <g transform={`translate(${x0} ${500 + h / 2 + 40}) scale(${pz(f, c0 + 8, 170)})`}><rect width={String(p.who_label).length * 30 + 50} height={70} fill="#FFE11A" {...st(5)} /><text x={25} y={52} fontFamily={OSW} fontWeight={700} fontSize={50} fill={INK}>{String(p.who_label).toUpperCase()}</text></g>}
     </Cam></g>
   );
 }
