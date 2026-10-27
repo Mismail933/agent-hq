@@ -226,9 +226,12 @@ def find(query, n=5, min_s=0.0, max_s=1e9, avoid=(), seed=0):
     if not q:
         return []
     groups = [_expand(w) for w in q]
+    nums = re.findall(r"(?<![a-z0-9])\d{2,}(?![a-z0-9])", query.lower())   # a take number ("Booms Vol2 214") names that file only
     out = []
     for r in index():
         if not (min_s <= r["d"] <= max_s):
+            continue
+        if nums and not all(re.search(rf"(?<!\d){n}(?!\d)", r["f"]) for n in nums):   # (words_of drops numbers: 214 used to give 011)
             continue
         ns, ws = set(r.get("n") or r["w"]), set(r["w"])
         if not all(g & ns for g in groups):
