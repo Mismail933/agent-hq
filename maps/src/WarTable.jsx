@@ -11,6 +11,7 @@ import React from 'react';
 import {AbsoluteFill, Easing, interpolate, useCurrentFrame, staticFile} from 'remotion';
 import {geoMercator, geoPath, geoArea} from 'd3-geo';
 import stl from './war_stl.json';
+import rings1750 from './rings1750.json';
 import geo from './geo.json';
 import {FONT_CSS} from './fonts';
 
@@ -668,14 +669,138 @@ function Sugar({f}) {
   );
 }
 
+// ───────── Part 2. Paris, 10 February 1763: no battle on the board: the claims change hands. French standards are lifted off New France,
+// one by one from the east, and British ones set down in their place; the land turns British red; New Orleans keeps its flag (it was
+// not part of it); Saint-Pierre and Miquelon, given back, keep theirs.
+const R1750 = rings1750;
+const tint = (path, ring, from, to, k, edge = 1) => {
+  const ft = ringFeature(ring);
+  return (
+    <g>
+      <path d={path(ft)} fill={from} fillOpacity={0.42 * (1 - k)} />
+      <path d={path(ft)} fill={to} fillOpacity={0.46 * k} />
+      <path d={path(ft)} fill="none" stroke="#F4FBFF" strokeWidth={4.5} strokeLinejoin="round" opacity={edge} />
+    </g>
+  );
+};
+const BoardLabel = ({P, ll, text, op = 1, size = 56}) => {
+  const [x, y] = P(...ll);
+  return <text x={x} y={y} textAnchor="middle" opacity={op}
+               style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: size, letterSpacing: size / 7, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: size / 6}}>{text}</text>;
+};
+function Treaty1763({f}) {
+  const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[-96, 29], [-55, 52]]}).scale();
+  const cam = cameraAt(f, [[0, [-79, 41.5], 1.0], [200, [-81, 40.5], 1.06], [252, [-84, 36.5], 0.98], [330, [-84.5, 36], 1.0]]);
+  const turn = lerp(f, 0, 330, 4, -6, Easing.inOut(Easing.sin));
+  const proj = geoMercator().scale(base * cam[2]).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
+  const path = geoPath(proj);
+  const P = (lon, lat) => proj([lon, lat]);
+  // the posts, east to west: the French standard is lifted off (in an arc, then gone), the British one set down after it
+  const posts = [['Quebec', -71.21, 46.81], ['Montreal', -73.57, 45.5], ['Detroit', -83.05, 42.33], ['Kaskaskia', -89.9, 37.9]].map(([name, lon, lat], i) => {
+    const off = 70 + i * 34, on = off + 22;
+    const up = lerp(f, off, off + 20, 0, 1, Easing.in(Easing.quad));
+    return {name, x: P(lon, lat), i, liftFr: up * 90, opFr: 1 - lerp(f, off + 12, off + 22, 0, 1), showUk: f >= on, riseUk: lerp(f, on, on + 14, 0, 1, Easing.out(Easing.cubic)), lab: P(lon, lat - 0.35)};
+  });
+  const canK = lerp(f, 70, 140, 0, 1), illK = lerp(f, 130, 200, 0, 1);
+  const nola = P(-90.07, 29.95), spm = P(-56.3, 46.9);
+  const glow = lerp(f, 236, 256, 0, 1) * (0.6 + 0.4 * Math.sin(f / 5));
+  const stand = [
+    ...posts.map((p) => ({y: p.x[1], el: <React.Fragment key={`p${p.i}`}>
+      {p.opFr > 0 && <Piece {...xy(p.x)} turn={turn} s={1.15} w={80} h={200} lift={p.liftFr} op={p.opFr * lerp(f, 6, 26, 0, 1)}><Pole flag={<Bourbon />} f={f + p.i * 7} /></Piece>}
+      {p.showUk && <Piece {...xy(p.x)} turn={turn} s={1.15} w={80} h={200} rise={p.riseUk}><Pole flag={<Union1606 />} f={f + p.i * 7} /></Piece>}
+    </React.Fragment>})),
+    {y: nola[1], el: <Piece key="nola" {...xy(nola)} turn={turn} s={1.15} w={80} h={200} op={lerp(f, 6, 26, 0, 1)}><Pole flag={<Bourbon />} f={f + 40} /></Piece>},
+    {y: spm[1], el: <Piece key="spm" {...xy(spm)} turn={turn} s={0.9} w={80} h={200} op={lerp(f, 6, 26, 0, 1)}><Pole flag={<Bourbon />} f={f + 60} /></Piece>},
+  ].sort((a, b) => a.y - b.y);
+  return (
+    <Table turn={turn} lit={lerp(f, 0, 20, 0, 1)} overlay={<Title f={f} items={[['Treaty of Paris, 10 February 1763', 8, true], ['Canada: to Britain', 92, false], ['East of the Mississippi: to Britain', 150, false], ['Not New Orleans', 236, false]]} />}>
+      <Board path={path}>
+        <g clipPath="url(#landclip)">
+          {tint(path, R1750.canada, '#3FB8DE', '#C8505A', canK)}
+          {tint(path, R1750.illinois, '#3FB8DE', '#C8505A', illK)}
+        </g>
+        <path d={path(stl.rivers)} fill="none" stroke="#5FB7E6" strokeWidth={3} opacity={0.9} />
+        <BoardLabel P={P} ll={[-77, 50]} text="CANADA" op={lerp(f, 20, 40, 0, 1)} />
+        <BoardLabel P={P} ll={[-85.5, 37.6]} text="EAST OF THE MISSISSIPPI" size={40} op={lerp(f, 150, 170, 0, 1)} />
+        {posts.map((p) => <text key={`l${p.i}`} x={p.lab[0]} y={p.lab[1] + 40} textAnchor="middle" opacity={lerp(f, 20, 40, 0, 1) * 0.9}
+                                style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 30, letterSpacing: 2, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 7}}>{p.name}</text>)}
+        <circle cx={nola[0]} cy={nola[1]} r={46} fill="none" stroke="#FFD166" strokeWidth={6} opacity={glow} />
+        <text x={nola[0] + 60} y={nola[1] + 12} opacity={lerp(f, 20, 40, 0, 1)}
+              style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 34, letterSpacing: 2, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 8}}>New Orleans</text>
+      </Board>
+      {stand.map((p) => p.el)}
+    </Table>
+  );
+}
+
+// ───────── Part 2. New Orleans, 20 December 1803: the French tricolour comes down in the square, the American flag goes up (no troops,
+// no fighting); then the camera rises and all of Louisiana, west of the river, turns to the United States.
+const Tricolore = () => (
+  <g><rect x={0} y={0} width={19} height={36} fill="#1F3A9A" /><rect x={19} y={0} width={18} height={36} fill="#F4F2EC" /><rect x={37} y={0} width={19} height={36} fill="#D22B33" />
+    <rect x={0} y={0} width={56} height={36} fill="none" stroke="#3A3028" strokeWidth={0.6} /></g>
+);
+const US1803 = () => (   // the 15-star, 15-stripe flag of 1795-1818
+  <g>{[...Array(15)].map((_, i) => <rect key={i} x={0} y={i * 2.4} width={56} height={2.4} fill={i % 2 ? '#F4F2EC' : '#B22234'} />)}
+    <rect x={0} y={0} width={24} height={19.2} fill="#2B3A78" />
+    {[...Array(15)].map((_, i) => <circle key={`s${i}`} cx={3 + (i % 5) * 4.5} cy={3 + Math.floor(i / 5) * 6.2} r={1.1} fill="#F4F2EC" />)}</g>
+);
+function Sale1803({f}) {
+  const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[-114, 29], [-85, 49]]}).scale();
+  const NO = [-90.063, 29.957], SQ = [-90.04, 29.9];   // the square: drawn just south of the town, clear of Lake Pontchartrain
+  const cam = cameraAt(f, [[0, [SQ[0], SQ[1] + 0.03], 36], [120, [SQ[0], SQ[1] + 0.03], 40], [180, [-95, 37.5], 1.02], [330, [-95.5, 38], 1.06]]);
+  const turn = lerp(f, 120, 196, -10, 0);
+  const proj = geoMercator().scale(base * cam[2]).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
+  const path = geoPath(proj);
+  const P = (lon, lat) => proj([lon, lat]);
+  const close = 1 - lerp(f, 122, 146, 0, 1);
+  const frDown = lerp(f, 28, 78, 1, 0, Easing.inOut(Easing.quad)), usUp = lerp(f, 88, 132, 0, 1, Easing.out(Easing.cubic));
+  const spread = lerp(f, 138, 260, 0, 1, Easing.inOut(Easing.quad));
+  const [ox, oy] = P(...NO);
+  const lou = ringFeature(rings1750.louisiana);
+  const pole = P(SQ[0], SQ[1] - 0.004);
+  const onlookers = [[SQ[0] - 0.1, SQ[1] - 0.03], [SQ[0] - 0.065, SQ[1] - 0.045], [SQ[0] + 0.065, SQ[1] - 0.045], [SQ[0] + 0.1, SQ[1] - 0.03]].map((ll, k) => ({x: P(...ll), k}));
+  const houses = [[SQ[0] - 0.09, SQ[1] + 0.045, 0], [SQ[0], SQ[1] + 0.055, 1], [SQ[0] + 0.09, SQ[1] + 0.045, 2]].map(([lo, la, i]) => ({x: P(lo, la), i}));
+  const stand = [
+    ...houses.map((h) => ({y: h.x[1], el: <Piece key={`h${h.i}`} {...xy(h.x)} turn={turn} s={1.1} w={150} h={190} op={close}><House build={1} f={f + h.i * 13} /></Piece>})),
+    {y: pole[1] - 1, el: <Piece key="fr" {...xy([pole[0] - 90, pole[1]])} turn={turn} s={1.3} w={80} h={200} op={close}><Pole flag={<Tricolore />} f={f} raise={frDown} /></Piece>},
+    {y: pole[1], el: <Piece key="us" {...xy([pole[0] + 90, pole[1]])} turn={turn} s={1.3} w={80} h={200} op={close}><Pole flag={<US1803 />} f={f + 20} raise={usUp} /></Piece>},
+    ...onlookers.map((o) => ({y: o.x[1], el: <Piece key={`o${o.k}`} {...xy(o.x)} turn={turn} s={0.95} w={120} h={200} op={close}><Settler k={o.k} tool="bundle" /></Piece>})),
+  ].sort((a, b) => a.y - b.y);
+  return (
+    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<Title f={f} items={[['New Orleans, 20 December 1803', 6, true, 164], ['The French flag comes down', 30, false, 130], ['Louisiana: sold to the United States', 170, true], ['About 2.1 million km²', 226, false]]} />}>
+      <Board path={path}>
+        {close > 0 && <rect x={P(...SQ)[0] - 470} y={P(...SQ)[1] - 200} width={920} height={360} rx={20} fill="#7C6E52" opacity={0.55 * close} stroke="#A89470" strokeWidth={4} strokeOpacity={close} />}
+        {spread > 0 && (
+          <g clipPath="url(#landclip)">
+            <defs>
+              <radialGradient id="saleg" cx={ox} cy={oy} r={Math.max(1, spread * 2300)} gradientUnits="userSpaceOnUse">
+                <stop offset="0" stopColor="#FFF" /><stop offset="0.75" stopColor="#FFF" /><stop offset="1" stopColor="#FFF" stopOpacity="0" />
+              </radialGradient>
+              <mask id="sale" maskUnits="userSpaceOnUse" x={-2000} y={-2000} width={PW + 4000} height={PH + 4000}><rect x={-2000} y={-2000} width={PW + 4000} height={PH + 4000} fill="url(#saleg)" /></mask>
+            </defs>
+            <g mask="url(#sale)">
+              <path d={path(lou)} fill="#8E9FBF" fillOpacity={0.5} />
+              <path d={path(lou)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeLinejoin="round" />
+            </g>
+          </g>
+        )}
+        {f >= 150 && <BoardLabel P={P} ll={[-99, 40.5]} text="LOUISIANA" size={64} op={lerp(f, 200, 222, 0, 1)} />}
+        {f >= 120 && <g opacity={lerp(f, 126, 146, 0, 1)}><circle cx={ox} cy={oy} r={12} fill="#FF6A3D" stroke="#F2F7FF" strokeWidth={3} />
+          <text x={ox + 22} y={oy + 12} style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 34, fill: '#F4FBFF', paintOrder: 'stroke', stroke: 'rgba(3,8,16,0.8)', strokeWidth: 8}}>New Orleans</text></g>}
+      </Board>
+      {stand.map((p) => p.el)}
+    </Table>
+  );
+}
+
 const Quebec1608Sample = ({f}) => (
   <AbsoluteFill>
     {f < 604 && <Quebec1608 f={f} />}
     {f >= 580 && <AbsoluteFill style={{opacity: lerp(f, 580, 604, 0, 1)}}><PaintingCoda f={f - 580} len={220} /></AbsoluteFill>}
   </AbsoluteFill>
 );
-const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar};
-export const WAR_FRAMES = {quebec1608: 760, quebec1608map: 600, quebec1759: 390, sugar: 360};
+const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803};
+export const WAR_FRAMES = {quebec1608: 760, quebec1608map: 600, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();
