@@ -1141,6 +1141,12 @@ Agents never spend money without the owner's explicit approval.
   from him; ✓ 1957 on 'Nagasaki'; no 'Tell us in the comments' tag (the caption says it). A finished video is patched without a full
   render: scratchpad yam_patch.py (after story_sample --prep: only the changed lines from 8 frames before their cut, spliced
   frame-exact with ffmpeg trim/concat, the sound kept; checks the frame count, then sheets + motion report).
+  2.73.3: `soundlib.find` honours a take number in the query ("Booms Vol2 214" = that file only; `words_of` drops numbers, so Tarek's
+  swap to 214 kept placing 011). Storygraphics #4 delivered 10-28 00:40: package content/project-5/upload/04-survived-both-atomic-bombs/
+  (Israa release 8.5 + her polish patched in; Tarek: levels pass, music 18 dB / effects 16 dB under the voice; his title-hit pick
+  flip-flopped between Booms 011 and 214 (kept 214); his remaining notes are delivery notes that need a paid re-voice). His "starts
+  mid-sound" flags: check with Whisper on a 4 s cut of the FINISHED video from 0.6 s before the line (scratchpad hear_starts.py): every
+  first word was whole.
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
