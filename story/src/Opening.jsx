@@ -15,6 +15,7 @@ import {YAM2_SHOTS} from './yam2';
 import {YAM3_SHOTS} from './yam3';
 import {YAM4_SHOTS} from './yam4';
 import {FONT_CSS} from './fonts';
+import {TRENCH_SHOTS} from './trench2';
 import {CameraMotionBlur} from '@remotion/motion-blur';
 
 // the frame (inside the line) where a word is said; fallback = a fraction of the line
@@ -291,7 +292,7 @@ function Title({f, len, line}) {
 }
 
 export const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
-  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS, ...MEG_SHOTS, ...MEG2_SHOTS, ...MEG3_SHOTS, ...MEG4_SHOTS, ...YAM_SHOTS, ...YAM2_SHOTS, ...YAM3_SHOTS, ...YAM4_SHOTS};
+  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS, ...MEG_SHOTS, ...MEG2_SHOTS, ...MEG3_SHOTS, ...MEG4_SHOTS, ...YAM_SHOTS, ...YAM2_SHOTS, ...YAM3_SHOTS, ...YAM4_SHOTS, ...TRENCH_SHOTS};
 
 // fast shots get a film camera's motion blur (2.55.0, @remotion/motion-blur: each frame is the average of a few moments within the
 // shutter time). Only these shots: it multiplies the rendering time of the frames it covers. line.p.blur forces it on (or off: false).

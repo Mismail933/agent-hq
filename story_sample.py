@@ -475,7 +475,7 @@ def voice_chatterbox(spec, folder):
     have = lambda i: (cache / f"c-{keys[i]}.wav").exists() and (cache / f"c-{keys[i]}.json").exists()
     nwords = [_words_eq(ln["text"]) for ln in L]
     want_wpm = [tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"]) for ln in L]
-    too_fast = lambda i, secs: 60.0 * nwords[i] / max(0.5, secs) > want_wpm[i] / TEMPO_MIN + 4   # can't be slowed enough cleanly
+    too_fast = lambda i, secs: want_wpm[i] > 0 and 60.0 * nwords[i] / max(0.5, secs) > want_wpm[i] / TEMPO_MIN + 4   # can't be slowed enough cleanly (no pace target: never)
     def stale(i):   # cached before 2.65.0's pace check and too fast to fit: once more
         try:
             m = json.loads((cache / f"c-{keys[i]}.json").read_text(encoding="utf-8"))

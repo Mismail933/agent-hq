@@ -233,7 +233,8 @@ const PLACES = {lima: [-77.04, -12.05, 'LIMA', -1], pucallpa: [-74.55, -8.38, 'P
   britain: [-4.6, 50.8, 'BRITAIN', 1], canada: [-63.6, 44.7, 'CANADA', -1], cork: [-8.47, 51.9, 'CORK', 1], site: [-8.6, 49.8, 'PISCES III', -1],
   teeth1875: [-150.2, -22.4, 'MEGALODON TEETH, 1875', 1], portsmouth: [-1.1, 50.8, 'PORTSMOUTH', 1],   // HMS Challenger
   na: [-100, 42, 'NORTH AMERICA', 1], sa: [-60, -12, 'SOUTH AMERICA', 1], eu: [12, 48, 'EUROPE', 1], af: [20, 4, 'AFRICA', 1], asia: [95, 38, 'ASIA', 1], au: [134, -24, 'AUSTRALIA', -1],   // Storygraphics #3
-  california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1]};
+  california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1],
+  challenger: [142.2, 11.35, 'CHALLENGER DEEP', 1], guam: [144.79, 13.44, 'GUAM', -1], saipan: [145.75, 15.18, 'SAIPAN', -1]};   // Storygraphics #5
 function Map({f, len, line}) {
   const p = P(line);
   const [clon, clat] = p.center || [-75.6, -10.2];
@@ -274,6 +275,14 @@ function Map({f, len, line}) {
           <g stroke="#E3232C" strokeWidth={6} fill="none" strokeLinecap="round" strokeDasharray="16 10">{drawn}</g>
           {head && f > pa && <g transform={`translate(${head[0]} ${head[1] - 26})`}><Emoji name="sailboat" size={64} flip={head[2] < 0} /></g>}
         </g>); })()}
+      {p.arc && (() => {   // a long feature (2.74.2: the Mariana Trench): [[lon, lat]...] drawn on as a thick dark curve from arc_on
+        const pts = p.arc.map(([lo, la]) => [sx(lo), sy(la)]);
+        const d = 'M ' + pts.map((q) => q.join(' ')).join(' L ');
+        const tot = pts.slice(1).reduce((a, q, i) => a + Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]), 0);
+        const k = lin(f, at(line, p.arc_on || '', 0.1), at(line, p.arc_on || '', 0.1) + 40, 0, tot);
+        return <g><path d={d} stroke="#0B1F3A" strokeWidth={26} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={`${k} ${tot + 10}`} opacity={0.85} />
+          <path d={d} stroke="#1E3A8A" strokeWidth={12} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={`${k} ${tot + 10}`} />
+          {p.arc_label && k >= tot && <Label x={pts[pts.length - 1][0] + 30} y={pts[pts.length - 1][1] - 40} text={p.arc_label} f={f} at={at(line, p.arc_on || '', 0.1) + 40} h={58} fill="#FFFFFF" />}</g>; })()}
       {route && (() => { const [a, b] = route; const x1 = sx(a[0]), y1 = sy(a[1]), x2 = sx(b[0]), y2 = sy(b[1]); const len2 = Math.hypot(x2 - x1, y2 - y1); const d = lin(f, ra, ra + 50, 0, len2);
         return <path d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#E3232C" strokeWidth={10} strokeDasharray={`${d} ${len2}`} strokeLinecap="round" />; })()}
       {pins.map((pl, i) => { const a = at(line, (p.pin_on || [])[i] || '', 0.15 + i * 0.15); const s = clamp(pop(f, a, 150, 12), 0, 1.15);

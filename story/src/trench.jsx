@@ -12,7 +12,7 @@ import {INK, st, clamp, rng, Figure, OSWALD} from './tis';
 import {FONT_CSS} from './fonts';
 
 export const VW = 1080, VH = 1920;
-const SURF = 340, FLOOR = 1780, KM = (FLOOR - SURF) / 11;   // the section: the sea surface, the floor of the Challenger Deep, px a km
+const SURF = 260, FLOOR = 1250, KM = (FLOOR - SURF) / 11;   // the section: the sea surface, the floor of the Challenger Deep, px a km
 const io = Easing.bezier(0.45, 0, 0.55, 1);
 const L = (f, a, b, x, y, e = io) => interpolate(f, [a, b], [x, y], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: e});
 // a damped spring in closed form (xilo-opus-video craft-rules): no state between frames, so any frame renders alone
@@ -102,6 +102,14 @@ const Bracket = ({x, y0, y1, k, side = 1, color = '#FFE11A'}) => {   // a measur
   );
 };
 
+// a wipe made of big bubbles rising across the screen (k 0 -> 1: in from the bottom, covering at ~0.5, gone off the top)
+const BubbleWipe = ({k}) => {
+  const R = rng(23);
+  return <g>{[...Array(46)].map((_, i) => { const x = R() * VW, r = 70 + R() * 120, sp2 = 0.8 + R() * 0.5, off = R() * 0.25;
+    const y = VH + 300 - (k * 1.6 * sp2 - off) * (VH + 600);
+    return <circle key={i} cx={x + Math.sin(k * 9 + i) * 20} cy={y} r={r} fill="#E6F7FF" opacity={0.92} stroke="#B9E6FB" strokeWidth={6} />; })}</g>;
+};
+
 // ───────────── the cross-section: sky, sea, the trench, Everest standing on its floor ─────────────
 const OCEAN_STOPS = [[0, '#47AEE2'], [0.2, '#2A8CC2'], [1, '#165287'], [4, '#0B2748'], [7, '#061730'], [11, '#030B18']];
 const TRENCH = `M -40 ${SURF + 6.1 * KM} L 120 ${SURF + 6.0 * KM} C 220 ${SURF + 6.3 * KM} 250 ${SURF + 8.2 * KM} 330 ${FLOOR - 40} L 360 ${FLOOR}
@@ -118,7 +126,7 @@ const snowcap = (g) => {
   const p = (u, v) => `${540 + u * 400} ${FLOOR - v * h}`;
   return `M ${p(-0.16, 0.86)} L ${p(-0.06, 0.93)} L ${p(0, 1)} L ${p(0.08, 0.95)} L ${p(0.2, 0.8)} L ${p(0.12, 0.78)} L ${p(0.04, 0.84)} L ${p(-0.04, 0.8)} L ${p(-0.1, 0.83)} Z`;
 };
-function Section({f, grow = 0, dark = 0, sunHeat = 0}) {
+function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1}) {
   const ocean = OCEAN_STOPS.map(([km, c]) => [km, mix(c, '#02060C', dark * (km < 0.3 ? 0.4 : 0.75))]);
   return (
     <g>
@@ -137,7 +145,7 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0}) {
         stroke={mix('#363B47', '#0E1015', dark)} strokeWidth={12} opacity={0.8} strokeLinecap="round" />)}
       <path d={`M 360 ${FLOOR} L 720 ${FLOOR}`} stroke={mix('#5B6170', '#2A2E38', dark)} strokeWidth={10} />
       {grow > 0.001 && (
-        <g>
+        <g transform={`translate(0 ${drop}) translate(540 ${FLOOR}) scale(${1 + (1 - squash) * 0.4} ${squash}) translate(-540 ${-FLOOR})`}>
           <path d={everest(grow)} fill="#C9D3DF" opacity={0.95} stroke={INK} strokeWidth={7} strokeLinejoin="round" />
           <path d={`M 540 ${FLOOR - EVEREST_H * grow} L ${540 + 0.08 * 400} ${FLOOR - 0.95 * EVEREST_H * grow} L ${540 + 0.2 * 400} ${FLOOR - 0.8 * EVEREST_H * grow} L ${540 + 0.3 * 400} ${FLOOR - 0.74 * EVEREST_H * grow} L ${540 + 0.47 * 400} ${FLOOR - 0.5 * EVEREST_H * grow} L ${540 + 0.6 * 400} ${FLOOR - 0.42 * EVEREST_H * grow} L ${540 + 0.8 * 400} ${FLOOR - 0.18 * EVEREST_H * grow} L 940 ${FLOOR} L 600 ${FLOOR} L 560 ${FLOOR - 0.5 * EVEREST_H * grow} Z`} fill="#8E9AAB" opacity={0.85} />
           <path d={everest(grow)} fill="none" stroke="#FFFFFF" strokeWidth={3} strokeDasharray="14 12" opacity={0.6} transform="translate(0 10)" />
@@ -148,8 +156,8 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0}) {
       {/* the depth ruler down the left edge */}
       <g opacity={0.95}>
         <path d={`M 34 ${SURF} L 34 ${FLOOR}`} stroke="#E6F2FF" strokeWidth={4} opacity={0.6} />
-        {[...Array(12)].map((_, k) => <g key={k}><path d={`M 34 ${SURF + k * KM} l ${k % 2 ? 14 : 26} 0`} stroke="#E6F2FF" strokeWidth={4} opacity={0.75} />
-          {k % 2 === 0 && k > 0 && <text x={66} y={SURF + k * KM + 12} fontFamily={OSWALD} fontWeight={600} fontSize={34} fill="#E6F2FF" opacity={0.8}>{k} KM</text>}</g>)}
+        {[...Array(12)].map((_, k) => <g key={k}><path d={`M 34 ${SURF + k * KM} l ${k % 5 ? 14 : 30} 0`} stroke="#E6F2FF" strokeWidth={k % 5 ? 4 : 7} opacity={0.8} />
+          {k % 5 === 0 && k > 0 && <text x={72} y={SURF + k * KM + 16} fontFamily={OSWALD} fontWeight={700} fontSize={48} fill="#E6F2FF" stroke={INK} strokeWidth={6} paintOrder="stroke">{k} KM</text>}</g>)}
       </g>
     </g>
   );
@@ -176,8 +184,8 @@ export const VShort = ({lines = [], captions = true}) => {
   const cGreen = wordAt(L3, 'green', 0.1), cBlue = wordAt(L3, 'blue', 0.18), cGrey = wordAt(L3, 'grey', 0.26), cPop = wordAt(L3, 'pop', 0.38),
     cKick = wordAt(L3, 'kick', 0.55), cDrop = wordAt(L3, 'dropping', 0.65), cDark = wordAt(L3, 'dark', 0.85), cDarker = wordAt(L3, 'darker', 0.95);
   const cEleven = wordAt(L4, 'eleven', 0.3), cDeepest = wordAt(L4, 'deepest', 0.6), cWay = wordAt(L4, 'way', 0.95);
-  const cBottom = wordAt(L5, 'bottom', 0.4), cChannel = wordAt(L5, 'channel', 0.9);
-  const tIn = L2.start - 4, tDive = cUnder + 16, tOut = L4.start - 2, tEnd = L5.start - 2;
+  const cBottom = wordAt(L5, 'bottom', 0.4), cChannel = wordAt(L5, 'channel', 0.9), cWhat = wordAt(L5, "what's", 0.15), cWhole = wordAt(L5, 'whole', 0.6);
+  const tIn = L2.start - 4, tDive = cUnder + 30, tOut = L4.start - 2, tEnd = L5.start - 2;
   const end = (lines[lines.length - 1] || {}).until || L5.end + 60;
   const hand = [noise2D('hx', f * 0.02, 0) * 10, noise2D('hy', 0, f * 0.02) * 8];   // a hand-held drift: the camera never sits dead still
 
@@ -185,12 +193,13 @@ export const VShort = ({lines = [], captions = true}) => {
   if (f < tIn + 14) {
     // 1. THE HOOK: we start at the sun-lit surface and the camera plunges down the whole column in the first second and a half
     //    (motion from frame 0), settles on the full section, Everest grows up from the floor on its word, the two brackets measure.
-    const dive = L(f, 0, 44, 0, 1, Easing.bezier(0.6, 0, 0.2, 1));
-    const cy = L(f, 0, 44, SURF + 120, FLOOR - 420) * (1 - L(f, 44, 70, 0, 1)) + 960 * L(f, 44, 70, 0, 1);
-    const cx0 = 540 - 170 * L(f, 0, 10, 0, 1) * (1 - L(f, 44, 70, 0, 1));   // left, so the ruler's km marks rush past on the way down
-    const z0 = 2.0 - 0.3 * dive;
-    const z = f < 44 ? z0 : L(f, 44, 70, 1.7, 1.0, Easing.bezier(0.3, 0, 0.2, 1)) + 0.03 * L(f, 70, tIn, 0, 1);
-    const grow = clamp(spr((f - cEverest) / 30, 9, 0.9), 0, 1.03);
+    const LAND = 15;
+    const drop = L(f, 0, LAND, -1250, 0, Easing.in(Easing.quad));
+    const squash = f >= LAND ? 1 - 0.07 * Math.sin(clamp((f - LAND) / 9, 0, 1) * Math.PI) : 1;
+    const jolt = f >= LAND && f < LAND + 14 ? Math.sin((f - LAND) * 2.4) * (LAND + 14 - f) * 1.6 : 0;
+    const cy = 960 + jolt, cx0 = 540;
+    const z = 1.0 + 0.05 * L(f, LAND, tIn, 0, 1);
+    const grow = 1;
     const b2 = sp(f, cTwo, 'snap'), b9 = sp(f, cNine, 'snap');
     // the zoom THROUGH the surface into the next scene (the signature move): from tIn the camera dives into the sea at x 540
     const zin = f >= tIn ? Math.pow(L(f, tIn, tIn + 14, 0, 1, Easing.in(Easing.cubic)), 1) : 0;
@@ -198,16 +207,20 @@ export const VShort = ({lines = [], captions = true}) => {
     world = (
       <g>
         <g transform={`translate(${VW / 2} ${VH / 2}) scale(${zz}) translate(${-ccx} ${-ccy})`}>
-          <Section f={f} grow={grow} />
+          <Section f={f} grow={grow} drop={drop} squash={squash} />
+          {f >= 6 && f < 34 && <g opacity={1 - L(f, 22, 34, 0, 1)}>{[...Array(11)].map((_, i) => { const a = -Math.PI * (0.08 + 0.84 * i / 10), k = L(f, 6, 22, 0, 1, Easing.out(Easing.cubic));
+            return <path key={i} d={`M ${540 + Math.cos(a) * 220} ${SURF} q ${Math.cos(a) * 120 * k} ${-170 * k} ${Math.cos(a) * 230 * k} ${-60 * k}`} stroke="#E6F7FF" strokeWidth={14} fill="none" strokeLinecap="round" />; })}</g>}
+          {f >= LAND && f < LAND + 40 && [...Array(14)].map((_, i) => { const side = i % 2 ? 1 : -1, k = L(f, LAND, LAND + 40, 0, 1, Easing.out(Easing.cubic));
+            return <circle key={i} cx={540 + side * (380 + k * (60 + i * 14))} cy={FLOOR - 20 - k * (20 + (i % 4) * 26)} r={30 + k * 40} fill="#8C8F96" opacity={0.7 * (1 - k)} />; })}
           <Bracket x={1010} y0={SURF} y1={FLOOR - EVEREST_H} k={b2} side={1} />
           <Bracket x={150} y0={FLOOR} y1={FLOOR - EVEREST_H} k={b9} side={-1} color="#FFFFFF" />
         </g>
         {/* labels are drawn on the screen (they stay readable whatever the zoom) */}
         <g opacity={1 - zin}>
-          <Chip x={540} y={150} text="THE DEEPEST PLACE ON EARTH" s={clamp(sp(f, 2, 'heavy'), 0, 1.04)} anchor="middle" rot={-1} size={66} fill="#FFFFFF" />
-          {f >= cEverest && <Chip x={600} y={1010} text="MOUNT EVEREST" s={clamp(sp(f, cEverest + 6, 'sticker'), 0, 1.1)} anchor="middle" fill="#FFFFFF" rot={-3} />}
-          {f >= cTwo && <Chip x={1010 - 20} y={430} text="2 KM OF WATER" s={clamp(sp(f, cTwo + 4, 'sticker'), 0, 1.1)} anchor="end" rot={2} size={58} />}
-          {f >= cNine && <Chip x={175} y={790} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
+          <Chip x={540} y={70} text="THE DEEPEST PLACE ON EARTH" s={1 + 0.03 * Math.sin(f * 0.15)} anchor="middle" rot={-1} size={66} fill="#FFFFFF" />
+          {f >= LAND + 2 && <Chip x={600} y={860} text="MOUNT EVEREST" s={clamp(sp(f, LAND + 2, 'sticker'), 0, 1.1)} anchor="middle" fill="#FFFFFF" rot={-3} />}
+          {f >= cTwo && <Chip x={1010 - 20} y={300} text="2 KM OF WATER" s={clamp(sp(f, cTwo + 4, 'sticker'), 0, 1.1)} anchor="end" rot={2} size={58} />}
+          {f >= cNine && <Chip x={175} y={620} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
         </g>
       </g>
     );
@@ -220,9 +233,9 @@ export const VShort = ({lines = [], captions = true}) => {
     const heat = L(f, cSun, cSun + 20, 0, 1) * (1 - L(f, cTug, cTug + 8, 0, 1));
     const ant = L(f, cTug - 2, cTug + 4, 0, 1) * (1 - L(f, cTug + 4, cTug + 10, 0, 1));   // the jolt
     const yank = L(f, cUnder - 2, cUnder + 14, 0, 1, Easing.bezier(0.55, 0, 0.9, 0.6));
-    const camY = L(f, cUnder + 2, tDive + 10, 0, 900, Easing.in(Easing.quad));   // the camera follows you under
+    const camY = L(f, cUnder + 6, tDive, 0, 700, Easing.in(Easing.quad));   // the camera follows you under
     const s = 0.3, rot = -90 + 90 * yank - 12 * ant;
-    const bx = 540 - 1090 * s / 2 + 30, by = sea - 34 + Math.sin(f * 0.08) * 6 - 30 * ant + yank * 560;
+    const bx = 540 - 1090 * s / 2 + 30, by = sea - 14 + Math.sin(f * 0.08) * 5 - 30 * ant + yank * 820;
     const ankle = place(bx, by, rot, s, 0, 1080);
     const lineK = L(f, cSomething - 6, cTug, 0, 1);
     const zoomIn = 2.0 - 0.25 * L(g, 0, 40, 0, 1, Easing.out(Easing.cubic)) + 0.12 * L(f, cSomething, cTug, 0, 1) - 0.45 * L(f, cUnder, cUnder + 20, 0, 1);
@@ -241,7 +254,8 @@ export const VShort = ({lines = [], captions = true}) => {
           fill="none" stroke="#10151C" strokeWidth={9} strokeDasharray={`${3000 * lineK} 4000`} strokeLinecap="round" opacity={0.9} />}
         <You f={f} pose={yank > 0.3 ? 'wade' : 'lie'} expr={f >= cTug ? (yank > 0.2 ? 'scared' : 'shock') : 'calm'} rot={rot} x={bx} y={by} s={s} />
         {/* the front of the sea over the lower half of the floating body */}
-        <path d={wavePath(f + 20, sea + 18, 10, 1.5, -200, VW + 200, sea + 120)} fill="#3FB0E8" opacity={0.55} />
+        <path d={wavePath(f + 20, sea + 6, 9, 1.5, -200, VW + 200, sea + 140)} fill="#3FB0E8" opacity={0.9} />
+        {yank < 0.2 && <path d={`M ${bx + 60} ${sea + 2} q 40 -10 80 0 q 40 10 80 0`} stroke="#E6F7FF" strokeWidth={6} fill="none" strokeLinecap="round" opacity={0.85} />}
         {f >= cUnder && <g opacity={1 - L(f, cUnder + 10, cUnder + 30, 0, 1)}>
           {[...Array(9)].map((_, i) => { const a = -Math.PI * (0.15 + 0.7 * i / 8); const k = L(f, cUnder, cUnder + 16, 0, 1, Easing.out(Easing.cubic));
             return <path key={i} d={`M ${540 + Math.cos(a) * 40} ${sea} q ${Math.cos(a) * 80 * k} ${-140 * k} ${Math.cos(a) * 150 * k} ${-60 * k}`} stroke="#E6F7FF" strokeWidth={12} fill="none" strokeLinecap="round" />; })}
@@ -252,7 +266,7 @@ export const VShort = ({lines = [], captions = true}) => {
       </g>
     );
     world = <g>{world}<rect width={VW} height={VH} fill="#7FD0F5" opacity={1 - L(f, tIn + 14, tIn + 24, 0, 1)} />
-      <rect width={VW} height={VH} fill="#2C9AD4" opacity={L(f, tDive + 2, tDive + 10, 0, 1)} /></g>;
+      {f > cUnder + 12 && <BubbleWipe k={L(f, cUnder + 12, tDive, 0, 0.45)} />}</g>;
   } else if (f < tOut) {
     // 3. THE DIVE: the camera rides down with you; green, then blue, then grey arrive on their words; the light closes in
     const col = keys(f, [[tDive, '#2C9AD4'], [cGreen + 6, '#2F8F7A'], [cBlue + 6, '#1C4E9E'], [cGrey + 6, '#3A4352'], [cDark + 6, '#11161D'], [cDarker + 10, '#04060A']]);
@@ -263,9 +277,9 @@ export const VShort = ({lines = [], captions = true}) => {
     const rays = 1 - L(f, cGreen, cGrey + 10, 0, 1);
     const light = L(f, cGrey, cDarker + 10, 1, 0.15);
     const popK = f >= cPop ? L(f, cPop, cPop + 14, 0, 1, Easing.out(Easing.cubic)) : 0;
-    const pushIn = L(f, cPop - 8, cPop + 2, 0, 1) * (1 - L(f, cKick - 6, cKick + 6, 0, 1));
+    const pushIn = L(f, cPop - 14, cPop + 1, 0, 1) * (1 - L(f, cKick - 4, cKick + 11, 0, 1));
     const pullOut = L(f, cDrop, cDark + 12, 0, 1);
-    const z = 1 + 0.7 * pushIn - 0.22 * pullOut;
+    const z = 1 + 0.42 * pushIn - 0.22 * pullOut;
     const sway = Math.sin(f * 0.07) * 5 + (f < cKick ? Math.sin(f * 0.3) * 4 : 0);
     const kicking = f >= cKick - 2;
     const yx = 540, yy = 640 + 40 * Math.sin(f * 0.05) - 60 * L(f, cKick, cKick + 12, 0, 1) * (1 - L(f, cKick + 12, cDrop, 0, 1));   // the kick lifts you, for a moment
@@ -310,7 +324,7 @@ export const VShort = ({lines = [], captions = true}) => {
           <text x={22} y={44} fontFamily={OSWALD} fontWeight={600} fontSize={32} fill="#9CC9F0" letterSpacing={3}>DEPTH</text>
           <text x={22} y={126} fontFamily={OSWALD} fontWeight={700} fontSize={82} fill="#FDE047">{Math.round(depth).toLocaleString('en-US')} M</text>
         </g>
-        <rect width={VW} height={VH} fill="#2C9AD4" opacity={1 - fadeIn} />
+        {f < tDive + 14 && <BubbleWipe k={L(f, tDive, tDive + 14, 0.45, 1)} />}
       </g>
     );
   } else {
@@ -318,7 +332,7 @@ export const VShort = ({lines = [], captions = true}) => {
     //    whole column, a pin marks the deepest point, and the speck keeps falling toward it. 5. the end card.
     const k = L(f, tOut, tOut + 40, 0, 1, Easing.out(Easing.cubic));
     const speckY = SURF + num(f, [[tOut, 1.3], [cWay, 2.6], [end, 4.2]]) * KM;
-    const cy = speckY + (960 + (speckY - 960) * 0.25 - speckY) * k;   // the pull-back starts ON you and opens to the whole column
+    const cy = speckY + (960 - speckY) * k;   // the pull-back starts ON you and opens to the whole column
     const z = 6 - 5 * k + 0.08 * L(f, cDeepest, end, 0, 1);
     const b = sp(f, cEleven, 'snap');
     const pin = sp(f, cDeepest, 'sticker');
@@ -337,11 +351,12 @@ export const VShort = ({lines = [], captions = true}) => {
             <path d="M 0 0 C -36 -50 -46 -76 -46 -100 A 46 46 0 1 1 46 -100 C 46 -76 36 -50 0 0 Z" fill="#EF4444" stroke={INK} strokeWidth={7} />
             <circle cx={0} cy={-100} r={17} fill="#FFFFFF" stroke={INK} strokeWidth={5} />
           </g>}
+          {f >= cDeepest && <g opacity={1 - endK}><path d={`M 600 ${FLOOR - 120} L 640 ${FLOOR - 170}`} stroke="#FFFFFF" strokeWidth={6} />
+            <Chip x={640} y={FLOOR - 250} text="CHALLENGER DEEP" s={clamp(sp(f, cDeepest + 5, 'sticker'), 0, 1.1)} fill="#EF4444" color="#FFFFFF" rot={2} size={54} /></g>}
         </g>
         <rect width={VW} height={VH} fill="#04060A" opacity={1 - L(f, tOut, tOut + 12, 0, 1)} />
         <g opacity={1 - endK}>
-          {f >= cEleven && <Chip x={1000} y={230} text="10,935 M" s={clamp(sp(f, cEleven + 3, 'sticker'), 0, 1.1)} anchor="end" rot={-2} size={80} />}
-          {f >= cDeepest && <Chip x={540} y={1180} text="CHALLENGER DEEP" s={clamp(sp(f, cDeepest + 5, 'sticker'), 0, 1.1)} anchor="middle" fill="#EF4444" color="#FFFFFF" rot={2} size={62} />}
+          {f >= cEleven && <Chip x={975} y={680} text="10,935 M" s={clamp(sp(f, cEleven + 3, 'sticker'), 0, 1.1)} anchor="end" rot={-2} size={80} />}
           {f >= cWay - 12 && <Chip x={590} y={speckSy - 130} text="YOU" s={clamp(sp(f, cWay - 12, 'sticker'), 0, 1.1)} rot={-6} size={54} fill="#FDE047" />}
         </g>
         {endK > 0 && (
@@ -349,18 +364,15 @@ export const VShort = ({lines = [], captions = true}) => {
             <rect width={VW} height={VH} fill="#02060C" opacity={0.78 * endK} />
             <radialGradient id="v-glow" cx={0.5} cy={0.62} r={0.4}><stop offset="0" stopColor="#FDE047" stopOpacity={0.35} /><stop offset="1" stopColor="#FDE047" stopOpacity={0} /></radialGradient>
             <rect width={VW} height={VH} fill="url(#v-glow)" opacity={endK * (0.6 + 0.4 * Math.sin(f * 0.12))} />
-            <g transform={`translate(540 380) scale(${clamp(spr((f - tEnd) / 30, 10, 0.9), 0, 1.05)})`}>
+            <g transform={`translate(540 380) scale(${clamp(spr((f - tEnd) / 30, 10, 0.9), 0, 1.05) * (1 + 0.04 * L(f, tEnd, end, 0, 1))})`}>
               <Chip x={-250} y={-60} text="YOU" size={120} fill="#FDE047" rot={-4} anchor="middle" />
               <text x={-40} y={60} fontFamily={OSWALD} fontWeight={700} fontSize={86} fill="#FFFFFF" textAnchor="middle" stroke={INK} strokeWidth={10} paintOrder="stroke">vs</text>
               <Chip x={190} y={-60} text="11 KM" size={120} fill="#FFFFFF" rot={3} anchor="middle" />
             </g>
-            {f >= cBottom - 18 && <g transform={`translate(540 760) scale(${clamp(sp(f, cBottom - 18, 'card'), 0, 1.08)})`}>
-              <Chip x={0} y={-80} text="WHAT'S WAITING" size={90} fill="#FFFFFF" rot={-2} anchor="middle" />
-              <Chip x={0} y={60} text="AT THE BOTTOM?" size={90} fill="#FDE047" rot={2} anchor="middle" />
-            </g>}
-            {f >= cChannel - 14 && <g transform={`translate(540 1130) scale(${clamp(sp(f, cChannel - 14, 'sticker'), 0, 1.1)})`}>
-              <Chip x={0} y={0} text="FULL DIVE ON THE CHANNEL" size={58} fill="#EF4444" color="#FFFFFF" rot={-1} anchor="middle" />
-            </g>}
+            {f >= cWhat && <g transform={`translate(540 700) scale(${clamp(sp(f, cWhat, 'card'), 0, 1.08)})`}><Chip x={0} y={-80} text="WHAT'S WAITING" size={90} fill="#FFFFFF" rot={-2} anchor="middle" /></g>}
+            {f >= cBottom - 4 && <g transform={`translate(540 840) scale(${clamp(sp(f, cBottom - 4, 'card'), 0, 1.08)})`}><Chip x={0} y={-80} text="AT THE BOTTOM?" size={90} fill="#FDE047" rot={2} anchor="middle" /></g>}
+            {f >= cWhole && <g transform={`translate(540 1010) scale(${clamp(sp(f, cWhole, 'sticker'), 0, 1.1)})`}><Chip x={0} y={0} text="THE WHOLE DIVE" size={66} fill="#EF4444" color="#FFFFFF" rot={-1} anchor="middle" /></g>}
+            {f >= cChannel - 6 && <g transform={`translate(540 1130) scale(${clamp(sp(f, cChannel - 6, 'sticker'), 0, 1.1)})`}><Chip x={0} y={0} text="IS ON OUR CHANNEL" size={58} fill="#FFFFFF" rot={1} anchor="middle" /></g>}
           </g>
         )}
       </g>
@@ -370,7 +382,7 @@ export const VShort = ({lines = [], captions = true}) => {
     <AbsoluteFill style={{backgroundColor: '#000'}}>
       <style>{FONT_CSS}</style>
       <svg width="100%" height="100%" viewBox={`0 0 ${VW} ${VH}`}>{world}</svg>
-      {captions && <VCaptions lines={lines} />}
+      {captions && <VCaptions lines={lines} stop={L5.start - 2} />}
     </AbsoluteFill>
   );
 };
@@ -390,8 +402,9 @@ const chunks3 = (ws) => {
   if (cur.length) out.push(cur);
   return out;
 };
-const VCaptions = ({lines}) => {
+const VCaptions = ({lines, stop = 1e9}) => {
   const frame = useCurrentFrame();
+  if (frame >= stop) return null;   // the end card says its own words
   const ws = lines.flatMap((l) => l.words || []);
   if (!ws.length) return null;
   const ch = chunks3(ws);
@@ -401,7 +414,7 @@ const VCaptions = ({lines}) => {
   const lastEnd = ws[c[c.length - 1]][1] + 50;
   if (ci + 1 >= ch.length && frame > lastEnd) return null;
   const now = c.reduce((a, i) => (ws[i][1] <= frame ? i : a), c[0]);
-  const s = clamp(spr((frame - ws[c[0]][1] + 2) / 30, 24, 0.6), 0, 1.08);
+  const s = 0.85 + 0.15 * clamp((frame - ws[c[0]][1] + 2) / 3, 0, 1);
   return (
     <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: 1330}}>
       <div style={{width: 900, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 22, textAlign: 'center', transform: `scale(${s})`, fontFamily: OSWALD, fontWeight: 700, fontSize: 86, lineHeight: 1.08,
