@@ -130,7 +130,7 @@ def part(folder):
         clips.append(folder / "short.mp4")
     elif short:
         words = [w for l in short for w in l["words"]]
-        cues = mapsample.cues_v2(words, {"move": "also", "arrive": "borders", "clp": "uninhabited", "link": "still", "bars": "about", "final": "frances"}, missing_ok=True)
+        cues = mapsample.cues_v2(words, {"move": "also", "arrive": "borders", "clp": "uninhabited", "link": "still", "bars": "spanning", "final": "frances"}, missing_ok=True)
         props = {"cues": cues, "seconds": split, "km": {"deu": 448, "esp": 623, "bra": 730},
                  "source": "Lengths: Frontieres de la France (Wikipedia, French)", "unnamed": ["ker", "clp"], "noEnd": True}
         mapsample._remotion(animate, ["render", "src/index.jsx", "MapShort", str(folder / "short.mp4"), "--props=" + json.dumps(props),
