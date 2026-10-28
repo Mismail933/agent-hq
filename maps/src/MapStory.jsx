@@ -212,7 +212,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   const regionPaths = Object.entries(regions).map(([id, r]) => {
     const col = (c) => (c === 'none' ? null : C[c] || c);
     const a = col(r.from), b = col(r.color);
-    const op = (b ? r.k : 1 - r.k) * 0.62;
+    const op = a && b ? 0.62 : (b ? r.k : 1 - r.k) * 0.62;   // a recolour keeps the old colour on screen until it starts (region delay)
     const fill = b && a && r.k < 1 ? interpolateColor(a, b, r.k) : b || a;
     if (!fill || op <= 0.01) return null;
     // clipped to the real land, so coasts and lakes are true; a bright outline (Bassel: refined borders and an outline, not a blob)
