@@ -41,13 +41,15 @@ const Draw = ({d, p, color, width}) => {
 // following it with a little lag, and comes down on the line's view at the end of the voyage.
 function camera(f, lines, fps) {
   let cur = lines[0].view;
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i++) {   // from line 0: its own mid-line views count too (part 4's opening never moved)
     const l = lines[i];
     const a = Math.round((l.t0 - 0.15) * fps);
-    if (f < a) break;
-    const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.view;
-    const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
-    cur = move(prev, next, interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease}));
+    if (i > 0 && f < a) break;
+    if (i > 0) {
+      const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.view;
+      const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
+      cur = move(prev, next, interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease}));
+    }
     if (l.follow && l.ship) {
       const [s0] = sailFrames(l, fps);
       if (f >= s0) cur = followView(l, sailP(l, f, fps));
@@ -153,9 +155,16 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   // "CAN:uk" = filled in a rival's colour (Britain red, Spain yellow) instead of the highlight
   const fills = {}, tint = {};
   lines.forEach((l, i) => (l.fill || []).forEach((code) => {
+    if (code.startsWith('-')) {   // '-DZA': no longer highlighted from this line on (independent; it fades out)
+      const a3 = code.slice(1);
+      if (i < li) fills[a3] = 0;
+      else if (i === li) fills[a3] = Math.min(fills[a3] || 0, 1 - on(l.t0 + 0.3, 20));
+      return;
+    }
     const [a3, who] = code.split(':');
     const span = i === li ? on(l.t0, 12) : i < li ? 1 : 0;
     if (span > 0 && who) tint[a3] = C[who] || C.fill;
+    if (span > 0 && !who) delete tint[a3];
     fills[a3] = Math.max(fills[a3] || 0, span);
   }));
   const detail = geo.detail.features.map((ft) => {
