@@ -56,7 +56,7 @@ function camera(f, lines, fps) {
     }
     // spin {from, to, lat, scale}: the globe turns at an even speed through the line (Bassel: the overseas places' names appear as it turns)
     if (l.spin && f >= a + 24) {
-      const end = Math.round((l.t1 + 0.4) * fps);
+      const end = Math.round((l.t1 + (l.spin.extra != null ? l.spin.extra : 0.4)) * fps);   // extra: the turn runs on into the line's silence
       cur = [interpolate(f, [a + 24, end], [l.spin.from, l.spin.to], clamp), l.spin.lat, l.spin.scale];
     }
     // views [{at, view}]: the camera moves on mid-line (e.g. from Pondicherry to Saint-Louis on 'the island of Saint Louis')
