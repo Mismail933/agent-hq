@@ -403,8 +403,10 @@ cartoon on screen). The channel learns from The Infographics Show; the guide the
    they really say that. A fact the source doesn't support fails the script. Imagined scenes must be labelled as imagined.
 5. Numbers: at least one hard number a minute (about every 200 words), each made physical; each section's `numbers` match its narration.
 6. Real voices: at least three real quotes with sources. A made-up quote presented as real fails.
-7. Voice-over: written for the ear, sentences of mixed length, plain words, humour present but never about a victim. A flat,
-   encyclopedia tone fails. There is no length target: padding fails, so does rushing a story to be short.
+7. Voice-over: written for the ear, plain words, humour present but never about a victim. A flat, encyclopedia tone fails.
+   Flowing sentences that carry the listener on; runs of 2-4 word fragments fail (the owner's rule of 2026-10-28: the voice reads
+   a section in one take and stops and starts the way the sentences do, which he called "slow then fast ... inhuman"); a short
+   sentence only as a deliberate beat, one or two a section. There is no length target: padding fails, so does rushing.
 8. The turn and the ending: a real turn near the end; the ending has one strong line, one comment question, one next-video line.
 9. Pictures: every section's `shows` is something an animator can draw and that really shows what the narration says.
 10. Originality and copying: different from the earlier episodes below; NOT a retelling of an Infographics Show script (same

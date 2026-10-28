@@ -1217,6 +1217,22 @@ Agents never spend money without the owner's explicit approval.
   2.66.5: the reveal hold keeps the PICTURE, not the voice: the next cut waits up to `HOLD_OVERLAP` 0.9 s into the next line
   (`hold_until`), only the rest delays the voice (holding the voice brought back 12-15 long pauses a minute); a fitted line may
   be sped up to `TEMPO_MAX` 1.15 (was 1.08: Owen's tense lines stayed at ~96 wpm).
+  2.74.0 even pace (the owner 2026-10-28 after Yamaguchi: "slow then fast suddenly then slowwww then normal then fast ... inhuman"):
+  measured (scratchpad voice_samples.py, Whisper word times; phrases split at 0.25 s gaps, syllables a second per phrase): the
+  per-line `_tone_line` fitting made each line its own speed, and choppy fragment writing made even one continuous take stop and
+  start (7-12 pauses >= 0.8 s a minute, pace jumping 26-29% phrase to phrase); the same passage written as flowing sentences read
+  by Owen in ONE take: 2.9 a minute (Eleven v4 169 wpm, multilingual v2 4.3, v3 9.5 on the choppy text). Samples:
+  content/project-5/voice-samples/2026-10-28/ (+ measured.json). Now: TONES style **even** (rule voice.story_style; Tarek can't switch
+  it off: `merge_settings` keeps it, `tone_of` ignores wpm/pace_spread/pauses for it) = the take's own pace, one `tempo` for the whole
+  video (spec sound.voice.tempo, Tarek 0.92-1.08), silences inside a take shortened to max_pause 0.7, nothing per line; spec
+  `voice_model` (e.g. "eleven_v4": `elevenlabs.V4`, 10,000 characters a request, only stability + similarity, no tags; refused ->
+  multilingual v2) + `passage_chars` (a section per take). Writing: Calina's V4 prompt has WRITE FOR AN EVEN VOICE (flowing 15-35
+  word sentences, fragments only as a deliberate beat), TALK TO THE VIEWER (numbered questions answered later, a running loop) and
+  WHAT ISRAA AND THE BUILDER CHECK (13 failure classes distilled from every Storygraphics review: exact sourcing, quotes, sums,
+  `numbers` matching the voice, the stranger, dated counts, a next-video line from the channel's live titles (the task now lists
+  content/project-N/upload/*/title.txt), no Pip in true stories...); Israa's STORY_TASK criterion 7 fails fragment runs.
+  `apply_edits` edits list fields (`numbers`) entry by entry (ep 37's label fixes failed 3 rounds as "not in the field").
+  Calina's learning note for a channel without a Serge plan uses the owner's brief (Atlas's request 2026-10-28 22:30).
 - The script gate (2.58.0; the owner 2026-10-19 on Calina writing Storygraphics scripts: "you and israa both review it; ill only receive
   when you both give it 8 at least; when any of you return with note she fixes those notes and not re-write it completely"). For long
   story scripts (story_v1): `calina_batch` saves them as status **in_review** (hidden from Today and the phone); Israa's review passes

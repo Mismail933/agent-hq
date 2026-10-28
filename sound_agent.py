@@ -304,7 +304,10 @@ Judge the mix and the narration. Then fix what the sound settings can fix (you m
 - beds: {place: [searches]} another recording for a place; accents: {shot: [searches]} another sound for that scene's accent
 - drop_accents: [seconds or shot names]; add_accents: [{line (1-based), word (the spoken word it lands on), for (a search)}]
 - voice (when the narrator is Chatterbox, the free voice on this PC; changing it costs no credits, only a few minutes of re-voicing):
-  style story|calm|between|dramatic (story = natural pace, few long pauses: what the reference narrators do), wpm (110..185, pace while he speaks; the owner found ~174 "rushing"), gap (0.2..1.5 s between lines),
+  THE OWNER'S RULE (2026-10-28): the pace must be EVEN ("slow then fast suddenly then slow ... inhuman"). A video with style "even"
+  keeps it: only tempo (0.92..1.08, one speed for the WHOLE video), gap and max_pause may change there; wpm, pace_spread and the
+  pauses are ignored for it (they fitted each line on its own: that was the jumping). Uneven delivery inside a take = a voice note.
+  style even|story|calm|between|dramatic (story = natural pace, few long pauses: what the reference narrators do), wpm (110..185, pace while he speaks; the owner found ~174 "rushing"), gap (0.2..1.5 s between lines),
   sentence_pause (0..1.2 s after a sentence inside a line), comma_pause (0..0.4), beat_pause (0..2 s after a short dramatic line),
   temperature (0.5..1.1, how varied the delivery is), ref_speed (0.75..1.05, the reference clip's pace: slower = calmer read),
   pace_spread (0..2, how much faster action lines and slower sad lines are), max_pause (0..2 s: longer silences inside a take
@@ -335,7 +338,8 @@ SCHEMA = {"type": "object", "properties": {
         "add_accents": {"type": "array", "items": {"type": "object", "properties": {
             "line": {"type": "integer"}, "word": {"type": "string"}, "for": {"type": "string"}}, "required": ["line", "word", "for"]}},
         "voice": {"type": "object", "properties": {
-            "style": {"type": "string", "enum": ["story", "calm", "between", "dramatic"]}, "wpm": {"type": "number"}, "gap": {"type": "number"},
+            "style": {"type": "string", "enum": ["even", "story", "calm", "between", "dramatic"]}, "wpm": {"type": "number"},
+            "gap": {"type": "number"}, "tempo": {"type": "number"},
             "sentence_pause": {"type": "number"}, "comma_pause": {"type": "number"}, "beat_pause": {"type": "number"},
             "temperature": {"type": "number"}, "ref_speed": {"type": "number"}, "pace_spread": {"type": "number"},
             "max_pause": {"type": "number"}}}}},
@@ -368,9 +372,9 @@ def clean_settings(s):
     if isinstance(s.get("voice"), dict):   # 2.65.0: the Chatterbox voice's tone (story_sample.TONES)
         v, lim = s["voice"], {"wpm": (110, 185), "gap": (0.2, 1.5), "sentence_pause": (0.0, 1.2), "comma_pause": (0.0, 0.4),
                               "beat_pause": (0.0, 2.0), "temperature": (0.5, 1.1), "ref_speed": (0.75, 1.05), "pace_spread": (0.0, 2.0),
-                              "max_pause": (0.0, 2.0), "min_wpm": (0, 200)}
+                              "max_pause": (0.0, 2.0), "min_wpm": (0, 200), "tempo": (0.92, 1.08)}
         vv = {k: max(lo, min(hi, float(v[k]))) for k, (lo, hi) in lim.items() if isinstance(v.get(k), (int, float))}
-        if v.get("style") in ("story", "calm", "between", "dramatic"):
+        if v.get("style") in ("even", "story", "calm", "between", "dramatic"):
             vv["style"] = v["style"]
         if vv:
             out["voice"] = vv
@@ -386,6 +390,8 @@ def merge_settings(old, new):
     out = dict(old)
     for k, v in new.items():
         out[k] = {**(old.get(k) or {}), **v} if k in ("beds", "accents", "music", "voice") and isinstance(v, dict) else v
+    if (old.get("voice") or {}).get("style") == "even":   # the owner's even-pace rule (10-28) is not Tarek's to switch off
+        out["voice"]["style"] = "even"
     return out
 
 

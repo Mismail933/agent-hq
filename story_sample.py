@@ -159,6 +159,9 @@ def voice_eleven(spec, folder):
     vid = spec["voice"].split(":", 1)[1]
     stab = float(spec.get("stability", 0.5))
     elevenlabs.settings.ELEVEN_V3_STABILITY = stab
+    elevenlabs.settings.ELEVEN_V4_STABILITY = stab
+    mid = spec.get("voice_model") or elevenlabs.model()   # 2.74.0: "eleven_v4" = long passages at one even pace, no tags
+    tags = mid == elevenlabs.V3
     cache = folder / "_voice-cache"
     cache.mkdir(parents=True, exist_ok=True)
     L = spec["lines"]
@@ -167,18 +170,18 @@ def voice_eleven(spec, folder):
         parts, prev, counts = [], None, []
         for i in g:
             text, tag = L[i].get("eleven_say") or L[i]["text"], tag_of(L[i])
-            parts.append((f"[{tag}] " if tag and tag != prev else "") + text)
+            parts.append((f"[{tag}] " if tags and tag and tag != prev else "") + text)
             prev = tag
             counts.append(len(text.split()))
         said = " ".join(parts)
-        key = hashlib.sha1(f"take|{vid}|{elevenlabs.model()}|{stab}|{said}".encode()).hexdigest()[:16]
+        key = hashlib.sha1(f"take|{vid}|{mid}|{stab}|{said}".encode()).hexdigest()[:16]
         cw, cj = cache / f"t-{key}.wav", cache / f"t-{key}.json"
         if cw.exists() and cj.exists():
             a, _ = sf.read(str(cw), dtype="float32")
             words = json.loads(cj.read_text(encoding="utf-8"))
             how = "cached"
         else:
-            a, words, n = elevenlabs.speak(vid, said)
+            a, words, n = elevenlabs.speak(vid, said, model_id=mid)
             billed += n
             if not words:
                 raise SystemExit(f"ElevenLabs sent no word timings for passage {gi + 1}")
@@ -317,6 +320,12 @@ TONES = {
     # (The Infographics Show, RealLifeLore and Brew on the same seafloor-survivor story, MrBallen, Zack D. Films, LEMMiNO): all talk
     # 191-264 wpm inside phrases and 157-203 overall, with 0.3-7 pauses of a second or more a minute; ours stopped 12-18 times a
     # minute (114-134 overall). "story" = the natural pace of the take (no fitting), lines run on, a long pause only on the beats.
+    # 2.74.0 (the owner 10-28: "slow then fast suddenly then slowwww then normal then fast ... inhuman"): measured, the per-line
+    # fitting below WAS the jumping (each line its own atempo), and choppy writing made even one take stop and start. "even" = one
+    # take per passage (a section; Eleven v4 takes 10,000 characters), the take's own steady pace, at most one tempo for the WHOLE
+    # video (spec sound.voice.tempo), long silences inside a take shortened to max_pause, nothing per line.
+    "even": {"wpm": 0, "gap": 0.35, "sentence_pause": 0.0, "comma_pause": 0.0, "beat_pause": 0.0, "temperature": 0.8,
+             "ref_speed": 0.95, "pace_spread": 0.0, "max_pause": 0.7, "min_wpm": 0, "tempo": 1.0},
     "story": {"wpm": 0, "gap": 0.15, "sentence_pause": 0.0, "comma_pause": 0.0, "beat_pause": 0.0, "temperature": 0.8,
               "ref_speed": 0.95, "pace_spread": 0.0, "max_pause": 0.45, "min_wpm": 150},
     "calm": {"wpm": 135, "gap": 0.85, "sentence_pause": 0.45, "comma_pause": 0.12, "beat_pause": 0.7, "temperature": 0.7,
@@ -347,9 +356,11 @@ def tone_of(spec):
     t = dict(TONES.get(style, TONES["between"]), style=style)
     for k, r in TONE_RULES.items():
         v = _rule(r, 0)
-        if v:
+        if v and not (style == "even" and k != "gap"):   # even: no pace target from the rules either
             t[k] = float(v)
     for k, v in own.items():
+        if style == "even" and k in ("wpm", "pace_spread", "min_wpm", "sentence_pause", "comma_pause", "beat_pause"):
+            continue   # even: nothing that fits or pads lines one by one (that was the slow-then-fast the owner heard)
         if k in t and k != "style" and isinstance(v, (int, float)):
             t[k] = float(v)
     return t
@@ -560,7 +571,7 @@ def _tone_line(ln, a48, words, tone):
     n = _words_eq(ln["text"])
     own = 60.0 * n / max(0.5, len(a48) / SR)   # the take's own pace (in average-length words)
     want = tone["wpm"] * (1 + (pace_of(ln, 1.0) - 1) * tone["pace_spread"])   # action faster, sad/long-pause lines slower
-    f = max(TEMPO_MIN, min(TEMPO_MAX, want / own)) if want > 0 else 1.0   # atempo beyond these sounds processed; 0 = the take's own pace
+    f = max(TEMPO_MIN, min(TEMPO_MAX, want / own)) if want > 0 else float(tone.get("tempo", 1.0))   # atempo beyond these sounds processed; 0 = the take's own pace (even: one tempo for every line)
     if want <= 0 and tone.get("min_wpm") and own < tone["min_wpm"]:   # story: a line read slower than this is lifted a little
         f = min(1.15, tone["min_wpm"] / own)
     if abs(f - 1.0) > 0.01:

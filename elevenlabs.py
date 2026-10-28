@@ -146,6 +146,7 @@ def _decode(audio, fmt):
 
 
 V3 = "eleven_v3"
+V4 = "eleven_v4"   # 2.74.0: long-form model (10,000 characters a request), only stability + similarity; no audio tags, speed or style
 
 
 def model():
@@ -183,7 +184,10 @@ def speak(voice_id, text, speed=1.0, previous="", following="", tag="", model_id
     acted, not flat. If v3 refuses (an old plan, a voice v3 can't use), the line is read with multilingual v2 at a livelier setting."""
     mid = model_id or model()
     said = (f"[{tag}] " if tag and mid == V3 else "") + text
-    if mid == V3:   # v3: stability is 0 (creative), 0.5 (natural) or 1 (robust); no speed, no previous/next text
+    if mid == V4:   # v4: a whole section in one take reads at one even pace (the owner 10-28: "slow then fast ... inhuman")
+        body = {"text": text, "model_id": V4, "voice_settings": {"stability": float(getattr(settings, "ELEVEN_V4_STABILITY", 0.5)),
+                                                                 "similarity_boost": 0.75}}
+    elif mid == V3:   # v3: stability is 0 (creative), 0.5 (natural) or 1 (robust); no speed, no previous/next text
         body = {"text": said, "model_id": V3, "voice_settings": {"stability": float(getattr(settings, "ELEVEN_V3_STABILITY", 0.5)),
                                                                  "similarity_boost": 0.75, "use_speaker_boost": True}}
     else:
@@ -204,7 +208,7 @@ def speak(voice_id, text, speed=1.0, previous="", following="", tag="", model_id
                 out = _call(f"/text-to-speech/{voice_id}/with-timestamps?output_format={fmt}", body)
             except ElevenError as e2:
                 return _v3_fallback(mid, e2, voice_id, text, speed, previous, following)
-        elif mid == V3 and any(c in str(e) for c in ("HTTP 400", "HTTP 422", "model", "didn't accept")):
+        elif mid in (V3, V4) and any(c in str(e) for c in ("HTTP 400", "HTTP 422", "model", "didn't accept")):
             return _v3_fallback(mid, e, voice_id, text, speed, previous, following)
         else:
             raise
@@ -214,7 +218,7 @@ def speak(voice_id, text, speed=1.0, previous="", following="", tag="", model_id
 
 
 def _v3_fallback(mid, err, voice_id, text, speed, previous, following):
-    if mid != V3:
+    if mid not in (V3, V4):
         raise err
     return speak(voice_id, text, speed, previous, following, model_id="eleven_multilingual_v2")
 
