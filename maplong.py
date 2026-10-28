@@ -78,9 +78,10 @@ def voice(spec, folder):
 
 
 def _cue_time(line, word):
-    w = re.sub(r"[^a-z]", "", (word or "").lower())
+    # digits count too: a cue like "1976" used to become "" and fall back to the line's start (dates showed too early)
+    w = re.sub(r"[^a-z0-9]", "", (word or "").lower())
     for x in line["words"]:
-        if w and re.sub(r"[^a-z]", "", x[0].lower()).startswith(w):
+        if w and re.sub(r"[^a-z0-9]", "", x[0].lower()).startswith(w):
             return x[1]
     return line["t0"] + 0.3
 
