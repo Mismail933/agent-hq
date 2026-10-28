@@ -181,7 +181,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
         <g opacity={gfOp}>
           <Text {...xy(P([-53.15, 3.75]))} size={32} color="#FFFFFF" weight={800}>French Guiana</Text>
           <Text {...xy(P([-55.9, 4.2]))} size={34} op={named.SUR != null ? on(named.SUR, 8) : 1}>Suriname</Text>
-          <Text {...xy(P([-52.2, 1.2]))} size={42} op={on(named.BRA, 8)}>Brazil</Text>
+          <Text {...xy(P([-55.2, 1.0]))} size={42} op={on(named.BRA, 8)}>Brazil</Text>
           <g opacity={on(at('km730', -0.6), 12)}>
             <line x1={riv[0] + 8} y1={riv[1] + 4} x2={riv[0] + 60} y2={riv[1] + 70} stroke={C.accent} strokeWidth={2.5} />
             <Text x={riv[0] + 66} y={riv[1] + 102} size={28} anchor="start" color={C.accent} weight={800}>Oyapock River</Text>
