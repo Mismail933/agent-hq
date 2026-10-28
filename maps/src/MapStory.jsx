@@ -191,7 +191,8 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     if (!fill || op <= 0.01) return null;
     // clipped to the real land, so coasts and lakes are true; a bright outline (Bassel: refined borders and an outline, not a blob)
     if (r.wipe && a && b && r.k < 1) {   // Bassel: the new colour spreads from where it starts while the old one is pushed back
-      const [wx, wy] = P(r.wipe), R = Math.max(1, r.k * 1.6 * Math.max(W, H) * (cam[2] / 900));
+      const [wx, wy] = P(r.wipe), [[bx0, by0], [bx1, by1]] = path.bounds(r.ft), far = Math.max(...[[bx0, by0], [bx1, by0], [bx0, by1], [bx1, by1]].map(([x, y]) => Math.hypot(x - wx, y - wy)));
+      const R = Math.max(1, Easing.inOut(Easing.quad)(r.k) * far * 1.15);   // grows across the region itself, from its start to its far corner
       return (
         <g key={`g${id}`} clipPath="url(#land)">
           <defs><radialGradient id={`wg${id}`} cx={wx} cy={wy} r={R} gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#FFF" /><stop offset="0.86" stopColor="#FFF" /><stop offset="1" stopColor="#FFF" stopOpacity="0" /></radialGradient>
