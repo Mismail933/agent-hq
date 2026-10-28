@@ -85,7 +85,8 @@ const pinAt = (l, p, fps) => (l.follow && l.ship ? Math.max(p.at, sailFrames(l, 
 // the voyage of a ship line: frames it sails between (a follow line takes most of its line, up to 11 s), and how far along it is
 function sailFrames(l, fps) {
   if (!l.follow) return [Math.round((l.t0 + 0.2) * fps), Math.round(Math.min(l.t1, l.t0 + 4.2) * fps)];
-  const s0 = l.t0 + 0.9, s1 = Math.max(s0 + 2.4, Math.min(l.t1 - 0.6, l.t0 + 11.6));
+  // follow.to_end: the voyage takes the whole line, the ships arrive as the next line starts (Bassel: on 'In 1635')
+  const s0 = l.t0 + 0.9, s1 = l.follow.to_end ? l.t1 + 0.1 : Math.max(s0 + 2.4, Math.min(l.t1 - 0.6, l.t0 + 11.6));
   return [Math.round(s0 * fps), Math.round(s1 * fps)];
 }
 function sailP(l, f, fps) {
