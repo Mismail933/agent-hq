@@ -1150,6 +1150,36 @@ Agents never spend money without the owner's explicit approval.
   2.73.4: `phone._fit_video` really makes 720p (the height was capped at 1280, so 1080p stayed) and, when crf 28/33 don't fit a
   long video, sizes a bitrate from its length (480p under ~900 kbit/s, mono 48k): the 21-minute Storygraphics #4 came out at 54 MB and
   never reached the phone; tested on megalodon-full (20 min) -> 42.7 MB.
+- Storygraphics #5 (2.74.x): "You vs 11 km: Falling to the Bottom of the Mariana Trench" (the owner picked #1 on 10-28; "level up" the
+  Shorts, interactivity and animation). Script = episode 37 v7 through the gate (Israa 8, Builder 8.5; the Builder's rounds made it
+  flowing for the even voice, scratchpad ep37_flow.py / ep37_v5-7.py). A what-if: "you" fall in, Pip's yellow sub (imagined, labelled)
+  rides down, four numbered viewer questions, the foam cup loop, the plastic-bag turn. Studied for the animation (all MIT/Apache, ideas
+  only, nothing copied): Kianzzz/xilo-opus-video (render(t) purity, closed-form spring tiers, self-score rubric), lemomo-ai/lemo-opuscar
+  (DIRECTOR.md: hook in 3 s, one signature move, 4+ camera moves, anticipation/follow-through, two silences, sound as transition),
+  Vincentwei1021/mg-styles-15 (rubric: hook in 0.5 s, no dead or popping motion), heygen-com/hyperframes (HTML-to-video, Apache;
+  not adopted: our Remotion kit already does it). Clones in C:\Users\USER\agent-library\video-refs (reference only).
+  - The Short: `story/src/trench.jsx` `VShort` = composition "VShort" (1080x1920, Root.jsx), one continuous world (no per-line shots):
+    t_hook (Everest DROPS into the cross-section and lands on the trench floor in the first half second, brackets 2 KM OF WATER /
+    8.8 KM TALL on their words), t_float (you floating; a line from the deep; anticipation, the yank, feet-first out of frame), a
+    bubble wipe, t_dive (the camera rides down with you: green/blue/grey/dark keyed to the words, depth meter, ear-pop rings, kicking,
+    fish/glow/jelly passing), t_scale (pull back from you to the whole column, CHALLENGER DEEP pinned), t_end (YOU vs 11 KM, the
+    question, the channel line on their words; captions stop there). Shorts safe zone: the column's floor at 65% of the height, captions
+    at ~70%, nothing important right of x 950 or below ~80%. `VCaptions` 3 words, 85% -> 100% in 3 frames. Spec
+    content/project-5/samples/trench-short.json: `"composition": "VShort"`, `"voice_model": "eleven_v4"`, passage_chars 3000 (ONE take),
+    sound.voice style even. story_sample: spec `composition` (render/stills), line `p.bed` (a place's bed by name, "none").
+    Israa round 1: redo 6 (9 notes, all applied). Review scripts: scratchpad israa_sample.py <sample> "" <note file> + vsheets.py
+    (1 frame a second, the words under each).
+  - The full video: `story/src/trench2.jsx` `TRENCH_SHOTS` (in Opening's SHOTS): tw_dive (the column at p.from -> p.to metres on the
+    line's ABSOLUTE clock so specks/light/meter carry across cuts; Pip's `YSub` with two portholes and the cup in its mesh bag (p.cup =
+    its size), p.see passers (whale, snailfish, jelly, worm, amphipod, fish, turtle), p.card, p.chips, p.alone), tw_section (wide
+    cross-section: everest, zone bands + ZONE chips, you dot, pin), tw_surface (float | rescue | home), tw_cabin (window on the depth,
+    the ATMOSPHERES gauge, p.items [[cup|sandwich|blanket|point, word]]), tw_cards (questions/answers over dark water), tw_flash (1960
+    sepia: glow | fall | bang | compare with Cameron's sub), tw_pressure (cars dropping onto a 1 in² stamp), tw_fishline (7-9 km bar,
+    the 8,200 m limit, the fuzzy band, record fish, the protein that stiffens), tw_floor (landing, silt, amphipods, xenophyophore),
+    tw_bag (2019 panel, the bag, a counter), tw_cup (shrink, before/after, beads losing air), tw_ballast, tw_title. jungle Map: PLACES
+    challenger/guam/saipan, `p.arc` (a drawn-on curve + label: the trench). CAST pip, you; Figure pose `flail`. Spec built by scratchpad
+    make_trench_full.py from trench_lines.py (100 lines, asserted to add up to the script) -> samples/trench-full.json: the FREE voice
+    (chatterbox:am_michael, even) until the owner approves the Short's voice.
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

@@ -29,7 +29,11 @@ const keys = (f, ks) => {   // a colour through [frame, colour] keys
 const num = (f, ks) => interpolate(f, ks.map((k) => k[0]), ks.map((k) => k[1]), {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: io});
 
 // the frame (absolute) of a word in the line with this shot; `frac` of the line if the word isn't there
-const lineOf = (lines, shot) => lines.find((l) => l.shot === shot) || {start: 0, end: 30, words: []};
+const lineOf = (lines, shot) => {   // every line with this shot as one (a line split for a beat keeps its cues)
+  const ls = lines.filter((l) => l.shot === shot);
+  if (!ls.length) return {start: 0, end: 30, words: []};
+  return {...ls[0], end: ls[ls.length - 1].end, words: ls.flatMap((l) => l.words || [])};
+};
 const wordAt = (l, word, frac = 0.5, nth = 0) => {
   const want = String(word).toLowerCase().replace(/[^a-z0-9']/g, '');
   const hits = (l.words || []).filter((w) => w[0].toLowerCase().replace(/[^a-z0-9']/g, '').startsWith(want));
@@ -166,7 +170,7 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1}) {
 // ───────────── you: the swimmer ─────────────
 const You = ({f, pose = 'stand', expr = 'calm', rot = 0, x, y, s = 0.42, seed = 3, kick = 0}) => (
   <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
-    <Figure who="you" pose={pose} expr={expr} f={kick ? f * 2.2 : f} seed={seed} />
+    <Figure who="you" pose={pose} expr={expr} f={kick ? f * 2.2 : f} seed={seed} shadow={false} />
   </g>
 );
 // where a point of the figure (its own units: head centre 0,0; feet 0,1090) lands on screen

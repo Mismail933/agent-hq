@@ -308,18 +308,18 @@ export function Canopy({y0 = 700, f = 0, drift = 0, seed = 5, rows = 5, river = 
 
 // ───────────────── a whole person, front view (2.50.0) ─────────────────
 // head centre at (0,0) like Head; feet at y≈1100 (sitting/hugging: ≈800). pose: stand walk limp run wade signal shade hold push hug lie
-export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, lookY = 0, oneShoe = false, dir = 0, headExtra = null}) {
+export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, talk = false, seed = 1, dirty = 0, look = 0, lookY = 0, oneShoe = false, dir = 0, headExtra = null, shadow = true}) {
   const c = CAST[who] || CAST.passenger;
   const sk = SKINS[c.skin] || SKINS.light;
-  const walk = pose === 'walk' || pose === 'limp' || pose === 'run' || pose === 'push';
+  const walk = pose === 'walk' || pose === 'limp' || pose === 'run' || pose === 'push' || pose === 'kick';
   const sw = Math.sin((f + seed * 7) * (pose === 'run' ? 0.5 : 0.26));
   const side = walk && dir !== 0;   // a walk shown side-on: legs and arms swing forward and back, the body turned
-  const legL = walk ? (side ? -dir : 1) * sw * (pose === 'run' ? 30 : side ? 22 : 14) : 0;
+  const legL = walk ? (side ? -dir : 1) * sw * (pose === 'run' || pose === 'kick' ? 30 : side ? 22 : 14) : 0;
   const legR = pose === 'limp' ? (side ? dir : -1) * sw * 6 : -legL;
   const bob = walk ? -Math.abs(sw) * (pose === 'limp' ? 16 : 9) : Math.sin(f * 0.07 + seed) * 3;
   const arms = {
     stand: [6, -6], walk: [-sw * 18 + 6, sw * 18 - 6], limp: [-sw * 10 + 10, sw * 6 - 30], run: [-sw * 40, sw * 40], wade: [40, -40],
-    signal: [10, -165 + Math.sin(f * 0.5) * 18], shade: [8, -150], flail: [150 + Math.sin(f * 0.45) * 22, -150 + Math.sin(f * 0.45 + 1.4) * 22], hold: [-40, 40], push: [-60 + sw * 10, 60 - sw * 10], hug: [0, 0], lie: [10, -10],
+    signal: [10, -165 + Math.sin(f * 0.5) * 18], shade: [8, -150], flail: [150 + Math.sin(f * 0.45) * 22, -150 + Math.sin(f * 0.45 + 1.4) * 22], kick: [150 + Math.sin(f * 0.45) * 22, -150 + Math.sin(f * 0.45 + 1.4) * 22], hold: [-40, 40], push: [-60 + sw * 10, 60 - sw * 10], hug: [0, 0], lie: [10, -10],
   }[pose] || [6, -6];
   const leg = (x, a, shoe) => (
     <g transform={`translate(${x} 600) rotate(${a})`}>
@@ -373,7 +373,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
   }
   return (
     <g transform={`translate(0 ${bob})`}>
-      <ellipse cx={0} cy={1090 - bob} rx={200} ry={30} fill="#000" opacity={0.18} />
+      {shadow && <ellipse cx={0} cy={1090 - bob} rx={200} ry={30} fill="#000" opacity={0.18} />}
       {leg(-62, legL, true)}{leg(62, legR, !oneShoe)}
       {arm(-150, arms[0], 'l')}
       {dress}
