@@ -1217,6 +1217,8 @@ ACCENTS = []
 
 def bed_kind(l):
     p, s = l.get("p") or {}, l["shot"]
+    if p.get("bed"):   # 2.74.0: a line may name its place's bed (the vertical Short's own shots)
+        return None if p["bed"] == "none" else p["bed"]
     if s in OCEAN_SURFACE:
         return "sea"
     if s in OCEAN_DEEP:
@@ -1465,7 +1467,7 @@ def run(a, spec, folder):
         say("3. stills")
         for i, l in enumerate(props["lines"]):
             fr = int((l["start"] + l["end"]) / 2)
-            story.remotion(["still", "src/index.jsx", "Opening", str(folder / f"still-{i + 1:02d}-{l['shot']}.png"), f"--props={folder / 'props.json'}", f"--frame={fr}"], timeout=600)
+            story.remotion(["still", "src/index.jsx", spec.get("composition", "Opening"), str(folder / f"still-{i + 1:02d}-{l['shot']}.png"), f"--props={folder / 'props.json'}", f"--frame={fr}"], timeout=600)
         say("RESULT " + json.dumps({"stills": str(folder)}))
         return
     say("3. render")
@@ -1474,7 +1476,7 @@ def run(a, spec, folder):
     # the picture without sound, then our own measured mix added with ffmpeg: Remotion's audio step crashed on a 10-minute track
     # (its ffmpeg exited -2 after 24 minutes of frames, 2026-10-17)
     silent = folder / "_picture.mp4"
-    story.remotion(["render", "src/index.jsx", "Opening", str(silent), f"--props={folder / 'props.json'}", f"--concurrency={story.CONCURRENCY}", "--codec=h264",
+    story.remotion(["render", "src/index.jsx", spec.get("composition", "Opening"), str(silent), f"--props={folder / 'props.json'}", f"--concurrency={story.CONCURRENCY}", "--codec=h264",
                     "--crf=18", "--muted", "--overwrite", "--log=error"])
     ff = shorts.find_ffmpeg()
     r = subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(silent), "-i", str(wav), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",

@@ -131,6 +131,7 @@ export const CAST = {
   toshiko: {hair: '#6B645D', hairLight: '#A39B92', brow: '#4A4038', dress: '#7A3E5A', dressShade: '#5E2E45', style: 'long', lips: true},   // 2010, in her sixties: grey in the long hair   // long dark hair, no glasses: not Hisako's grey bob (Israa)
   katsutoshi: {hair: '#43464D', hairLight: '#686C75', brow: '#2E3036', dress: '#B9CCE0', dressShade: '#94A9C2', style: 'short'},   // the son at 59: dark grey hair, no glasses, a light shirt (not his father, young or old)
   officer: {hair: '#7A5230', hairLight: '#9A6A40', brow: '#5A3A20', dress: '#5B6B3A', dressShade: '#46532C', style: 'short', hat: 'cap', pants: '#46532C'},   // a US occupation officer (no name)
+  you: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#F97316', dressShade: '#C2410C', style: 'short', pants: '#1E3A5F'},   // Storygraphics #5: "you", the viewer, in the trench what-if
   visitor: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true, pants: '#111827'},
 };
 
@@ -317,7 +318,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
   const bob = walk ? -Math.abs(sw) * (pose === 'limp' ? 16 : 9) : Math.sin(f * 0.07 + seed) * 3;
   const arms = {
     stand: [6, -6], walk: [-sw * 18 + 6, sw * 18 - 6], limp: [-sw * 10 + 10, sw * 6 - 30], run: [-sw * 40, sw * 40], wade: [40, -40],
-    signal: [10, -165 + Math.sin(f * 0.5) * 18], shade: [8, -150], hold: [-40, 40], push: [-60 + sw * 10, 60 - sw * 10], hug: [0, 0], lie: [10, -10],
+    signal: [10, -165 + Math.sin(f * 0.5) * 18], shade: [8, -150], flail: [150 + Math.sin(f * 0.45) * 22, -150 + Math.sin(f * 0.45 + 1.4) * 22], hold: [-40, 40], push: [-60 + sw * 10, 60 - sw * 10], hug: [0, 0], lie: [10, -10],
   }[pose] || [6, -6];
   const leg = (x, a, shoe) => (
     <g transform={`translate(${x} 600) rotate(${a})`}>
