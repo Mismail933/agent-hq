@@ -339,7 +339,8 @@ export const VShort = ({lines = [], captions = true}) => {
     //    whole column, a pin marks the deepest point, and the speck keeps falling toward it. 5. the end card.
     const k = L(f, tOut, tOut + 40, 0, 1, Easing.out(Easing.cubic));
     const speckY = SURF + num(f, [[tOut, 1.3], [cWay, 2.6], [end, 4.2]]) * KM;
-    const cy = speckY + (960 - speckY) * k;   // the pull-back starts ON you and opens to the whole column
+    const k2 = L(f, tOut + 18, tOut + 48, 0, 1);   // you stay in the middle while the camera pulls out, THEN the frame settles on the column
+    const cy = speckY + (960 - speckY) * k2;   // the pull-back starts ON you and opens to the whole column
     const z = 6 - 5 * k + 0.08 * L(f, cDeepest, end, 0, 1);
     const b = sp(f, cEleven, 'snap');
     const pin = sp(f, cDeepest, 'sticker');
