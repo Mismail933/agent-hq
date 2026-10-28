@@ -10,7 +10,7 @@ import {FONT_CSS} from './fonts';
 const W = 1920, H = 1080, MAPX = W * 0.5, MAPY = H * 0.54;
 const C = {
   bg: ['#0A1426', '#03060D'], sea: '#0C1D38', grat: 'rgba(120,180,230,0.10)', atmo: '#4FC9F0',
-  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#FF9B6A', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE',
+  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#3FB8DE', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE', free: '#7FC47A',   /* Bassel: French blue, British red, Spanish yellow everywhere; free = independent */
   accent: '#FF6A3D', white: '#F2F7FF', text: '#EAF6FF', sub: '#C4DAE6', halo: 'rgba(3,8,16,0.85)',
 };
 const FRANCE = new Set(['FRA', 'GUF', 'FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);
