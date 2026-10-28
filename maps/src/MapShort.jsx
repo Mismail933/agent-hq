@@ -160,7 +160,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
             const op = t != null ? on(t, 8) : 0;
             const [x, y] = P(ll);
             if (TINY.has(a3)) {
-              const dx = a3 === 'MCO' ? 80 : -90, dy = a3 === 'LUX' ? -150 : 60;   // Luxembourg's label above Belgium's, clear of Germany's
+              const dx = a3 === 'MCO' ? 135 : a3 === 'AND' ? 130 : -90, dy = a3 === 'LUX' ? -150 : a3 === 'AND' ? 95 : a3 === 'MCO' ? 140 : 60;   // Luxembourg's label above Belgium's, clear of Germany's; Andorra's over the sea, clear of Spain's line and its km (Bassel)
               return (
                 <g key={a3} opacity={op}>
                   <circle cx={x} cy={y} r={6} fill={C.fill[a3]} stroke={C.white} strokeWidth={2} />
