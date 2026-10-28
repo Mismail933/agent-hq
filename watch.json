@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.311 (no retry of non-retryable errors; interrupt during hung MCP read)",
-   "checked": "2026-10-27"
+   "last_seen": "2.1.312 (routines effort picker; claude -p no-output fix)",
+   "checked": "2026-10-28"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-23 Claude Tag API; API version 2026-10-21 removes temperature/top_p/top_k",
-   "checked": "2026-10-27"
+   "last_seen": "2026-10-22 fast mode Opus 5.5 on Google Cloud",
+   "checked": "2026-10-28"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-26 S-1 filed; no new models",
-   "checked": "2026-10-27"
+   "last_seen": "2026-10-27 drug development, GSA; 10-22 Agent Skills to AAIF; no new models",
+   "checked": "2026-10-28"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -173,11 +173,11 @@
    "note": "MIT spec-driven coding harness; not needed."
   },
   "munder-difflin": {
-   "stars": 8856,
-   "last_commit": "2026-10-17",
+   "stars": 9136,
+   "last_commit": "2026-10-27",
    "verdict": "watch",
-   "checked": "2026-10-18",
-   "note": "local office of agents on subscriptions; only seen in search listing, repo not opened"
+   "checked": "2026-10-28",
+   "note": "HarnessMD/munder-difflin, MIT; README not yet read"
   },
   "JuliusBrussee/caveman": {
    "stars": 113500,

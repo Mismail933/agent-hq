@@ -1,0 +1,120 @@
+{
+ "date": "2026-10-28",
+ "focus": "tools",
+ "note": "No idea today. Claude Code moved to 2.1.312 (small fixes; cloud routines got an effort picker). Nothing in the sweep changes our code. This run was lighter than my target (8 searches, 6 pages), so I would rather bring nothing than a thin idea.",
+ "research": {
+  "searches": 8,
+  "pages_read": 6,
+  "minutes": 12,
+  "questions": [
+   "Did Claude Code 2.1.307-2.1.312 change anything in claude -p, --json-schema, sessions or permissions that our workers rely on?",
+   "Is there a new, well-licensed repo that replaces something we built (orchestration, token cost, faceless video)?",
+   "Did Anthropic change prices, models or the Skills standard in a way that needs action?"
+  ],
+  "gaps": [
+   "Did not open TeamYouTube's own 'Prioritizing original content on Shorts' post (already covered by earlier reports)",
+   "Did not open the repos' READMEs or LICENSE files, so no repo is rated candidate",
+   "affaan-m/ECC API call returned 403; not re-checked",
+   "Fewer than 15 searches and 8 pages"
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.312: effort picker for cloud routines; 'claude -p' fix for no output after an invalid command name; usage limit text says '5-hour limit'",
+  "Claude Code 2.1.311: claude -p / SDK transcripts saved out of order fixed",
+  "Claude Code 2.1.309: 'claude ultrareview' needs --trust-workspace in scripts (we do not use it)",
+  "Anthropic 2026-10-22: Agent Skills standard donated to the Agentic AI Foundation (governance only, no spec change, no action)",
+  "Pricing page lists Fable 5.1 cache hits at $0.25/MTok (Fable 5 was $1)"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new that needs action",
+   "why": "2.1.312 small fixes; no --json-schema change"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest entry 2026-10-22 (fast mode on Google Cloud); nothing for us"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "No new model; S-1, GSA, drug development items"
+  },
+  {
+   "title": "Donating Agent Skills to the Agentic AI Foundation",
+   "url": "https://anthropic.com/news/donating-agent-skills-to-the-agentic-ai-foundation",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Governance move; no action required"
+  },
+  {
+   "title": "Claude API pricing page",
+   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Only the top of the table was read; our spend-counter cost ideas still await your answer"
+  },
+  {
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Skill hubs and a GPL repo; nothing that replaces our code"
+  },
+  {
+   "title": "GitHub search: faceless shorts automation",
+   "url": "https://api.github.com/search/repositories?q=faceless+video+automation+shorts",
+   "tier": "C",
+   "result": "rejected",
+   "why": "All 1-star hobby repos, some auto-upload"
+  },
+  {
+   "title": "GitHub search: token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Only hit is noncommercial licence"
+  },
+  {
+   "title": "GitHub search: multi-agent on subscription",
+   "url": "https://api.github.com/search/repositories?q=multi-agent+orchestration+claude+subscription",
+   "tier": "B",
+   "result": "watch",
+   "why": "munder-difflin now 9,136 stars, MIT, pushed 10-27"
+  },
+  {
+   "title": "Web search: YouTube Shorts policy Oct 2026",
+   "url": "https://www.androidheadlines.com/2026/10/youtube-cuts-reach-reuploaded-shorts-originality-push.html",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "Same 1 Oct originality update already in earlier reports; YPP threshold numbers disagree between sources"
+  },
+  {
+   "title": "Web search: Telegram + Claude approval security",
+   "url": "https://github.com/anthropics/claude-plugins-official/issues/782",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "Community skills only; no official guidance found for our client bot"
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "HarnessMD/munder-difflin",
+   "url": "https://github.com/HarnessMD/munder-difflin",
+   "licence": "MIT",
+   "stars": 9136,
+   "last_commit": "2026-10-27",
+   "verdict": "watch",
+   "fit": "Local office of agents on a Claude subscription, close to what we built",
+   "why": "Active and MIT, but README and issues not read yet; we would not replace our own guardrails"
+  }
+ ],
+ "ideas": []
+}
