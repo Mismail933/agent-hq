@@ -55,9 +55,12 @@ function camera(f, lines, fps) {
       if (f >= s0) cur = followView(l, sailP(l, f, fps));
     }
     // spin {from, to, lat, scale}: the globe turns at an even speed through the line (Bassel: the overseas places' names appear as it turns)
-    if (l.spin && f >= a + 24) {
+    // spin.wait s: first a zoom out from the line's own view (e.g. close on French Guiana) to the whole globe, then the turn (Bassel)
+    const sa = l.spin && l.spin.wait ? a + Math.round(l.spin.wait * fps) : a + 24;
+    if (l.spin && l.spin.wait && f < sa) cur = move(l.view, [l.spin.from, l.spin.lat, l.spin.scale], interpolate(f, [Math.max(0, a), sa], [0, 1], {...clamp, easing: ease}));
+    if (l.spin && f >= sa) {
       const end = Math.round((l.t1 + (l.spin.extra != null ? l.spin.extra : 0.4)) * fps);   // extra: the turn runs on into the line's silence
-      cur = [interpolate(f, [a + 24, end], [l.spin.from, l.spin.to], clamp), l.spin.lat, l.spin.scale];
+      cur = [interpolate(f, [sa, end], [l.spin.from, l.spin.to], {...clamp, easing: Easing.inOut(Easing.sin)}), l.spin.lat, l.spin.scale];
     }
     // views [{at, view}]: the camera moves on mid-line (e.g. from Pondicherry to Saint-Louis on 'the island of Saint Louis')
     let base = l.view;
