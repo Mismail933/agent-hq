@@ -159,6 +159,8 @@ def part(folder):
             b["views"] = [{"at": cue(w), "view": v} for w, v in s["views"]]
         if s.get("label"):
             b["label"] = [s["label"][0], s["label"][1], s["label"][2]]
+        if s.get("ghost") and s["ghost"].get("on"):   # a country's outline carried inside another, on its word
+            b["ghost"] = {**s["ghost"], "at": cue(s["ghost"]["on"])}
         if s.get("event"):   # an animated event scene (story app, FranceEvent) made beforehand into long/events/<key>.mp4
             src = folder.parent / "events" / f"{s['event']['key']}.mp4"
             (mapsample.APP / "public" / "events").mkdir(parents=True, exist_ok=True)

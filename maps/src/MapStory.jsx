@@ -3,7 +3,7 @@
 // Same look as MapShort (his pick: the globe, white borders, coloured countries). Times come from the voice (props.lines t0/t1, s).
 import React from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig, Img, staticFile, Sequence, OffthreadVideo} from 'remotion';
-import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance, geoArea} from 'd3-geo';
+import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance, geoArea, geoRotation, geoCentroid} from 'd3-geo';
 import geo from './geo.json';
 import {FONT_CSS} from './fonts';
 
@@ -120,6 +120,20 @@ function followView(l, p) {
   return [c[0], c[1], z];
 }
 
+const FLAG = {
+  bourbon: <g><rect width={56} height={36} fill="#F7F5EE" stroke="#8A8270" strokeWidth={1} />{[[12, 10], [30, 10], [46, 10], [20, 24], [38, 24]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={3} fill="#C9A227" />)}</g>,
+  union: <g><rect width={56} height={36} fill="#1F3A7A" /><path d="M 0 0 L 56 36 M 56 0 L 0 36" stroke="#F2F2F2" strokeWidth={7} /><path d="M 28 0 L 28 36 M 0 18 L 56 18" stroke="#F2F2F2" strokeWidth={11} /><path d="M 28 0 L 28 36 M 0 18 L 56 18" stroke="#C8102E" strokeWidth={6} /></g>,
+  burgundy: <g><rect width={56} height={36} fill="#F7F5EE" stroke="#8A8270" strokeWidth={1} /><path d="M 8 4 L 48 32 M 48 4 L 8 32" stroke="#B3282C" strokeWidth={5} strokeLinecap="round" /></g>,
+  tricolore: <g><rect width={19} height={36} fill="#1F3A9A" /><rect x={19} width={18} height={36} fill="#F4F2EC" /><rect x={37} width={19} height={36} fill="#D22B33" /></g>,
+  us15: <g>{[...Array(15)].map((_, i) => <rect key={i} y={i * 2.4} width={56} height={2.4} fill={i % 2 ? '#F4F2EC' : '#B22234'} />)}<rect width={24} height={19.2} fill="#2B3A78" /></g>,
+};
+// a flag on a short pole, scale s (0 hides it)
+const PoleFlag = ({x, y, s, f, name}) => (s <= 0.01 || !FLAG[name] ? null :
+  <g transform={`translate(${x} ${y}) scale(${1.5 * s})`}>
+    <rect x={-1.5} y={-62} width={3} height={62} fill="#E8E4DA" /><ellipse cx={0} cy={0} rx={10} ry={3} fill="rgba(0,0,0,0.45)" />
+    <g transform={`translate(1.5 -62) skewY(${Math.sin(f / 7) * 3})`}>{FLAG[name]}</g>
+  </g>);
+
 export const MapStory = ({lines = [], seconds = 10}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -166,8 +180,8 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     if (!ring) return;
     let ft = {type: 'Polygon', coordinates: [[...ring, ring[0]]]};
     if (geoArea(ft) > 2 * Math.PI) ft = {type: 'Polygon', coordinates: [[...ring, ring[0]].reverse()]};
-    const k = i === li ? on(l.t0 + 0.2, 16) : 1;
-    regions[r.id] = {ring, ft, color: r.color, from: was ? was.color : 'none', k, label: r.label || (was && was.label)};
+    const k = i === li ? on(l.t0 + 0.2, Math.round((r.slow || 0.55) * fps)) : 1;
+    regions[r.id] = {ring, ft, color: r.color, from: was ? was.color : 'none', k, label: r.label || (was && was.label), wipe: i === li ? r.wipe : null, flags: i === li ? r.flags : null, flagAt: r.flagAt};
   }));
   const regionPaths = Object.entries(regions).map(([id, r]) => {
     const col = (c) => (c === 'none' ? null : C[c] || c);
@@ -176,6 +190,18 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     const fill = b && a && r.k < 1 ? interpolateColor(a, b, r.k) : b || a;
     if (!fill || op <= 0.01) return null;
     // clipped to the real land, so coasts and lakes are true; a bright outline (Bassel: refined borders and an outline, not a blob)
+    if (r.wipe && a && b && r.k < 1) {   // Bassel: the new colour spreads from where it starts while the old one is pushed back
+      const [wx, wy] = P(r.wipe), R = Math.max(1, r.k * 1.6 * Math.max(W, H) * (cam[2] / 900));
+      return (
+        <g key={`g${id}`} clipPath="url(#land)">
+          <defs><radialGradient id={`wg${id}`} cx={wx} cy={wy} r={R} gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#FFF" /><stop offset="0.86" stopColor="#FFF" /><stop offset="1" stopColor="#FFF" stopOpacity="0" /></radialGradient>
+            <mask id={`wm${id}`} maskUnits="userSpaceOnUse" x={-W} y={-H} width={3 * W} height={3 * H}><rect x={-W} y={-H} width={3 * W} height={3 * H} fill={`url(#wg${id})`} /></mask></defs>
+          <path d={path(r.ft)} fill={a} fillOpacity={0.62} />
+          <path d={path(r.ft)} fill={b} fillOpacity={0.7} mask={`url(#wm${id})`} />
+          <path d={path(r.ft)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeOpacity={0.95} strokeLinejoin="round" />
+        </g>
+      );
+    }
     return (
       <g key={`g${id}`} clipPath="url(#land)">
         <path d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.62 : op} />
@@ -183,6 +209,26 @@ export const MapStory = ({lines = [], seconds = 10}) => {
       </g>
     );
   });
+  const regionFlags = Object.entries(regions).filter(([, r]) => r.flags).map(([id, r]) => {
+    const [ox, oy] = P(r.flagAt || r.label?.[1] || r.wipe), [nx, ny] = P(r.wipe || r.flagAt);
+    const k = r.k, out = 1 - Math.min(1, k * 1.6), inn = Math.min(1, Math.max(0, (k - 0.15) / 0.5));
+    return <g key={`fl${id}`}><PoleFlag x={ox} y={oy} s={out * (1 - 0.2 * k)} f={f} name={r.flags[0]} /><PoleFlag x={nx} y={ny} s={inn < 1 ? spring({frame: Math.round(inn * 20), fps, config: {damping: 10}}) : 1} f={f + 9} name={r.flags[1]} /></g>;
+  });
+  // ghost {a3, to [lon, lat], label}: a country's own outline carried across the globe by a rotation (its size stays true)
+  let ghost = null;
+  if (line.ghost) {
+    const src = geo.detail.features.find((ft) => ft.properties.a3 === line.ghost.a3) || WORLD.find((ft) => ft.properties.a3 === line.ghost.a3);
+    if (src) {
+      const c0 = geoCentroid(src), to = line.ghost.to, rA = geoRotation([-c0[0], -c0[1]]), rB = geoRotation([-to[0], -to[1]]);
+      const move = (pt) => rB.invert(rA(pt));
+      const mv = (cs) => (typeof cs[0] === 'number' ? move(cs) : cs.map(mv));
+      const moved = {type: 'Feature', geometry: {type: src.geometry.type, coordinates: mv(src.geometry.coordinates)}};
+      const k = on((line.ghost.at != null ? line.ghost.at : line.t0 + 0.6), 18);
+      const [lx, ly] = P(to);
+      ghost = <g opacity={k}><path d={path(moved)} fill="url(#france)" fillOpacity={0.85} stroke="#E8FBFF" strokeWidth={3} />
+        {line.ghost.label ? <Text x={lx} y={ly + 8} size={30} color={C.white} op={k}>{line.ghost.label}</Text> : null}</g>;
+    }
+  }
   // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
   const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} /> : null;
   // dates [[seconds, text]]: the chip changes on its words (1642 -> 1665 -> Today)
@@ -208,6 +254,8 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         {world}
         {detail}
         {regionPaths}
+        {ghost}
+        {regionFlags}
         {voyage}
         {lines.map((l, i) => (l.river && geo.rivers[l.river] && i === li ? (
           <g key={`r${i}`}>
