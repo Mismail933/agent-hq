@@ -144,6 +144,12 @@ def part(folder):
     pdir = folder.parent / "photos"
     credits = json.loads((pdir / "credits.json").read_text(encoding="utf-8")) if (pdir / "credits.json").exists() else {}
     (mapsample.APP / "public" / "photos").mkdir(parents=True, exist_ok=True)
+    icons = mapsample.APP / "public" / "icons"   # Microsoft Fluent Emoji, flat (MIT), for fx/shake
+    icons.mkdir(parents=True, exist_ok=True)
+    for name, dst in (("Crossed swords/Flat/crossed_swords_flat.svg", "crossed-swords.svg"), ("Handshake/Flat/handshake_flat.svg", "handshake.svg")):
+        srcf = Path.home() / ".agent-hq-anim" / "fluent-emoji" / "assets" / name
+        if srcf.exists() and not (icons / dst).exists():
+            shutil.copy(srcf, icons / dst)
     beats = []
     for s, l in zip(spec["story"], story):
         cue = lambda w: round(_cue_time(l, w) - split, 3)
@@ -160,6 +166,12 @@ def part(folder):
             b["views"] = [{"at": cue(w), "view": v} for w, v in s["views"]]
         if s.get("label"):
             b["label"] = [s["label"][0], s["label"][1], s["label"][2]]
+        if s.get("tints"):   # [[cue, "HTI:free"]]: a filled place changes colour on its word
+            b["tints"] = [{"at": cue(w), "code": c} for w, c in s["tints"]]
+        if s.get("fx"):   # [["battle", cue, seconds, [[lon, lat], ...]]]: battles flare on the map while the narrator goes on
+            b["fx"] = [{"kind": k, "at": cue(w), "dur": d, "pts": pts} for k, w, d, pts in s["fx"]]
+        if s.get("shake"):   # {ll, flags, on}: a handshake over the area with both flags
+            b["shake"] = {**s["shake"], "at": cue(s["shake"]["on"])}
         if s.get("ghost") and s["ghost"].get("on"):   # a country's outline carried inside another, on its word
             b["ghost"] = {**s["ghost"], "at": cue(s["ghost"]["on"])}
         if s.get("event"):   # an animated event scene (story app, FranceEvent) made beforehand into long/events/<key>.mp4

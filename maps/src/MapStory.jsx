@@ -176,10 +176,18 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     if (span > 0 && !who) delete tint[a3];
     fills[a3] = Math.max(fills[a3] || 0, span);
   }));
+  lines.forEach((l, i) => (l.tints || []).forEach((x) => {
+    if (i > li || t < x.at) return;
+    const [a3, who] = x.code.split(':'), from = tint[a3] || C.fill, to = who === '-' ? C.fr : C[who] || C.fill;
+    const k = on(x.at, 18);
+    if (who === '-' && k >= 1) { delete tint[a3]; return; }   // ':-' = back to France's own colour
+    tint[a3] = k >= 1 ? to : interpolateColor(from.startsWith('#') ? from : C.fill, to, k);
+    fills[a3] = Math.max(fills[a3] || 0, 1);
+  }));
   const detail = geo.detail.features.map((ft) => {
     const a3 = ft.properties.a3;
     const k = fills[a3] || 0;
-    const fr = a3 === 'FRA' || (FRANCE.has(a3) && k > 0);   // a French territory turns France's colour once the story reaches it
+    const fr = a3 === 'FRA' || (FRANCE.has(a3) && k > 0 && !tint[a3]);   // a tint (e.g. ':uk') wins over France's colour   // a French territory turns France's colour once the story reaches it
     const fill = fr ? 'url(#france)' : k > 0 ? (tint[a3] || C.fill) : C.land;
     return <path key={a3} d={path(ft)} fill={fill} fillOpacity={fr ? (a3 === 'FRA' ? 1 : 0.3 + 0.7 * k) : k > 0 ? 0.35 + 0.6 * k : 1}
                  stroke={fr ? '#E8FBFF' : C.line} strokeWidth={fr ? 2 : 1.6} />;
@@ -198,7 +206,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     if (!ring) return;
     let ft = {type: 'Polygon', coordinates: [[...ring, ring[0]]]};
     if (geoArea(ft) > 2 * Math.PI) ft = {type: 'Polygon', coordinates: [[...ring, ring[0]].reverse()]};
-    const k = i === li ? on(l.t0 + 0.2, Math.round((r.slow || 0.55) * fps)) : 1;
+    const k = i === li ? on(l.t0 + (r.delay != null ? r.delay : 0.2), Math.round((r.slow || 0.55) * fps)) : 1;
     regions[r.id] = {ring, ft, color: r.color, from: was ? was.color : 'none', k, label: r.label || (was && was.label), wipe: i === li ? r.wipe : null, flags: i === li ? r.flags : null, flagAt: r.flagAt};
   }));
   const regionPaths = Object.entries(regions).map(([id, r]) => {
@@ -249,7 +257,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     }
   }
   // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
-  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} /> : null;
+  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} flag={line.shipflag} /> : null;
   // dates [[seconds, text]]: the chip changes on its words (1642 -> 1665 -> Today)
   let dateText = line.date, dateAt = line.t0;
   (line.dates || []).forEach(([s, txt]) => { if (t >= s) { dateText = txt; dateAt = s; } });
@@ -295,6 +303,8 @@ export const MapStory = ({lines = [], seconds = 10}) => {
             </g>
           );
         }))}
+        {(line.fx || []).map((x, i) => <Battle key={`fx${i}`} x={x} P={P} f={f} fps={fps} />)}
+        {line.shake ? <Shake s={line.shake} P={P} f={f} fps={fps} /> : null}
       </svg>
       {line.photo ? <Photo ph={line.photo} a={line.photo.at != null ? line.photo.at : line.t0 + 0.35}
                            b={line.photo.until != null ? line.photo.until : line.photo2 ? line.photo2.at - 0.1 : nextT0 - 0.15} f={f} fps={fps} /> : null}
@@ -377,7 +387,7 @@ function EventClip({ev, t0, f, fps}) {
   );
 }
 
-function Voyage({pts, proj, path, p, f, big = false}) {
+function Voyage({pts, proj, path, p, f, big = false, flag = null}) {
   const {dense, at} = courseOf(pts);
   const {here, j} = at(p);
   const done = [...dense.slice(0, j), here];
@@ -395,8 +405,55 @@ function Voyage({pts, proj, path, p, f, big = false}) {
         <line x1={12} y1={2} x2={12} y2={-28} stroke="#F2EEE4" strokeWidth={2.5} />
         <path d="M-4 -36 Q10 -22 -4 -4 Z" fill="#F2EEE4" />
         <path d="M12 -26 Q24 -16 12 -2 Z" fill="#F2EEE4" />
-        <path d="M-4 -38 L-18 -33 L-4 -29 Z" fill="#49C6E6" />
+        {flag && FLAG[flag] ? <g transform={`translate(-4 -54) scale(${0.42 * dir} 0.42)`}>{FLAG[flag]}</g> : <path d="M-4 -38 L-18 -33 L-4 -29 Z" fill="#49C6E6" />}
       </g>
+    </g>
+  );
+}
+
+// fx {kind 'battle', at, dur, pts}: small battles over the map while the narrator goes on (Bassel): bursts flare and fade at each
+// point in turn, crossed swords over the first point
+function Battle({x, P, f, fps}) {
+  const a = Math.round(x.at * fps), b = a + Math.round((x.dur || 3) * fps);
+  if (f < a - 2 || f > b + 20) return null;
+  const fade = interpolate(f, [a, a + 8, b, b + 20], [0, 1, 1, 0], clamp);
+  const [sx, sy] = P(x.pts[0]);
+  return (
+    <g opacity={fade}>
+      {x.pts.flatMap((ll, j) => [0, 1, 2].map((r) => {
+        const start = a + Math.round(((j * 7 + r * 13) % 23) * 1.3) + r * 22;   // staggered, a new flare every ~0.7 s per point
+        const k = (f - start) / 18;
+        if (k < 0 || k > 1 || start > b) return null;
+        const [cx, cy] = P(ll), R = 10 + 34 * k;
+        return (
+          <g key={`b${j}-${r}`} opacity={1 - k}>
+            <circle cx={cx} cy={cy} r={R} fill="#FFB35A" fillOpacity={0.35} stroke="#FFE2A8" strokeWidth={3} />
+            {[...Array(8)].map((_, q) => {
+              const ang = (q / 8) * Math.PI * 2 + j;
+              return <line key={q} x1={cx + Math.cos(ang) * R * 0.5} y1={cy + Math.sin(ang) * R * 0.5} x2={cx + Math.cos(ang) * R * 1.15} y2={cy + Math.sin(ang) * R * 1.15}
+                           stroke="#FFF3D6" strokeWidth={3} strokeLinecap="round" />;
+            })}
+          </g>
+        );
+      }))}
+      <image href={staticFile('icons/crossed-swords.svg')} x={sx - 34} y={sy - 96} width={68} height={68}
+             transform={`rotate(${Math.sin(f / 5) * 6} ${sx} ${sy - 62})`} />
+    </g>
+  );
+}
+
+// shake {ll, flags [a, b], at}: two hands shaking over the area with each country's flag (Bassel: the secret deal with Spain)
+function Shake({s, P, f, fps}) {
+  const a = Math.round(s.at * fps);
+  if (f < a) return null;
+  const k = spring({frame: f - a, fps, config: {damping: 11, stiffness: 140}, durationInFrames: 22});
+  const [x, y] = P(s.ll), bob = Math.sin((f - a) / 4) * 4 * Math.max(0, 1 - (f - a) / 40);
+  return (
+    <g transform={`translate(${x} ${y}) scale(${k})`}>
+      <circle r={74} fill="rgba(3,8,16,0.55)" />
+      <image href={staticFile('icons/handshake.svg')} x={-56} y={-56 + bob} width={112} height={112} />
+      <PoleFlag x={-96} y={34} s={1} f={f} name={s.flags[0]} />
+      <PoleFlag x={96} y={34} s={1} f={f + 9} name={s.flags[1]} />
     </g>
   );
 }
