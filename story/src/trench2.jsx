@@ -662,5 +662,33 @@ function TwTitle({f, len, line}) {
   );
 }
 
+// the thumbnail (Thumb id 'trench'): a scared you being pulled down on the left, the depth ruler to 10,935 M on the right with the
+// little yellow sub's light finding something on the floor, YOU vs 11 KM in the channel's boxes
+export function TrenchArt() {
+  const T = 40;
+  return (
+    <g>
+      <linearGradient id="tt-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#3FA9E0" /><stop offset="0.35" stopColor="#11407A" /><stop offset="0.75" stopColor="#04122A" /><stop offset="1" stopColor="#010409" /></linearGradient>
+      <rect width={W} height={H} fill="url(#tt-bg)" />
+      {[...Array(5)].map((_, i) => <path key={i} d={`M ${80 + i * 260} -20 l 90 0 l 200 700 l -110 0 Z`} fill="#D6F1FF" opacity={0.12} />)}
+      {[...Array(60)].map((_, i) => { const R = rng(400 + i); return <circle key={i} cx={R() * W} cy={R() * H} r={2 + R() * 5} fill="#E6F4FF" opacity={0.35} />; })}
+      {/* you, pulled down: the line from the ankles into the dark */}
+      <path d="M 520 1080 C 540 980 470 900 500 820" stroke="#0A0E14" strokeWidth={14} fill="none" />
+      <g transform="translate(520 470) rotate(-6) scale(1.25)"><Bust who="you" x={0} y={0} expr="shock" f={T} arms="flail" /></g>
+      {[...Array(9)].map((_, i) => <circle key={'b' + i} cx={640 + (i % 3) * 40} cy={300 - i * 34} r={10 + (i % 4) * 5} fill="none" stroke="#E6F7FF" strokeWidth={5} opacity={0.85} />)}
+      {/* the depth ruler down the right */}
+      <path d="M 1500 120 L 1500 1000" stroke="#E6F2FF" strokeWidth={8} opacity={0.8} />
+      {[0, 2, 4, 6, 8, 10].map((k) => <path key={k} d={`M 1500 ${120 + k * 80} l 40 0`} stroke="#E6F2FF" strokeWidth={8} opacity={0.8} />)}
+      <g transform="translate(1560 990)"><circle r={60} fill="#EF4444" opacity={0.25} /><Box x={0} y={-60} w={330} h={100} text="10,935 M" fill="#EF4444" color="#fff" rot={-2} /></g>
+      <path d="M 1240 900 L 1060 1080 L 1300 1080 Z" fill="#FFF6C8" opacity={0.22} />
+      <g transform="translate(1330 880) scale(0.45)"><YSub T={T} beam={0} /></g>
+      <g transform="translate(1180 1010) scale(0.6)"><Bag T={T} /></g>
+      <Box x={960} y={70} w={330} h={190} text="YOU" fill="#FDE047" rot={-4} />
+      <text x={1360} y={225} fontFamily={OSWALD} fontWeight={700} fontSize={110} fill="#fff" stroke={INK} strokeWidth={12} paintOrder="stroke">vs</text>
+      <Box x={960} y={290} w={520} h={210} text="11 KM" fill="#FFFFFF" rot={3} />
+    </g>
+  );
+}
+
 export const TRENCH_SHOTS = {tw_dive: Dive, tw_section: Section, tw_surface: Surface, tw_cabin: Cabin, tw_cards: Cards, tw_flash: Flashback,
   tw_pressure: Pressure, tw_fishline: FishLine, tw_floor: Floor, tw_bag: Bag2019, tw_cup: Cup, tw_ballast: Ballast, tw_title: TwTitle};
