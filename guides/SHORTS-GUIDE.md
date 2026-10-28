@@ -1,0 +1,48 @@
+# Storygraphics Shorts: what a Short must get right
+
+Learned on the trench Short (Storygraphics #5, 2026-10-29): Israa's two rounds (redo 6, then 7), Tarek's two rounds, the Builder's own
+frame checks, and the owner's words ("a catchy short that makes people click", "level up the animation", "the sound should not be slow
+then fast"). Read this before making the next Short; the reviewers check every point.
+
+## Shape
+- **Native 9:16.** Build the Short as its own vertical composition (`trench.jsx` `VShort` is the model), never a wide video cropped.
+  A story that moves up or down (a fall, a climb, a dive, a launch) is made for vertical: one continuous camera ride beats cuts.
+- **Frame 1 is the hook.** The most striking picture is on screen in the first half second (Everest dropping into the sea), with the
+  headline already full size. No plain background, no growing-from-nothing caption, no slow pan into the subject.
+- **One signature move** that only animation can do (the zoom through the sea surface), and a payoff picture the whole Short builds to.
+- **The end card says its own words** on the voice's words; burned-in captions stop before it (no doubled text). It keeps moving
+  (a slow push), and nothing from the scene behind shows through it.
+- 45-60 s. The last line points to the full video ("The whole dive is on our channel") and is posted after the full video is public,
+  with the full video set as the Related video.
+
+## Safe zones (1080 x 1920)
+- Top ~6%: the Shorts top bar (search, camera). Headlines start at about y 110.
+- Right edge x > ~950, from ~45% to ~85% of the height: like / dislike / comment / share. No tags or numbers there.
+- Bottom ~20%: channel name, title, music. Nothing important below ~80% (y 1536); a diagram's floor sits at ~65%.
+- Captions at ~70% of the height (y ~1330), centred, max width 900.
+- Check every tag on the LAST frame of any push-in, not the first (a slow push carries tags off the edge).
+
+## Captions
+- 3 words at a time (a sentence's last 3 words get their own chunk, never a lone last word), big Oswald with a thick outline, the
+  spoken word yellow. Readable from the first frame: start at 85% size, full in 3 frames.
+- A caption never crosses the character. A push-in is anchored high (the head at ~40% of the height) so the body stays above them.
+
+## Motion
+- Everything is a function of the frame (closed-form springs in tiers: snap for small tags, card for boxes, heavy for big type,
+  sticker for playful pops). No dead frames: the camera always drifts (noise), and something new arrives every 2-4 s.
+- Anticipation before a hit (the jolt before the yank), follow-through after (splash, bubbles, a bounce on landing).
+- Every zoom eases in AND out over 0.4-0.8 s; no snap back. Labels fade out before a fast move, not smeared through it.
+- Transitions from the world itself (a bubble wipe under water, a zoom through the surface), never a crossfade that leaves a ghost.
+- A pull-back starts from the character at the size it had (it shrinks into the dot), never from an empty frame.
+- Run `musicvideo.motion_report` (story_sample does) and read its stalls and jumps before calling it done.
+
+## Sound and voice
+- The voice: one continuous Eleven v4 take for the whole Short (`voice_model` eleven_v4, `passage_chars` 3000), style `even` (one
+  tempo for everything). Written as flowing sentences; a short beat (line `p.pause` 0.5-0.6) only where the picture needs it.
+- Music 16-20 dB under the voice; no beds unless the library has one that really sounds like the place (Tarek: the sea bed sounds
+  like wind, the deep bed like booms). Two or three accents only, each on something seen (a landing, a splash, the end card).
+- Measure, then listen: the loudness report, Whisper's heard-words share (95%+), and Earshot via Tarek.
+
+## Reviews before the owner
+Israa (`scratchpad israa_sample.py <sample> "" <note>` with `vsheets.py` 1-frame-a-second sheets) and Tarek (`hq sound <spec> <video>`)
+both, then the Builder's own dense tile of the opening, the transitions and the end.

@@ -1169,6 +1169,9 @@ Agents never spend money without the owner's explicit approval.
     sound.voice style even. story_sample: spec `composition` (render/stills), line `p.bed` (a place's bed by name, "none").
     Israa round 1: redo 6 (9 notes, all applied). Review scripts: scratchpad israa_sample.py <sample> "" <note file> + vsheets.py
     (1 frame a second, the words under each).
+    Round 2: redo 7 ('close'; tag off the edge, captions over the legs on the push-in, a dark frame before the pull-back...), all
+    applied. **`guides/SHORTS-GUIDE.md`** = everything the reviewers check on a Short (shape, safe zones, captions, motion, sound):
+    read it before the next Short.
   - The full video: `story/src/trench2.jsx` `TRENCH_SHOTS` (in Opening's SHOTS): tw_dive (the column at p.from -> p.to metres on the
     line's ABSOLUTE clock so specks/light/meter carry across cuts; Pip's `YSub` with two portholes and the cup in its mesh bag (p.cup =
     its size), p.see passers (whale, snailfish, jelly, worm, amphipod, fish, turtle), p.card, p.chips, p.alone), tw_section (wide
