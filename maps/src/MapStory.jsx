@@ -45,9 +45,9 @@ function camera(f, lines, fps) {
     const l = lines[i];
     const a = Math.round((l.t0 - 0.15) * fps);
     if (i > 0 && f < a) break;
+    const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
     if (i > 0) {
       const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.spin ? [l.spin.from, l.spin.lat, l.spin.scale] : l.view;
-      const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
       cur = move(prev, next, interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease}));
     }
     if (l.follow && l.ship) {
@@ -56,7 +56,7 @@ function camera(f, lines, fps) {
     }
     // spin {from, to, lat, scale}: the globe turns at an even speed through the line (Bassel: the overseas places' names appear as it turns)
     // spin.wait s: first a zoom out from the line's own view (e.g. close on French Guiana) to the whole globe, then the turn (Bassel)
-    const sa = l.spin && l.spin.wait ? a + Math.round(l.spin.wait * fps) : a + 24;
+    const sa = l.spin && l.spin.wait ? a + Math.round(l.spin.wait * fps) : a + Math.max(24, dur);   // the turn starts once the move there is done (Bassel: it cut)
     if (l.spin && l.spin.wait && f < sa) cur = move(l.view, [l.spin.from, l.spin.lat, l.spin.scale], interpolate(f, [Math.max(0, a), sa], [0, 1], {...clamp, easing: ease}));
     if (l.spin && f >= sa) {
       const end = Math.round((l.t1 + (l.spin.extra != null ? l.spin.extra : 0.4)) * fps);   // extra: the turn runs on into the line's silence
