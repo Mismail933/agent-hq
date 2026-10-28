@@ -379,8 +379,9 @@ CUE_WORDS_V2 = [("q", "which", 0, 0), ("deu", "germany", 0, 0), ("km418", "@deu"
                 ("pyf", "polynesia", 0, 0), ("clp", "@pyf", 0, 0.8), ("q2", "so", 0, 0), ("still", "still", 0, 0), ("link", "find", 0, 0)]
 
 
-def cues_v2(words, alias=None):
-    """alias {cue: word}: a script that words a beat differently (e.g. no 'But' before the flight)."""
+def cues_v2(words, alias=None, missing_ok=False):
+    """alias {cue: word}: a script that words a beat differently (e.g. no 'But' before the flight). missing_ok: a beat whose word is never
+    said is pushed past the end (the long version cuts the short after the Brazil reveal: Bassel 10-28)."""
     norm = [(re.sub(r"[^a-z]", "", w[0].lower()), float(w[1])) for w in words]
     out = {}
     for key, word, which, add in CUE_WORDS_V2:
@@ -389,6 +390,9 @@ def cues_v2(words, alias=None):
             out[key] = round(out[word[1:]] + add, 3)
             continue
         hits = [t for w, t in norm if w == word]
+        if len(hits) <= which and missing_ok:
+            out[key] = 99999.0
+            continue
         if len(hits) <= which:
             raise ValueError(f"the voice never says '{word}' (cue {key})")
         out[key] = round(hits[which] + add, 3)
