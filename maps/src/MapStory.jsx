@@ -46,13 +46,18 @@ function camera(f, lines, fps) {
     const a = Math.round((l.t0 - 0.15) * fps);
     if (i > 0 && f < a) break;
     if (i > 0) {
-      const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.view;
+      const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.spin ? [l.spin.from, l.spin.lat, l.spin.scale] : l.view;
       const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
       cur = move(prev, next, interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease}));
     }
     if (l.follow && l.ship) {
       const [s0] = sailFrames(l, fps);
       if (f >= s0) cur = followView(l, sailP(l, f, fps));
+    }
+    // spin {from, to, lat, scale}: the globe turns at an even speed through the line (Bassel: the overseas places' names appear as it turns)
+    if (l.spin && f >= a + 24) {
+      const end = Math.round((l.t1 + 0.4) * fps);
+      cur = [interpolate(f, [a + 24, end], [l.spin.from, l.spin.to], clamp), l.spin.lat, l.spin.scale];
     }
     // views [{at, view}]: the camera moves on mid-line (e.g. from Pondicherry to Saint-Louis on 'the island of Saint Louis')
     let base = l.view;
