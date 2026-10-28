@@ -19,6 +19,7 @@ const sp = (f, a, tier = 'card') => clamp(spr((f - a) / 30, ...TIER[tier]), 0, 1
 const io = Easing.bezier(0.45, 0, 0.55, 1);
 const hand = (T, k = 1) => [noise2D('hx', T * 0.02, 0) * 14 * k, noise2D('hy', 0, T * 0.02) * 10 * k];
 const fmtM = (m) => `${Math.round(m).toLocaleString('en-US')} M`;
+const cupAt = (m) => 1 - 0.58 * clamp(m / 11000, 0, 1);   // the foam cup in the mesh bag shrinks as the pressure grows (0.42 at the bottom)
 
 // the water's colour by depth (metres): sunlit blue -> twilight -> black
 const DEPTH = [[0, '#47AEE2'], [100, '#2B8BC4'], [200, '#1F6FA8'], [600, '#14477D'], [1000, '#0C2C52'], [4000, '#071A34'], [6000, '#050F22'], [11000, '#020812']];
@@ -189,7 +190,7 @@ function Dive({f, len, line}) {
   const [hx, hy] = hand(T);
   const glow = m > 250 && m < 7000 ? clamp((m - 250) / 300, 0, 1) * (p.glow === false ? 0 : 1) : 0;
   const bob = Math.sin(T * 0.05) * 10;
-  const cup = p.cup != null ? p.cup : 1;
+  const cup = p.cup != null ? p.cup : cupAt(m);
   const beam = p.beam != null ? p.beam : (m > 900 ? 1 : 0);
   const push = lin(f, 0, len, p.z0 || 1.0, p.z1 || 1.06);
   return (
@@ -411,12 +412,13 @@ function Cards({f, len, line}) {
       <g transform={`translate(${hand(T)[0]} ${hand(T)[1]})`}><Water m={m} T={T} glow={m > 250 ? 0.5 : 0} /></g>
       <rect width={W} height={H} fill="#000" opacity={0.25} />
       {p.see && <Passers line={line} f={f} T={T} />}
+      {p.sub !== false && <g transform={`translate(1600 ${790 + Math.sin(T * 0.05) * 10}) scale(0.55)`}><YSub T={T} beam={0} cup={cupAt(m)} pipExpr={p.pip || 'smile'} youExpr={p.you || 'worried'} /></g>}
       {p.title && <g transform={`translate(960 ${p.chips ? 120 : 380}) scale(${sp(f, at(line, p.title_on || '', 0.05), 'heavy')})`}>
         {p.title.map((t, i) => { const w = String(t).length * (p.title_size || 70) * 0.55 + 70; return <Box key={i} x={-w / 2} y={i * ((p.title_size || 70) * 1.75) - 50} w={w} h={(p.title_size || 70) * 1.35} text={t} fill={i % 2 ? '#FDE047' : '#FFFFFF'} rot={i % 2 ? 2 : -2} />; })}</g>}
       <Card line={line} f={f} />
       <Chips line={line} f={f} y0={p.title ? 330 : 230} />
       <Labels line={line} f={f} x0={80} y0={60} />
-      {p.meter && <Meter m={m} f={f} />}
+      {p.meter !== false && p.sub !== false && <Meter m={m} f={f} />}
     </g>
   );
 }
@@ -545,7 +547,7 @@ function Floor({f, len, line}) {
         <g transform="translate(120 -10)"><path d="M 0 0 C 10 -40 60 -40 80 -10 L 90 30 L 10 40 Z" fill="#F2C29B" {...st(4)} opacity={0.85} /></g>
         <g transform="translate(-60 -170)"><Box x={0} y={0} w={330} h={60} text="ONE CELL, 10+ CM" fill="#FDE047" rot={-2} /></g></g>}
       {p.amphipods && [...Array(6)].map((_, i) => { const t = ((T * 1.4 + i * 160) % 1600); return <g key={i} transform={`translate(${t + 100} ${520 + (i % 3) * 70 + Math.sin(T * 0.08 + i) * 20})`}><Amphipod s={0.9} T={T + i * 5} flip /></g>; })}
-      <YSub T={T} x={760} y={560 + land} s={1.15} beam={1} cup={p.cup != null ? p.cup : 0.75} pipExpr={p.pip || 'calm'} youExpr={p.you || 'worried'} />
+      <YSub T={T} x={760} y={560 + land} s={1.15} beam={1} cup={p.cup != null ? p.cup : 0.42} pipExpr={p.pip || 'calm'} youExpr={p.you || 'worried'} />
       {silt > 0 && [...Array(26)].map((_, i) => { const Q = rng(50 + i); const a = Q() * Math.PI, r = 120 + Q() * 420 * lin(f, 20, 70, 0.3, 1);
         return <circle key={i} cx={760 + Math.cos(a) * r * 1.4} cy={720 - Math.sin(a) * r * 0.5} r={60 + Q() * 70} fill="#D9D6CF" opacity={0.5 * silt} />; })}
       {silt > 0.6 && <rect width={W} height={H} fill="#F2EFE8" opacity={(silt - 0.6) * 1.2} />}

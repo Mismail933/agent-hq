@@ -136,7 +136,7 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1}) {
     <g>
       <linearGradient id="v-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mix('#5AA9E6', '#1B2A44', dark)} /><stop offset="1" stopColor={mix('#CDEBFF', '#3B5578', dark)} /></linearGradient>
       <rect x={-600} y={-1200} width={VW + 1200} height={SURF + 1260} fill="url(#v-sky)" />
-      {dark < 0.5 && <Sun x={850} y={170} r={70} f={f} heat={sunHeat} />}
+      {dark < 0.5 && <Sun x={1000} y={210} r={44} f={f} heat={sunHeat} />}
       <linearGradient id="v-sea" gradientUnits="userSpaceOnUse" x1="0" y1={SURF} x2="0" y2={FLOOR}>
         {ocean.map(([km, c]) => <stop key={km} offset={km / 11} stopColor={c} />)}
       </linearGradient>
@@ -148,6 +148,9 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1}) {
       {[0.4, 0.9, 1.5, 2.2].map((k, i) => <path key={i} d={`M -40 ${SURF + (6.1 + k) * KM} L ${150 + k * 40} ${SURF + (6.05 + k) * KM} M ${930 - k * 40} ${SURF + (6.05 + k) * KM} L 1120 ${SURF + (6.1 + k) * KM}`}
         stroke={mix('#363B47', '#0E1015', dark)} strokeWidth={12} opacity={0.8} strokeLinecap="round" />)}
       <path d={`M 360 ${FLOOR} L 720 ${FLOOR}`} stroke={mix('#5B6170', '#2A2E38', dark)} strokeWidth={10} />
+      <linearGradient id="v-rock" gradientUnits="userSpaceOnUse" x1="0" y1={FLOOR} x2="0" y2={VH}><stop offset="0" stopColor="#000" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.55} /></linearGradient>
+      <rect x={-600} y={FLOOR} width={VW + 1200} height={VH} fill="url(#v-rock)" />
+      {[0, 1, 2, 3].map((i) => <path key={i} d={`M -40 ${FLOOR + 90 + i * 110} C 300 ${FLOOR + 60 + i * 110} 700 ${FLOOR + 130 + i * 110} 1120 ${FLOOR + 80 + i * 110}`} stroke={mix('#3A3F4B', '#0E1015', dark)} strokeWidth={10} fill="none" opacity={0.7} />)}
       {grow > 0.001 && (
         <g transform={`translate(0 ${drop}) translate(540 ${FLOOR}) scale(${1 + (1 - squash) * 0.4} ${squash}) translate(-540 ${-FLOOR})`}>
           <path d={everest(grow)} fill="#C9D3DF" opacity={0.95} stroke={INK} strokeWidth={7} strokeLinejoin="round" />
@@ -198,7 +201,7 @@ export const VShort = ({lines = [], captions = true}) => {
     // 1. THE HOOK: we start at the sun-lit surface and the camera plunges down the whole column in the first second and a half
     //    (motion from frame 0), settles on the full section, Everest grows up from the floor on its word, the two brackets measure.
     const LAND = 15;
-    const drop = L(f, 0, LAND, -1250, 0, Easing.in(Easing.quad));
+    const drop = L(f, 0, LAND, -880, 0, Easing.in(Easing.quad));
     const squash = f >= LAND ? 1 - 0.07 * Math.sin(clamp((f - LAND) / 9, 0, 1) * Math.PI) : 1;
     const jolt = f >= LAND && f < LAND + 14 ? Math.sin((f - LAND) * 2.4) * (LAND + 14 - f) * 1.6 : 0;
     const cy = 960 + jolt, cx0 = 540;
@@ -206,7 +209,7 @@ export const VShort = ({lines = [], captions = true}) => {
     const grow = 1;
     const b2 = sp(f, cTwo, 'snap'), b9 = sp(f, cNine, 'snap');
     // the zoom THROUGH the surface into the next scene (the signature move): from tIn the camera dives into the sea at x 540
-    const zin = f >= tIn ? Math.pow(L(f, tIn, tIn + 14, 0, 1, Easing.in(Easing.cubic)), 1) : 0;
+    const zin = f >= tIn ? L(f, tIn, tIn + 14, 0, 1, Easing.in(Easing.quad)) : 0;
     const zz = z * (1 + zin * 7), ccx = cx0 + hand[0] * (1 - zin), ccy = cy + (SURF + 30 - cy) * zin + hand[1] * (1 - zin);
     world = (
       <g>
@@ -217,14 +220,14 @@ export const VShort = ({lines = [], captions = true}) => {
           {f >= LAND && f < LAND + 40 && [...Array(14)].map((_, i) => { const side = i % 2 ? 1 : -1, k = L(f, LAND, LAND + 40, 0, 1, Easing.out(Easing.cubic));
             return <circle key={i} cx={540 + side * (380 + k * (60 + i * 14))} cy={FLOOR - 20 - k * (20 + (i % 4) * 26)} r={30 + k * 40} fill="#8C8F96" opacity={0.7 * (1 - k)} />; })}
           <Bracket x={1010} y0={SURF} y1={FLOOR - EVEREST_H} k={b2} side={1} />
-          <Bracket x={150} y0={FLOOR} y1={FLOOR - EVEREST_H} k={b9} side={-1} color="#FFFFFF" />
+          <Bracket x={215} y0={FLOOR} y1={FLOOR - EVEREST_H} k={b9} side={-1} color="#FFFFFF" />
         </g>
         {/* labels are drawn on the screen (they stay readable whatever the zoom) */}
-        <g opacity={1 - zin}>
-          <Chip x={540} y={70} text="THE DEEPEST PLACE ON EARTH" s={1 + 0.03 * Math.sin(f * 0.15)} anchor="middle" rot={-1} size={66} fill="#FFFFFF" />
+        <g opacity={1 - L(f, tIn - 8, tIn, 0, 1)}>
+          <Chip x={510} y={120} text="THE DEEPEST PLACE ON EARTH" s={1 + 0.03 * Math.sin(f * 0.15)} anchor="middle" rot={-1} size={56} fill="#FFFFFF" />
           {f >= LAND + 2 && <Chip x={600} y={860} text="MOUNT EVEREST" s={clamp(sp(f, LAND + 2, 'sticker'), 0, 1.1)} anchor="middle" fill="#FFFFFF" rot={-3} />}
           {f >= cTwo && <Chip x={1010 - 20} y={300} text="2 KM OF WATER" s={clamp(sp(f, cTwo + 4, 'sticker'), 0, 1.1)} anchor="end" rot={2} size={58} />}
-          {f >= cNine && <Chip x={175} y={620} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
+          {f >= cNine && <Chip x={235} y={620} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
         </g>
       </g>
     );
@@ -281,7 +284,7 @@ export const VShort = ({lines = [], captions = true}) => {
     const rays = 1 - L(f, cGreen, cGrey + 10, 0, 1);
     const light = L(f, cGrey, cDarker + 10, 1, 0.15);
     const popK = f >= cPop ? L(f, cPop, cPop + 14, 0, 1, Easing.out(Easing.cubic)) : 0;
-    const pushIn = L(f, cPop - 14, cPop + 1, 0, 1) * (1 - L(f, cKick - 4, cKick + 11, 0, 1));
+    const pushIn = L(f, cPop - 14, cPop + 1, 0, 1) * (1 - L(f, cKick - 6, cKick + 18, 0, 1));
     const pullOut = L(f, cDrop, cDark + 12, 0, 1);
     const z = 1 + 0.42 * pushIn - 0.22 * pullOut;
     const sway = Math.sin(f * 0.07) * 5 + (f < cKick ? Math.sin(f * 0.3) * 4 : 0);
@@ -290,7 +293,7 @@ export const VShort = ({lines = [], captions = true}) => {
     const s = 0.42;
     const head = place(yx, yy, sway, s, 0, 0);
     const ankle = place(yx, yy, sway, s, 0, 1080);
-    const camCx = 540 + hand[0], camCy = (head[1] * pushIn + 960 * (1 - pushIn)) + hand[1];
+    const camCx = 540 + hand[0], camCy = ((head[1] + 380 / z) * pushIn + 960 * (1 - pushIn)) + hand[1];   // pushed in: the head at ~40% height
     const fadeIn = L(f, tDive + 10, tDive + 20, 0, 1);
     world = (
       <g>
@@ -321,7 +324,7 @@ export const VShort = ({lines = [], captions = true}) => {
         {/* the dark closes in: a hole of light around you that shrinks with depth */}
         <radialGradient id="v-dark" cx={0.5} cy={0.42} r={0.75 * light + 0.25}><stop offset="0.35" stopColor="#000" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.92} /></radialGradient>
         <rect width={VW} height={VH} fill="url(#v-dark)" opacity={1 - light * 0.8} />
-        {f >= cPop && f < cPop + 40 && <Chip x={head[0] + 150} y={560} text="POP!" s={clamp(sp(f, cPop, 'sticker'), 0, 1.15) * (1 - L(f, cPop + 30, cPop + 40, 0, 1))} rot={8} size={70} />}
+        {f >= cPop - 4 && f < cPop + 34 && <Chip x={head[0] + 150} y={420} text="POP!" s={clamp(sp(f, cPop - 4, 'sticker'), 0, 1.15) * (1 - L(f, cPop + 24, cPop + 34, 0, 1))} rot={8} size={70} />}
         {/* the depth meter (top left, clear of the Shorts buttons) */}
         <g transform="translate(60 170)" opacity={fadeIn}>
           <rect x={0} y={0} width={360} height={150} fill="#0B1F3A" opacity={0.85} stroke={INK} strokeWidth={6} />
@@ -347,25 +350,26 @@ export const VShort = ({lines = [], captions = true}) => {
         <g transform={`translate(${VW / 2} ${VH / 2}) scale(${z}) translate(${-540 - hand[0] * 0.5} ${-cy - hand[1] * 0.5})`}>
           <Section f={f} dark={0.85} />
           <path d={`M 540 ${speckY} L 540 ${FLOOR - 30}`} stroke="#FDE047" strokeWidth={4} strokeDasharray="10 14" opacity={0.6 * L(f, cWay - 10, cWay + 10, 0, 1)} />
-          <circle cx={540} cy={speckY} r={26 + 6 * Math.sin(f * 0.25)} fill="#FDE047" opacity={0.25} />
-          <circle cx={540} cy={speckY} r={10} fill="#FFF7B0" stroke={INK} strokeWidth={4} />
+          {k < 0.7 && <g opacity={1 - L(f, tOut + 14, tOut + 26, 0, 1)}><You f={f} pose="kick" expr="scared" x={540} y={speckY - 30 / z} s={0.42 / z} kick /></g>}
+          <g opacity={(1 - endK) * L(f, tOut + 8, tOut + 22, 0, 1)}><circle cx={540} cy={speckY} r={26 + 6 * Math.sin(f * 0.25)} fill="#FDE047" opacity={0.25} />
+          <circle cx={540} cy={speckY} r={10} fill="#FFF7B0" stroke={INK} strokeWidth={4} /></g>
           <Bracket x={1000} y0={SURF} y1={FLOOR} k={b} side={1} />
           {pin > 0.01 && <g transform={`translate(540 ${FLOOR}) scale(${clamp(pin, 0, 1.15)})`}>
             {[0, 1].map((r) => <circle key={r} cx={0} cy={0} r={30 + ((f * 1.6 + r * 40) % 80)} fill="none" stroke="#EF4444" strokeWidth={6} opacity={1 - ((f * 1.6 + r * 40) % 80) / 80} />)}
             <path d="M 0 0 C -36 -50 -46 -76 -46 -100 A 46 46 0 1 1 46 -100 C 46 -76 36 -50 0 0 Z" fill="#EF4444" stroke={INK} strokeWidth={7} />
             <circle cx={0} cy={-100} r={17} fill="#FFFFFF" stroke={INK} strokeWidth={5} />
           </g>}
-          {f >= cDeepest && <g opacity={1 - endK}><path d={`M 600 ${FLOOR - 120} L 640 ${FLOOR - 170}`} stroke="#FFFFFF" strokeWidth={6} />
-            <Chip x={640} y={FLOOR - 250} text="CHALLENGER DEEP" s={clamp(sp(f, cDeepest + 5, 'sticker'), 0, 1.1)} fill="#EF4444" color="#FFFFFF" rot={2} size={54} /></g>}
+          {f >= cDeepest && <g opacity={1 - endK}><path d={`M 500 ${FLOOR - 120} L 470 ${FLOOR - 170}`} stroke="#FFFFFF" strokeWidth={6} />
+            <Chip x={490} y={FLOOR - 250} text="CHALLENGER DEEP" s={clamp(sp(f, cDeepest + 5, 'sticker'), 0, 1.1)} fill="#EF4444" color="#FFFFFF" rot={-2} size={54} anchor="end" /></g>}
         </g>
-        <rect width={VW} height={VH} fill="#04060A" opacity={1 - L(f, tOut, tOut + 12, 0, 1)} />
+        <rect width={VW} height={VH} fill="#04060A" opacity={0.6 * (1 - L(f, tOut, tOut + 10, 0, 1))} />
         <g opacity={1 - endK}>
           {f >= cEleven && <Chip x={975} y={680} text="10,935 M" s={clamp(sp(f, cEleven + 3, 'sticker'), 0, 1.1)} anchor="end" rot={-2} size={80} />}
           {f >= cWay - 12 && <Chip x={590} y={speckSy - 130} text="YOU" s={clamp(sp(f, cWay - 12, 'sticker'), 0, 1.1)} rot={-6} size={54} fill="#FDE047" />}
         </g>
         {endK > 0 && (
           <g>
-            <rect width={VW} height={VH} fill="#02060C" opacity={0.78 * endK} />
+            <rect width={VW} height={VH} fill="#02060C" opacity={0.93 * endK} />
             <radialGradient id="v-glow" cx={0.5} cy={0.62} r={0.4}><stop offset="0" stopColor="#FDE047" stopOpacity={0.35} /><stop offset="1" stopColor="#FDE047" stopOpacity={0} /></radialGradient>
             <rect width={VW} height={VH} fill="url(#v-glow)" opacity={endK * (0.6 + 0.4 * Math.sin(f * 0.12))} />
             <g transform={`translate(540 380) scale(${clamp(spr((f - tEnd) / 30, 10, 0.9), 0, 1.05) * (1 + 0.04 * L(f, tEnd, end, 0, 1))})`}>
@@ -376,7 +380,7 @@ export const VShort = ({lines = [], captions = true}) => {
             {f >= cWhat && <g transform={`translate(540 700) scale(${clamp(sp(f, cWhat, 'card'), 0, 1.08)})`}><Chip x={0} y={-80} text="WHAT'S WAITING" size={90} fill="#FFFFFF" rot={-2} anchor="middle" /></g>}
             {f >= cBottom - 4 && <g transform={`translate(540 840) scale(${clamp(sp(f, cBottom - 4, 'card'), 0, 1.08)})`}><Chip x={0} y={-80} text="AT THE BOTTOM?" size={90} fill="#FDE047" rot={2} anchor="middle" /></g>}
             {f >= cWhole && <g transform={`translate(540 1010) scale(${clamp(sp(f, cWhole, 'sticker'), 0, 1.1)})`}><Chip x={0} y={0} text="THE WHOLE DIVE" size={66} fill="#EF4444" color="#FFFFFF" rot={-1} anchor="middle" /></g>}
-            {f >= cChannel - 6 && <g transform={`translate(540 1130) scale(${clamp(sp(f, cChannel - 6, 'sticker'), 0, 1.1)})`}><Chip x={0} y={0} text="IS ON OUR CHANNEL" size={58} fill="#FFFFFF" rot={1} anchor="middle" /></g>}
+            {f >= cChannel - 6 && <g transform={`translate(540 1130) scale(${clamp(sp(f, cChannel - 6, 'sticker'), 0, 1.1)})`}><Chip x={0} y={0} text="IS ON OUR CHANNEL" size={66} fill="#FFFFFF" rot={1} anchor="middle" /></g>}
           </g>
         )}
       </g>
@@ -386,7 +390,7 @@ export const VShort = ({lines = [], captions = true}) => {
     <AbsoluteFill style={{backgroundColor: '#000'}}>
       <style>{FONT_CSS}</style>
       <svg width="100%" height="100%" viewBox={`0 0 ${VW} ${VH}`}>{world}</svg>
-      {captions && <VCaptions lines={lines} stop={L5.start - 2} />}
+      {captions && <VCaptions lines={lines} stop={L5.start - 8} />}
     </AbsoluteFill>
   );
 };
@@ -398,10 +402,13 @@ const chunks3 = (ws) => {
   ws.forEach((w, i) => {
     cur.push(i);
     const stop = /[.,!?;:]$/.test(w[0]);
-    const small = /^(a|an|the|of|to|and|or|on|in|at|is|if|so|that|your|you're|its|toward|than|any)$/i.test(w[0].replace(/[^a-z']/gi, ''));
+    const small = /^(a|an|the|of|to|and|or|on|in|at|is|if|so|that|your|its|toward|than|any)$/i.test(w[0].replace(/[^a-z']/gi, ''));
     const next = ws[i + 1], len = cur.map((k) => ws[k][0]).join(' ').length;
     const long = next && len + 1 + next[0].length > 18 && !small;
-    if (stop || long || (cur.length >= 3 && !small) || cur.length >= 5) { out.push(cur); cur = []; }
+    let left = 0;   // words left in this sentence after this one
+    for (let j = i + 1; j < ws.length; j++) { left++; if (/[.,!?;:]$/.test(ws[j][0])) break; }
+    const tail = cur.length >= 2 && left > 0 && left <= 3 && !small;
+    if (stop || long || tail || (cur.length >= 3 && !small) || cur.length >= 5) { out.push(cur); cur = []; }
   });
   if (cur.length) out.push(cur);
   return out;
