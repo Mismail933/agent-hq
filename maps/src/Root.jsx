@@ -12,6 +12,7 @@ export const Root = () => {
     <>
       <Composition id="MapSample" component={MapSample} durationInFrames={FRAMES} fps={FPS} width={W} height={H} defaultProps={props} />
       <Composition id="MapShort" component={MapShort} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={W} height={H} defaultProps={props} />
+      <Composition id="VMapShort" component={MapShort} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={1080} height={1920} defaultProps={{...props, vertical: true}} />
       <Composition id="WarTable" component={WarTable} durationInFrames={Math.round(Number(props.frames) || 680)} fps={FPS} width={W} height={H} defaultProps={props} />
       <Composition id="MapStory" component={MapStory} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={W} height={H} defaultProps={props} />
     </>

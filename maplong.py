@@ -47,7 +47,7 @@ def voice(spec, folder):
         # Tarek (part 1): questions and the closing line were rushed: read them a little slower
         speed = SHORT_Q_SPEED if text.rstrip().endswith("?") else SHORT_SPEED
         if i >= n_short:   # the story (not the approved short): Bassel asked for a slightly faster pace
-            speed = 0.96 if i == len(texts) - 1 else STORY_SPEED
+            speed = 0.96 if i == len(texts) - 1 else float(spec.get("story_speed") or STORY_SPEED)
             speed = float(spec["story"][i - n_short].get("speed") or speed)   # a line's own pace (Tarek: short key lines read too fast)
         f = cache / (hashlib.sha1(f"am_michael|{speed}|{says[i]}".encode()).hexdigest()[:16] + ".wav")
         if not f.exists():
@@ -65,7 +65,7 @@ def voice(spec, folder):
         w = np.array([len(x) + 2 for x in toks], float)
         edges = np.concatenate([[0], np.cumsum(w) / w.sum()]) * (dur - lead - tail) + t + lead
         words = [[x, round(float(edges[k]), 3), round(float(edges[k + 1]), 3)] for k, x in enumerate(toks)]
-        pause = 0.2 + (GAP_SHORT.get(i, 0) * SHORT_GAP_SCALE if i < n_short else GAP_STORY) + holds[i]
+        pause = 0.2 + (GAP_SHORT.get(i, 0) * SHORT_GAP_SCALE if i < n_short else float(spec.get("story_gap", GAP_STORY))) + holds[i]
         if i == n_short - 1:
             pause = 0.7   # the short's last question, then the history begins
         lines.append({"text": text, "t0": round(t, 3), "t1": round(t + dur, 3), "words": words, "short": i < n_short})
@@ -97,23 +97,31 @@ def mix(folder):
 SWELL = 1.5   # the music x2.5 (+8 dB) where the narrator is silent for over 2 s (an event scene plays): Tarek, the 'holes'
 
 
-def _mux(folder, pic, total, lines=()):
+def _mux(folder, pic, total, lines=(), fx=None, music_lufs=-40.0):
     import shorts
     ff = shorts.find_ffmpeg()
     out = folder / "part.mp4"
     gaps = [(a["t1"] + 0.3, b["t0"] - 0.2) for a, b in zip(lines, lines[1:]) if b["t0"] - a["t1"] > 2.0]
     lift = "+".join(f"clip(min(t-{a:.2f},{b:.2f}-t)/1.2,0,1)" for a, b in gaps) or "0"
     # the track is 3:40: two copies crossfaded make a seamless bed (it used to restart abruptly at 3:36)
-    flt = (f"[1:a]loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
+    # the effects ride with the voice (one loudnorm over both, so their level under him stays as mapsound set it)
+    vin = "[1:a]" if fx is None else "[1:a]aresample=48000,aformat=channel_layouts=mono[v0];[4:a]aformat=channel_layouts=mono[f0];[v0][f0]amix=inputs=2:duration=longest:normalize=0"
+    flt = (f"{vin}{'' if fx is None else ','}loudnorm=I=-16:TP=-1.5,apad=whole_dur={total}[v];"
            "[2:a][3:a]acrossfade=d=6:c1=tri:c2=tri[ml];"
-           f"[ml]atrim=4:{4 + total},asetpts=N/SR/TB,highpass=f=120,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I=-40:TP=-9,"
+           f"[ml]atrim=4:{4 + total},asetpts=N/SR/TB,highpass=f=120,afade=t=in:d=1.5,afade=t=out:st={total - 3}:d=3,loudnorm=I={music_lufs}:TP=-9,"
            f"volume='1+{SWELL}*({lift})':eval=frame[m];"
            "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
-    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-i", str(MUSIC), "-i", str(MUSIC),
+    subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(pic), "-i", str(folder / "voice.wav"), "-i", str(MUSIC), "-i", str(MUSIC), *(["-i", str(fx)] if fx else []),
                     "-filter_complex", flt, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", str(total), str(out)],
                    check=True)
     mapsample.sheet(out, folder / "sheet.png", every=3.0, cols=5)
     print("PART", out, round(total, 1), "s")
+
+
+def _props_file(folder, props):
+    f = folder / "_story-props.json"
+    f.write_text(json.dumps(props), encoding="utf-8")
+    return str(f)
 
 
 def part(folder):
@@ -131,7 +139,7 @@ def part(folder):
     elif short:
         words = [w for l in short for w in l["words"]]
         cues = mapsample.cues_v2(words, {"move": "also", "arrive": "borders", "clp": "uninhabited", "link": "still", "bars": "spanning", "final": "frances"}, missing_ok=True)
-        props = {"cues": cues, "seconds": split, "km": {"deu": 448, "esp": 623, "bra": 730},
+        props = {"cues": cues, "seconds": split, "km": {"deu": 448, "esp": 623, "bra": 730}, "earth": bool(spec.get("earth")),
                  "source": "Lengths: Frontieres de la France (Wikipedia, French)", "unnamed": ["ker", "clp"], "noEnd": True}
         mapsample._remotion(animate, ["render", "src/index.jsx", "MapShort", str(folder / "short.mp4"), "--props=" + json.dumps(props),
                                       "--concurrency=2", "--crf=18", "--muted"])
@@ -150,6 +158,18 @@ def part(folder):
         srcf = Path.home() / ".agent-hq-anim" / "fluent-emoji" / "assets" / name
         if srcf.exists() and not (icons / dst).exists():
             shutil.copy(srcf, icons / dst)
+    earth = bool(spec.get("earth"))
+    if earth:   # NASA Blue Marble Next Generation, July 2004, topography + bathymetry (public domain), 5400 x 2700
+        tex = Path.home() / ".agent-hq-anim" / "geo" / "bluemarble" / "topo-bathy-200407-5400.jpg"
+        if not tex.exists():
+            import urllib.request, ssl, certifi
+            tex.parent.mkdir(parents=True, exist_ok=True)
+            url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73751/world.topo.bathy.200407.3x5400x2700.jpg"
+            with urllib.request.urlopen(url, context=ssl.create_default_context(cafile=certifi.where()), timeout=300) as r:
+                tex.write_bytes(r.read())
+        shutil.copy(tex, mapsample.APP / "public" / "earth.jpg")
+    fdir = folder.parent / "footage"   # real footage (Commons, PD / CC0 / CC BY) + credits.json
+    fcred = json.loads((fdir / "credits.json").read_text(encoding="utf-8")) if (fdir / "credits.json").exists() else {}
     beats = []
     for s, l in zip(spec["story"], story):
         cue = lambda w: round(_cue_time(l, w) - split, 3)
@@ -180,6 +200,22 @@ def part(folder):
             src = folder.parent / "events" / f"{s['event']['key']}.mp4"
             (mapsample.APP / "public" / "events").mkdir(parents=True, exist_ok=True)
             shutil.copy(src, mapsample.APP / "public" / "events" / src.name)
+        if s.get("footage"):   # {key, on, off | dur, from, ll, caption}: real footage opened from its place on the map
+            v = s["footage"]
+            src = fdir / f"{v['key']}.mp4"
+            (mapsample.APP / "public" / "footage").mkdir(parents=True, exist_ok=True)
+            dst = mapsample.APP / "public" / "footage" / src.name
+            if not dst.exists() or dst.stat().st_size != src.stat().st_size:
+                shutil.copy(src, dst)
+            at = cue(v["on"]) if v.get("on") else b["t0"] + 0.2
+            dur = (cue(v["off"]) - at) if v.get("off") else float(v.get("dur") or 5)
+            c = fcred.get(src.name, {})
+            who = re.sub(r"\s+", " ", c.get("author") or "").strip()[:50]
+            b["footage"] = {"key": v["key"], "at": round(at, 3), "dur": round(max(2.5, dur), 2), "from": v.get("from", 0),
+                            "caption": v["caption"], **({"ll": v["ll"]} if v.get("ll") else {}), **({"zoom": v["zoom"]} if v.get("zoom") else {}),
+                            "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons"}
+        if s.get("sfx"):   # [[kind, cue, seconds]]: a line's own sound (sea, creak, cannon, birds, rumble)
+            b["sfx"] = [[k, cue(w), d] for k, w, d in s["sfx"]]
         for slot in ("photo", "photo2"):   # photo2: a second print on its word (e.g. Saint-Louis after Pondicherry)
             if not s.get(slot):
                 continue
@@ -198,7 +234,7 @@ def part(folder):
         pass
     else:
       mapsample._remotion(animate, ["render", "src/index.jsx", "MapStory", str(folder / "story.mp4"),
-                                    "--props=" + json.dumps({"lines": beats, "seconds": secs}), "--concurrency=2", "--crf=18", "--muted"])
+                                    "--props=" + _props_file(folder, {"lines": beats, "seconds": secs, "earth": earth}), "--concurrency=2", "--crf=18", "--muted"])
     clips.append(folder / "story.mp4")
     import shorts
     ff = shorts.find_ffmpeg()
@@ -210,7 +246,27 @@ def part(folder):
     else:
         pic = clips[0]
     (folder / "beats.json").write_text(json.dumps(beats, indent=1), encoding="utf-8")
-    _mux(folder, pic, total, lines)
+    fx = None
+    if spec.get("sound_fx"):
+        import mapsound
+        import soundfile as sf
+        vo, vsr = sf.read(str(folder / "voice.wav"), dtype="float32")
+        if vo.ndim > 1:
+            vo = vo.mean(axis=1)
+        if vsr != mapsound.SR:
+            import numpy as np
+            vo = np.interp(np.arange(int(len(vo) * mapsound.SR / vsr)) * (vsr / mapsound.SR), np.arange(len(vo)), vo).astype("float32")
+        shifted = [{**b, "t0": b["t0"] + split, "t1": b["t1"] + split,
+                    **({"event": b["event"]} if b.get("event") else {}),
+                    **({"fx": [{**x, "at": x["at"] + split} for x in b["fx"]]} if b.get("fx") else {}),
+                    **({"footage": {**b["footage"], "at": b["footage"]["at"] + split}} if b.get("footage") else {}),
+                    **({"sfx": [[k, t + split, d] for k, t, d in b["sfx"]]} if b.get("sfx") else {})} for b in beats]
+        fx = folder / "sfx.wav"
+        placed = mapsound.build(shifted, total, vo, fx)
+        (folder / "sfx-placed.json").write_text(json.dumps(placed, indent=1), encoding="utf-8")
+        fxa, _ = sf.read(str(fx), dtype="float32")
+        print("SOUND", json.dumps(mapsound.report(vo, fxa, folder / "sfx-report.json")), len(placed), "sounds")
+    _mux(folder, pic, total, lines, fx=fx, music_lufs=float(spec.get("music_lufs") or -40))
 
 
 if __name__ == "__main__":

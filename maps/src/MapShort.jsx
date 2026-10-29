@@ -7,9 +7,10 @@ import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConf
 import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance} from 'd3-geo';
 import geo from './geo.json';
 import {FONT_CSS} from './fonts';
+import {Earth} from './Earth';
 
-export const FPS = 30, W = 1920, H = 1080;
-const MAPX = W * 0.42, MAPY = H * 0.58;
+export const FPS = 30, W0 = 1920, H0 = 1080;
+let W = W0, H = H0, MAPX = W * 0.42, MAPY = H * 0.58, ZK = 1, VERT = false;   // set per render (vertical)
 const EU = [5.2, 46.3], GF = [-54.2, 3.7];
 const Z = {eu: 3000, mid: 300, gf: 5600};
 const C = {
@@ -66,7 +67,9 @@ const Text = ({x, y, children, size = 34, color = C.text, anchor = 'middle', op 
   );
 };
 
-export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = [], noEnd = false}) => {
+export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = [], noEnd = false, earth = false, vertical = false, endCard = null}) => {
+  VERT = vertical; W = vertical ? 1080 : W0; H = vertical ? 1920 : H0;
+  MAPX = vertical ? W * 0.5 : W * 0.42; MAPY = vertical ? H * 0.47 : H * 0.58; ZK = vertical ? 0.74 : 1;
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const at = (k, d = 0) => Math.round(((cues[k] ?? 0) + d) * fps);
@@ -96,6 +99,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
     const a = Math.log(Z.eu * 1.05), b = Math.log(Z.gf), bump = (a + b) / 2 - Math.log(Z.mid);
     c = geoInterpolate(EU, GF)(er); s = Math.exp(a + (b - a) * e - bump * Math.sin(Math.PI * e));
   }
+  s *= ZK;
   const proj = geoOrthographic().rotate([-c[0], -c[1]]).scale(s).translate([MAPX, MAPY]).clipExtent([[-20, -20], [W + 20, H + 20]]).precision(0.35);
   const path = geoPath(proj);
   const P = (ll) => proj(ll) || [NaN, NaN];
@@ -108,7 +112,8 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
     const focus = a3 === 'FRA' || a3 === 'GUF' || OVERSEAS.has(a3);
     const t = named[a3] != null ? on(named[a3], 12) : 0;
     const fill = focus ? 'url(#france)' : C.fill[a3] ? mix(C.land, C.fill[a3], t * 0.92) : C.land;
-    return <path key={a3} d={path(ft)} fill={fill} stroke={focus ? '#E8FBFF' : C.line} strokeWidth={focus ? 2 : C.lineW} />;
+    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (focus ? 0.78 : C.fill[a3] ? 0.16 + 0.6 * t : 0.16) : 1}
+                 stroke={focus ? '#E8FBFF' : C.line} strokeWidth={focus ? 2 : C.lineW} />;
   });
   const pDeu = prog(named.DEU, named.DEU + 30), pEsp = prog(named.ESP, named.ESP + 30), pSur = prog(named.SUR, named.SUR + 24);
   const pBra = prog(named.BRA, at('km730', 1.2), Easing.inOut(Easing.quad));
@@ -123,11 +128,12 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
   const deuAt = P([8.5, 49.3]), espAt = P([-1.2, 42.5]), braAt = P([-51.7, 2.5]);
   const bra = geo.borders.bra.geometry.coordinates[0];
   const riv = P(bra[Math.round(bra.length * 0.18)]);
-  const title = {position: 'absolute', left: 70, top: 60, fontFamily: 'Space Grotesk', fontWeight: 700, color: C.text,
+  const title = {position: 'absolute', left: VERT ? 60 : 70, top: VERT ? 210 : 60, right: VERT ? 60 : undefined, textAlign: VERT ? 'center' : 'left', fontFamily: 'Space Grotesk', fontWeight: 700, color: C.text,
                  textShadow: '0 2px 14px rgba(0,0,0,0.6)', lineHeight: 1.05};
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 40% 45%, ${C.bg[0]}, ${C.bg[1]})`}}>
       <style>{FONT_CSS}</style>
+      {earth ? <Earth cam={[c[0], c[1], s]} cx={MAPX} cy={MAPY} W={W} H={H} /> : null}
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <defs>
           <linearGradient id="france" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={C.france[0]} /><stop offset="1" stopColor={C.france[1]} /></linearGradient>
@@ -138,9 +144,9 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
           <filter id="blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7" /></filter>
         </defs>
         <circle cx={MAPX} cy={MAPY} r={s * 1.16} fill="url(#atmo)" />
-        <path d={path({type: 'Sphere'})} fill={C.sea} stroke={`${C.atmo}66`} strokeWidth={2} />
+        <path d={path({type: 'Sphere'})} fill={C.sea} fillOpacity={earth ? 0.3 : 1} stroke={`${C.atmo}66`} strokeWidth={2} />
         <path d={path(GRAT)} fill="none" stroke={C.grat} strokeWidth={1} />
-        <path d={path(WORLD)} fill={C.world} stroke={C.line} strokeWidth={1.1} />
+        <path d={path(WORLD)} fill={C.world} fillOpacity={earth ? 0.16 : 1} stroke={C.line} strokeWidth={1.1} />
         {detail}
         <Draw d={path(geo.borders.deu)} p={pDeu} color={C.white} width={5} glow />
         <Draw d={path(geo.borders.esp)} p={pEsp} color={C.white} width={5} glow />
@@ -212,15 +218,34 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
           <div style={{fontSize: 34, color: C.sub, marginTop: 26, opacity: on(at('link'), 12), letterSpacing: 2}}>{endLine}</div>
         </div>
       ) : null}
-      <div style={{...title, fontSize: 74, opacity: q, transform: `translateY(${(1 - q) * 14}px)`}}>Which country has the<br />longest border with France?</div>
-      <div style={{...title, fontSize: 96, opacity: neither, color: C.accent}}>Neither!</div>
+      <div style={{...title, fontSize: VERT ? 70 : 74, opacity: q, transform: `translateY(${(1 - q) * 14}px)`}}>Which country has the<br />longest border with France?</div>
+      <div style={{...title, fontSize: VERT ? 130 : 96, opacity: neither, color: C.accent}}>Neither!</div>
       <div style={{...title, opacity: head, transform: `translateY(${(1 - head) * 14}px)`}}>
         <div style={{fontSize: 40, color: C.sub}}>France&rsquo;s longest border is with</div>
         <div style={{fontSize: 110, color: C.accent}}>Brazil</div>
       </div>
+      {endCard ? <EndCard f={f} fps={fps} e={endCard} /> : null}
       <Img src={staticFile('grain.png')} style={{position: 'absolute', width: W, height: H, objectFit: 'cover', opacity: 0.04, mixBlendMode: 'overlay'}} />
       <AbsoluteFill style={{background: 'radial-gradient(ellipse at 45% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)'}} />
-      <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}</div>
+      <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}{earth ? ' · Imagery: NASA Blue Marble (public domain)' : ''}</div>
+    </AbsoluteFill>
+  );
+};
+
+// endCard {at, q, title, cta}: the Short's last seconds: a dark veil, the question, the chapter's name, where to watch it
+const EndCard = ({f, fps, e}) => {
+  const a = Math.round(e.at * fps);
+  if (f < a) return null;
+  const k = interpolate(f, [a, a + 14], [0, 1], clamp);
+  const pk = (d) => spring({frame: f - a - d, fps, config: {damping: 13, stiffness: 150}, durationInFrames: 22});
+  return (
+    <AbsoluteFill style={{background: `rgba(3,8,16,${0.7 * k})`, fontFamily: 'Space Grotesk', color: C.text, alignItems: 'center',
+                          justifyContent: 'center', textAlign: 'center', padding: '0 70px'}}>
+      <div style={{fontSize: 62, fontWeight: 700, lineHeight: 1.1, opacity: k, transform: `scale(${0.85 + 0.15 * pk(0)})`}}>{e.q}</div>
+      <div style={{marginTop: 46, fontSize: 30, letterSpacing: 8, color: C.sub, opacity: pk(10)}}>FULL STORY</div>
+      <div style={{marginTop: 14, fontSize: 84, fontWeight: 700, color: C.france[0], opacity: pk(14), transform: `scale(${0.8 + 0.2 * pk(14)})`}}>{e.title}</div>
+      <div style={{marginTop: 40, fontSize: 36, fontWeight: 700, background: C.accent, color: '#FFF', padding: '14px 30px', borderRadius: 10,
+                   opacity: pk(24), transform: `translateY(${(1 - pk(24)) * 20}px)`}}>{e.cta}</div>
     </AbsoluteFill>
   );
 };
@@ -234,7 +259,8 @@ const Bars = ({f, at, km, source}) => {
   if (op <= 0.01) return null;
   const shown = rows.filter(([name, , , cue]) => (second > 0.01 ? true : name !== 'Brazil') && f >= at(cue) - 6);
   return (
-    <div style={{position: 'absolute', left: 1330, top: 250, width: 540, opacity: op, fontFamily: 'Space Grotesk'}}>
+    <div style={{position: 'absolute', left: VERT ? 270 : 1330, top: VERT ? 1180 : 250, width: 540, opacity: op, fontFamily: 'Space Grotesk',
+                 ...(VERT ? {background: 'rgba(3,8,16,0.62)', padding: '18px 24px 20px', borderRadius: 12} : {})}}>
       <div style={{fontSize: 30, letterSpacing: 5, color: C.sub, borderBottom: '1px solid rgba(140,190,220,0.3)', paddingBottom: 10}}>LAND BORDERS (KM)</div>
       {shown.map(([name, km, color, cue]) => {
         const g = interpolate(f, [at(cue) - 6, at(cue) + 18], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});

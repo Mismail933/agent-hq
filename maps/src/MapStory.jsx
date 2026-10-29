@@ -6,6 +6,7 @@ import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConf
 import {geoOrthographic, geoPath, geoInterpolate, geoGraticule10, geoDistance, geoArea, geoRotation, geoCentroid} from 'd3-geo';
 import geo from './geo.json';
 import {FONT_CSS} from './fonts';
+import {Earth} from './Earth';
 
 const W = 1920, H = 1080, MAPX = W * 0.5, MAPY = H * 0.54;
 const C = {
@@ -145,7 +146,7 @@ const PoleFlag = ({x, y, s, f, name}) => (s <= 0.01 || !FLAG[name] ? null :
     <g transform={`translate(1.5 -62) skewY(${Math.sin(f / 7) * 3})`}>{FLAG[name]}</g>
   </g>);
 
-export const MapStory = ({lines = [], seconds = 10}) => {
+export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   if (!lines.length) return null;
@@ -196,12 +197,13 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     const k = fills[a3] || 0;
     const fr = a3 === 'FRA' || (FRANCE.has(a3) && k > 0 && !tint[a3]);   // a tint (e.g. ':uk') wins over France's colour   // a French territory turns France's colour once the story reaches it
     const fill = fr ? 'url(#france)' : k > 0 ? (tint[a3] || C.fill) : C.land;
-    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={fr ? (a3 === 'FRA' ? 1 : 0.3 + 0.7 * k) : k > 0 ? 0.35 + 0.6 * k : 1}
+    const op = fr ? (a3 === 'FRA' ? 1 : 0.3 + 0.7 * k) : k > 0 ? 0.35 + 0.6 * k : 1;
+    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (k > 0 || a3 === 'FRA' ? op * 0.72 : 0.16) : op}
                  stroke={fr ? '#E8FBFF' : C.line} strokeWidth={fr ? 2 : 1.6} />;
   });
   const world = WORLD.map((ft) => {
     const k = fills[ft.properties.a3] || 0;
-    return <path key={ft.properties.a3} d={path(ft)} fill={k > 0 ? (tint[ft.properties.a3] || C.fill) : C.world} fillOpacity={k > 0 ? 0.35 + 0.6 * k : 1} stroke={C.line} strokeWidth={1.1} />;
+    return <path key={ft.properties.a3} d={path(ft)} fill={k > 0 ? (tint[ft.properties.a3] || C.fill) : C.world} fillOpacity={k > 0 ? (0.35 + 0.6 * k) * (earth ? 0.72 : 1) : earth ? 0.16 : 1} stroke={C.line} strokeWidth={1.1} />;
   });
   // regions [{id, color, ring [[lon, lat]...]}]: a drawn historical area (approximate claims, not a modern border). It stays from its
   // line on; a later line naming the same id recolours it (color 'none' hides it). Rings are turned the way d3 needs (small side filled).
@@ -272,6 +274,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 50% 45%, ${C.bg[0]}, ${C.bg[1]})`}}>
       <style>{FONT_CSS}</style>
+      {earth ? <Earth cam={cam} cx={MAPX} cy={MAPY} W={W} H={H} /> : null}
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <defs>
           <linearGradient id="france" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={C.france[0]} /><stop offset="1" stopColor={C.france[1]} /></linearGradient>
@@ -283,7 +286,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
           {Object.keys(regions).length ? <clipPath id="land">{[...WORLD, ...geo.detail.features].map((ft, i) => <path key={i} d={path(ft)} />)}</clipPath> : null}
         </defs>
         <circle cx={MAPX} cy={MAPY} r={cam[2] * 1.16} fill="url(#atmo)" />
-        <path d={path({type: 'Sphere'})} fill={C.sea} stroke={`${C.atmo}66`} strokeWidth={2} />
+        <path d={path({type: 'Sphere'})} fill={C.sea} fillOpacity={earth ? 0.3 : 1} stroke={`${C.atmo}66`} strokeWidth={2} />
         <path d={path(GRAT)} fill="none" stroke={C.grat} strokeWidth={1} />
         {world}
         {detail}
@@ -362,8 +365,9 @@ export const MapStory = ({lines = [], seconds = 10}) => {
       ) : null}
       <Img src={staticFile('grain.png')} style={{position: 'absolute', width: W, height: H, objectFit: 'cover', opacity: 0.04, mixBlendMode: 'overlay'}} />
       <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)'}} />
-      <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}</div>
-      {lines.map((l, i) => (l.event ? <EventClip key={`e${i}`} ev={l.event} t0={l.t0} f={f} fps={fps} /> : null))}
+      <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}{earth ? ' · Imagery: NASA Blue Marble (public domain)' : ''}</div>
+      {lines.map((l, i) => (l.event ? <EventClip key={`e${i}`} ev={l.event} t0={l.t0} f={f} fps={fps} xy={l.event.ll ? P(l.event.ll) : null} lit={earth} /> : null))}
+      {lines.map((l, i) => (l.footage ? <Footage key={`v${i}`} v={l.footage} f={f} fps={fps} xy={l.footage.ll ? P(l.footage.ll) : null} /> : null))}
     </AbsoluteFill>
   );
 };
@@ -397,15 +401,70 @@ const Photo = ({ph, a: as, b: bs, f, fps}) => {
   );
 };
 
-// event {key, delay, dur}: an animated scene of the event (story kit, rendered beforehand into public/events/<key>.mp4), full screen over
-// the map from the line's start + delay, fading in and out (Bassel: a short animation of a key event about every 2 minutes)
-function EventClip({ev, t0, f, fps}) {
+// the map opens onto a picture and closes back onto it (the owner 2026-10-29, "zoom transitions from the map into scenes and back, no hard
+// cuts"): a circle grows from the place on the map (or the middle) to the whole screen while the picture inside settles from a close
+// push, a thin light ring on its edge; at the end it shrinks back onto that place
+function Iris({a, n, xy, f, children, ring = true}) {
+  const R = Math.hypot(W, H) * 0.62, inn = 18, out = 16;
+  const [cx, cy] = xy && isFinite(xy[0]) ? [Math.min(W - 80, Math.max(80, xy[0])), Math.min(H - 80, Math.max(80, xy[1]))] : [MAPX, MAPY];
+  const kin = interpolate(f, [a, a + inn], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});
+  const kout = interpolate(f, [a + n - out, a + n], [0, 1], {...clamp, easing: Easing.in(Easing.cubic)});
+  const r = R * Math.min(kin, 1 - kout);
+  if (r <= 1) return null;
+  const sc = 1.32 - 0.32 * kin + 0.18 * kout;   // in: settles from close; out: pushes in as it closes
+  return (
+    <AbsoluteFill>
+      <AbsoluteFill style={{clipPath: `circle(${r.toFixed(1)}px at ${cx}px ${cy}px)`}}>
+        <AbsoluteFill style={{transform: `scale(${sc})`, transformOrigin: `${cx}px ${cy}px`}}>{children}</AbsoluteFill>
+      </AbsoluteFill>
+      {ring && r < R * 0.98 ? <svg width={W} height={H} style={{position: 'absolute'}}><circle cx={cx} cy={cy} r={r} fill="none" stroke="#F4FBFF" strokeOpacity={0.75} strokeWidth={4} /></svg> : null}
+    </AbsoluteFill>
+  );
+}
+
+// event {key, delay, dur}: an animated scene of the event (rendered beforehand into public/events/<key>.mp4), full screen over the map
+// from the line's start + delay (Bassel: a short animation of a key event about every 2 minutes). `lit`: the scene is graded like a
+// lit set (a warm key light from the upper left, a cool fill, a vignette) so the flat pieces read as lit miniatures
+function EventClip({ev, t0, f, fps, xy, lit}) {
   const a = Math.round((t0 + (ev.delay || 0)) * fps), n = Math.round((ev.dur || 8) * fps);
   if (f < a - 1 || f > a + n + 1) return null;
-  const op = interpolate(f, [a, a + 10, a + n - 12, a + n], [0, 1, 1, 0], clamp);
   return (
     <Sequence from={a} durationInFrames={n}>
-      <AbsoluteFill style={{opacity: op}}><OffthreadVideo src={staticFile(`events/${ev.key}.mp4`)} muted /></AbsoluteFill>
+      <Iris a={a} n={n} xy={xy} f={f}>
+        <OffthreadVideo src={staticFile(`events/${ev.key}.mp4`)} muted style={lit ? {filter: 'contrast(1.07) saturate(1.1)'} : null} />
+        {lit ? <>
+          <AbsoluteFill style={{background: 'radial-gradient(ellipse at 22% 12%, rgba(255,214,150,0.30), rgba(255,214,150,0) 55%)', mixBlendMode: 'soft-light'}} />
+          <AbsoluteFill style={{background: 'linear-gradient(200deg, rgba(40,70,120,0) 40%, rgba(20,40,90,0.28) 100%)', mixBlendMode: 'multiply'}} />
+          <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)'}} />
+        </> : null}
+      </Iris>
+    </Sequence>
+  );
+}
+
+// footage {key, at, dur, from, caption, credit, ll}: real footage of the place today (public domain / CC BY, credited on screen), opened
+// from its place on the map and closed back onto it, a 'REAL FOOTAGE' tag with what it shows
+function Footage({v, f, fps, xy}) {
+  const a = Math.round(v.at * fps), n = Math.round((v.dur || 5) * fps);
+  if (f < a - 1 || f > a + n + 1) return null;
+  const tag = interpolate(f, [a + 14, a + 26, a + n - 18, a + n - 8], [0, 1, 1, 0], clamp);
+  const push = (v.zoom || 1) * interpolate(f, [a, a + n], [1.0, 1.07], clamp);   // zoom: a letterboxed clip filled (Reunion's is 2.35:1)
+  return (
+    <Sequence from={a} durationInFrames={n}>
+      <Iris a={a} n={n} xy={xy} f={f}>
+        <AbsoluteFill style={{transform: `scale(${push})`, background: '#000'}}>
+          <OffthreadVideo src={staticFile(`footage/${v.key}.mp4`)} startFrom={Math.round((v.from || 0) * fps)} muted
+                          style={{width: '100%', height: '100%', objectFit: 'cover', filter: 'contrast(1.04) saturate(0.95) brightness(0.92)'}} />
+        </AbsoluteFill>
+        <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 26%, rgba(0,0,0,0) 78%, rgba(0,0,0,0.45) 100%)'}} />
+        <div style={{position: 'absolute', left: 70, top: 64, opacity: tag, transform: `translateY(${(1 - tag) * 10}px)`, fontFamily: 'Space Grotesk', color: C.white}}>
+          <div style={{fontSize: 22, letterSpacing: 6, fontWeight: 700, color: '#FFD37A'}}>REAL FOOTAGE</div>
+          <div style={{width: 64, height: 3, background: '#FFD37A', margin: '10px 0 12px'}} />
+          <div style={{fontSize: 40, fontWeight: 700, textShadow: '0 2px 16px rgba(0,0,0,0.8)', maxWidth: 1100}}>{v.caption}</div>
+        </div>
+        <div style={{position: 'absolute', right: 34, bottom: 26, opacity: tag * 0.8, fontFamily: 'Space Grotesk', fontSize: 17, color: '#E6EEF5',
+                     textShadow: '0 1px 6px rgba(0,0,0,0.9)'}}>{v.credit}</div>
+      </Iris>
     </Sequence>
   );
 }
