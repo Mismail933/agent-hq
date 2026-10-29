@@ -178,9 +178,10 @@ export const MapStory = ({lines = [], seconds = 10}) => {
   }));
   lines.forEach((l, i) => (l.tints || []).forEach((x) => {
     if (i > li || t < x.at) return;
-    const [a3, who] = x.code.split(':'), from = tint[a3] || C.fill, to = who === '-' ? C.fr : C[who] || C.fill;
+    const [a3, who] = x.code.split(':'), from = tint[a3] || C.fill, to = who === '-' ? C.fr : who === 'none' ? from : C[who] || C.fill;
     const k = on(x.at, 18);
     if (who === '-' && k >= 1) { delete tint[a3]; return; }   // ':-' = back to France's own colour
+    if (who === 'none') { fills[a3] = Math.min(fills[a3] || 0, 1 - k); if (k >= 1) delete tint[a3]; return; }   // ':none' = fades out (e.g. Britain's empire after the comparison)
     tint[a3] = k >= 1 ? to : interpolateColor(from.startsWith('#') ? from : C.fill, to, k);
     fills[a3] = Math.max(fills[a3] || 0, 1);
   }));
