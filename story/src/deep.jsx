@@ -261,8 +261,9 @@ function Float({f, len, line}) {
         <Surface f={f} y={SURF_Y} id={id} bright={0.92} />
         <Specks f={f} id={id} n={70} op={0.75} />
         {/* the shadow in the deep, and one pale eye, creeping up toward the end */}
-        <ellipse cx={1250} cy={H + 260 - creep * 200} rx={720} ry={300} fill="#021019" opacity={0.75 * creep} filter={`url(#blur40-${id})`} />
-        <circle cx={1150} cy={H + 120 - creep * 200} r={14} fill="#CFF6E8" opacity={creep * (0.45 + 0.3 * Math.sin(f * 0.2))} />
+        <ellipse cx={V ? 1060 : 1250} cy={H + 260 - creep * 200 - (V ? 330 : 0)} rx={720} ry={300} fill="#021019" opacity={0.75 * creep} filter={`url(#blur40-${id})`} />
+        <circle cx={V ? 980 : 1150} cy={H + 120 - creep * 200 - (V ? 330 : 0)} r={V ? 20 : 14} fill="#CFF6E8" opacity={creep * (V ? 0.8 + 0.2 * Math.sin(f * 0.2) : 0.45 + 0.3 * Math.sin(f * 0.2))} />
+        {V && <circle cx={980} cy={H + 120 - creep * 200 - 330} r={56} fill="#CFF6E8" opacity={0.22 * creep} filter={`url(#blur3-${id})`} />}
         <Glow x={hx + 220} y={hy + 40} r={560} id={id} a={0.55} />
         {flare > 0 && <g style={{mixBlendMode: 'screen'}}><circle cx={1500 - flare * 200} cy={140} r={420} fill="#FFF3C8" opacity={0.55 * flare} filter={`url(#blur40-${id})`} />
           <path d={`M 1500 140 L ${700 - flare * 80} 760`} stroke="#FFF8E0" strokeWidth={60} opacity={0.12 * flare} filter={`url(#blur18-${id})`} /></g>}
@@ -323,8 +324,9 @@ function Yank({f, len, line}) {
         <ellipse cx={1420} cy={H + 40 + drag * 0.15} rx={760} ry={300} fill="#02101A" opacity={0.8 * loom} filter={`url(#blur40-${id})`} />
         <circle cx={1330} cy={H - 190 + drag * 0.15} r={16} fill="#CFF6E8" opacity={loom * (0.5 + 0.3 * Math.sin(f * 0.2))} />
         <circle cx={1330} cy={H - 190 + drag * 0.15} r={46} fill="#CFF6E8" opacity={0.18 * loom} filter={`url(#blur3-${id})`} />
-        {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="#031722" opacity={0.95} />}
-        {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="none" stroke="#2C7FA0" strokeWidth={2} opacity={0.35} />}
+        {reach > 0.01 && <g opacity={1 - clamp((f - (len - 22)) / 8, 0, 1)}>
+          <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="#031722" opacity={0.95} />
+          <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="none" stroke="#2C7FA0" strokeWidth={2} opacity={0.35} /></g>}
         <g opacity={1 - clamp((f - (len - 22)) / 8, 0, 1)}><You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'backfloat'} expr={f > g ? 'shock' : 'closed'} /></g>
         <Bubbles x={yx + 60} y={yy0 + 120} f={f} f0={pull} n={26} s={1.7} seed={7} />
       </g>

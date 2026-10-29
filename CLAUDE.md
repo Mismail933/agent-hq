@@ -1252,6 +1252,13 @@ Agents never spend money without the owner's explicit approval.
     the captions); footage cropped round its subject (`vfocus`, `vzoom`; the world map `vscale`); `dv_end` = the end card that says its
     own words; captions = trench.jsx `VCaptions` without the phrases shown in big type. Spec: scratchpad make_deep_vshort.py. PhotoLayer
     labels on tw_/dp_ shots are the deep tags (photo.deep overrides).
+    2.76.1 (Israa on the first VDeep render: redo 7.5, 'fixes to single shots'; Tarek: good, voice notes only): the hook's shadow and
+    pale eye sit where the phone shows them; the tentacle fades with him into the bubble burst (it showed over the real whales); the
+    depth count is you sinking with the trench walls closing in (the seabed clip from the Gulf of Mexico, not that deep, contradicted
+    4,000-6,000 M); the map title sits above the pin, the pin's label under the dot; real-footage tags get a dark plate; footage
+    `vfocus` [from, to] follows a swimming animal; the depth reading stays on the bar; the player-bar gag above his head; the porthole
+    at ~40% of the height; the title's bar lands on 10,935 M; one passenger in every sub shot; the end card picks up the title's sub
+    where it is (a crossfade showed two).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

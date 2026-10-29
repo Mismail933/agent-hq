@@ -16,8 +16,8 @@ import {FONT_CSS} from './fonts';
 export const DW = 1080, DH = 1920;
 const P = (line) => line.p || {};
 // the window of the wide stage each shot is seen through: [centre x, centre y, width] (height = width x 16/9)
-const VCAM = {dp_float: [880, 420, 780], dp_yank: [900, 515, 800], dp_sink: [800, 520, 760], dp_snow: [1100, 620, 1300],
-  dp_close: [820, 500, 1400], dp_sub: [960, 560, 940], dp_title: [960, 740, 1000]};
+const VCAM = {dp_float: [880, 420, 780], dp_yank: [900, 515, 800], dp_sink: [800, 560, 960], dp_snow: [1100, 620, 1300],
+  dp_close: [820, 500, 1400], dp_sub: [960, 717, 940], dp_title: [960, 740, 1000]};
 // the cross-section stands up tall: x 1:1, y stretched 1.27 (a mild vertical exaggeration), the surface at y 300, the floor at y 1150
 const SEC = {x0: 420, y0: -106.4, sy: 1.269};
 const secX = (x) => x - SEC.x0, secY = (y) => (y - SEC.y0) * SEC.sy;
@@ -43,15 +43,17 @@ const Rows = ({f, line, rows, y, size = 150, gap = 1.02, x = DW / 2, off = null,
   );
 };
 // a label split into rows at ' · ' (40 px spaced caps, a gold rule above the first row), stacked up from y (the last row's baseline)
-const VTag = ({f, a = 0, b = 1e9, x = 60, y = 1250, text, size = 40, anchor = 'start', color = '#FFFFFF'}) => {
+const VTag = ({f, a = 0, b = 1e9, x = 60, y = 1250, text, size = 40, anchor = 'start', color = '#FFFFFF', plate = false}) => {
   const k = clamp((f - a) / 10, 0, 1) * (1 - clamp((f - b) / 8, 0, 1));
   if (k <= 0) return null;
   const rows = String(text).toUpperCase().split(/\s+·\s+/);
   const top = y - (rows.length - 1) * size * 1.25;
   const w0 = rows[0].length * size * 0.62 + (rows[0].length - 1) * 7;
   const x0 = anchor === 'middle' ? x - w0 / 2 : anchor === 'end' ? x - w0 : x;
+  const wmax = Math.max(...rows.map((r) => r.length * size * 0.62 + (r.length - 1) * 7));
   return (
     <g opacity={k}>
+      {plate && <rect x={(anchor === 'middle' ? x - wmax / 2 : anchor === 'end' ? x - wmax : x) - 22} y={top - size - 34} width={wmax + 44} height={(rows.length - 1) * size * 1.25 + size + 58} rx={16} fill="#02101A" opacity={0.55} />}
       <path d={`M ${x0} ${top - size - 16} l ${80 * k} 0`} stroke="#FFD25A" strokeWidth={5} />
       {rows.map((r, i) => <text key={i} x={x + (1 - k) * -14} y={top + i * size * 1.25} textAnchor={anchor} fontFamily={OSWALD} fontWeight={600} fontSize={size}
         fill={color} letterSpacing={7} {...halo} strokeWidth={8}>{r}</text>)}
@@ -66,7 +68,7 @@ const VBar = ({f, d, a = 0, op = 1, y = 250, x0 = 120, x1 = 960, value = true, m
   return (
     <g opacity={k}>
       <text x={x0} y={y - 26} fontFamily={OSWALD} fontWeight={600} fontSize={34} fill="#FFFFFF" letterSpacing={9} {...halo} strokeWidth={7}>DEPTH</text>
-      {value && <text x={x1} y={y - 26} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={40} fill="#FFFFFF" letterSpacing={4} {...halo} strokeWidth={7}>{fmt(d)} M</text>}
+      {value !== false && <text x={x1} y={y - 26} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={40} fill="#FFFFFF" letterSpacing={4} {...halo} strokeWidth={7}>{fmt(d)} M</text>}
       <rect x={x0} y={y - 4} width={x1 - x0} height={8} rx={4} fill="#FFFFFF" opacity={0.2} />
       <rect x={x0} y={y - 4} width={xm - x0} height={8} rx={4} fill="#FFC23D" />
       <circle cx={xm} cy={y} r={13} fill="#FFE08A" /><circle cx={xm} cy={y} r={30} fill="#FFC23D" opacity={0.25} />
@@ -116,22 +118,22 @@ function TypeOf({f, len, line, first}) {
       <g>
         <VCredit text={v.credit} />
         {big.length > 0 && <Rows f={f} line={line} rows={big} y={p.vbig_y || 820} size={p.vbig_size || 160} off={p.big_off} />}
-        {p.tag && <VTag f={f} a={at(line, p.tag_on || '', 0.2)} text={p.tag} />}
-        {M && <VBar f={f} d={M.d} value={M.cur < 0} />}
+        {p.tag && <VTag f={f} a={at(line, p.tag_on || '', 0.2)} text={p.tag} plate />}
+        {M && <VBar f={f} d={M.d} />}
         {M && M.cur >= 0 && <BigNum f={f} a={M.mk[M.cur][0]} text={`${fmt(M.mk[M.cur][1])} M`} y={760} />}
         {flash > 0 && <g style={{mixBlendMode: 'screen'}}><radialGradient id={`vfl-${line.idx}`}><stop offset="0" stopColor="#FFFFFF" stopOpacity={1} /><stop offset="0.25" stopColor="#FFF4D6" stopOpacity={0.85} /><stop offset="1" stopColor="#FFD98A" stopOpacity={0} /></radialGradient>
           <circle cx={DW / 2} cy={800} r={300 + Math.min(f, 8) * 160} fill={`url(#vfl-${line.idx})`} opacity={flash} /></g>}
         {p.pin && (() => { const a = at(line, p.pin.on || '', 0.3), k = sp(f, a, 'bounce'); if (f < a) return null; const ring = ((f - a) % 40) / 40;
           return <g><circle cx={DW / 2} cy={DH / 2} r={22 + ring * 80} fill="none" stroke="#FFC23D" strokeWidth={6} opacity={1 - ring} />
             <circle cx={DW / 2} cy={DH / 2} r={17 * clamp(k, 0, 1.3)} fill="#FFC23D" stroke="#FFFFFF" strokeWidth={5} />
-            {p.pin.label && <VTag f={f} a={a + 6} x={DW / 2 - 50} y={DH / 2 - 40} text={p.pin.label} anchor="end" size={40} />}</g>; })()}
+            {p.pin.label && <VTag f={f} a={a + 6} x={DW / 2} y={DH / 2 + 110} text={p.pin.label} anchor="middle" size={40} plate />}</g>; })()}
       </g>
     );
   }
   if (shot === 'dp_sink') {
     const M = marksOf(line, f);
     const numOut = p.num_off ? clamp((f - at(line, p.num_off, 0.4) - 6) / 10, 0, 1) : 0;
-    return <g><VBar f={f} d={M.d} value={M.cur < 0} />{M.cur >= 0 && <BigNum f={f} a={M.mk[M.cur][0]} text={`${fmt(M.mk[M.cur][1])} M`} y={600} out={numOut} />}</g>;
+    return <g><VBar f={f} d={M.d} />{M.cur >= 0 && <BigNum f={f} a={M.mk[M.cur][0]} text={`${fmt(M.mk[M.cur][1])} M`} y={p.vnum_y || 470} out={numOut} />}</g>;
   }
   if (shot === 'dp_snow') {
     const open = at(line, p.open || 'bits', 0.1), poop = at(line, p.poop || 'poop', 0.5), fun = at(line, p.fun || 'fun', 0.75);
@@ -180,10 +182,10 @@ function TypeOf({f, len, line, first}) {
             <text x={cx} y={cy + R0 + 56} textAnchor="middle" fontFamily={OSWALD} fontWeight={600} fontSize={34} fill="#CFEFFF" letterSpacing={9} {...halo} strokeWidth={6}>AIR</text></g>; })()}
         {p.bar_on && (() => { const a = at(line, p.bar_on, 0.8); if (f < a - 4) return null; const k = L(f, a, a + 10, 0.08, 1, Easing.out(Easing.cubic));
           return <g opacity={clamp((f - a + 4) / 5, 0, 1)}>
-            <rect x={50} y={1010} width={980} height={230} rx={24} fill="#000000" opacity={0.55} />
-            <rect x={100} y={1180} width={880} height={16} rx={8} fill="#FFFFFF" opacity={0.35} /><rect x={100} y={1180} width={880 * k} height={16} rx={8} fill="#FF2D2D" />
-            <circle cx={100 + 880 * k} cy={1188} r={26} fill="#FF2D2D" /><path d="M 110 1045 l 50 32 l -50 32 Z" fill="#FFFFFF" />
-            <text x={190} y={1098} fontFamily={OSWALD} fontWeight={600} fontSize={62} fill="#FFFFFF">{k >= 1 ? '0:03 / 0:03' : '0:01 / 0:03'}</text></g>; })()}
+            <rect x={140} y={300} width={800} height={200} rx={22} fill="#000000" opacity={0.6} />
+            <rect x={180} y={448} width={720} height={14} rx={7} fill="#FFFFFF" opacity={0.35} /><rect x={180} y={448} width={720 * k} height={14} rx={7} fill="#FF2D2D" />
+            <circle cx={180 + 720 * k} cy={455} r={22} fill="#FF2D2D" /><path d="M 186 328 l 44 28 l -44 28 Z" fill="#FFFFFF" />
+            <text x={256} y={376} fontFamily={OSWALD} fontWeight={600} fontSize={54} fill="#FFFFFF">{k >= 1 ? '0:03 / 0:03' : '0:01 / 0:03'}</text></g>; })()}
       </g>
     );
   }
@@ -198,7 +200,7 @@ function TypeOf({f, len, line, first}) {
           <text x={DW / 2} y={760 + (1 - k2) * 40} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={250} fill="#FFC23D" opacity={clamp(k2 * 1.5, 0, 1)} {...halo} strokeWidth={10}>11 KM</text>
         </g>
         <VTag f={f} a={slam + 16} x={DW / 2} y={850} text="THE MARIANA TRENCH" anchor="middle" size={40} />
-        <VBar f={f} d={L(f, slam + 16, Math.max(slam + 40, len - 36), 0, 10935)} a={slam + 16} y={1220} op={clamp(k3, 0, 1)} />
+        <VBar f={f} d={L(f, slam + 16, slam + 46, 0, 10935)} a={slam + 16} y={1220} op={clamp(k3, 0, 1)} />
       </g>
     );
   }
@@ -211,7 +213,8 @@ function EndCard({f, len, line}) {
   vstart({vert: true});   // the backgrounds reach past the stage (set every frame: the module's state isn't shared between render tabs)
   const a1 = at(line, 'whole', 0.2), a2 = at(line, 'dive', 0.4), a3 = at(line, 'channel', 0.85);
   const z = L(f, 0, len, 1, 1.07, (x) => x);
-  const by = 1250 + f * 0.6 + Math.sin(F * 0.05) * 8;
+  // the same sub as the title shot's, where that shot leaves it (a crossfade showed two subs), then on down slowly
+  const by = 981 + f * 0.9 + Math.sin(F * 0.05) * 8;
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${DW} ${DH}`} style={{position: 'absolute', inset: 0}}>
       <g transform={`translate(${DW / 2} ${DH / 2}) scale(${z}) translate(${-DW / 2} ${-DH / 2})`}>
@@ -219,15 +222,15 @@ function EndCard({f, len, line}) {
         <g transform={`translate(${-(W - DW) / 2} ${(DH - H) / 2})`}><DeepSpecks f={F} id={id} rise={F * 5} n={130} /></g>
         <radialGradient id={`eb-${id}`} cx="0%" cy="50%" r="100%"><stop offset="0" stopColor="#FFF4D2" stopOpacity={0.55} /><stop offset="1" stopColor="#FFE9B0" stopOpacity={0} /></radialGradient>
         <path d={`M ${DW / 2 - 90} ${by + 8} L -100 ${by - 260} L -100 ${by + 330} Z`} fill={`url(#eb-${id})`} opacity={0.32} />
-        <YSub T={F} x={DW / 2} y={by} s={0.62} beam={0} cup={0.6} bag={false} youExpr="determined" pipExpr="smile" />
-        <circle cx={DW / 2 - 236 * 0.62} cy={by + 12} r={16} fill="#FFFBE6" />
+        <YSub T={F} x={DW / 2} y={by} s={0.67} beam={0} cup={0.6} bag={false} solo youExpr="determined" pipExpr="smile" />
+        <circle cx={DW / 2 - 236 * 0.67} cy={by + 12} r={16} fill="#FFFBE6" />
       </g>
       <g filter="url(#vsoft)">
-        {f >= a1 - 3 && <text x={DW / 2} y={560 + (1 - clamp(sp(f, a1 - 3, 'heavy'), 0, 1)) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={130} fill="#FFFFFF" {...halo} strokeWidth={10}>THE FULL DIVE</text>}
-        {f >= a2 - 3 && <text x={DW / 2} y={740 + (1 - clamp(sp(f, a2 - 3, 'heavy'), 0, 1)) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={170} fill="#FFC23D" {...halo} strokeWidth={10}>ALL 11 KM</text>}
+        {f >= a1 - 3 && <text x={DW / 2} y={430 + (1 - clamp(sp(f, a1 - 3, 'heavy'), 0, 1)) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={130} fill="#FFFFFF" {...halo} strokeWidth={10}>THE FULL DIVE</text>}
+        {f >= a2 - 3 && <text x={DW / 2} y={610 + (1 - clamp(sp(f, a2 - 3, 'heavy'), 0, 1)) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={170} fill="#FFC23D" {...halo} strokeWidth={10}>ALL 11 KM</text>}
       </g>
-      <VTag f={f} a={a3 - 3} x={DW / 2} y={880} text="ON STORYGRAPHICS" anchor="middle" size={52} />
-      {f >= a3 + 6 && <text x={DW / 2} y={960} textAnchor="middle" fontFamily={OSWALD} fontWeight={500} fontSize={44} fill="#FFFFFF" opacity={clamp((f - a3 - 6) / 8, 0, 1) * 0.9} letterSpacing={3}>@Storygraphics</text>}
+      <VTag f={f} a={a3 - 3} x={DW / 2} y={750} text="ON STORYGRAPHICS" anchor="middle" size={52} />
+      {f >= a3 + 6 && <text x={DW / 2} y={830} textAnchor="middle" fontFamily={OSWALD} fontWeight={500} fontSize={44} fill="#FFFFFF" opacity={clamp((f - a3 - 6) / 8, 0, 1) * 0.9} letterSpacing={3}>@Storygraphics</text>}
     </svg>
   );
 }
@@ -252,7 +255,7 @@ const FootageV = ({line, len}) => {
       </AbsoluteFill>
     );
   }
-  const vf = v.vfocus != null ? v.vfocus : fx;
+  const vf = Array.isArray(v.vfocus) ? L(f, 0, len, v.vfocus[0], v.vfocus[1], (x) => x) : v.vfocus != null ? v.vfocus : fx;
   return (
     <AbsoluteFill style={{overflow: 'hidden', background: '#000'}}>
       <OffthreadVideo src={staticFile(v.src)} startFrom={Math.round((v.from || 0) * 30)} playbackRate={v.rate || 1} muted
