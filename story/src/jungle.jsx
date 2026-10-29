@@ -234,7 +234,8 @@ const PLACES = {lima: [-77.04, -12.05, 'LIMA', -1], pucallpa: [-74.55, -8.38, 'P
   teeth1875: [-150.2, -22.4, 'MEGALODON TEETH, 1875', 1], portsmouth: [-1.1, 50.8, 'PORTSMOUTH', 1],   // HMS Challenger
   na: [-100, 42, 'NORTH AMERICA', 1], sa: [-60, -12, 'SOUTH AMERICA', 1], eu: [12, 48, 'EUROPE', 1], af: [20, 4, 'AFRICA', 1], asia: [95, 38, 'ASIA', 1], au: [134, -24, 'AUSTRALIA', -1],   // Storygraphics #3
   california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1],
-  challenger: [142.2, 11.35, 'CHALLENGER DEEP', 1], guam: [144.79, 13.44, 'GUAM', -1], saipan: [145.75, 15.18, 'SAIPAN', -1]};   // Storygraphics #5
+  challenger: [142.2, 11.35, 'CHALLENGER DEEP', 1], guam: [144.79, 13.44, 'GUAM', -1], saipan: [145.75, 15.18, 'SAIPAN', -1],
+  you_here: [147.6, 15.0, 'YOU ARE HERE', 1]};   // Storygraphics #5
 // 2.75.8 p.dark (the Storygraphics deep look): a dark teal sea, muted land with a faint rim, labels in spaced caps with a halo
 const DarkLabel = ({x, y, text, f, at: a = 0, anchor = 'start', size = 40}) => {
   const k = clamp((f - a) / 10, 0, 1);
@@ -255,7 +256,7 @@ function Map({f, len, line}) {
     <g>
       <rect width={W} height={H} fill={p.dark ? '#0A3349' : '#5BA4D4'} />
       <g transform={`translate(${W / 2} ${H / 2}) scale(${sc}) translate(${-gx(clon)} ${-gy(clat)})`}>
-        <path d={LAND} fill={p.dark ? '#2C3B3A' : '#9BC88B'} stroke={p.dark ? '#8FD3E6' : INK} strokeWidth={p.dark ? 2 : p.stroke || 5} strokeOpacity={p.dark ? 0.6 : 1} vectorEffect="non-scaling-stroke" />
+        <path d={LAND} fill={p.dark ? '#41584F' : '#9BC88B'} stroke={p.dark ? '#9FDCEB' : INK} strokeWidth={p.dark ? 2.5 : p.stroke || 5} strokeOpacity={p.dark ? 0.85 : 1} vectorEffect="non-scaling-stroke" />
         {p.rivers !== false && <path d={RIVERS} fill="none" stroke="#3B82F6" strokeWidth={4} vectorEffect="non-scaling-stroke" />}
       </g>
       {(p.country || [['PERU', -75.2, -11.4]]).map(([nm, lo, la], i) => <text key={i} x={sx(lo)} y={sy(la)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={p.dark ? 500 : 700} fontSize={p.dark ? 60 : 90} letterSpacing={p.dark ? 14 : 0} fill="#fff" opacity={p.dark ? 0.45 : 0.55} stroke={p.dark ? 'none' : INK} strokeWidth={4} paintOrder="stroke">{nm}</text>)}

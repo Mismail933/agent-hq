@@ -331,7 +331,7 @@ const PhotoLayer = ({line, len}) => {
           overflow: 'hidden', textOverflow: 'ellipsis'}}>{ph.credit}</div>}
       </div>
       {ph.label && deepLook && (() => {   // 2.76.0 the deep look's label: spaced caps with a halo and a gold rule, above the print (below it when no room)
-        const above = cy - h / 2 - pad - 26 >= 70, ty = above ? cy - h / 2 - pad - 26 : cy + h / 2 + strip + 64;
+        const above = cy - h / 2 - pad - 26 >= 210, ty = above ? cy - h / 2 - pad - 26 : cy + h / 2 + strip + 64;   // 2.77.0: clear of the depth bar
         return <div style={{position: 'absolute', left: cx - w / 2 - pad, top: ty - 58, opacity: clamp(lab, 0, 1), fontFamily: OSWALD, fontWeight: 600, fontSize: 40,
           letterSpacing: 7, color: '#FFFFFF', textTransform: 'uppercase', whiteSpace: 'nowrap', WebkitTextStroke: '7px rgba(2,16,26,0.62)', paintOrder: 'stroke fill'}}>
           <div style={{width: 80 * clamp(lab, 0, 1), height: 5, background: '#FFD25A', marginBottom: 12}} />{ph.label}</div>; })()}

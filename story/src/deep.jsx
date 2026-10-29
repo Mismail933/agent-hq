@@ -10,7 +10,7 @@
 import React from 'react';
 import {interpolate, Easing} from 'remotion';
 import {noise2D} from '@remotion/noise';
-import {W, H, INK, clamp, rng, Figure, OSWALD, at} from './tis';
+import {W, H, INK, clamp, rng, Figure, Head, OSWALD, at} from './tis';
 import {YSub} from './trench2';
 
 const NUN = "'Nunito', 'Arial Rounded MT Bold', sans-serif";
@@ -371,7 +371,7 @@ function Real({f, len, line}) {
       <Credit text={v.credit} right={!!(p.marks || p.depth != null)} />
       {flash > 0 && <g style={{mixBlendMode: 'screen'}}>
         <radialGradient id={`fl-${id}`}><stop offset="0" stopColor="#FFFFFF" stopOpacity={1} /><stop offset="0.25" stopColor="#FFF4D6" stopOpacity={0.85} /><stop offset="1" stopColor="#FFD98A" stopOpacity={0} /></radialGradient>
-        <circle cx={W / 2} cy={470} r={300 + Math.min(f, 8) * 140} fill={`url(#fl-${id})`} opacity={flash} />
+        <circle cx={W / 2} cy={470} r={300 + Math.min(f, 8) * 60} fill={`url(#fl-${id})`} opacity={0.7 * flash} />   {/* 2.77.0: a flare, not a white-out */}
       </g>}
       {p.pin && (() => { const a = at(line, p.pin.on || '', 0.3), k = sp(f, a, 'bounce'); if (f < a) return null;
         const px = p.pin.x || W / 2, py = p.pin.y || H / 2, ring = ((f - a) % 40) / 40;
@@ -696,6 +696,57 @@ function SnowLens({f, len, line}) {
   );
 }
 
+// ───────────── dp_next: the end screen in the deep look (2.77.0; Israa: the old yellow-box end card broke the new standard) ─────────────
+// left: a teaser card for the next video (YouTube's own end-screen element sits over it), right: SUBSCRIBE; the sea keeps moving
+function NextCard({f, len, line}) {
+  const id = 'nx' + line.idx, p = P(line), F = f + (line.start || 0);
+  vstart(line);
+  const k1 = clamp(sp(f, 4, 'card'), 0, 1.05), k2 = clamp(sp(f, 14, 'card'), 0, 1.05);
+  const cx = 160, cy = 330, cw = 800, ch = 450;
+  return (
+    <g>
+      <Defs id={id} d={3000} glow="#FFF1B8" />
+      <Sea f={F} d={2600} id={id} />
+      <Specks f={F} id={id} rise={F * 4} n={90} />
+      <text x={cx} y={cy - 70} fontFamily={OSWALD} fontWeight={600} fontSize={40} letterSpacing={10} fill="#FFC23D" opacity={k1}>NEXT</text>
+      <g transform={`translate(${cx + cw / 2} ${cy + ch / 2}) scale(${k1}) translate(${-(cx + cw / 2)} ${-(cy + ch / 2)})`}>
+        <clipPath id={`nxc-${id}`}><rect x={cx} y={cy} width={cw} height={ch} rx={22} /></clipPath>
+        <g clipPath={`url(#nxc-${id})`}>
+          <rect x={cx} y={cy} width={cw} height={ch} fill="#0A2A3B" />
+          <path d={`M ${cx} ${cy + ch - 70} C ${cx + 260} ${cy + ch - 90} ${cx + 520} ${cy + ch - 60} ${cx + cw} ${cy + ch - 80} L ${cx + cw} ${cy + ch} L ${cx} ${cy + ch} Z`} fill="#24323B" />
+          <path d={`M ${cx + 560} ${cy + 140} L ${cx + cw + 40} ${cy + 20} L ${cx + cw + 40} ${cy + 320} Z`} fill="#FFF3B0" opacity={0.12} />
+          <g transform={`translate(${cx + 400} ${cy + 230 + Math.sin(F * 0.04) * 6}) rotate(-14)`}>
+            <rect x={-300} y={-80} width={360} height={160} rx={60} fill="#E9B71A" stroke="#3A2A05" strokeWidth={6} />
+            <circle cx={60} cy={0} r={128} fill="#F3F4F6" stroke="#3A2A05" strokeWidth={6} />
+            <clipPath id={`nxp-${id}`}><circle cx={60} cy={0} r={108} /></clipPath>
+            <g clipPath={`url(#nxp-${id})`}><rect x={-60} y={-120} width={240} height={240} fill="#1C2530" />
+              <g transform="translate(15 26) scale(0.26)"><Head who="chapman" expr="scared" f={0} seed={2} /></g>
+              <g transform="translate(105 34) scale(0.26)"><Head who="mallinson" expr="shock" f={0} seed={5} /></g></g>
+            <circle cx={60} cy={0} r={108} fill="none" stroke="#9CA3AF" strokeWidth={10} />
+            <text x={-130} y={50} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={30} letterSpacing={3} fill="#3A2A05">PISCES III</text>
+          </g>
+          <rect x={cx} y={cy} width={cw} height={ch} fill="url(#vig-${id})" opacity={0.6} />
+        </g>
+        <rect x={cx} y={cy} width={cw} height={ch} rx={22} fill="none" stroke="#E8F7FF" strokeWidth={4} opacity={0.7} />
+      </g>
+      <g opacity={k1} filter={`url(#soft-${id})`}>
+        <text x={cx} y={cy + ch + 96} fontFamily={NUN} fontWeight={900} fontSize={80} fill="#FFFFFF" stroke="#02101A" strokeOpacity={0.6} strokeWidth={10} paintOrder="stroke">{p.top || 'TRAPPED'} <tspan fill="#FFC23D">{p.bottom || '480 M DOWN'}</tspan></text>
+        <text x={cx} y={cy + ch + 150} fontFamily={OSWALD} fontWeight={600} fontSize={34} letterSpacing={7} fill="#CFEFFF">{p.sub || 'TWO MEN, 76 HOURS, A SINKING SUB'}</text>
+      </g>
+      <g transform={`translate(1460 ${cy + ch / 2}) scale(${k2})`}>
+        <circle r={150} fill="#02101A" opacity={0.45} />
+        <circle r={150} fill="none" stroke="#FFC23D" strokeWidth={8} />
+        <path d="M -26 -44 L 46 0 L -26 44 Z" fill="#FFC23D" />
+      </g>
+      <g opacity={k2}>
+        <text x={1460} y={cy + ch / 2 + 230} textAnchor="middle" fontFamily={OSWALD} fontWeight={600} fontSize={40} letterSpacing={10} fill="#FFFFFF" stroke="#02101A" strokeOpacity={0.6} strokeWidth={7} paintOrder="stroke">SUBSCRIBE</text>
+        <text x={1460} y={cy + ch / 2 + 300} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={56} fill="#FFC23D" stroke="#02101A" strokeOpacity={0.6} strokeWidth={9} paintOrder="stroke">STORYGRAPHICS</text>
+      </g>
+      <Vignette id={id} a={0.7} />
+    </g>
+  );
+}
+
 // ───────────── a thumbnail in the deep look (an option next to the TIS-style one; the owner picks) ─────────────
 export function TrenchDeepArt() {
   const id = 'td', f = 40;
@@ -726,4 +777,4 @@ export function TrenchDeepArt() {
   );
 }
 export {Defs, Sea, Glow, Vignette, Specks as DeepSpecks, Rays, Credit, You, Bubbles, Surface, sp, L as lerp, NUN, fmt, mix, sun, vstart};
-export const DEEP_SHOTS = {dp_snow: SnowLens, dp_float: Float, dp_yank: Yank, dp_real: Real, dp_sink: Sink, dp_section: Section, dp_close: Close, dp_sub: Sub, dp_title: Title};
+export const DEEP_SHOTS = {dp_next: NextCard, dp_snow: SnowLens, dp_float: Float, dp_yank: Yank, dp_real: Real, dp_sink: Sink, dp_section: Section, dp_close: Close, dp_sub: Sub, dp_title: Title};

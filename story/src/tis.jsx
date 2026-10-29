@@ -133,8 +133,8 @@ export const CAST = {
   officer: {hair: '#7A5230', hairLight: '#9A6A40', brow: '#5A3A20', dress: '#5B6B3A', dressShade: '#46532C', style: 'short', hat: 'cap', pants: '#46532C'},   // a US occupation officer (no name)
   walsh: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#1E3A5F', dressShade: '#16293F', style: 'short'},   // Don Walsh, US Navy, 1960
   piccard: {hair: '#3A2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#6B7280', dressShade: '#4B5563', style: 'short', glasses: true},   // Jacques Piccard, 1960
-  cameron: {hair: '#5A4A3C', hairLight: '#8C7B6B', brow: '#3E3229', dress: '#2F5D50', dressShade: '#22453B', style: 'short', beard: true},   // James Cameron, 2012
-  vescovo: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true},   // Victor Vescovo, 2019
+  cameron: {hair: '#A8A29A', hairLight: '#CFCAC3', brow: '#7C766F', dress: '#2F5D50', dressShade: '#22453B', style: 'short', beard: true},   // James Cameron, 2012: grey hair and beard (2.77.0)
+  vescovo: {hair: '#22160F', hairLight: '#3A2A1E', brow: '#1A100A', dress: '#1F2937', dressShade: '#111827', style: 'thin', beard: true},   // Victor Vescovo, 2019: shaved head, dark beard (2.77.0)
   yancey: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#7C2D12', dressShade: '#5C210D', style: 'short', glasses: true, beard: true},   // Paul Yancey, 2014
   pip: {hair: '#7A4A26', hairLight: '#9A6236', brow: '#5A3418', dress: '#FACC15', dressShade: '#CA8A04', style: 'short'},   // Pip, the yellow sub's pilot (Storygraphics #5)
   you: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#F97316', dressShade: '#C2410C', style: 'short', pants: '#1E3A5F'},   // Storygraphics #5: "you", the viewer, in the trench what-if

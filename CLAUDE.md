@@ -1269,6 +1269,17 @@ Agents never spend money without the owner's explicit approval.
     (marianas-jelly-b.mp4 from 8 s; Commons has no other Marianas footage). guides/SHORTS-GUIDE.md: a real-footage section. A long
     render holds the heavy-job lock past 3 h: keep its mtime fresh (touch) or another job takes it as stale; a short patch beside a
     long render: scratchpad patch_comp.py --comp=<composition> --nolock (concurrency 1, never drops another job's lock).
+    2.77.0 (Israa on the full deep render: redo 7, 'the body does not hold the sample's level'): trench2's sea darkens on a log scale
+    (the twilight zone darkened in one step); `TwWalls` = the trench's rock walls from 6,000 m, closing in to the floor; Dive frames
+    in turn (line.idx: mid / wide / pov = out of Pip's window / close on the portholes; p.frame overrides; cards and the lone figure
+    stay mid); Surface mode 'meet' (you floating, Pip waving from the hatch, empty windows: the bridge); Cards p.alone_big_on (the lone
+    figure becomes a close-up on a word, the card goes); the Trieste and the Limiting Factor redrawn from the photos; the bang shakes,
+    flashes white and says BANG in the deep type; Pressure p.stamp_s / p.stamp_y; FishLine on the sea with the depth bar and Pip's sub
+    on the scale (p.sub_m), p.stiff_on false; deep photo labels below the print when the top is under the depth bar (y < 210);
+    the dark map's land brighter, PLACES you_here; Cameron grey, Vescovo shaved (two faces); deep.jsx `dp_next` = the end screen in
+    the deep look (a teaser card for the next video, SUBSCRIBE); dp_real's flash a flare, not a white-out. Spec: scratchpad
+    make_trench_deep_full.py ('Israa on the full render' block). Smoke test before a long render: scratchpad gif_check.py (every 90th
+    frame through the real composition, ~5 min: caught nothing this time, but the 2.76.2 caption crash would have been).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
