@@ -199,8 +199,8 @@ export const DepthBar = ({f, d, a = 0, x0 = 360, x1 = 1560, y = 110, max = 11000
     </g>
   );
 };
-const Credit = ({text}) => text ? (
-  <text x={44} y={56} fontFamily={OSWALD} fontWeight={500} fontSize={24} fill="#FFFFFF" opacity={0.78} letterSpacing={4} style={{textTransform: 'uppercase'}}>{text}</text>
+const Credit = ({text, right = false}) => text ? (
+  <text x={right ? W - 44 : 44} y={right ? H - 150 : 56} textAnchor={right ? 'end' : 'start'} fontFamily={OSWALD} fontWeight={500} fontSize={24} fill="#FFFFFF" opacity={0.78} letterSpacing={4} style={{textTransform: 'uppercase'}}>{text}</text>
 ) : null;
 
 // you, lit and coloured by the water
@@ -317,10 +317,10 @@ function Yank({f, len, line}) {
         <circle cx={1330} cy={H - 190 + drag * 0.15} r={46} fill="#CFF6E8" opacity={0.18 * loom} filter={`url(#blur3-${id})`} />
         {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="#031722" opacity={0.95} />}
         {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="none" stroke="#2C7FA0" strokeWidth={2} opacity={0.35} />}
-        <You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'backfloat'} expr={f > g ? 'shock' : 'closed'} />
+        <g opacity={1 - clamp((f - (len - 22)) / 8, 0, 1)}><You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'backfloat'} expr={f > g ? 'shock' : 'closed'} /></g>
         <Bubbles x={yx + 60} y={yy0 + 120} f={f} f0={pull} n={26} s={1.7} seed={7} />
       </g>
-      {f > len - 18 && (() => { const k = clamp((f - (len - 18)) / 18, 0, 1), R = rng(77);
+      {f > len - 26 && (() => { const k = clamp((f - (len - 26)) / 26, 0, 1), R = rng(77);
         return <g>{[...Array(60)].map((_, i) => { const x = R() * W, r = 30 + R() * 90, y = H + 200 - (k * 1.4 + R() * 0.4) * (H + 400);
           return <circle key={i} cx={x + Math.sin(k * 7 + i) * 20} cy={y} r={r} fill="#E2F6FF" fillOpacity={0.35} stroke="#F2FBFF" strokeWidth={5} opacity={0.9} />; })}</g>; })()}
       <Vignette id={id} a={0.75 + 0.25 * after} />
@@ -346,7 +346,7 @@ function Real({f, len, line}) {
           <DepthBar f={f} d={dd} a={0} value={cur < 0} />
           {cur >= 0 && <text x={1500} y={600} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={150} fill="#FFFFFF" opacity={clamp((f - mk[cur][0] + 4) / 9, 0, 1)} filter={`url(#soft-${id})`}>{fmt(mk[cur][1])} M</text>}
         </g>; })()}
-      <Credit text={v.credit} />
+      <Credit text={v.credit} right={!!(p.marks || p.depth != null)} />
       {flash > 0 && <g style={{mixBlendMode: 'screen'}}>
         <radialGradient id={`fl-${id}`}><stop offset="0" stopColor="#FFFFFF" stopOpacity={1} /><stop offset="0.25" stopColor="#FFF4D6" stopOpacity={0.85} /><stop offset="1" stopColor="#FFD98A" stopOpacity={0} /></radialGradient>
         <circle cx={W / 2} cy={470} r={300 + Math.min(f, 8) * 140} fill={`url(#fl-${id})`} opacity={flash} />
@@ -366,6 +366,8 @@ function Real({f, len, line}) {
 function Sink({f, len, line}) {
   const id = 's' + line.idx, p = P(line);
   const marks = (p.marks || []).map(([w, m]) => [at(line, w, 0.5), m]);
+  const push = p.push_on ? at(line, p.push_on, 0.6) : 1e9;
+  const pz = f > push ? L(f, push, len, 1, 1.22) : 1;
   let d = p.from != null ? p.from : 1000;
   if (p.to != null && !marks.length) d = L(f, 0, len, d, p.to, (x) => x);
   for (const [a, m] of marks) d = d + (m - d) * L(f, a - 12, a, 0, 1);
@@ -381,12 +383,16 @@ function Sink({f, len, line}) {
       <Defs id={id} d={d} />
       <Sea f={f} d={d} id={id} />
       <Walls k={walls} rise={rise} color={mix(bot, '#000000', 0.45)} rim={mix(bot, '#BFEFFF', 0.7)} />
-      <Specks f={f} id={id} rise={rise} n={110} />
+      <g transform={`translate(${W / 2} ${H / 2}) scale(${pz}) translate(${-W / 2} ${-H / 2})`}>
+      <Specks f={f} id={id} rise={rise} n={110} op={f > push ? L(f, push, len, 1, 2.2) : 1} />
       {p.surface && <g><Surface f={f} y={L(f, 0, len, 190, -30)} id={id} bright={L(f, 0, len, 1, 0.5)} /><Rays f={f} k={1} id={id} top={L(f, 0, len, 190, -30)} gain={1.5} /></g>}
-      <Glow x={800 + sway} y={560} r={520} id={id} a={0.95} />
-      <You f={f} id={id} x={800 + sway} y={p.surface ? L(f, 0, len, 420, 360) : 250 + Math.sin(f * 0.05) * 10} s={p.surface ? L(f, 0, len, 0.5, 0.4) : 0.5}
-        rot={Math.sin((f + (line.start || 0)) * 0.018) * 16 + 8} pose={p.pose || 'backfloat'} expr={p.expr || 'worried'} />
-      {[0, 40, 80, 120, 160].map((o) => <Bubbles key={o} x={800 + sway} y={300} f={f} f0={o - 30} n={3} s={0.8} seed={3 + o} op={0.7} />)}
+      <Glow x={800 + sway} y={500} r={520} id={id} a={0.95} />
+      {/* a slow tumble around his middle (the absolute clock, so it carries from shot to shot) */}
+      <g transform={`translate(${800 + sway} ${p.surface ? L(f, 0, len, 560, 500) : 500}) rotate(${((f + (line.start || 0)) * 0.42) % 360 - 20})`}>
+        <You f={f} id={id} x={0} y={-545 * (p.surface ? L(f, 0, len, 0.5, 0.42) : 0.5)} s={p.surface ? L(f, 0, len, 0.5, 0.42) : 0.5} pose={p.pose || 'star'} expr={p.expr || 'worried'} />
+      </g>
+      {[0, 40, 80, 120, 160].map((o) => <Bubbles key={o} x={800 + sway} y={360} f={f} f0={o - 30} n={3} s={0.8} seed={3 + o} op={0.7} />)}
+      </g>
       <Vignette id={id} />
       <DepthBar f={f} d={d} a={0} value={cur < 0} />
       {cur >= 0 && (() => { const [a, m] = marks[cur]; const kk = sp(f, a - 2, 'heavy');
@@ -456,14 +462,14 @@ function Section({f, len, line}) {
         <g opacity={0.8}>
           <path d={`M 70 ${SY} L 70 ${FL}`} stroke="#CFEFFF" strokeWidth={2} opacity={0.5} />
           {[...Array(12)].map((_, i) => <g key={i}><path d={`M 70 ${SY + i * KMP} l ${i % 2 ? 10 : 22} 0`} stroke="#CFEFFF" strokeWidth={2} />
-            {i % 2 === 0 && i > 0 && <text x={104} y={SY + i * KMP + 11} fontFamily={OSWALD} fontWeight={600} fontSize={32} fill="#FFFFFF" letterSpacing={3} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">{i} KM</text>}</g>)}
+            {i % 2 === 0 && i > 0 && <text x={104} y={SY + i * KMP + 13} fontFamily={OSWALD} fontWeight={600} fontSize={38} fill="#FFFFFF" letterSpacing={3} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">{i} KM</text>}</g>)}
         </g>
-        <Tag f={f} a={drop + 18} x={cx - 300} y={FL - 0.3 * EV} text="MOUNT EVEREST" anchor="end" size={30} rule={false} />
+        <Tag f={f} a={drop + 18} x={cx - 300} y={FL - 0.18 * EV} text="MOUNT EVEREST" anchor="end" size={40} rule={false} />
         <path d={`M ${cx + 180} ${FL + 4} L ${cx + 180} ${FL + 34}`} stroke="#FFFFFF" strokeWidth={3} opacity={0.85} />
-        <Tag f={f} a={0} x={cx + 180} y={FL + 80} text="CHALLENGER DEEP · 10,935 M" size={32} rule={false} anchor="middle" />
-        <circle cx={cx - 250} cy={SY + 6.2 * KMP} r={9} fill="#FFE08A" opacity={pulse} />
-        <circle cx={cx - 250} cy={SY + 6.2 * KMP} r={22} fill="#FFC23D" opacity={0.25 * pulse} />
-        <text x={cx - 280} y={SY + 6.2 * KMP + 8} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={28} fill="#FFE08A" letterSpacing={6} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">YOU · 6,000 M</text>
+        <Tag f={f} a={0} x={cx + 180} y={FL + 84} text="CHALLENGER DEEP · 10,935 M" size={40} rule={false} anchor="middle" />
+        <circle cx={cx - 300} cy={SY + 6.3 * KMP} r={9} fill="#FFE08A" opacity={pulse} />
+        <circle cx={cx - 300} cy={SY + 6.3 * KMP} r={22} fill="#FFC23D" opacity={0.25 * pulse} />
+        <text x={cx - 330} y={SY + 6.3 * KMP - 30} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={28} fill="#FFE08A" letterSpacing={6} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">YOU · 6,000 M</text>
       </g>
       <Vignette id={id} a={0.6} />
     </g>
@@ -510,11 +516,12 @@ function Close({f, len, line}) {
       {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.3)} x={1260} y={780} text={p.tag} />}
       {p.bar_on && (() => { const a = at(line, p.bar_on, 0.8); if (f < a - 4) return null; const k = L(f, a, a + 10, 0.08, 1, Easing.out(Easing.cubic));
         return <g opacity={clamp((f - a + 4) / 5, 0, 1)}>
-          <rect x={360} y={880} width={1200} height={10} rx={5} fill="#FFFFFF" opacity={0.3} />
-          <rect x={360} y={880} width={1200 * k} height={10} rx={5} fill="#FF2D2D" />
-          <circle cx={360 + 1200 * k} cy={885} r={16} fill="#FF2D2D" />
-          <path d="M 372 828 l 26 16 l -26 16 Z" fill="#FFFFFF" />
-          <text x={418} y={856} fontFamily={OSWALD} fontWeight={600} fontSize={30} fill="#FFFFFF">{k >= 1 ? '0:03 / 0:03' : '0:01 / 0:03'}</text>
+          <rect x={300} y={600} width={1320} height={230} rx={22} fill="#000000" opacity={0.45} />
+          <rect x={360} y={780} width={1200} height={16} rx={8} fill="#FFFFFF" opacity={0.35} />
+          <rect x={360} y={780} width={1200 * k} height={16} rx={8} fill="#FF2D2D" />
+          <circle cx={360 + 1200 * k} cy={788} r={26} fill="#FF2D2D" />
+          <path d="M 372 640 l 50 32 l -50 32 Z" fill="#FFFFFF" />
+          <text x={450} y={694} fontFamily={OSWALD} fontWeight={600} fontSize={60} fill="#FFFFFF">{k >= 1 ? '0:03 / 0:03' : '0:01 / 0:03'}</text>
         </g>; })()}
     </g>
   );
@@ -589,9 +596,15 @@ function Title({f, len, line}) {
       <Sea f={F} d={d} id={id} />
       <Walls k={0.45} rise={F * 6} color="#02070B" rim="#2F6F86" />
       <Specks f={F} id={id} rise={F * 6} n={110} />
-      <g style={{mixBlendMode: 'screen'}}><path d={`M ${bx - 235} ${by + 20} L -200 ${by - 300} L -200 ${by + 520} Z`} fill="#FFF3C4" opacity={0.16} filter={`url(#blur18-${id})`} /></g>
+      <g style={{mixBlendMode: 'screen'}}>
+        <linearGradient id={`tb-${id}`} gradientUnits="userSpaceOnUse" x1={bx - 150} y1={by} x2={-200} y2={by}><stop offset="0" stopColor="#FFF4D2" stopOpacity={0.75} /><stop offset="1" stopColor="#FFE9B0" stopOpacity={0} /></linearGradient>
+        <path d={`M ${bx - 150} ${by + 8} L -200 ${by - 330} L -200 ${by + 470} Z`} fill={`url(#tb-${id})`} filter={`url(#blur18-${id})`} />
+        <clipPath id={`tbc-${id}`}><path d={`M ${bx - 150} ${by + 8} L -200 ${by - 330} L -200 ${by + 470} Z`} /></clipPath>
+        <g clipPath={`url(#tbc-${id})`}><Specks f={F} id={id} rise={F * 6} n={140} op={2.2} seed={57} /></g>
+      </g>
       <g filter={`url(#lit-${id})`}><YSub T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} solo={!p.pip} youExpr="determined" pipExpr="smile" /></g>
       <circle cx={bx - 236 * 0.62} cy={by + 12} r={18} fill="#FFFBE6" />
+      <circle cx={bx - 236 * 0.62} cy={by + 12} r={70} fill="#FFF3C4" opacity={0.35} filter={`url(#blur18-${id})`} />
       <Vignette id={id} />
       <g filter={`url(#soft-${id})`}>
         <text x={W / 2 - 70} y={420 + (1 - k) * 40} textAnchor="end" fontFamily={NUN} fontWeight={900} fontSize={230} fill="#FFFFFF" opacity={clamp(k * 1.5, 0, 1)}>YOU</text>
