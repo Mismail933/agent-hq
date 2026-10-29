@@ -167,7 +167,9 @@ def part(folder):
         if s.get("label"):
             b["label"] = [s["label"][0], s["label"][1], s["label"][2]]
         if s.get("tints"):   # [[cue, "HTI:free"]]: a filled place changes colour on its word
-            b["tints"] = [{"at": cue(w), "code": c} for w, c in s["tints"]]
+            b["tints"] = [{"at": cue(x[0]), "code": x[1], **({"from": x[2]} if len(x) > 2 else {}), **({"dur": x[3]} if len(x) > 3 else {})} for x in s["tints"]]
+        if s.get("march"):   # [[cue, seconds, [[lon, lat], ...]]]: an army moves across the map
+            b["march"] = [{"at": cue(w), "dur": d, "pts": pts} for w, d, pts in s["march"]]
         if s.get("fx"):   # [["battle", cue, seconds, [[lon, lat], ...]]]: battles flare on the map while the narrator goes on
             b["fx"] = [{"kind": k, "at": cue(w), "dur": d, "pts": pts} for k, w, d, pts in s["fx"]]
         if s.get("shake"):   # {ll, flags, on}: a handshake over the area with both flags

@@ -1019,12 +1019,64 @@ const Fighter = ({kind = 'algeria', k = 0, fire = 0}) => {
     </svg>
   );
 };
+
+const Cannon = ({fire = 0, face = 1}) => (   // a field gun on two wheels; it recoils and flashes when it fires
+  <svg width={160} height={140} viewBox="0 0 160 140" style={{overflow: 'visible'}}>
+    <g transform={`translate(80 0) scale(${face} 1) translate(-80 0)`}>
+      <ellipse cx={80} cy={124} rx={60} ry={10} fill="rgba(0,0,0,0.35)" />
+      <g transform={`translate(${-fire * 14} 0)`}>
+        <path d="M 30 96 L 70 86 L 74 100 L 34 112 Z" fill="#6A4A2A" stroke="#3A2612" strokeWidth={1.5} />
+        <path d="M 58 78 L 132 64 C 138 63 140 72 134 74 L 62 94 C 54 96 52 80 58 78 Z" fill="#3A3E46" stroke="#14161A" strokeWidth={1.5} />
+        <ellipse cx={136} cy={69} rx={4} ry={6} fill="#14161A" />
+        <circle cx={62} cy={100} r={22} fill="none" stroke="#5A3A22" strokeWidth={6} />
+        {[0, 1, 2, 3].map((q) => <line key={q} x1={62} y1={100} x2={62 + Math.cos(q * 0.785) * 20} y2={100 + Math.sin(q * 0.785) * 20} stroke="#5A3A22" strokeWidth={3} />)}
+        <circle cx={62} cy={100} r={5} fill="#3A2612" />
+      </g>
+      {fire > 0.05 && <g opacity={fire}><circle cx={150} cy={66} r={10 + 18 * fire} fill="#FFD166" /><circle cx={150} cy={66} r={6 + 8 * fire} fill="#FFF6D8" /></g>}
+    </g>
+  </svg>
+);
+const Rider = ({k = 0, gallop = 0, team = 'sahel'}) => {   // a horseman (Samori's cavalry): a carved horse, the rider with a rifle
+  const robe = (FOES[team] || FOES.sahel).robe, leg = Math.sin(gallop) * 14;
+  return (
+    <svg width={170} height={200} viewBox="0 0 170 200" style={{overflow: 'visible'}}>
+      <defs><Lacquer id={`rh${k}`} c="#7A5236" dark="#3A2414" light="#A87A56" /><Lacquer id={`rr${k}`} c={robe[0]} dark={robe[1]} light={robe[2]} /></defs>
+      <ellipse cx={85} cy={186} rx={58} ry={9} fill="rgba(0,0,0,0.35)" />
+      {[50, 64, 108, 122].map((x, i) => <rect key={i} x={x} y={136} width={8} height={46} rx={3} fill="#4A2E1A" transform={`rotate(${(i % 2 ? leg : -leg)} ${x + 4} 136)`} />)}
+      <ellipse cx={86} cy={128} rx={50} ry={20} fill={`url(#rh${k})`} stroke="#3A2414" strokeWidth={1.4} />
+      <path d="M 124 120 C 136 96 150 92 156 100 C 160 108 150 116 138 128 Z" fill={`url(#rh${k})`} stroke="#3A2414" strokeWidth={1.4} />
+      <path d="M 70 112 C 70 86 76 70 84 62 L 100 62 C 104 72 106 92 104 114 Z" fill={`url(#rr${k})`} stroke={robe[1]} strokeWidth={1.2} />
+      <circle cx={92} cy={50} r={13} fill="#5E3A26" stroke="#2E1A10" />
+      <path d="M 80 48 C 78 34 106 34 104 48 C 98 42 86 42 80 48 Z" fill="#2A2A30" />
+      <rect x={100} y={30} width={4.5} height={70} rx={2} fill="#5A3A22" transform="rotate(30 102 66)" />
+    </svg>
+  );
+};
+const Fort = () => (   // a hilltop stockade with a gate (Antananarivo's heights; also a stone wall)
+  <svg width={300} height={200} viewBox="0 0 300 200" style={{overflow: 'visible'}}>
+    <path d="M 0 196 C 60 150 240 150 300 196 Z" fill="#5A5246" />
+    <path d="M 40 170 L 40 110 L 260 110 L 260 170 Z" fill="#8A7A5E" stroke="#3E3424" strokeWidth={2} />
+    {[...Array(12)].map((_, i) => <rect key={i} x={40 + i * 19} y={98} width={11} height={14} fill="#8A7A5E" stroke="#3E3424" strokeWidth={1.2} />)}
+    <rect x={132} y={130} width={36} height={40} rx={4} fill="#2A2014" />
+    <path d="M 210 110 L 210 70 L 250 70 L 250 110 Z" fill="#7A6A50" stroke="#3E3424" strokeWidth={2} /><path d="M 204 72 L 230 46 L 256 72 Z" fill="#5A3A28" />
+  </svg>
+);
+const Convict = ({k = 0}) => (   // a convict of the 1860s: grey canvas clothes, a straw hat, bare feet; no chains shown
+  <svg width={120} height={200} viewBox="0 0 120 200" style={{overflow: 'visible'}}>
+    <defs><Lacquer id={`cv${k}`} c="#8E8A80" dark="#4E4A42" light="#C2BEB2" /><Skin id={`cvs${k}`} /></defs>
+    <path d="M 10 168 L 10 182 C 10 196 110 196 110 182 L 110 168 Z" fill={WOOD[1]} /><ellipse cx={60} cy={168} rx={50} ry={11} fill={WOOD[0]} />
+    <path d="M 44 166 L 46 120 L 58 120 L 56 166 Z M 64 166 L 62 120 L 74 120 L 76 166 Z" fill={`url(#cv${k})`} stroke="#4E4A42" strokeWidth={1} />
+    <path d="M 38 124 C 38 104 42 92 46 82 L 74 82 C 78 92 82 104 82 124 Z" fill={`url(#cv${k})`} stroke="#4E4A42" strokeWidth={1.2} />
+    <circle cx={60} cy={66} r={14} fill={`url(#cvs${k})`} stroke="#8E5A3E" strokeWidth={1} />
+    <path d="M 36 58 L 84 58 L 74 50 L 46 50 Z" fill="#D8C48A" stroke="#8A7440" />
+  </svg>
+);
 // [title, subtitle, result], the region's box, the field, the zoom, the fighters, the land that turns French blue
 const BATTLES = {
-  algiers1830: {t: ['Algiers, 1830', 'The French army lands', 'Decades of war follow'], box: [[-2, 30], [9, 38]], at: [3.15, 36.42], z: 7, foe: 'algeria', land: ['DZA'], dir: -1},
-  samori1890s: {t: ["Samori Touré's empire, 1882–1898", 'Years of war in West Africa', 'Samori is captured, 1898'], box: [[-14, 6], [2, 16]], at: [-8.4, 10.6], z: 4.2, foe: 'sahel', land: ['GIN', 'MLI', 'CIV'], dir: 1},
-  vietnam1880s: {t: ['Vietnam, 1859–1885', 'Decades of resistance', 'French Indochina, 1887'], box: [[100, 8], [110, 22]], at: [105.8, 21.0], z: 4.5, foe: 'vietnam', land: ['VNM'], dir: -1},
-  madagascar1895: {t: ['Madagascar, 1895', 'The march on Antananarivo', 'The capital falls'], box: [[42, -26], [51, -12]], at: [47.52, -18.9], z: 5, foe: 'merina', land: ['MDG'], dir: -1},
+  algiers1830: {t: ['Algiers, 1830', 'The fleet lands the army', 'Algiers falls'], box: [[-2, 30], [9, 38]], at: [3.15, 36.42], z: 7, foe: 'algeria', land: ['DZA'], dir: -1, cannons: 2, ships: [[2.6, 36.95], [3.5, 37.0]]},
+  samori1890s: {t: ["Samori Touré's empire, 1882–1898", 'His horsemen against French guns', 'Samori is captured, 1898'], box: [[-14, 6], [2, 16]], at: [-8.4, 10.6], z: 4.2, foe: 'sahel', land: ['GIN', 'MLI', 'CIV'], dir: 1, cannons: 1, riders: 3},
+  vietnam1880s: {t: ['Vietnam, 1859–1885', 'Gunboats up the rivers', 'French Indochina, 1887'], box: [[100, 8], [110, 22]], at: [105.8, 21.0], z: 4.5, foe: 'vietnam', land: ['VNM'], dir: -1, cannons: 1, ships: [[106.6, 20.6]]},
+  madagascar1895: {t: ['Madagascar, 1895', 'Guns against the hilltop capital', 'Antananarivo falls'], box: [[42, -26], [51, -12]], at: [47.52, -18.9], z: 5, foe: 'merina', land: ['MDG'], dir: -1, cannons: 2, fort: true},
   tahiti1844: {t: ['Tahiti, 1844–1847', "Queen Pōmare's people fight back", 'A French protectorate'], box: [[-151.5, -18.6], [-148.6, -16.6]], at: [-149.45, -17.62], z: 3.2, foe: 'tahiti', land: ['PYF'], dir: 1},
   kanak1878: {t: ['New Caledonia, 1878', "Ataï's revolt", 'Crushed within months'], box: [[163.6, -22.8], [168.2, -19.6]], at: [165.5, -21.35], z: 3.6, foe: 'kanak', land: ['NCL'], dir: 1},
 };
@@ -1054,6 +1106,20 @@ function Battle({f, id}) {
     ...[0, 1, 2, 3].map((i) => ({y: cy + rows[i], el: f > 170 && f < 236 && (
       <Piece key={`sm${i}`} x={i % 2 ? cx + gap - 40 : cx - gap + 40} y={cy + rows[i]} turn={turn} w={140} h={120} op={close}>
         <Smoke k={lerp(f, 172 + i * 6, 214 + i * 6, 0, 1, Easing.out(Easing.quad))} /></Piece>)})),
+    ...[...Array(B.cannons || 0)].map((_, i) => {
+      const fireC = lerp(f, 164 + i * 18, 170 + i * 18, 0, 1) - lerp(f, 170 + i * 18, 186 + i * 18, 0, 1);
+      return {y: cy + 210 + i * 90, el: f >= 100 + i * 6 && (
+        <Piece key={`cn${i}`} x={cx - gap - 170} y={cy + 210 + i * 90 - 120} turn={turn} w={160} h={140} op={close} rise={rise(100 + i * 6)}><Cannon fire={fireC} /></Piece>)};
+    }),
+    ...[...Array(B.cannons || 0)].map((_, i) => ({y: cy + 120 + i * 90, el: f > 166 + i * 18 && f < 220 + i * 18 && (
+      <Piece key={`cs${i}`} x={cx - gap - 30} y={cy + 100 + i * 90} turn={turn} w={140} h={120} op={close}><Smoke k={lerp(f, 168 + i * 18, 214 + i * 18, 0, 1, Easing.out(Easing.quad))} /></Piece>)})),
+    ...[...Array(B.riders || 0)].map((_, i) => {
+      const charge = lerp(f, 120, 175, 0, 1, Easing.in(Easing.quad));
+      return {y: cy - 260 + i * 120, el: f >= 104 + i * 5 && (
+        <Piece key={`rd${i}`} x={cx + gap + 240 - charge * 230} y={cy - 260 + i * 120} turn={turn} w={170} h={200} op={close} rise={rise(104 + i * 5)}
+               fall={i === 1 ? lerp(f, 200, 222, 0, 1, Easing.out(Easing.bounce)) : 0}><Rider k={i} gallop={f / 2.2} /></Piece>)};
+    }),
+    ...(B.fort ? [{y: cy - 60, el: <Piece key="fort" x={cx + gap + 150} y={cy - 60} turn={turn} s={1.1} w={300} h={200} op={close} rise={rise(90)}><Fort /></Piece>}] : []),
     {y: cy - 230, el: f >= 226 && (
       <Piece key="flag" x={cx} y={cy - 230} turn={turn} s={1.15} w={80} h={200} op={close} rise={rise(226)}>
         <Pole flag={<Tricolore />} f={f} raise={lerp(f, 230, 252, 0, 1, Easing.out(Easing.cubic))} /></Piece>)},
@@ -1067,10 +1133,60 @@ function Battle({f, id}) {
         {B.land.map((a3) => { const ft = feat(a3); return ft && <path key={`o${a3}`} d={path(ft)} fill="none" stroke="#F4FBFF" strokeWidth={4} strokeLinejoin="round" opacity={blue} />; })}
       </Board>
       {pieces.map((p) => p.el)}
+      {(B.ships || []).map((ll, i) => { const [sx, sy] = proj(ll); const fireS = lerp(f, 150 + i * 14, 156 + i * 14, 0, 1) - lerp(f, 156 + i * 14, 172 + i * 14, 0, 1);
+        return <React.Fragment key={`bs${i}`}>
+          <Piece x={sx} y={sy} turn={turn} s={0.85} w={170} h={210} op={close} lift={Math.sin((f + i * 11) / 13) * 2}><Ship team="fr" face={-B.dir} sail={0.4} roll={Math.sin((f + i * 17) / 16) * 1.5} /></Piece>
+          {f > 150 + i * 14 && f < 200 + i * 14 && <Piece x={sx - 60 * B.dir} y={sy - 30} turn={turn} w={140} h={120} op={close}><Smoke k={lerp(f, 152 + i * 14, 196 + i * 14, 0, 1, Easing.out(Easing.quad))} /></Piece>}
+        </React.Fragment>; })}
     </Table>
   );
 }
 const battle = (id) => ({f}) => <Battle f={f} id={id} />;
+
+// ───────── New Caledonia, 1864: the first convict ship (the Iphigénie) comes in to Île Nou off Nouméa; the convicts are rowed ashore and
+// walk in a line between guards; the penitentiary's wall and blocks rise. No chains, no violence shown.
+function Prison1864({f}) {
+  const base = geoMercator().fitExtent([[700, 650], [PW - 700, PH - 650]], {type: 'MultiPoint', coordinates: [[163.6, -22.8], [168.2, -19.6]]}).scale();
+  const NOU = [166.42, -22.27];
+  const route = [[167.6, -23.3], [167.0, -22.9], [166.6, -22.5], [166.43, -22.31]];
+  const along = course(route);
+  const trip = (fr) => interpolate(fr, [10, 130], [0, 1], {...clamp, easing: Easing.inOut(Easing.sin)});
+  const cam = cameraAt(f, [[0, [165.6, -21.4], 0.98], [40, [166.6, -22.6], 2.6], [130, [NOU[0] + 0.01, NOU[1] - 0.01], 30], [300, [NOU[0] + 0.012, NOU[1] - 0.008], 32], [330, [NOU[0] + 0.012, NOU[1] - 0.008], 32]]);
+  const turn = lerp(f, 110, 150, 0, -10);
+  const proj = geoMercator().scale(base * cam[2]).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
+  const path = geoPath(proj);
+  const P = (lon, lat) => proj([lon, lat]);
+  const ship = sailing({along, trip, f, P, turn, i: 0});
+  const close = lerp(f, 118, 140, 0, 1);
+  const rise = (at) => lerp(f, at, at + 16, 0, 1, Easing.out(Easing.back(1.4)));
+  const [qx, qy] = P(NOU[0] + 0.004, NOU[1] - 0.003);
+  const walkers = [0, 1, 2, 3, 4, 5].map((k) => {
+    const a = 150 + k * 12, mv = hops(lerp(f, a, a + 70, 0, 1, (q) => q), 3);
+    return {x: qx - 260 + mv.u * 360 + k * 0, y: qy + 150 - k * 6 - mv.u * 40, lift: mv.lift * 20, show: f >= a, k};
+  });
+  const build = (at) => lerp(f, at, at + 26, 0, 1, Easing.out(Easing.cubic));
+  const stand = [
+    {y: qy - 140, el: <Piece key="wall" x={qx + 140} y={qy - 140} turn={turn} s={1.2} w={300} h={200} op={close} rise={build(140)}><Fort /></Piece>},
+    {y: qy - 40, el: <Piece key="b1" x={qx + 380} y={qy - 40} turn={turn} s={1.0} w={200} h={200} op={close} rise={build(176)}><House build={build(176)} f={f} wide={1.6} /></Piece>},
+    {y: qy + 30, el: <Piece key="b2" x={qx + 520} y={qy + 30} turn={turn} s={1.0} w={200} h={200} op={close} rise={build(206)}><House build={build(206)} f={f} wide={1.6} /></Piece>},
+    {y: qy + 120, el: <Piece key="g1" x={qx - 300} y={qy + 120} turn={turn} w={120} h={200} op={close} rise={rise(146)}><Trooper /></Piece>},
+    {y: qy + 60, el: <Piece key="g2" x={qx + 150} y={qy + 60} turn={turn} w={120} h={200} op={close} rise={rise(170)}><Trooper /></Piece>},
+    ...walkers.filter((w) => w.show).map((w) => ({y: w.y, el: <Piece key={`cv${w.k}`} x={w.x} y={w.y} turn={turn} w={120} h={200} op={close} lift={w.lift} rise={rise(150 + w.k * 12)}><Convict k={w.k} /></Piece>})),
+    {y: qy + 240, el: f >= 136 && <Piece key="boat" x={qx - 380 + lerp(f, 136, 160, -120, 0)} y={qy + 240} turn={turn} w={170} h={110} op={close * (1 - lerp(f, 230, 250, 0, 1))}><Canoe f={f} face={1} /></Piece>},
+  ].sort((a, b) => a.y - b.y);
+  return (
+    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<Title f={f} items={[['New Caledonia, 1864', 8, true], ['The first convict ship reaches Île Nou', 40, false, 200], ['A prison colony is built', 206, false], ['About 22,000 convicts by 1897', 252, false]]} />}>
+      <Board path={path}>
+        <BoardLabel P={P} ll={[166.2, -22.0]} text="NOUMÉA" size={44} op={lerp(f, 130, 150, 0, 1)} />
+        <Wake ships={[ship]} op={1 - lerp(f, 120, 150, 0, 1)} />
+      </Board>
+      {stand.map((p) => p.el)}
+      <Piece x={ship.x} y={ship.y} turn={turn} s={lerp(f, 40, 130, 0.62, 1.0)} w={170} h={210} op={lerp(f, 0, 14, 0, 1)} lift={Math.sin(f / 13) * 2}>
+        <Ship team="fr" face={ship.face} sail={f > 120 ? lerp(f, 120, 140, ship.sail, 0) : ship.sail} roll={Math.sin(f / 16) * (1.2 + ship.speed * 0.5)} />
+      </Piece>
+    </Table>
+  );
+}
 
 const Quebec1608Sample = ({f}) => (
   <AbsoluteFill>
@@ -1079,8 +1195,8 @@ const Quebec1608Sample = ({f}) => (
   </AbsoluteFill>
 );
 const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803, newcal1853: NewCal1853, africa1960: Africa1960,
-  ...Object.fromEntries(Object.keys(BATTLES).map((k) => [k, battle(k)]))};
-export const WAR_FRAMES = {quebec1608: 760 + D1608 + H1608, quebec1608map: 600 + D1608 + H1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360, africa1960: 330, ...Object.fromEntries(Object.keys(BATTLES).map((k) => [k, 330]))};
+  ...Object.fromEntries(Object.keys(BATTLES).map((k) => [k, battle(k)])), prison1864: Prison1864};
+export const WAR_FRAMES = {quebec1608: 760 + D1608 + H1608, quebec1608map: 600 + D1608 + H1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360, africa1960: 330, ...Object.fromEntries(Object.keys(BATTLES).map((k) => [k, 330])), prison1864: 330};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();

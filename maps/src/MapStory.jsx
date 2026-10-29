@@ -176,9 +176,15 @@ export const MapStory = ({lines = [], seconds = 10}) => {
     if (span > 0 && !who) delete tint[a3];
     fills[a3] = Math.max(fills[a3] || 0, span);
   }));
+  const wipes = [];   // tints with `from`: the new colour spreads through the country from that point
   lines.forEach((l, i) => (l.tints || []).forEach((x) => {
     if (i > li || t < x.at) return;
     const [a3, who] = x.code.split(':'), from = tint[a3] || C.fill, to = who === '-' ? C.fr : who === 'none' ? from : C[who] || C.fill;
+    if (x.from && who !== '-' && who !== 'none') {
+      const kw = interpolate(f, [at(x.at), at(x.at + (x.dur || 3))], [0, 1], {...clamp, easing: Easing.inOut(Easing.quad)});
+      if (kw < 1) { wipes.push({a3, color: to, from: x.from, k: kw, old: fills[a3] > 0 ? (tint[a3] || null) : null}); return; }
+      tint[a3] = to; fills[a3] = Math.max(fills[a3] || 0, 1); return;
+    }
     const k = on(x.at, 18);
     if (who === '-' && k >= 1) { delete tint[a3]; return; }   // ':-' = back to France's own colour
     if (who === 'none') { fills[a3] = Math.min(fills[a3] || 0, 1 - k); if (k >= 1) delete tint[a3]; return; }   // ':none' = fades out (e.g. Britain's empire after the comparison)
@@ -281,6 +287,21 @@ export const MapStory = ({lines = [], seconds = 10}) => {
         <path d={path(GRAT)} fill="none" stroke={C.grat} strokeWidth={1} />
         {world}
         {detail}
+        {wipes.map((w, i) => {
+          const ft = geo.detail.features.find((q) => q.properties.a3 === w.a3) || WORLD.find((q) => q.properties.a3 === w.a3);
+          if (!ft) return null;
+          const [wx, wy] = P(w.from), [[bx0, by0], [bx1, by1]] = path.bounds(ft);
+          const far = Math.max(...[[bx0, by0], [bx1, by0], [bx0, by1], [bx1, by1]].map(([x, y]) => Math.hypot(x - wx, y - wy)));
+          const R = Math.max(1, w.k * far * 1.1);
+          return (
+            <g key={`wp${i}`}>
+              <defs><radialGradient id={`wpg${i}`} cx={wx} cy={wy} r={R} gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#FFF" /><stop offset="0.88" stopColor="#FFF" /><stop offset="1" stopColor="#FFF" stopOpacity="0" /></radialGradient>
+                <mask id={`wpm${i}`} maskUnits="userSpaceOnUse" x={-W} y={-H} width={3 * W} height={3 * H}><rect x={-W} y={-H} width={3 * W} height={3 * H} fill={`url(#wpg${i})`} /></mask></defs>
+              <path d={path(ft)} fill={w.color} fillOpacity={0.95} mask={`url(#wpm${i})`} />
+              <circle cx={wx} cy={wy} r={R} fill="none" stroke="#F4FBFF" strokeWidth={2.5} strokeOpacity={0.5 * (1 - w.k)} />
+            </g>
+          );
+        })}
         {regionPaths}
         {ghost}
         {regionFlags}
@@ -304,6 +325,7 @@ export const MapStory = ({lines = [], seconds = 10}) => {
             </g>
           );
         }))}
+        {lines.flatMap((l, i) => (i <= li ? (l.march || []).map((m, k) => <March key={`mr${i}-${k}`} m={m} path={path} P={P} f={f} fps={fps} live={i === li} />) : []))}
         {(line.fx || []).map((x, i) => <Battle key={`fx${i}`} x={x} P={P} f={f} fps={fps} />)}
         {line.shake ? <Shake s={line.shake} P={P} f={f} fps={fps} /> : null}
       </svg>
@@ -439,6 +461,47 @@ function Battle({x, P, f, fps}) {
       }))}
       <image href={staticFile('icons/crossed-swords.svg')} x={sx - 34} y={sy - 96} width={68} height={68}
              transform={`rotate(${Math.sin(f / 5) * 6} ${sx} ${sy - 62})`} />
+    </g>
+  );
+}
+
+// march {at, dur, pts [[lon, lat], ...]}: an army moves across the map (Bassel: 'show armies moving across the map to capture these
+// lands'): a blue arrow grows along the route, a column of small pieces with the French flag at its head, a clash at each stop it
+// reaches; afterwards the route stays as a faint trail
+function March({m, path, P, f, fps, live}) {
+  const a = Math.round(m.at * fps), n = Math.round((m.dur || 4) * fps);
+  if (f < a) return null;
+  const dense = [];
+  for (let i = 0; i < m.pts.length - 1; i++) for (let k = 0; k < 20; k++) dense.push(geoInterpolate(m.pts[i], m.pts[i + 1])(k / 20));
+  dense.push(m.pts[m.pts.length - 1]);
+  const u = interpolate(f, [a, a + n], [0, 1], {...clamp, easing: Easing.inOut(Easing.sin)});
+  const j = Math.max(1, Math.round(u * (dense.length - 1)));
+  const done = dense.slice(0, j + 1);
+  const head = P(done[done.length - 1]), prev = P(done[Math.max(0, done.length - 3)]);
+  const ang = Math.atan2(head[1] - prev[1], head[0] - prev[0]);
+  const marching = live && u < 1;
+  const trail = live ? 1 : 0.35;
+  const stops = m.pts.slice(1).map((ll, i) => ({ll, at: a + Math.round(((i + 1) / (m.pts.length - 1)) * n)}));
+  return (
+    <g>
+      <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#0B1A33" strokeOpacity={0.55 * trail} strokeWidth={13} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#3FB8DE" strokeOpacity={trail} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="18 10" strokeDashoffset={-f * 1.6} />
+      {marching && <g transform={`translate(${head[0]} ${head[1]}) rotate(${(ang * 180) / Math.PI})`}>
+        <path d="M 14 0 L -8 -12 L -3 0 L -8 12 Z" fill="#3FB8DE" stroke="#F4FBFF" strokeWidth={2} />
+      </g>}
+      {marching && [0, 1, 2, 3, 4].map((q) => {
+        const p2 = P(dense[Math.max(0, j - 2 - q * 2)]), bob = Math.abs(Math.sin((f + q * 5) / 4)) * 4;
+        return <g key={q} transform={`translate(${p2[0]} ${p2[1] - bob})`}><circle r={7} fill="#2B3E7A" stroke="#F4FBFF" strokeWidth={1.6} /><rect x={-3} y={-15} width={6} height={7} fill="#B0302C" /></g>;
+      })}
+      {marching && <g transform={`translate(${head[0] - 4} ${head[1] - 60})`}><rect x={0} y={0} width={3} height={50} fill="#E8E4DA" />
+        <g transform={`skewY(${Math.sin(f / 6) * 5})`}><rect x={3} y={0} width={13} height={22} fill="#1F3A9A" /><rect x={16} y={0} width={13} height={22} fill="#F4F2EC" /><rect x={29} y={0} width={13} height={22} fill="#D22B33" /></g></g>}
+      {live && stops.map((s, i) => {
+        const k = (f - s.at) / 22;
+        if (k < 0 || k > 1) return null;
+        const [cx, cy] = P(s.ll), R = 12 + 46 * k;
+        return <g key={i} opacity={1 - k}><circle cx={cx} cy={cy} r={R} fill="#FFB35A" fillOpacity={0.35} stroke="#FFE2A8" strokeWidth={3} />
+          {[...Array(8)].map((_, q) => { const g2 = (q / 8) * Math.PI * 2; return <line key={q} x1={cx + Math.cos(g2) * R * 0.5} y1={cy + Math.sin(g2) * R * 0.5} x2={cx + Math.cos(g2) * R * 1.15} y2={cy + Math.sin(g2) * R * 1.15} stroke="#FFF3D6" strokeWidth={3} strokeLinecap="round" />; })}</g>;
+      })}
     </g>
   );
 }
