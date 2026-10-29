@@ -131,6 +131,11 @@ export const CAST = {
   toshiko: {hair: '#6B645D', hairLight: '#A39B92', brow: '#4A4038', dress: '#7A3E5A', dressShade: '#5E2E45', style: 'long', lips: true},   // 2010, in her sixties: grey in the long hair   // long dark hair, no glasses: not Hisako's grey bob (Israa)
   katsutoshi: {hair: '#43464D', hairLight: '#686C75', brow: '#2E3036', dress: '#B9CCE0', dressShade: '#94A9C2', style: 'short'},   // the son at 59: dark grey hair, no glasses, a light shirt (not his father, young or old)
   officer: {hair: '#7A5230', hairLight: '#9A6A40', brow: '#5A3A20', dress: '#5B6B3A', dressShade: '#46532C', style: 'short', hat: 'cap', pants: '#46532C'},   // a US occupation officer (no name)
+  walsh: {hair: '#2B1A10', hairLight: '#4A2E1C', brow: '#22140A', dress: '#1E3A5F', dressShade: '#16293F', style: 'short'},   // Don Walsh, US Navy, 1960
+  piccard: {hair: '#3A2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#6B7280', dressShade: '#4B5563', style: 'short', glasses: true},   // Jacques Piccard, 1960
+  cameron: {hair: '#9CA3AF', hairLight: '#C4C9D0', brow: '#6B7280', dress: '#334155', dressShade: '#1E293B', style: 'short', beard: true},   // James Cameron, 2012
+  vescovo: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true},   // Victor Vescovo, 2019
+  yancey: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#7C2D12', dressShade: '#5C210D', style: 'short', glasses: true, beard: true},   // Paul Yancey, 2014
   pip: {hair: '#7A4A26', hairLight: '#9A6236', brow: '#5A3418', dress: '#FACC15', dressShade: '#CA8A04', style: 'short'},   // Pip, the yellow sub's pilot (Storygraphics #5)
   you: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#F97316', dressShade: '#C2410C', style: 'short', pants: '#1E3A5F'},   // Storygraphics #5: "you", the viewer, in the trench what-if
   visitor: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true, pants: '#111827'},

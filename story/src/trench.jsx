@@ -221,14 +221,14 @@ export const VShort = ({lines = [], captions = true}) => {
             return <path key={i} d={`M ${540 + Math.cos(a) * 220} ${SURF} q ${Math.cos(a) * 120 * k} ${-170 * k} ${Math.cos(a) * 230 * k} ${-60 * k}`} stroke="#E6F7FF" strokeWidth={14} fill="none" strokeLinecap="round" />; })}</g>}
           {f >= LAND && f < LAND + 40 && [...Array(14)].map((_, i) => { const side = i % 2 ? 1 : -1, k = L(f, LAND, LAND + 40, 0, 1, Easing.out(Easing.cubic));
             return <circle key={i} cx={540 + side * (380 + k * (60 + i * 14))} cy={FLOOR - 20 - k * (20 + (i % 4) * 26)} r={30 + k * 40} fill="#8C8F96" opacity={0.7 * (1 - k)} />; })}
-          <Bracket x={1010} y0={SURF} y1={FLOOR - EVEREST_H} k={b2} side={1} />
+          <Bracket x={880} y0={SURF} y1={FLOOR - EVEREST_H} k={b2} side={1} />
           <Bracket x={215} y0={FLOOR} y1={FLOOR - EVEREST_H} k={b9} side={-1} color="#FFFFFF" />
         </g>
         {/* labels are drawn on the screen (they stay readable whatever the zoom) */}
         <g opacity={1 - L(f, tIn - 8, tIn, 0, 1)}>
           <Chip x={560} y={120} text="THE DEEPEST PLACE ON EARTH" s={1 + 0.03 * Math.sin(f * 0.15)} anchor="middle" rot={-1} size={52} fill="#FFFFFF" />
           {f >= LAND + 2 && <Chip x={600} y={860} text="MOUNT EVEREST" s={clamp(sp(f, LAND + 2, 'sticker'), 0, 1.1)} anchor="middle" fill="#FFFFFF" rot={-3} />}
-          {f >= cTwo && <Chip x={1010 - 20} y={300} text="2 KM OF WATER" s={clamp(sp(f, cTwo + 4, 'sticker'), 0, 1.1)} anchor="end" rot={2} size={58} />}
+          {f >= cTwo && <Chip x={860} y={300} text="2 KM OF WATER" s={clamp(sp(f, cTwo + 4, 'sticker'), 0, 1.1)} anchor="end" rot={2} size={58} />}
           {f >= cNine && <Chip x={30} y={360} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
         </g>
       </g>
@@ -274,7 +274,7 @@ export const VShort = ({lines = [], captions = true}) => {
           <text x={0} y={0} fontFamily={OSWALD} fontWeight={700} fontSize={120} fill="#FDE047" stroke={INK} strokeWidth={10} paintOrder="stroke" textAnchor="middle">!?</text></g>}
       </g>
     );
-    world = <g>{world}<rect width={VW} height={VH} fill="#7FD0F5" opacity={1 - L(f, tIn + 14, tIn + 24, 0, 1)} />
+    world = <g>{world}<rect width={VW} height={VH} fill="#7FD0F5" opacity={1 - L(f, tIn + 14, tIn + 18, 0, 1)} />
       {f > cUnder + 12 && <BubbleWipe k={L(f, cUnder + 12, tDive, 0, 0.45)} />}</g>;
   } else if (f < tOut) {
     // 3. THE DIVE: the camera rides down with you; green, then blue, then grey arrive on their words; the light closes in
@@ -340,7 +340,7 @@ export const VShort = ({lines = [], captions = true}) => {
   } else {
     // 4. THE SCALE: pull far back to the dark section; you are a glowing speck a kilometre and a bit down; the bracket measures the
     //    whole column, a pin marks the deepest point, and the speck keeps falling toward it. 5. the end card.
-    const k = L(f, tOut, tOut + 40, 0, 1, Easing.out(Easing.cubic));
+    const k = L(f, tOut, tOut + 56, 0, 1, Easing.inOut(Easing.cubic));
     const speckY = SURF + num(f, [[tOut, 1.3], [cWay, 2.6], [end, 4.2]]) * KM;
     const k2 = L(f, tOut + 18, tOut + 48, 0, 1);   // you stay in the middle while the camera pulls out, THEN the frame settles on the column
     const cy = speckY + (960 - speckY) * k2;   // the pull-back starts ON you and opens to the whole column
@@ -352,14 +352,14 @@ export const VShort = ({lines = [], captions = true}) => {
     world = (
       <g>
         <g transform={`translate(${VW / 2} ${VH / 2}) scale(${z}) translate(${-540 - hand[0] * 0.5} ${-cy - hand[1] * 0.5})`}>
-          <Section f={f} dark={0.85} />
+          <Section f={f} dark={0.97 - 0.12 * L(f, tOut + 30, tOut + 60, 0, 1)} />
           <path d={`M 540 ${speckY} L 540 ${FLOOR - 30}`} stroke="#FDE047" strokeWidth={4} strokeDasharray="10 14" opacity={0.6 * L(f, cWay - 10, cWay + 10, 0, 1)} />
           {k < 0.7 && <g opacity={1 - L(f, tOut + 14, tOut + 26, 0, 1)}><You f={f} pose="kick" expr="scared" x={540} y={speckY - (250 / z) * (1 - k)} s={0.33 / z} kick /></g>}
           <g opacity={(1 - endK) * L(f, tOut + 8, tOut + 22, 0, 1)}><circle cx={540} cy={speckY} r={26 + 6 * Math.sin(f * 0.25)} fill="#FDE047" opacity={0.25} />
           <circle cx={540} cy={speckY} r={10} fill="#FFF7B0" stroke={INK} strokeWidth={4} /></g>
-          <Bracket x={1000} y0={SURF} y1={FLOOR} k={b} side={1} />
+          <Bracket x={880} y0={SURF} y1={FLOOR} k={b} side={1} />
           {pin > 0.01 && <g transform={`translate(540 ${FLOOR}) scale(${clamp(pin, 0, 1.15)})`}>
-            {[0, 1].map((r) => <circle key={r} cx={0} cy={0} r={30 + ((f * 1.6 + r * 40) % 80)} fill="none" stroke="#EF4444" strokeWidth={6} opacity={1 - ((f * 1.6 + r * 40) % 80) / 80} />)}
+            {[0, 1].map((r) => <circle key={r} cx={0} cy={0} r={26 + ((f * 1.2 + r * 30) % 50) * 0.9} fill="none" stroke="#EF4444" strokeWidth={6} opacity={1 - ((f * 1.6 + r * 40) % 80) / 80} />)}
             <path d="M 0 0 C -36 -50 -46 -76 -46 -100 A 46 46 0 1 1 46 -100 C 46 -76 36 -50 0 0 Z" fill="#EF4444" stroke={INK} strokeWidth={7} />
             <circle cx={0} cy={-100} r={17} fill="#FFFFFF" stroke={INK} strokeWidth={5} />
           </g>}
@@ -368,14 +368,16 @@ export const VShort = ({lines = [], captions = true}) => {
         </g>
         <rect width={VW} height={VH} fill="#04060A" opacity={0.75 * (1 - L(f, tOut, tOut + 14, 0, 1))} />
         <g opacity={1 - endK}>
-          {f >= cEleven && <Chip x={975} y={680} text="10,935 M" s={clamp(sp(f, cEleven + 3, 'sticker'), 0, 1.1)} anchor="end" rot={-2} size={80} />}
+          {f >= cEleven && <Chip x={860} y={680} text="10,935 M" s={clamp(sp(f, cEleven + 3, 'sticker'), 0, 1.1)} anchor="end" rot={-2} size={80} />}
           {f >= cWay - 12 && <Chip x={590} y={speckSy - 130} text="YOU" s={clamp(sp(f, cWay - 12, 'sticker'), 0, 1.1)} rot={-6} size={54} fill="#FDE047" />}
         </g>
         {endK > 0 && (
           <g>
             <rect width={VW} height={VH} fill="#02060C" opacity={endK} />
-            <radialGradient id="v-glow" cx={0.5} cy={0.62} r={0.4}><stop offset="0" stopColor="#FDE047" stopOpacity={0.35} /><stop offset="1" stopColor="#FDE047" stopOpacity={0} /></radialGradient>
-            <rect width={VW} height={VH} fill="url(#v-glow)" opacity={endK * (0.6 + 0.4 * Math.sin(f * 0.12))} />
+            <linearGradient id="v-beam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#FDE047" stopOpacity={0.55} /><stop offset="1" stopColor="#FDE047" stopOpacity={0} /></linearGradient>
+            <path d={`M ${470 + 30 * Math.sin(f * 0.04)} ${VH} L ${610 + 30 * Math.sin(f * 0.04)} ${VH} L ${760} 1240 L ${320} 1240 Z`} fill="url(#v-beam)" opacity={endK} />
+            {[...Array(12)].map((_, i) => { const R2 = rng(600 + i); const x = 380 + R2() * 320, y = VH - ((f * (1 + R2()) * 2 + R2() * 600) % 640);
+              return <circle key={i} cx={x} cy={y} r={3 + R2() * 4} fill="#FFF7B0" opacity={endK * 0.8} />; })}
             <g transform={`translate(540 380) scale(${clamp(spr((f - tEnd) / 30, 10, 0.9), 0, 1.05) * (1 + 0.04 * L(f, tEnd, end, 0, 1))})`}>
               <Chip x={-250} y={-60} text="YOU" size={120} fill="#FDE047" rot={-4} anchor="middle" />
               <text x={-40} y={60} fontFamily={OSWALD} fontWeight={700} fontSize={86} fill="#FFFFFF" textAnchor="middle" stroke={INK} strokeWidth={10} paintOrder="stroke">vs</text>
@@ -432,7 +434,7 @@ const VCaptions = ({lines, stop = 1e9}) => {
   const s = 0.85 + 0.15 * clamp((frame - ws[c[0]][1] + 2) / 3, 0, 1);
   return (
     <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: 1330}}>
-      <div style={{width: 900, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 22, textAlign: 'center', transform: `scale(${s})`, fontFamily: OSWALD, fontWeight: 700, fontSize: 86, lineHeight: 1.08,
+      <div style={{width: 760, marginRight: 60, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 20, textAlign: 'center', transform: `scale(${s})`, fontFamily: OSWALD, fontWeight: 700, fontSize: 80, lineHeight: 1.08,
         textTransform: 'uppercase', letterSpacing: 1, WebkitTextStroke: '14px #0A0A0A', paintOrder: 'stroke fill', textShadow: '0 8px 0 rgba(0,0,0,0.45)'}}>
         {c.map((i, k) => <span key={i} style={{color: i === now ? '#FDE047' : '#FFFFFF'}}>{ws[i][0].replace(/[.,;:]$/, '')}</span>)}
       </div>

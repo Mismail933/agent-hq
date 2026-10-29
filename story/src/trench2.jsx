@@ -45,7 +45,7 @@ function Water({m, T, glow = 0, uid = ''}) {
         const x = R() * W, y0 = R() * H, y = ((y0 - rise * k) % (H + 40) + H + 40) % (H + 40) - 20;
         return <circle key={i} cx={x + Math.sin(T * 0.02 + i) * 8} cy={y} r={r} fill="#E6F4FF" opacity={[0.22, 0.34, 0.5][layer] * (0.7 + 0.3 * (1 - light))} />; })}
       {glow > 0 && [...Array(22)].map((_, i) => { const Q = rng(90 + i); const x = Q() * W, y = Q() * H * 0.95, b = Math.max(0, Math.sin(T * 0.13 + i * 1.9));
-        return <circle key={'g' + i} cx={x} cy={((y - rise * 0.6) % H + H) % H} r={5 + 7 * b} fill={i % 3 ? '#5EEAD4' : '#60A5FA'} opacity={0.8 * b * glow} />; })}
+        return <circle key={'g' + i} cx={x} cy={((y - rise * 0.6) % H + H) % H} r={(5 + 7 * b) * (glow > 1 ? 1.9 : 1)} fill={i % 3 ? '#5EEAD4' : '#60A5FA'} opacity={Math.min(1, 0.8 * b * glow)} />; })}
     </g>
   );
 }
@@ -153,6 +153,20 @@ const Passers = ({line, f, T}) => (P(line).see || []).map((c, i) => {
 });
 
 // ───────────── shared screen pieces ─────────────
+const People = ({line, f, T, x0 = 1640, y0 = 560}) => (P(line).people || []).map(([who, on, name], i) => {
+  const a = at(line, on || '', 0.1 + 0.2 * i);
+  if (f < a) return null;
+  const s = sp(f, a, 'card');
+  return (
+    <g key={who} transform={`translate(${x0 - i * 330} ${y0}) scale(${s})`}>
+      <circle r={150} fill="#F5E6C8" {...st(8)} />
+      <clipPath id={`tw-pp-${who}`}><circle r={142} /></clipPath>
+      <g clipPath={`url(#tw-pp-${who})`}><Bust who={who} x={0} y={-10} s={0.62} expr="calm" f={T} arms="rest" /></g>
+      <g transform="translate(0 150)"><Box x={-(String(name).length * 17 + 40) / 2} y={0} w={String(name).length * 17 + 40} h={54} text={name} fill="#FFFFFF" rot={-2} /></g>
+    </g>
+  );
+});
+
 const Meter = ({m, f, x = W - 60, op = 1}) => (
   <g transform={`translate(${x} 40)`} opacity={op}>
     <rect x={-330} y={0} width={330} height={128} fill="#0B1F3A" opacity={0.88} stroke={INK} strokeWidth={6} />
@@ -160,7 +174,7 @@ const Meter = ({m, f, x = W - 60, op = 1}) => (
     <text x={-310} y={108} fontFamily={OSWALD} fontWeight={700} fontSize={70} fill="#FDE047">{fmtM(m)}</text>
   </g>
 );
-const Card = ({line, f}) => {   // p.card = {head, big, sub, on, fill}: a fact card that pops on its word (heavy spring for the big number)
+const Card = ({line, f, y = 300}) => {   // p.card = {head, big, sub, on, fill}: a fact card that pops on its word (heavy spring for the big number)
   const c = P(line).card;
   if (!c) return null;
   const a = at(line, c.on || '', 0.25);
@@ -168,7 +182,7 @@ const Card = ({line, f}) => {   // p.card = {head, big, sub, on, fill}: a fact c
   const s = sp(f, a, 'heavy'), s2 = sp(f, a + 6, 'sticker');
   const wBig = Math.max(420, String(c.big).length * 76 + 80);
   return (
-    <g transform="translate(960 300)">
+    <g transform={`translate(960 ${y})`}>
       {c.head && <g transform={`scale(${s2})`}><Box x={-(String(c.head).length * 22 + 60) / 2} y={-170} w={String(c.head).length * 22 + 60} h={64} text={c.head} fill="#FFFFFF" rot={-2} /></g>}
       <g transform={`scale(${s})`}><Box x={-wBig / 2} y={-90} w={wBig} h={150} text={c.big} fill={c.fill || '#FFE11A'} rot={1} /></g>
       {c.sub && <g transform={`scale(${s2})`}><Box x={-(String(c.sub).length * 24 + 60) / 2} y={90} w={String(c.sub).length * 24 + 60} h={70} text={c.sub} fill="#0B1F3A" color="#FFFFFF" rot={-1} /></g>}
@@ -188,7 +202,7 @@ function Dive({f, len, line}) {
   const p = P(line), T = line.start + f;
   const m = depthOf(line, f, len);
   const [hx, hy] = hand(T);
-  const glow = m > 250 && m < 7000 ? clamp((m - 250) / 300, 0, 1) * (p.glow === false ? 0 : 1) : 0;
+  const glow = p.blink ? 2 : m > 250 && m < 7000 ? clamp((m - 250) / 300, 0, 1) * (p.glow === false ? 0 : 1) : 0;
   const bob = Math.sin(T * 0.05) * 10;
   const cup = p.cup != null ? p.cup : cupAt(m);
   const beam = p.beam != null ? p.beam : (m > 900 ? 1 : 0);
@@ -206,6 +220,7 @@ function Dive({f, len, line}) {
       </g>
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
+      <People line={line} f={f} T={T} />
       <Labels line={line} f={f} x0={80} y0={60} />
       {p.meter !== false && <Meter m={m} f={f} />}
     </g>
@@ -307,7 +322,7 @@ function Surface({f, len, line}) {
         <g transform={`translate(0 ${-sea + 120})`}>{sky}{under}</g>
         {inside < 1 && <g transform={`translate(${yx} ${yy}) rotate(${-20 + reel * 20}) scale(${0.34 * (1 - inside * 0.6)})`} opacity={1 - inside}><Figure who="you" pose="kick" expr="shock" f={T * 2} seed={3} shadow={false} /></g>}
         {inside < 1 && <path d={`M ${sx - 150} ${sy + 40} C ${sx - 300} ${sy + 60} ${yx + 60} ${yy + 420} ${yx} ${yy + 440 * 0.34 * (1 - inside * 0.6) * 1.3}`} fill="none" stroke="#10151C" strokeWidth={8} />}
-        <YSub T={T} x={sx} y={sy} s={1.2} hatchOpen={lin(f, len * 0.5, len * 0.62, 0, 1) * (1 - lin(f, len * 0.82, len * 0.9, 0, 1))} youExpr={inside >= 1 ? 'shock' : 'calm'} pipExpr="smile" />
+        <YSub T={T} x={sx} y={sy} s={1.2} hatchOpen={lin(f, len * 0.5, len * 0.62, 0, 1) * (1 - lin(f, len * 0.82, len * 0.9, 0, 1))} youExpr="shock" youOut={inside < 1} pipExpr="smile" />
         <Labels line={line} f={f} x0={80} y0={60} />
       </g>
     );
@@ -387,8 +402,8 @@ function Cabin({f, len, line}) {
         <text x={0} y={-36} textAnchor="middle" fontFamily={OSWALD} fontWeight={600} fontSize={20} fill="#475569">ATMOSPHERES</text>
       </g>
       {/* you and Pip */}
-      <Bust who="you" x={330} y={500} s={0.8} expr={p.you || 'worried'} f={T} arms={has('blanket') != null && f >= has('blanket') ? 'grip' : 'rest'} />
-      <Bust who="pip" x={680} y={560} s={0.68} expr={p.pip || 'smile'} f={T} talk={false} arms="rest" />
+      <Bust who="you" x={330} y={440} s={0.8} expr={p.you || 'worried'} f={T} arms={has('blanket') != null && f >= has('blanket') ? 'grip' : 'rest'} />
+      <Bust who="pip" x={680} y={500} s={0.68} expr={p.pip || 'smile'} f={T} talk={false} arms="rest" />
       {p.cold && [...Array(3)].map((_, i) => <circle key={i} cx={420 + i * 20} cy={430 - ((T * 1.2 + i * 20) % 60)} r={14 + i * 4} fill="#E5E7EB" opacity={0.4 * (1 - ((T * 1.2 + i * 20) % 60) / 60)} />)}
       {has('cup') != null && f >= has('cup') && <g transform={`translate(470 650) scale(${sp(f, has('cup'), 'sticker')}) rotate(-8)`}><path d="M -50 -64 L 50 -64 L 36 60 L -36 60 Z" fill="#fff" {...st(6)} />
         <path d="M -26 -8 q 12 -16 24 0 q 12 16 24 0" stroke="#2563EB" strokeWidth={6} fill="none" /><rect x={60} y={-80} width={18} height={110} rx={6} fill="#2563EB" {...st(4)} transform="rotate(20)" /></g>}
@@ -397,7 +412,7 @@ function Cabin({f, len, line}) {
       {has('point') != null && f >= has('point') && <g transform={`translate(760 520) rotate(-20) scale(${sp(f, has('point'), 'snap')})`}><path d="M 0 0 L 320 -40" stroke="#F2C29B" strokeWidth={34} strokeLinecap="round" /><path d="M 0 0 L 320 -40" stroke={INK} strokeWidth={42} strokeLinecap="round" opacity={0} /></g>}
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
-      <Labels line={line} f={f} x0={80} y0={170} />
+      <Labels line={line} f={f} x0={80} y0={36} />
       <Meter m={m} f={f} op={p.meter === false ? 0 : 1} />
     </g>
   );
@@ -412,7 +427,11 @@ function Cards({f, len, line}) {
       <g transform={`translate(${hand(T)[0]} ${hand(T)[1]})`}><Water m={m} T={T} glow={m > 250 ? 0.5 : 0} /></g>
       <rect width={W} height={H} fill="#000" opacity={0.25} />
       {p.see && <Passers line={line} f={f} T={T} />}
-      {p.sub !== false && <g transform={`translate(1600 ${790 + Math.sin(T * 0.05) * 10}) scale(0.55)`}><YSub T={T} beam={0} cup={cupAt(m)} pipExpr={p.pip || 'smile'} youExpr={p.you || 'worried'} /></g>}
+      {p.alone && <g transform={`translate(1560 ${300 + Math.sin(T * 0.05) * 12}) rotate(${Math.sin(T * 0.07) * 7}) scale(0.42)`}><Figure who="you" pose="kick" expr="scared" f={T * 2} seed={3} shadow={false} /></g>}
+      {p.cupbig && <g transform={`translate(1560 560) rotate(-6) scale(${sp(f, 2, 'card')})`}><path d="M -110 -150 L 110 -150 L 82 130 L -82 130 Z" fill="#fff" {...st(8)} />
+        <text x={0} y={0} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={56} fill="#2563EB">YOU</text></g>}
+      <People line={line} f={f} T={T} />
+      {p.sub !== false && !p.alone && !p.cupbig && !p.people && <g transform={`translate(1600 ${790 + Math.sin(T * 0.05) * 10}) scale(0.55)`}><YSub T={T} beam={0} cup={cupAt(m)} pipExpr={p.pip || 'smile'} youExpr={p.you || 'worried'} /></g>}
       {p.title && <g transform={`translate(960 ${p.chips ? 120 : 380}) scale(${sp(f, at(line, p.title_on || '', 0.05), 'heavy')})`}>
         {p.title.map((t, i) => { const w = String(t).length * (p.title_size || 70) * 0.55 + 70; return <Box key={i} x={-w / 2} y={i * ((p.title_size || 70) * 1.75) - 50} w={w} h={(p.title_size || 70) * 1.35} text={t} fill={i % 2 ? '#FDE047' : '#FFFFFF'} rot={i % 2 ? 2 : -2} />; })}</g>}
       <Card line={line} f={f} />
@@ -451,10 +470,17 @@ function Flashback({f, len, line}) {
       <g transform={`translate(${hx + shake} ${hy})`}>
         <Water m={m} T={T} glow={mode === 'glow' ? 1 : 0.3} />
         {mode === 'glow' && [...Array(40)].map((_, i) => { const Q = rng(300 + i); const x = Q() * W, y0 = Q() * H; const y = ((y0 - T * 7) % H + H) % H;
-          return <circle key={i} cx={x} cy={y} r={4 + Q() * 5} fill="#7DF9E5" opacity={0.85} />; })}
+          return <circle key={i} cx={x} cy={((y0 - T * 13) % H + H) % H} r={7 + Q() * 9} fill="#7DF9E5" opacity={0.9} />; })}
         {mode !== 'compare' && <g transform={`translate(960 ${360 + Math.sin(T * 0.05) * 10}) scale(1.05)`}><Trieste T={T} crack={mode === 'bang' ? lin(f, bang, bang + 6, 0, 1) : 0} /></g>}
+        {p.inset === 'tunnel' && (() => { const a = at(line, p.inset_on || 'plexiglas', 0.15); const k = lin(f, a, a + 14, 0, 1);
+          return f >= a ? <g transform={`translate(1650 600) scale(${0.85 * sp(f, a, 'card')})`}>
+            <circle r={180} fill="#2F4F5F" {...st(9)} /><circle r={140} fill="#9BD3E8" opacity={0.7} {...st(6)} />
+            <path d={`M -10 -20 l ${-70 * k} ${-60 * k} M -10 -20 l ${80 * k} ${-40 * k} M -10 -20 l ${30 * k} ${90 * k} M -10 -20 l ${-90 * k} ${40 * k}`} stroke="#FFFFFF" strokeWidth={7} strokeLinecap="round" />
+            <g transform="translate(-170 200)"><Box x={0} y={0} w={340} h={56} text="TUNNEL WINDOW" fill="#F5E6C8" rot={-2} /></g></g> : null; })()}
         {mode === 'compare' && <g>
           <g transform="translate(560 330) scale(0.75)"><Trieste T={T} /></g>
+          {(p.tags || []).map(([t, x, y, on], i) => f >= at(line, on || '', 0.1 + 0.4 * i) ? <g key={i} transform={`translate(${x} ${y}) scale(${sp(f, at(line, on || '', 0.1 + 0.4 * i), 'sticker')})`}>
+            <Box x={-(String(t).length * 15 + 40) / 2} y={0} w={String(t).length * 15 + 40} h={54} text={t} fill="#F5E6C8" rot={-2} /></g> : null)}
           <g transform={`translate(1360 470) scale(${sp(f, at(line, p.right_on || 'cameron', 0.3), 'card') * 0.9})`}><Challenger /></g>
         </g>}
         {mode === 'bang' && f >= bang && f < bang + 26 && <g transform={`translate(1250 300) scale(${sp(f, bang, 'sticker')})`}><path d="M 0 -110 L 30 -30 L 110 -40 L 50 20 L 90 100 L 10 50 L -40 120 L -40 40 L -120 30 L -50 -20 L -90 -90 L -10 -50 Z" fill="#FDE047" {...st(7)} />
@@ -462,10 +488,12 @@ function Flashback({f, len, line}) {
       </g>
       <rect width={W} height={H} fill="#704214" opacity={0.28} />
       <rect width={W} height={H} fill="none" stroke="#2A1A0E" strokeWidth={40} opacity={0.6} />
-      <g transform="translate(70 50)"><Box x={0} y={0} w={190} h={78} text={p.year || '1960'} fill="#F5E6C8" rot={-3} /></g>
-      <Card line={line} f={f} />
+      <g transform="translate(0 0)" />
+      <g transform="translate(70 50)"><Box x={0} y={0} w={String(p.year || '1960').length * 30 + 70} h={78} text={p.year || '1960'} fill="#F5E6C8" rot={-3} /></g>
+      <Card line={line} f={f} y={760} />
       <Chips line={line} f={f} y0={760} />
-      <Labels line={line} f={f} x0={300} y0={56} />
+      <People line={line} f={f} T={T} x0={1640} y0={620} />
+      <Labels line={line} f={f} x0={80} y0={p.labels_y || 740} />
     </g>
   );
 }
@@ -482,13 +510,15 @@ function Pressure({f, len, line}) {
   const squash = lin(f, ca + n * 8, ca + n * 8 + 6, 0, 1);
   return (
     <g>
-      <Water m={Math.min(1500, p.m || 4000)} T={T} uid={line.start} />
+      <Water m={p.floor ? 10900 : Math.min(1500, p.m || 4000)} T={T} uid={line.start} />
       <rect width={W} height={H} fill="#000" opacity={0.15} />
+      {p.floor && <g><path d={`M -200 860 C 300 840 700 870 1100 850 C 1500 835 1800 860 ${W + 200} 850 L ${W + 200} ${H + 200} L -200 ${H + 200} Z`} fill="#6B6E73" {...st(6)} />
+        <g transform={`translate(380 ${700 + Math.sin(T * 0.05) * 8}) scale(0.6)`}><YSub T={T} beam={1} cup={0.42} /></g></g>}
       <g transform={`translate(960 700) scale(${1.8 * sp(f, sa, 'card')})`}>
         <rect x={-110} y={-6} width={220} height={150} fill="#F5F5F0" stroke={INK} strokeWidth={7} strokeDasharray="14 8" />
         <rect x={-90} y={14} width={180} height={110} fill="#E63946" opacity={0.85} />
         <text x={0} y={92} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={46} fill="#fff">1 IN²</text>
-        {[...Array(n)].map((_, i) => { const a = ca + i * 8; if (f < a) return null; const drop = lin(f, a, a + 10, -700, 0, Easing.in(Easing.quad));
+        {[...Array(n)].map((_, i) => { const a = p.cars_static ? -99 : ca + i * 8; if (f < a) return null; const drop = p.cars_static ? 0 : lin(f, a, a + 10, -700, 0, Easing.in(Easing.quad));
           return <g key={i} transform={`translate(${(i % 2 ? 14 : -10)} ${-36 - i * 90 + drop + squash * i * 6}) scale(${1 - squash * 0.04} ${1 - squash * 0.08})`}><Car fill={['#3B82F6', '#E36414', '#16A34A', '#9333EA', '#FACC15'][i % 5]} /></g>; })}
       </g>
       {p.big && f >= ca + n * 8 && <g transform={`translate(1500 360) scale(${sp(f, ca + n * 8, 'heavy')})`}><Box x={-230} y={-70} w={460} h={140} text={p.big} fill="#FDE047" rot={-2} /></g>}
@@ -524,7 +554,8 @@ function FishLine({f, len, line}) {
           <path d={stiff > 0.5 ? 'M -220 0 L 220 0' : `M -220 0 C -150 ${-80 + Math.sin(T * 0.2) * 30} -80 ${80 - Math.sin(T * 0.2) * 30} 0 0 C 80 ${-80 + Math.sin(T * 0.2) * 30} 150 ${80 - Math.sin(T * 0.2) * 30} 220 0`} stroke="#F9A8D4" strokeWidth={26} fill="none" strokeLinecap="round" />
           <text x={0} y={-90} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={48} fill="#fff">{stiff > 0.5 ? 'TOO STIFF TO FLEX' : 'A PROTEIN THAT FLEXES'}</text></g> : null; })()}
       <Card line={line} f={f} />
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <People line={line} f={f} T={T} x0={1640} y0={760} />
+      <Labels line={line} f={f} x0={600} y0={36} />
     </g>
   );
 }
@@ -553,6 +584,7 @@ function Floor({f, len, line}) {
       {silt > 0.6 && <rect width={W} height={H} fill="#F2EFE8" opacity={(silt - 0.6) * 1.2} />}
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
+      <People line={line} f={f} T={T} x0={1640} y0={420} />
       <Labels line={line} f={f} x0={80} y0={60} />
       <Meter m={10900} f={f} op={p.meter === false ? 0 : 1} />
     </g>
@@ -578,16 +610,17 @@ function Bag2019({f, len, line}) {
     <g>
       <Water m={10900} T={T} />
       <path d={`M -200 780 C 400 760 900 790 1400 770 C 1700 760 1900 780 ${W + 200} 775 L ${W + 200} ${H + 200} L -200 ${H + 200} Z`} fill="#6B6E73" {...st(6)} />
-      <path d="M 300 380 L 1300 700 L 1300 980 Z" fill="#FFF6C8" opacity={0.14} />
+      <path d="M 300 380 L 1300 700 L 1300 980 Z" fill="#FFF6C8" opacity={0.14} transform={`rotate(${Math.sin(T * 0.03) * 5} 420 400)`} />
       {!p.nosub && <g transform={`translate(${lin(f, 0, len, 460, 520)} ${380 + Math.sin(T * 0.05) * 8}) scale(1.35)`}><LimitingFactor /></g>}
       {!p.nobag && f >= (p.bag_always ? 0 : ba) && <g transform={`translate(1240 760) scale(${p.bag_always ? 1 : sp(f, ba, 'card')})`}><Bag T={T} s={1.2} /></g>}
-      {count && f >= at(line, count.on || '', 0.4) && <g transform={`translate(1430 640) scale(${sp(f, at(line, count.on || '', 0.4), 'heavy')})`}>
+      {count && f >= at(line, count.on || '', 0.4) && <g transform={`translate(1580 520) scale(${sp(f, at(line, count.on || '', 0.4), 'heavy')})`}>
         <Box x={-220} y={-80} w={440} h={150} text={`${Math.round(lin(f, at(line, count.on || '', 0.4), at(line, count.on || '', 0.4) + 30, 0, count.to))} ${count.unit || ''}`.trim()} fill="#FDE047" rot={-2} />
         {count.sub && <Box x={-200} y={80} w={400} h={60} text={count.sub} fill="#0B1F3A" color="#fff" rot={1} />}</g>}
       <rect width={W} height={H} fill="#1E3A8A" opacity={p.year === '' ? 0 : 0.16} />
       {p.year !== '' && <g transform="translate(70 50)"><Box x={0} y={0} w={190} h={78} text={p.year || '2019'} fill="#DBEAFE" rot={-3} /></g>}
       <Card line={line} f={f} />
-      <Labels line={line} f={f} x0={300} y0={56} />
+      <People line={line} f={f} T={T} x0={1660} y0={330} />
+      <Labels line={line} f={f} x0={760} y0={56} />
     </g>
   );
 }
@@ -626,7 +659,7 @@ function Cup({f, len, line}) {
 function Ballast({f, len, line}) {
   const p = P(line), T = line.start + f;
   const wa = at(line, p.water_on || 'water', 0.3), da = at(line, p.drop_on || 'go', 0.5);
-  const fill = lin(f, wa, wa + 40, 0, 1);
+  const fill = p.drop ? 0 : lin(f, wa, wa + 40, 0, 1);
   const drop = p.drop ? lin(f, da, da + 30, 0, 1, Easing.in(Easing.quad)) : 0;
   return (
     <g>
