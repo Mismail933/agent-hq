@@ -221,8 +221,8 @@ export const VShort = ({lines = [], captions = true}) => {
             return <path key={i} d={`M ${540 + Math.cos(a) * 220} ${SURF} q ${Math.cos(a) * 120 * k} ${-170 * k} ${Math.cos(a) * 230 * k} ${-60 * k}`} stroke="#E6F7FF" strokeWidth={14} fill="none" strokeLinecap="round" />; })}</g>}
           {f >= LAND && f < LAND + 40 && [...Array(14)].map((_, i) => { const side = i % 2 ? 1 : -1, k = L(f, LAND, LAND + 40, 0, 1, Easing.out(Easing.cubic));
             return <circle key={i} cx={540 + side * (380 + k * (60 + i * 14))} cy={FLOOR - 20 - k * (20 + (i % 4) * 26)} r={30 + k * 40} fill="#8C8F96" opacity={0.7 * (1 - k)} />; })}
-          <Bracket x={880} y0={SURF} y1={FLOOR - EVEREST_H} k={b2} side={1} />
-          <Bracket x={215} y0={FLOOR} y1={FLOOR - EVEREST_H} k={b9} side={-1} color="#FFFFFF" />
+          <g opacity={1 - aim}><Bracket x={880} y0={SURF} y1={FLOOR - EVEREST_H} k={b2} side={1} />
+          <Bracket x={215} y0={FLOOR} y1={FLOOR - EVEREST_H} k={b9} side={-1} color="#FFFFFF" /></g>
         </g>
         {/* labels are drawn on the screen (they stay readable whatever the zoom) */}
         <g opacity={1 - L(f, tIn - 8, tIn, 0, 1)}>
@@ -417,7 +417,8 @@ const chunks3 = (ws) => {
     let left = 0;   // words left in this sentence after this one
     for (let j = i + 1; j < ws.length; j++) { left++; if (/[.,!?;:]$/.test(ws[j][0])) break; }
     const tail = false && left;
-    if (stop || long || tail || (cur.length >= 3 && !small) || cur.length >= 5) { out.push(cur); cur = []; }
+    const inTail = leftIncl <= 3;   // the sentence's last words stay together
+    if (stop || (!inTail && (long || tail || (cur.length >= 3 && !small))) || cur.length >= 5) { out.push(cur); cur = []; }
   });
   if (cur.length) out.push(cur);
   return out;
