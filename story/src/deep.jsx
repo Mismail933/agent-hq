@@ -534,18 +534,20 @@ function Sub({f, len, line}) {
 // ───────────── dp_title: YOU vs 11 KM ─────────────
 function Title({f, len, line}) {
   const id = 't' + line.idx, p = P(line);
-  const slam = at(line, p.slam || 'find', 0.6);
+  // p.slam 'none' = the title doesn't land in this line (a question line before the answer line); the scene runs on the absolute
+  // clock, so two title lines in a row join without a jump
+  const slam = p.slam === 'none' ? 1e9 : at(line, p.slam || 'find', 0.6);
   const k = sp(f, slam, 'heavy'), k2 = sp(f, slam + 8, 'heavy'), k3 = sp(f, slam + 16, 'card');
-  const d = 4000;
-  const bx = 960, by = 760 + Math.sin(f * 0.05) * 8;
+  const d = 4000, F = f + (line.start || 0);
+  const bx = 960, by = 760 + Math.sin(F * 0.05) * 8;
   return (
     <g>
       <Defs id={id} d={d} glow="#FFF1B8" />
-      <Sea f={f} d={d} id={id} />
-      <Walls k={0.45} rise={f * 6} color="#02070B" rim="#2F6F86" />
-      <Specks f={f} id={id} rise={f * 6} n={110} />
+      <Sea f={F} d={d} id={id} />
+      <Walls k={0.45} rise={F * 6} color="#02070B" rim="#2F6F86" />
+      <Specks f={F} id={id} rise={F * 6} n={110} />
       <g style={{mixBlendMode: 'screen'}}><path d={`M ${bx - 235} ${by + 20} L -200 ${by - 300} L -200 ${by + 520} Z`} fill="#FFF3C4" opacity={0.16} filter={`url(#blur18-${id})`} /></g>
-      <YSub T={f} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} youExpr="determined" pipExpr="smile" />
+      <YSub T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} youExpr="determined" pipExpr="smile" />
       <circle cx={bx - 236 * 0.62} cy={by + 12} r={18} fill="#FFFBE6" />
       <Vignette id={id} />
       <g filter={`url(#soft-${id})`}>
