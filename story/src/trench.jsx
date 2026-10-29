@@ -134,7 +134,7 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1, rule
   const ocean = OCEAN_STOPS.map(([km, c]) => [km, mix(c, '#02060C', dark * (km < 0.3 ? 0.4 : 0.9))]);
   return (
     <g>
-      <linearGradient id="v-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mix('#5AA9E6', '#1B2A44', dark)} /><stop offset="1" stopColor={mix('#CDEBFF', '#3B5578', dark)} /></linearGradient>
+      <linearGradient id="v-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mix('#5AA9E6', '#05080F', dark)} /><stop offset="1" stopColor={mix('#CDEBFF', '#16223A', dark)} /></linearGradient>
       <rect x={-600} y={-1200} width={VW + 1200} height={SURF + 1260} fill="url(#v-sky)" />
       {dark < 0.5 && <Sun x={74} y={212} r={32} f={f} heat={sunHeat} />}
       <linearGradient id="v-sea" gradientUnits="userSpaceOnUse" x1="0" y1={SURF} x2="0" y2={FLOOR}>
@@ -205,8 +205,8 @@ export const VShort = ({lines = [], captions = true}) => {
     const squash = f >= LAND ? 1 - 0.07 * Math.sin(clamp((f - LAND) / 9, 0, 1) * Math.PI) : 1;
     const jolt = f >= LAND && f < LAND + 14 ? Math.sin((f - LAND) * 2.4) * (LAND + 14 - f) * 1.6 : 0;
     const push = L(f, LAND, tIn, 0, 1, (t) => t);
-    const cy = 960 - 120 * push + jolt, cx0 = 540;
-    const z = 1.0 + 0.1 * push;
+    const cy = 960 + jolt, cx0 = 540 + 30 * push;
+    const z = 1.0 + 0.04 * push;
     const grow = 1;
     const b2 = sp(f, cTwo, 'snap'), b9 = sp(f, cNine, 'snap');
     // the zoom THROUGH the surface into the next scene (the signature move): from tIn the camera dives into the sea at x 540
@@ -341,7 +341,7 @@ export const VShort = ({lines = [], captions = true}) => {
     // 4. THE SCALE: pull far back to the dark section; you are a glowing speck a kilometre and a bit down; the bracket measures the
     //    whole column, a pin marks the deepest point, and the speck keeps falling toward it. 5. the end card.
     const k = L(f, tOut, tOut + 56, 0, 1, Easing.inOut(Easing.cubic));
-    const speckY = SURF + num(f, [[tOut, 1.3], [cWay, 2.6], [end, 4.2]]) * KM;
+    const speckY = SURF + num(f, [[tOut, 1.2], [cWay, 1.7], [end, 2.4]]) * KM;
     const k2 = L(f, tOut + 18, tOut + 48, 0, 1);   // you stay in the middle while the camera pulls out, THEN the frame settles on the column
     const cy = speckY + (960 - speckY) * k2;   // the pull-back starts ON you and opens to the whole column
     const z = 10 - 9 * k + 0.08 * L(f, cDeepest, end, 0, 1);
@@ -406,6 +406,9 @@ export const VShort = ({lines = [], captions = true}) => {
 const chunks3 = (ws) => {
   const out = []; let cur = [];
   ws.forEach((w, i) => {
+    let leftIncl = 0;   // this word and the rest of its sentence
+    for (let j = i; j < ws.length; j++) { leftIncl++; if (/[.,!?;:]$/.test(ws[j][0])) break; }
+    if (cur.length >= 2 && leftIncl === 3) { out.push(cur); cur = []; }
     cur.push(i);
     const stop = /[.,!?;:]$/.test(w[0]);
     const small = /^(a|an|the|of|to|and|or|on|in|at|is|if|so|that|your|its|toward|than|any)$/i.test(w[0].replace(/[^a-z']/gi, ''));
@@ -413,7 +416,7 @@ const chunks3 = (ws) => {
     const long = next && len + 1 + next[0].length > 18 && !small;
     let left = 0;   // words left in this sentence after this one
     for (let j = i + 1; j < ws.length; j++) { left++; if (/[.,!?;:]$/.test(ws[j][0])) break; }
-    const tail = cur.length >= 2 && left > 0 && left <= 3 && !small;
+    const tail = false && left;
     if (stop || long || tail || (cur.length >= 3 && !small) || cur.length >= 5) { out.push(cur); cur = []; }
   });
   if (cur.length) out.push(cur);
