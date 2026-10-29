@@ -74,7 +74,7 @@ export const Specks = ({f, rise = 0, n = 90, op = 1, seed = 11, id}) => {
   );
 };
 // rock walls in silhouette at the sides (the trench closing in): k = how far in (0 none, 1 narrow), rise = scroll as you sink
-const Walls = ({k, rise = 0, color, rim, seed = 9}) => {
+const Walls = ({k, rise = 0, color, rim, seed = 9, rimW = 4, rimA = 0.5}) => {
   if (k <= 0.01) return null;
   const side = (s) => {
     const R = rng(seed + (s > 0 ? 7 : 0));
@@ -89,7 +89,7 @@ const Walls = ({k, rise = 0, color, rim, seed = 9}) => {
     return (
       <g key={s}>
         <path d={`M ${outer} ${-200 - EXT} L ${edge} L ${outer} ${H + 400 + EXT} Z`} fill={color} />
-        <path d={`M ${edge}`} fill="none" stroke={rim} strokeWidth={4} opacity={0.5} />
+        <path d={`M ${edge}`} fill="none" stroke={rim} strokeWidth={rimW} opacity={rimA} />
       </g>
     );
   };
@@ -262,8 +262,18 @@ function Float({f, len, line}) {
         <Specks f={f} id={id} n={70} op={0.75} />
         {/* the shadow in the deep, and one pale eye, creeping up toward the end */}
         <ellipse cx={V ? 1060 : 1250} cy={H + 260 - creep * 200 - (V ? 330 : 0)} rx={720} ry={300} fill="#021019" opacity={0.75 * creep} filter={`url(#blur40-${id})`} />
-        <circle cx={V ? 980 : 1150} cy={H + 120 - creep * 200 - (V ? 330 : 0)} r={V ? 20 : 14} fill="#CFF6E8" opacity={creep * (V ? 0.8 + 0.2 * Math.sin(f * 0.2) : 0.45 + 0.3 * Math.sin(f * 0.2))} />
-        {V && <circle cx={980} cy={H + 120 - creep * 200 - 330} r={56} fill="#CFF6E8" opacity={0.22 * creep} filter={`url(#blur3-${id})`} />}
+        {!V && <circle cx={1150} cy={H + 120 - creep * 200} r={14} fill="#CFF6E8" opacity={creep * (0.45 + 0.3 * Math.sin(f * 0.2))} />}
+        {V && (() => {   // 2.76.4 (Israa: the eye read as a stray dot): the creature itself, rising a little, its tip curling up at ~3 s
+          const up = L(f, 0, 150, 0, 60), ey = H + 120 - creep * 200 - 570 - up, curl = L(f, 80, 120, 0, 1, Easing.inOut(Easing.cubic));
+          const blink = f > 72 && f < 80 ? 0.15 : 1;
+          return <g>
+            <path d={`M 560 ${ey + 250} C 700 ${ey + 60} 1160 ${ey + 20} 1420 ${ey + 170} C 1300 ${ey + 330} 820 ${ey + 380} 560 ${ey + 250} Z`} fill="#020E16" opacity={0.92} />
+            <path d={`M 560 ${ey + 250} C 700 ${ey + 60} 1160 ${ey + 20} 1420 ${ey + 170}`} fill="none" stroke="#5FB8D6" strokeWidth={5} opacity={0.45} />
+            <path d={limb([660, ey + 260], [600, ey + 120], [520 + 60 * curl, ey + 40 - 90 * curl], [600 + 80 * curl, ey - 40 - 120 * curl], 46, 8)} fill="#031722" />
+            <path d={limb([660, ey + 260], [600, ey + 120], [520 + 60 * curl, ey + 40 - 90 * curl], [600 + 80 * curl, ey - 40 - 120 * curl], 46, 8)} fill="none" stroke="#5FB8D6" strokeWidth={3} opacity={0.4} />
+            <ellipse cx={980} cy={ey + 110} rx={30} ry={17 * blink} fill="#DDFBF0" />
+            <ellipse cx={980} cy={ey + 110} rx={70} ry={40} fill="#CFF6E8" opacity={0.18} filter={`url(#blur3-${id})`} />
+          </g>; })()}
         <Glow x={hx + 220} y={hy + 40} r={560} id={id} a={0.55} />
         {flare > 0 && <g style={{mixBlendMode: 'screen'}}><circle cx={1500 - flare * 200} cy={140} r={420} fill="#FFF3C8" opacity={0.55 * flare} filter={`url(#blur40-${id})`} />
           <path d={`M 1500 140 L ${700 - flare * 80} 760`} stroke="#FFF8E0" strokeWidth={60} opacity={0.12 * flare} filter={`url(#blur18-${id})`} /></g>}
@@ -382,12 +392,12 @@ function Sink({f, len, line}) {
   const pz = f > push ? L(f, push, len, 1, 1.22) : 1;
   let d = p.from != null ? p.from : 1000;
   if (p.to != null && !marks.length) d = L(f, 0, len, d, p.to, (x) => x);
-  for (const [a, m] of marks) d = d + (m - d) * L(f, a - 12, a, 0, 1);
+  for (const [a, m] of marks) d = d + (m - d) * L(f, a - (V ? 6 : 12), a, 0, 1);   // vertical: the bar moves on the spoken number, not ahead of it
   const rise = f * 14;
   const wOn = p.walls_on ? at(line, p.walls_on, 0.8) : 0;
   const walls = p.walls1 ? L(f, wOn, wOn ? wOn + 30 : len, p.walls0 || 0, p.walls1) : 0;
   const [, bot] = water(d);
-  const sway = Math.sin(f * 0.04) * 14;
+  const sway = Math.sin(f * 0.04) * 14, FX = p.fx || 800;
   const k = marks.findIndex(([a]) => f < a), cur = k < 0 ? marks.length - 1 : k - 1;
   const dark = p.dip ? clamp((f - (len - 14)) / 12, 0, 1) : 0;   // a dip to dark into the next shot
   const numOut = p.num_off ? clamp((f - at(line, p.num_off, 0.4) - 6) / 10, 0, 1) : 0;
@@ -396,16 +406,16 @@ function Sink({f, len, line}) {
     <g>
       <Defs id={id} d={d} />
       <Sea f={f} d={d} id={id} />
-      <Walls k={walls} rise={rise} color={mix(bot, '#000000', 0.45)} rim={mix(bot, '#BFEFFF', 0.7)} />
+      <Walls k={walls} rise={rise} color={V ? mix(bot, '#2A4A5C', 0.5) : mix(bot, '#000000', 0.45)} rim={mix(bot, '#BFEFFF', 0.7)} rimW={V ? 9 : 4} rimA={V ? 0.85 : 0.5} />
       <g transform={`translate(${W / 2} ${H / 2}) scale(${pz}) translate(${-W / 2} ${-H / 2})`}>
       <Specks f={f} id={id} rise={rise} n={110} op={f > push ? L(f, push, len, 1, 2.2) : 1} />
       {p.surface && <g><Surface f={f} y={L(f, 0, len, 190, -30)} id={id} bright={L(f, 0, len, 1, 0.5)} /><Rays f={f} k={1} id={id} top={L(f, 0, len, 190, -30)} gain={1.5} /></g>}
-      <Glow x={800 + sway} y={500} r={520} id={id} a={0.95 * lightOut} />
+      <Glow x={FX + sway} y={500} r={520} id={id} a={0.95 * lightOut} />
       {/* a slow tumble around his middle (the absolute clock, so it carries from shot to shot) */}
-      <g transform={`translate(${800 + sway} ${p.surface ? L(f, 0, len, 560, 500) : 500}) rotate(${40 + ((f + (line.start || 0)) * 0.2) % 100})`}>
+      <g transform={`translate(${FX + sway} ${p.surface ? L(f, 0, len, 560, 500) : 500}) rotate(${40 + ((f + (line.start || 0)) * 0.2) % 100})`}>
         <You f={f} id={id} x={0} y={-545 * (p.surface ? L(f, 0, len, 0.5, 0.42) : 0.5)} s={p.surface ? L(f, 0, len, 0.5, 0.42) : 0.5} pose={p.pose || 'star'} expr={p.expr || 'worried'} />
       </g>
-      {[0, 40, 80, 120, 160].map((o) => <Bubbles key={o} x={800 + sway} y={360} f={f} f0={o - 30} n={3} s={0.8} seed={3 + o} op={0.7} />)}
+      {[0, 40, 80, 120, 160].map((o) => <Bubbles key={o} x={FX + sway} y={360} f={f} f0={o - 30} n={3} s={0.8} seed={3 + o} op={0.7} />)}
       </g>
       <Vignette id={id} />
       {!V && <DepthBar f={f} d={d} a={0} value={cur < 0} />}

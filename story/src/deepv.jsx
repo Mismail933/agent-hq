@@ -32,11 +32,11 @@ const Rows = ({f, line, rows, y, size = 150, gap = 1.02, x = DW / 2, off = null,
   return (
     <g opacity={1 - out} filter="url(#vsoft)">
       {rows.map((r, i) => {
-        const a = always ? -99 : at(line, r.on, 0.1) - 3, k = clamp(sp(f, a, 'heavy'), 0, 1.1);
+        const a = always ? -99 : at(line, r.with || r.on, 0.1) - 3 + (r.with ? 4 * i : 0), k = clamp(sp(f, a, 'heavy'), 0, 1.1);
         if (f < a - 1) return null;
         const sz = r.size || size, w = String(r.t).length * sz * 0.66;
         return <text key={i} x={x} y={y + i * sz * gap + (1 - k) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={sz} letterSpacing={-1}
-          fill={r.color || '#FFFFFF'} opacity={clamp((f - a) / 5, 0, 1)} style={{textTransform: 'uppercase'}} {...halo} strokeWidth={10}
+          fill={r.color || '#FFFFFF'} opacity={clamp((f - a) / 5, 0, 1)} style={{textTransform: 'uppercase'}} {...halo} strokeWidth={r.color ? 16 : 10} strokeOpacity={r.color ? 0.85 : 0.62}
           {...(w > DW - 90 ? {textLength: DW - 90, lengthAdjust: 'spacingAndGlyphs'} : {})}>{r.t}</text>;
       })}
     </g>
@@ -87,7 +87,7 @@ const marksOf = (line, f) => {
   const p = P(line), mk = (p.marks || []).map(([w, m]) => [at(line, w, 0.5), m]);
   let d = p.from != null ? p.from : 1000;
   if (p.to != null && !mk.length) d = L(f, 0, line.end - line.start, d, p.to, (x) => x);
-  for (const [a, m] of mk) d = d + (m - d) * L(f, a - 12, a, 0, 1);
+  for (const [a, m] of mk) d = d + (m - d) * L(f, a - 6, a, 0, 1);
   const k = mk.findIndex(([a]) => f < a);
   return {d, mk, cur: k < 0 ? mk.length - 1 : k - 1};
 };
@@ -190,8 +190,9 @@ function TypeOf({f, len, line, first}) {
     );
   }
   if (shot === 'dp_title') {
-    const slam = p.slam === 'none' ? 1e9 : at(line, p.slam || 'find', 0.6);
+    const slam = p.held ? -99 : p.vslam ? at(line, p.vslam, 0.1) : p.slam === 'none' ? 1e9 : at(line, p.slam || 'find', 0.6);
     const k = sp(f, slam, 'heavy'), k2 = sp(f, slam + 8, 'heavy'), k3 = sp(f, slam + 16, 'card');
+    const b0 = p.held ? -99 : p.bar_from ? at(line, p.bar_from, 0.3) : slam + 16, b1 = p.held ? -98 : p.bar_to ? at(line, p.bar_to, 0.9) : slam + 46;
     return (
       <g>
         <g filter="url(#vsoft)">
@@ -200,7 +201,7 @@ function TypeOf({f, len, line, first}) {
           <text x={DW / 2} y={760 + (1 - k2) * 40} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={250} fill="#FFC23D" opacity={clamp(k2 * 1.5, 0, 1)} {...halo} strokeWidth={10}>11 KM</text>
         </g>
         <VTag f={f} a={slam + 16} x={DW / 2} y={850} text="THE MARIANA TRENCH" anchor="middle" size={40} />
-        <VBar f={f} d={L(f, slam + 16, slam + 46, 0, 10935)} a={slam + 16} y={1220} op={clamp(k3, 0, 1)} />
+        <VBar f={f} d={L(f, b0, b1, 0, 10935)} a={p.held ? -99 : slam + 16} y={1220} op={p.held ? 1 : clamp(k3, 0, 1)} />
       </g>
     );
   }
@@ -211,7 +212,7 @@ function TypeOf({f, len, line, first}) {
 function EndCard({f, len, line}) {
   const id = 'e' + line.idx, F = f + (line.start || 0);
   vstart({vert: true});   // the backgrounds reach past the stage (set every frame: the module's state isn't shared between render tabs)
-  const a1 = at(line, 'whole', 0.2), a2 = at(line, 'dive', 0.4), a3 = at(line, 'channel', 0.85);
+  const a1 = at(line, 'whole', 0.2), a2 = at(line, 'dive', 0.4), a3 = at(line, 'our', 0.75);
   const z = L(f, 0, len, 1, 1.07, (x) => x);
   // the same sub as the title shot's, where that shot leaves it (a crossfade showed two subs), then on down slowly
   const by = 981 + f * 0.9 + Math.sin(F * 0.05) * 8;
@@ -227,11 +228,11 @@ function EndCard({f, len, line}) {
         <circle cx={DW / 2 - 236 * 0.67} cy={by + 12} r={16} fill="#FFFBE6" />
       </g>
       <g filter="url(#vsoft)">
-        {f >= a1 - 3 && <text x={DW / 2} y={430 + (1 - clamp(sp(f, a1 - 3, 'heavy'), 0, 1)) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={130} fill="#FFFFFF" {...halo} strokeWidth={10}>THE FULL DIVE</text>}
+        {f >= a1 - 3 && <text x={DW / 2} y={430 + (1 - clamp(sp(f, a1 - 3, 'heavy'), 0, 1)) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={106} fill="#FFFFFF" {...halo} strokeWidth={10}>THE WHOLE DIVE</text>}
         {f >= a2 - 3 && <text x={DW / 2} y={610 + (1 - clamp(sp(f, a2 - 3, 'heavy'), 0, 1)) * 30} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={170} fill="#FFC23D" {...halo} strokeWidth={10}>ALL 11 KM</text>}
       </g>
-      <VTag f={f} a={a3 - 3} x={DW / 2} y={750} text="ON STORYGRAPHICS" anchor="middle" size={52} />
-      {f >= a3 + 6 && <text x={DW / 2} y={830} textAnchor="middle" fontFamily={OSWALD} fontWeight={500} fontSize={44} fill="#FFFFFF" opacity={clamp((f - a3 - 6) / 8, 0, 1) * 0.9} letterSpacing={3}>@Storygraphics</text>}
+      <VTag f={f} a={a3 - 6} x={DW / 2} y={750} text="ON STORYGRAPHICS" anchor="middle" size={52} />
+      {f >= a3 && <text x={DW / 2} y={830} textAnchor="middle" fontFamily={OSWALD} fontWeight={500} fontSize={44} fill="#FFFFFF" opacity={clamp((f - a3) / 8, 0, 1) * 0.9} letterSpacing={3}>@Storygraphics</text>}
     </svg>
   );
 }
@@ -246,7 +247,7 @@ const FootageV = ({line, len}) => {
   const look = {filter: `saturate(${v.sat != null ? v.sat : 0.92}) contrast(${v.con != null ? v.con : 1.06}) brightness(${v.bri != null ? v.bri : 0.96})${v.hue ? ` hue-rotate(${v.hue}deg)` : ''}`};
   const z = L(f, 0, len, z0, z1, (x) => x);
   if (v.center) {
-    const vh = DH * z * (v.vscale || 0.62), vw = vh * (v.aspect || 2);
+    const vh = Math.max(DH * z * (v.vscale || 1.2), DH * 1.2), vw = vh * (v.aspect || 2);
     const left = DW / 2 - v.center[0] * vw, top = DH / 2 - v.center[1] * vh;
     return (
       <AbsoluteFill style={{overflow: 'hidden', background: '#000'}}>
@@ -287,12 +288,14 @@ const VShot = ({line, len, first}) => {
           <filter id="vsoft" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx={0} dy={6} stdDeviation={10} floodColor="#000" floodOpacity={0.55} /></filter>
           <radialGradient id="vvig" cx="50%" cy="46%" r="72%"><stop offset="0.5" stopColor="#000" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.72} /></radialGradient>
           <linearGradient id="vlow" x1="0" y1="0" x2="0" y2="1"><stop offset="0.62" stopColor="#000" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.55} /></linearGradient>
+          <linearGradient id="vcapband" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#02101A" stopOpacity={0} /><stop offset="0.35" stopColor="#02101A" stopOpacity={0.55} /><stop offset="0.75" stopColor="#02101A" stopOpacity={0.55} /><stop offset="1" stopColor="#02101A" stopOpacity={0} /></linearGradient>
           <linearGradient id="vwaist" x1="0" y1="0" x2="0" y2="1"><stop offset="0.52" stopColor="#010A10" stopOpacity={0} /><stop offset="0.66" stopColor="#010A10" stopOpacity={0.93} /><stop offset="1" stopColor="#010A10" stopOpacity={0.97} /></linearGradient>
         </defs>
         <rect width={DW} height={DH} fill="url(#vvig)" />
         <rect width={DW} height={DH} fill="url(#vlow)" />
         {/* a close-up is framed from the waist up: the body goes into the dark above the captions (they never cross the character) */}
         {line.shot === 'dp_close' && <rect width={DW} height={DH} fill="url(#vwaist)" />}
+        {line.shot === 'dp_real' && <rect x={0} y={1240} width={DW} height={300} fill="url(#vcapband)" />}
         <TypeOf f={f} len={len} line={line} first={first} />
       </svg>
     </AbsoluteFill>
@@ -332,7 +335,7 @@ export const VDeep = ({lines = [], audio, captions = true}) => {
           </Sequence>
         );
       })}
-      {captions && <VCaptions lines={capLines(lines)} stop={endAt != null ? endAt : 1e9} />}
+      {captions && <VCaptions lines={capLines(lines)} stop={endAt != null ? endAt : 1e9} hold={45} />}
     </AbsoluteFill>
   );
 };

@@ -409,6 +409,9 @@ const chunks3 = (ws) => {
     let leftIncl = 0;   // this word and the rest of its sentence
     for (let j = i; j < ws.length; j++) { leftIncl++; if (/[.,!?;:]$/.test(ws[j][0])) break; }
     if (cur.length >= 2 && leftIncl === 3) { out.push(cur); cur = []; }
+    const prep = /^(in|on|at|of|to|into|from|with|under|over|through|past|for)$/i.test(w[0].replace(/[^a-z']/gi, ''));
+    const plain = cur.every((k) => !/^(a|an|the|of|to|and|or|on|in|at|is|if|so|that|your|its)$/i.test(ws[k][0].replace(/[^a-z']/gi, '')));
+    if (cur.length >= 2 && prep && plain) { out.push(cur); cur = []; }   // 2.76.4: 'WARM SEA' / 'IN THE MIDDLE', not five words
     cur.push(i);
     const stop = /[.,!?;:]$/.test(w[0]);
     const small = /^(a|an|the|of|to|and|or|on|in|at|is|if|so|that|your|its|toward|than|any)$/i.test(w[0].replace(/[^a-z']/gi, ''));
@@ -423,7 +426,7 @@ const chunks3 = (ws) => {
   if (cur.length) out.push(cur);
   return out;
 };
-export const VCaptions = ({lines, stop = 1e9}) => {
+export const VCaptions = ({lines, stop = 1e9, hold = 18}) => {
   const frame = useCurrentFrame();
   if (frame >= stop) return null;   // the end card says its own words
   const ws = lines.flatMap((l) => l.words || []);
@@ -432,7 +435,7 @@ export const VCaptions = ({lines, stop = 1e9}) => {
   const ci = ch.findIndex((c, k) => frame >= ws[c[0]][1] - 2 && (k + 1 >= ch.length || frame < ws[ch[k + 1][0]][1] - 2));
   if (ci < 0) return null;
   const c = ch[ci];
-  const lastEnd = ws[c[c.length - 1]][1] + 18;
+  const lastEnd = ws[c[c.length - 1]][1] + hold;
   const nextStart = ci + 1 < ch.length ? ws[ch[ci + 1][0]][1] - 2 : 1e9;
   if (frame > lastEnd && nextStart - frame > 6) return null;
   const now = c.reduce((a, i) => (ws[i][1] <= frame ? i : a), c[0]);
