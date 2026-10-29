@@ -1183,6 +1183,15 @@ Agents never spend money without the owner's explicit approval.
     challenger/guam/saipan, `p.arc` (a drawn-on curve + label: the trench). CAST pip, you; Figure pose `flail`. Spec built by scratchpad
     make_trench_full.py from trench_lines.py (100 lines, asserted to add up to the script) -> samples/trench-full.json: the FREE voice
     (chatterbox:am_michael, even) until the owner approves the Short's voice.
+    Reviews 2026-10-29: the Short went redo 6 -> 7 -> 7.5 -> 8 -> 8 -> **release 8.5** (v6; v8 = her optional polish, checked by the Builder),
+    sent to the owner with the voice tests (A choppy / D flowing v4 / E flowing v2), the thumbnail (Thumb id 'trench' = `TrenchArt`) and
+    the script. The full video (free voice, 100 lines, ~15 min): Israa 6.5 -> 7; her notes became: `People` portraits (CAST walsh,
+    piccard, cameron, vescovo, yancey; p.people [[who, word, NAME]]), the cup stays shrunk (`cupAt(m)`), Cabin/Section labels outside
+    the camera group (they drifted off the top), FishLine as one layer (`line_on`/`band_on`/mark `on` = '' -> from the first frame),
+    the 1960 sea one colour, `Card y`, Passers `front`, Cards `alone`/`cupbig`/`people`, Pressure `floor`/`cars_static`, Flashback
+    `inset: 'tunnel'` and compare `tags`, Bag2019 push-in, question cards with `pause` (a beat before the answer). Sound effects as spec
+    add_accents (the library has latch clicks, a deep submerge, booms, braams, metal bangs). Tarek: voice tempo 0.92, music -6.5.
+    `sound_agent.merge_settings` merges add_accents line by line (a round's 3-item list had wiped the other 7).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
