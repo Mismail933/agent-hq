@@ -383,6 +383,8 @@ const ShotLayer = ({line, len}) => {
     <AbsoluteFill>
       <FootageLayer line={line} len={len} />
       <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}><S f={f} len={len} line={line} /></svg>
+      {/* 2.75.8: the deep look's vignette over the older trench scenes too (one sea for the whole video) */}
+      {String(line.shot).startsWith('tw_') && <AbsoluteFill style={{background: 'radial-gradient(ellipse 75% 75% at 50% 48%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.72) 100%)', pointerEvents: 'none'}} />}
       <PhotoLayer line={line} len={len} />
     </AbsoluteFill>
   );

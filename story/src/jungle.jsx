@@ -235,6 +235,12 @@ const PLACES = {lima: [-77.04, -12.05, 'LIMA', -1], pucallpa: [-74.55, -8.38, 'P
   na: [-100, 42, 'NORTH AMERICA', 1], sa: [-60, -12, 'SOUTH AMERICA', 1], eu: [12, 48, 'EUROPE', 1], af: [20, 4, 'AFRICA', 1], asia: [95, 38, 'ASIA', 1], au: [134, -24, 'AUSTRALIA', -1],   // Storygraphics #3
   california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1],
   challenger: [142.2, 11.35, 'CHALLENGER DEEP', 1], guam: [144.79, 13.44, 'GUAM', -1], saipan: [145.75, 15.18, 'SAIPAN', -1]};   // Storygraphics #5
+// 2.75.8 p.dark (the Storygraphics deep look): a dark teal sea, muted land with a faint rim, labels in spaced caps with a halo
+const DarkLabel = ({x, y, text, f, at: a = 0, anchor = 'start', size = 40}) => {
+  const k = clamp((f - a) / 10, 0, 1);
+  return k > 0 ? <text x={x} y={y} textAnchor={anchor} opacity={k} fontFamily="'Oswald', sans-serif" fontWeight={600} fontSize={size} fill="#FFFFFF" letterSpacing={7}
+    stroke="#02101A" strokeOpacity={0.65} strokeWidth={7} paintOrder="stroke" strokeLinejoin="round" style={{textTransform: 'uppercase'}}>{text}</text> : null;
+};
 function Map({f, len, line}) {
   const p = P(line);
   const [clon, clat] = p.center || [-75.6, -10.2];
@@ -247,12 +253,12 @@ function Map({f, len, line}) {
   const ra = at(line, p.route_on || '', 0.4);
   return (
     <g>
-      <rect width={W} height={H} fill="#5BA4D4" />
+      <rect width={W} height={H} fill={p.dark ? '#0A3349' : '#5BA4D4'} />
       <g transform={`translate(${W / 2} ${H / 2}) scale(${sc}) translate(${-gx(clon)} ${-gy(clat)})`}>
-        <path d={LAND} fill="#9BC88B" stroke={INK} strokeWidth={p.stroke || 5} vectorEffect="non-scaling-stroke" />
+        <path d={LAND} fill={p.dark ? '#2C3B3A' : '#9BC88B'} stroke={p.dark ? '#8FD3E6' : INK} strokeWidth={p.dark ? 2 : p.stroke || 5} strokeOpacity={p.dark ? 0.6 : 1} vectorEffect="non-scaling-stroke" />
         {p.rivers !== false && <path d={RIVERS} fill="none" stroke="#3B82F6" strokeWidth={4} vectorEffect="non-scaling-stroke" />}
       </g>
-      {(p.country || [['PERU', -75.2, -11.4]]).map(([nm, lo, la], i) => <text key={i} x={sx(lo)} y={sy(la)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={700} fontSize={90} fill="#fff" opacity={0.55} stroke={INK} strokeWidth={4} paintOrder="stroke">{nm}</text>)}
+      {(p.country || [['PERU', -75.2, -11.4]]).map(([nm, lo, la], i) => <text key={i} x={sx(lo)} y={sy(la)} textAnchor="middle" fontFamily="'Oswald', sans-serif" fontWeight={p.dark ? 500 : 700} fontSize={p.dark ? 60 : 90} letterSpacing={p.dark ? 14 : 0} fill="#fff" opacity={p.dark ? 0.45 : 0.55} stroke={p.dark ? 'none' : INK} strokeWidth={4} paintOrder="stroke">{nm}</text>)}
       {p.path && (() => {   // a voyage (2.61.0): [[lon, lat], ...] drawn on from path_on to path_end, a ship at its head, split where it crosses the date line
         const pts = p.path.map(([lo, la]) => [sx(lo), sy(la)]);
         const segs = [];
@@ -280,17 +286,20 @@ function Map({f, len, line}) {
         const d = 'M ' + pts.map((q) => q.join(' ')).join(' L ');
         const tot = pts.slice(1).reduce((a, q, i) => a + Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]), 0);
         const k = lin(f, at(line, p.arc_on || '', 0.1), at(line, p.arc_on || '', 0.1) + 40, 0, tot);
-        return <g><path d={d} stroke="#0B1F3A" strokeWidth={26} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={`${k} ${tot + 10}`} opacity={0.85} />
-          <path d={d} stroke="#1E3A8A" strokeWidth={12} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={`${k} ${tot + 10}`} />
-          {p.arc_label && k >= tot && <Label x={pts[pts.length - 1][0] + 30} y={pts[pts.length - 1][1] - 40} text={p.arc_label} f={f} at={at(line, p.arc_on || '', 0.1) + 40} h={58} fill="#FFFFFF" />}</g>; })()}
+        return <g><path d={d} stroke={p.dark ? '#02101A' : '#0B1F3A'} strokeWidth={26} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={`${k} ${tot + 10}`} opacity={0.85} />
+          <path d={d} stroke={p.dark ? '#FFC23D' : '#1E3A8A'} strokeWidth={12} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={`${k} ${tot + 10}`} />
+          {p.arc_label && k >= tot && (p.dark ? <DarkLabel x={pts[pts.length - 1][0] + 30} y={pts[pts.length - 1][1] - 10} text={p.arc_label} f={f} at={at(line, p.arc_on || '', 0.1) + 40} />
+            : <Label x={pts[pts.length - 1][0] + 30} y={pts[pts.length - 1][1] - 40} text={p.arc_label} f={f} at={at(line, p.arc_on || '', 0.1) + 40} h={58} fill="#FFFFFF" />)}</g>; })()}
       {route && (() => { const [a, b] = route; const x1 = sx(a[0]), y1 = sy(a[1]), x2 = sx(b[0]), y2 = sy(b[1]); const len2 = Math.hypot(x2 - x1, y2 - y1); const d = lin(f, ra, ra + 50, 0, len2);
         return <path d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#E3232C" strokeWidth={10} strokeDasharray={`${d} ${len2}`} strokeLinecap="round" />; })()}
       {pins.map((pl, i) => { const a = at(line, (p.pin_on || [])[i] || '', 0.15 + i * 0.15); const s = clamp(pop(f, a, 150, 12), 0, 1.15);
         return (<g key={i} transform={`translate(${sx(pl[0])} ${sy(pl[1])})`}>
           <g transform={`scale(${s})`}><path d="M 0 0 Q -30 -40 -30 -60 A 30 30 0 0 1 30 -60 Q 30 -40 0 0 Z" fill={pl[2] === 'CRASH SITE' ? '#E3232C' : '#FFE11A'} {...st(5)} /><circle cx={0} cy={-60} r={10} fill={INK} /></g>
-          <Label x={pl[3] < 0 ? -40 - pl[2].length * 25 - 40 : 40} y={-120} text={pl[2]} f={f} at={a + 4} h={58} fill={pl[2] === 'CRASH SITE' ? '#E3232C' : '#FFE11A'} color={pl[2] === 'CRASH SITE' ? '#fff' : INK} />
+          {p.dark ? <DarkLabel x={pl[3] < 0 ? -40 : 40} y={-90} text={pl[2]} f={f} at={a + 4} anchor={pl[3] < 0 ? 'end' : 'start'} />
+            : <Label x={pl[3] < 0 ? -40 - pl[2].length * 25 - 40 : 40} y={-120} text={pl[2]} f={f} at={a + 4} h={58} fill={pl[2] === 'CRASH SITE' ? '#E3232C' : '#FFE11A'} color={pl[2] === 'CRASH SITE' ? '#fff' : INK} />}
         </g>); })}
-      <Labels line={line} f={f} y0={60} />
+      {p.dark ? (p.labels || []).map((l, i) => <DarkLabel key={i} x={80} y={900 - ((p.labels || []).length - 1 - i) * 80} text={l.text} f={f} at={at(line, l.on || '', 0.15 + i * 0.2)} size={44} />)
+        : <Labels line={line} f={f} y0={60} />}
     </g>
   );
 }

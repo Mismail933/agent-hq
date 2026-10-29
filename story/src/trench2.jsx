@@ -7,7 +7,7 @@
 import React from 'react';
 import {interpolate, Easing} from 'remotion';
 import {noise2D} from '@remotion/noise';
-import {W, H, INK, ST, st, clamp, lin, pop, rng, Bust, Head, Box, Label, Figure, at, Labels, OSWALD} from './tis';
+import {W, H, INK, ST, st, clamp, lin, pop, rng, Bust, Head, Figure, at, OSWALD} from './tis';
 import {Whale} from './meg2';
 
 const P = (line) => line.p || {};
@@ -19,10 +19,48 @@ const sp = (f, a, tier = 'card') => clamp(spr((f - a) / 30, ...TIER[tier]), 0, 1
 const io = Easing.bezier(0.45, 0, 0.55, 1);
 const hand = (T, k = 1) => [noise2D('hx', T * 0.02, 0) * 14 * k, noise2D('hy', 0, T * 0.02) * 10 * k];
 const fmtM = (m) => `${Math.round(m).toLocaleString('en-US')} M`;
+
+// 2.75.8 the deep look (deep.jsx; the owner: "this style is the new Storygraphics standard"). The old yellow sticker boxes become the
+// deep look's type: big numbers in rounded Nunito, labels in thin spaced caps, white or gold with a dark halo; no boxes, no tilt
+const NUN = "'Nunito', 'Arial Rounded MT Bold', sans-serif";
+const GOLDS = ['#FDE047', '#FFE11A', '#FFC23D', '#FFD23F'], REDS = ['#EF4444', '#E3232C'];
+const tone = (fill) => { const c = String(fill || '').toUpperCase(); return GOLDS.includes(c) ? '#FFC23D' : REDS.includes(c) ? '#FF7A6B' : '#FFFFFF'; };
+const Box = ({x, y, w, h, text, fill, s = 1}) => {
+  const big = h >= 120, size = big ? h * 0.78 : h * 0.6, t = String(text);
+  const natural = t.length * size * (big ? 0.66 : 0.6) + (big ? 0 : (t.length - 1) * 5);
+  const fit = natural > w * 1.2 ? {textLength: w * 1.12, lengthAdjust: 'spacingAndGlyphs'} : {};
+  return (
+    <g transform={`translate(${x + w / 2} ${y + h / 2}) scale(${s})`}>
+      <text x={0} y={size * 0.36} textAnchor="middle" fontFamily={big ? NUN : OSWALD} fontWeight={big ? 900 : 600} fontSize={size} fill={tone(fill)}
+        letterSpacing={big ? -1 : 5} stroke="#02101A" strokeOpacity={0.62} strokeWidth={big ? 12 : 8} paintOrder="stroke" strokeLinejoin="round"
+        style={{textTransform: 'uppercase'}} {...fit}>{t}</text>
+    </g>
+  );
+};
+const Tag = ({f, a = 0, x, y, text, size = 40, anchor = 'start', color = '#FFFFFF'}) => {   // deep.jsx's label: a gold rule, spaced caps, a halo
+  const k = clamp((f - a) / 10, 0, 1);
+  if (k <= 0) return null;
+  const w = String(text).length * size * 0.62 + (String(text).length - 1) * 8;
+  const x0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x;
+  return (
+    <g opacity={k}>
+      <path d={`M ${x0} ${y - size - 14} l ${70 * k} 0`} stroke="#FFD25A" strokeWidth={4} />
+      <text x={x0 + (1 - k) * -14} y={y} fontFamily={OSWALD} fontWeight={600} fontSize={size} fill={color} letterSpacing={8} style={{textTransform: 'uppercase'}}
+        stroke="#02101A" strokeOpacity={0.6} strokeWidth={7} paintOrder="stroke" strokeLinejoin="round">{text}</text>
+    </g>
+  );
+};
+// p.labels as deep tags: bottom left, stacked up from above the captions (as in the sample), unless a scene gives its own place
+const Labels = ({line, f, x0 = 80, y0 = null, align = 'left'}) => { const ls = P(line).labels || []; return ls.map((l, i) => {
+  const size = l.big ? 54 : 42, a = at(line, l.on || '', 0.15 + i * 0.2);
+  const y = l.y != null ? l.y + size + 26 : y0 == null ? 900 - (ls.length - 1 - i) * 86 : y0 + i * 96 + size + 26;
+  return <Tag key={i} f={f} a={a} x={l.x != null ? l.x : x0} y={y} text={l.text} size={size} anchor={align === 'right' ? 'end' : 'start'} color={l.color === 'red' ? '#FF7A6B' : '#FFFFFF'} />;
+}); };
 const cupAt = (m) => 1 - 0.58 * clamp(m / 11000, 0, 1);   // the foam cup in the mesh bag shrinks as the pressure grows (0.42 at the bottom)
 
 // the water's colour by depth (metres): sunlit blue -> twilight -> black
-const DEPTH = [[0, '#47AEE2'], [100, '#2B8BC4'], [200, '#1F6FA8'], [600, '#14477D'], [1000, '#0C2C52'], [4000, '#071A34'], [6000, '#050F22'], [11000, '#020812']];
+// 2.75.8: the 'deep' look's palette (deep.jsx), so the old scenes sit in the same dark teal sea as the new ones
+const DEPTH = [[0, '#5CC6E4'], [30, '#2C9FC9'], [200, '#13668B'], [1000, '#0A3349'], [3000, '#061B28'], [6000, '#040F17'], [11000, '#02090F']];
 export const waterAt = (m) => {
   if (m <= DEPTH[0][0]) return DEPTH[0][1];
   for (let i = 1; i < DEPTH.length; i++) if (m <= DEPTH[i][0]) return mix(DEPTH[i - 1][1], DEPTH[i][1], (m - DEPTH[i - 1][0]) / (DEPTH[i][0] - DEPTH[i - 1][0]));
@@ -33,17 +71,22 @@ const depthOf = (line, f, len) => { const p = P(line); const a = p.from != null 
 
 // ───────────── the water itself ─────────────
 function Water({m, T, glow = 0, uid = ''}) {
+  // 2.75.8 the deep look: the colour by depth, soft light shafts (gradients, no blur filter), specks in three depths (the near ones soft)
   const R = rng(17);
-  const light = clamp(1 - m / 900, 0, 1);
+  const light = clamp(1 - Math.log10(Math.max(0, m) + 10) / Math.log10(900), 0, 1);
   const rise = T * 1.6;
   return (
     <g>
-      <linearGradient id={`tw-water${uid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={waterAt(Math.max(0, m - 250))} /><stop offset="1" stopColor={waterAt(m + 250)} /></linearGradient>
-      <rect x={-200} y={-200} width={W + 400} height={H + 400} fill={`url(#tw-water${uid})`} />
-      {light > 0.02 && [...Array(6)].map((_, i) => <path key={i} d={`M ${120 + i * 330 + Math.sin(T * 0.02 + i) * 30} -40 l 110 0 l 260 ${H + 80} l -140 0 Z`} fill="#D6F1FF" opacity={0.14 * light} />)}
-      {[...Array(90)].map((_, i) => { const layer = i % 3, k = [0.4, 0.8, 1.4][layer], r = [2.5, 4, 6.5][layer];
-        const x = R() * W, y0 = R() * H, y = ((y0 - rise * k) % (H + 40) + H + 40) % (H + 40) - 20;
-        return <circle key={i} cx={x + Math.sin(T * 0.02 + i) * 8} cy={y} r={r} fill="#E6F4FF" opacity={[0.22, 0.34, 0.5][layer] * (0.7 + 0.3 * (1 - light))} />; })}
+      <linearGradient id={`tw-water${uid}m${Math.round(m)}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={waterAt(Math.max(0, m - 250))} /><stop offset="1" stopColor={waterAt(m + 400)} /></linearGradient>
+      <linearGradient id={`tw-ray${uid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E2F7FF" stopOpacity={0.5} /><stop offset="1" stopColor="#E2F7FF" stopOpacity={0} /></linearGradient>
+      <radialGradient id={`tw-speck${uid}`}><stop offset="0.35" stopColor="#E8F7FF" stopOpacity={1} /><stop offset="1" stopColor="#E8F7FF" stopOpacity={0} /></radialGradient>
+      <rect x={-200} y={-200} width={W + 400} height={H + 400} fill={`url(#tw-water${uid}m${Math.round(m)})`} />
+      {light > 0.02 && [...Array(6)].map((_, i) => <path key={i} d={`M ${120 + i * 330 + Math.sin(T * 0.02 + i) * 40} -40 l ${70 + (i % 3) * 30} 0 l ${300 + (i % 2) * 80} ${H + 80} l -${200 + (i % 2) * 60} 0 Z`}
+        fill={`url(#tw-ray${uid})`} opacity={(0.32 + 0.12 * Math.sin(T * 0.03 + i * 2.1) ** 2) * light} />)}
+      {[...Array(100)].map((_, i) => { const layer = i % 3, k = [0.35, 0.75, 1.5][layer], r = [1.6, 2.8, 5.5][layer];
+        const x = R() * W, y0 = R() * H, y = ((y0 - rise * k) % (H + 60) + H + 60) % (H + 60) - 30;
+        // the near ones soft-edged by a radial gradient (a blur filter on 33 specks a frame cost render time)
+        return <circle key={i} cx={x + Math.sin(T * 0.02 + i) * 8} cy={y} r={layer === 2 ? r * 1.7 : r} fill={layer === 2 ? `url(#tw-speck${uid})` : '#E8F7FF'} opacity={[0.28, 0.45, 0.32][layer]} />; })}
       {glow > 0 && [...Array(22)].map((_, i) => { const Q = rng(90 + i); const x = Q() * W, y = Q() * H * 0.95, b = Math.max(0, Math.sin(T * 0.13 + i * 1.9));
         return <circle key={'g' + i} cx={x} cy={((y - rise * 0.6) % H + H) % H} r={(5 + 7 * b) * (glow > 1 ? 1.9 : 1)} fill={i % 3 ? '#5EEAD4' : '#60A5FA'} opacity={Math.min(1, 0.8 * b * glow)} />; })}
     </g>
@@ -51,7 +94,7 @@ function Water({m, T, glow = 0, uid = ''}) {
 }
 
 // ───────────── Pip's yellow sub (TIS look), with the cup in its mesh bag ─────────────
-export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smile', youExpr = 'worried', hatchOpen = 0, flip = false, youOut = false, bag = true, solo = false}) {
+export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smile', youExpr = 'worried', hatchOpen = 0, flip = false, youOut = false, bag = true, solo = false, lit = true}) {
   const prop = T * 0.4;
   return (
     <g transform={`translate(${x} ${y}) scale(${flip ? -s : s} ${s})`}>
@@ -67,6 +110,15 @@ export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smil
           <path d="M -14 -6 q 8 -10 14 0 q 6 10 14 0" stroke="#2563EB" strokeWidth={4} fill="none" />
         </g>
       </g>}
+      {lit && <defs><filter id="ysub-lit" x="-20%" y="-20%" width="140%" height="140%">
+        <feColorMatrix in="SourceGraphic" type="matrix" values="0.86 0 0 0 0  0 0.93 0 0 0.01  0 0 0.97 0 0.03  0 0 0 1 0" result="col" />
+        <feOffset in="SourceAlpha" dx={7} dy={7} result="off" /><feComposite in="SourceAlpha" in2="off" operator="out" result="rimA" />
+        <feFlood floodColor="#CFF2FF" floodOpacity={0.9} /><feComposite in2="rimA" operator="in" /><feGaussianBlur stdDeviation={1.6} result="rim" />
+        <feOffset in="SourceAlpha" dx={0} dy={-60} result="sh0" /><feComposite in="SourceAlpha" in2="sh0" operator="out" result="shA" />
+        <feFlood floodColor="#3A2A05" floodOpacity={0.38} /><feComposite in2="shA" operator="in" /><feGaussianBlur stdDeviation={10} />
+        <feComposite in2="SourceAlpha" operator="in" result="shade" /><feMerge><feMergeNode in="col" /><feMergeNode in="shade" /><feMergeNode in="rim" /></feMerge>
+      </filter></defs>}
+      <g filter={lit ? 'url(#ysub-lit)' : undefined}>
       {/* skids, fins, propeller */}
       <path d="M -170 118 L 170 118" stroke={INK} strokeWidth={10} strokeLinecap="round" />
       <path d="M -110 80 L -130 118 M 110 80 L 130 118" stroke={INK} strokeWidth={8} />
@@ -87,6 +139,8 @@ export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smil
           <path d="M -28 -30 q 16 -12 34 -8" stroke="#fff" strokeWidth={6} fill="none" opacity={0.6} strokeLinecap="round" />
         </g>
       ))}
+      </g>
+      {beam > 0 && <circle cx={-236} cy={20} r={30} fill="#FFF6C8" opacity={0.35} />}
       {beam > 0 && <circle cx={-236} cy={20} r={16} fill="#FFF6C8" {...st(5)} />}
     </g>
   );
@@ -167,13 +221,21 @@ const People = ({line, f, T, x0 = 1640, y0 = 560, down = false}) => (P(line).peo
   );
 });
 
-const Meter = ({m, f, x = W - 60, op = 1}) => (
-  <g transform={`translate(${x} 40)`} opacity={op}>
-    <rect x={-330} y={0} width={330} height={128} fill="#0B1F3A" opacity={0.88} stroke={INK} strokeWidth={6} />
-    <text x={-310} y={38} fontFamily={OSWALD} fontWeight={600} fontSize={28} fill="#9CC9F0" letterSpacing={3}>DEPTH</text>
-    <text x={-310} y={108} fontFamily={OSWALD} fontWeight={700} fontSize={70} fill="#FDE047">{fmtM(m)}</text>
-  </g>
-);
+const Meter = ({m, f, op = 1, x0 = 360, x1 = 1560, y = 110, max = 11000}) => {   // 2.75.8: deep.jsx's depth bar (thin track, gold fill, the reading)
+  if (op <= 0) return null;
+  const xm = x0 + (x1 - x0) * clamp(m / max, 0, 1);
+  return (
+    <g opacity={op}>
+      <text x={x0} y={y - 24} fontFamily={OSWALD} fontWeight={600} fontSize={30} fill="#FFFFFF" letterSpacing={8} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">DEPTH</text>
+      <text x={x1} y={y - 24} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={34} fill="#FFFFFF" letterSpacing={4} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">{fmtM(m)}</text>
+      <rect x={x0} y={y - 3} width={x1 - x0} height={6} rx={3} fill="#FFFFFF" opacity={0.18} />
+      <rect x={x0} y={y - 3} width={xm - x0} height={6} rx={3} fill="#FFC23D" />
+      {[...Array(12)].map((_, i) => <path key={i} d={`M ${x0 + (x1 - x0) * (i * 1000 / max)} ${y + 8} l 0 ${i % 5 ? 8 : 16}`} stroke="#FFFFFF" strokeWidth={2} opacity={0.45} />)}
+      <circle cx={xm} cy={y} r={11} fill="#FFE08A" />
+      <circle cx={xm} cy={y} r={26} fill="#FFC23D" opacity={0.25} />
+    </g>
+  );
+};
 const Card = ({line, f, y = 300}) => {   // p.card = {head, big, sub, on, fill}: a fact card that pops on its word (heavy spring for the big number)
   const c = P(line).card;
   if (!c) return null;
@@ -218,13 +280,11 @@ function Dive({f, len, line}) {
         {p.alone && <g transform={`translate(960 ${300 + bob}) rotate(${Math.sin(T * 0.07) * 7}) scale(0.5)`}><Figure who="you" pose="kick" expr="scared" f={T * 2} seed={3} shadow={false} /></g>}
         {p.alone && <path d={`M 960 ${860 + bob} C 980 940 940 1000 960 ${H + 60}`} fill="none" stroke="#0A0E14" strokeWidth={8} />}
         {(p.see || []).some((c) => c.front) && <Passers line={line} f={f} T={T} />}
-        {m > 3000 && <rect x={-200} y={-200} width={W + 400} height={H + 400} fill="url(#tw-vig)" />}
-        <radialGradient id="tw-vig" cx={0.5} cy={0.45} r={0.7}><stop offset="0.45" stopColor="#000" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.7} /></radialGradient>
       </g>
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
       <People line={line} f={f} T={T} />
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <Labels line={line} f={f} />
       {p.meter !== false && <Meter m={m} f={f} />}
     </g>
   );
@@ -238,7 +298,7 @@ const everestPath = (g) => {
   return `M ${q(-1, 0)} L ${q(-0.78, 0.22)} L ${q(-0.62, 0.3)} L ${q(-0.45, 0.52)} L ${q(-0.33, 0.6)} L ${q(-0.16, 0.86)} L ${q(-0.06, 0.93)} L ${q(0, 1)} L ${q(0.08, 0.95)} L ${q(0.2, 0.8)} L ${q(0.3, 0.74)} L ${q(0.47, 0.5)} L ${q(0.6, 0.42)} L ${q(0.8, 0.18)} L ${q(1, 0)} Z`;
 };
 function Section(props) {
-  return <g><SectionArt {...props} /><Labels line={props.line} f={props.f} x0={180} y0={190} /></g>;
+  return <g><SectionArt {...props} /><Labels line={props.line} f={props.f} x0={180} y0={170} /></g>;
 }
 function SectionArt({f, len, line}) {
   const p = P(line), T = line.start + f;
@@ -252,7 +312,7 @@ function SectionArt({f, len, line}) {
   const R = rng(4);
   return (
     <g transform={`translate(${W / 2 + hx} ${H / 2 + hy}) scale(${z}) translate(${-W / 2} ${-H / 2})`}>
-      <linearGradient id="tw-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#5AA9E6" /><stop offset="1" stopColor="#CDEBFF" /></linearGradient>
+      <linearGradient id="tw-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8ED3EE" /><stop offset="1" stopColor="#E9FBFF" /></linearGradient>
       <rect x={-200} y={-200} width={W + 400} height={SURF + 200} fill="url(#tw-sky)" />
       <linearGradient id="tw-sec" gradientUnits="userSpaceOnUse" x1="0" y1={SURF} x2="0" y2={FLOOR}>
         {DEPTH.map(([mm, c]) => <stop key={mm} offset={mm / 11000} stopColor={c} />)}
@@ -260,12 +320,12 @@ function SectionArt({f, len, line}) {
       <rect x={-200} y={SURF} width={W + 400} height={H + 200} fill="url(#tw-sec)" />
       <path d={`M -200 ${SURF} ${[...Array(60)].map((_, i) => `L ${-200 + i * 40} ${SURF + Math.sin(i * 0.9 + T * 0.08) * 5}`).join(' ')}`} fill="none" stroke="#E0F4FF" strokeWidth={5} />
       {zone && f >= za && <g opacity={lin(f, za, za + 10, 0, 1)}>
-        <rect x={-200} y={SURF + zone[1] * KM} width={W + 400} height={Math.max(8, (zone[2] - zone[1]) * KM)} fill="#FDE047" opacity={0.18} />
+        <rect x={-200} y={SURF + zone[1] * KM} width={W + 400} height={Math.max(8, (zone[2] - zone[1]) * KM)} fill="#7FD3EE" opacity={0.13} />
         <path d={`M -200 ${SURF + zone[1] * KM} L ${W + 200} ${SURF + zone[1] * KM} M -200 ${SURF + zone[2] * KM} L ${W + 200} ${SURF + zone[2] * KM}`} stroke="#FDE047" strokeWidth={4} strokeDasharray="18 12" />
       </g>}
       <path d={`M -200 ${SURF + 6.1 * KM} L 520 ${SURF + 6 * KM} C 640 ${SURF + 6.4 * KM} 680 ${SURF + 8.6 * KM} 760 ${FLOOR - 24} L 790 ${FLOOR} L 1130 ${FLOOR} L 1160 ${FLOOR - 24} C 1240 ${SURF + 8.6 * KM} 1280 ${SURF + 6.4 * KM} 1400 ${SURF + 6 * KM} L ${W + 200} ${SURF + 6.1 * KM} L ${W + 200} ${H + 200} L -200 ${H + 200} Z`}
-        fill="#4A4F5C" stroke={INK} strokeWidth={7} strokeLinejoin="round" />
-      {[...Array(10)].map((_, i) => <path key={i} d={`M ${R() * W} ${SURF + (6.3 + R() * 0.8) * KM} l ${60 + R() * 80} 0`} stroke="#363B47" strokeWidth={8} strokeLinecap="round" />)}
+        fill="#141C25" stroke="#4E6A7C" strokeWidth={4} strokeLinejoin="round" />
+      {[...Array(10)].map((_, i) => <path key={i} d={`M ${R() * W} ${SURF + (6.3 + R() * 0.8) * KM} l ${60 + R() * 80} 0`} stroke="#22303C" strokeWidth={8} strokeLinecap="round" />)}
       {grow > 0.001 && <g>
         <path d={everestPath(grow)} fill="#C9D3DF" opacity={0.95} stroke={INK} strokeWidth={6} strokeLinejoin="round" />
         <path d={`M ${CX} ${FLOOR - 8.85 * KM * grow} L ${CX + 0.08 * 330} ${FLOOR - 0.95 * 8.85 * KM * grow} L ${CX + 0.3 * 330} ${FLOOR - 0.74 * 8.85 * KM * grow} L ${CX + 0.6 * 330} ${FLOOR - 0.42 * 8.85 * KM * grow} L ${CX + 330} ${FLOOR} L ${CX + 40} ${FLOOR} Z`} fill="#8E9AAB" opacity={0.8} />
@@ -307,14 +367,16 @@ function Surface({f, len, line}) {
   const sea = 560;
   const [hx, hy] = hand(T, 0.7);
   const sky = (<g>
-    <linearGradient id="tw-sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#4FA3E6" /><stop offset="1" stopColor="#D9F0FF" /></linearGradient>
+    <linearGradient id="tw-sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8ED3EE" /><stop offset="1" stopColor="#E9FBFF" /></linearGradient>
+    <radialGradient id="tw-sun2"><stop offset="0" stopColor="#FFFDF0" stopOpacity={1} /><stop offset="0.25" stopColor="#FFF4C2" stopOpacity={0.85} /><stop offset="1" stopColor="#FFF4C2" stopOpacity={0} /></radialGradient>
     <rect x={-200} y={-200} width={W + 400} height={sea + 200} fill="url(#tw-sky2)" />
-    <g transform="translate(1560 170)"><circle r={190} fill="#FFF3B0" opacity={0.45} /><circle r={84} fill="#FFD23F" {...st(7)} /></g>
+    <circle cx={1560} cy={170} r={420} fill="url(#tw-sun2)" />
   </g>);
   const under = (<g>
-    <linearGradient id="tw-und" gradientUnits="userSpaceOnUse" x1="0" y1={sea} x2="0" y2={H + 600}><stop offset="0" stopColor="#3FB0E8" /><stop offset="1" stopColor="#14588F" /></linearGradient>
-    <path d={`${waveTop(T, sea, 12, 0)} L ${W + 200} ${H + 600} L -200 ${H + 600} Z`} fill="url(#tw-und)" stroke={INK} strokeWidth={6} />
-    {[...Array(6)].map((_, i) => <path key={i} d={`M ${60 + i * 330 + Math.sin(T * 0.03 + i) * 25} ${sea + 10} l 80 0 l 200 700 l -110 0 Z`} fill="#D6F1FF" opacity={0.13} />)}
+    <linearGradient id="tw-und" gradientUnits="userSpaceOnUse" x1="0" y1={sea} x2="0" y2={H + 600}><stop offset="0" stopColor="#5CC6E4" /><stop offset="0.45" stopColor="#2C9FC9" /><stop offset="1" stopColor="#13668B" /></linearGradient>
+    <linearGradient id="tw-ray2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E2F7FF" stopOpacity={0.55} /><stop offset="1" stopColor="#E2F7FF" stopOpacity={0} /></linearGradient>
+    <path d={`${waveTop(T, sea, 12, 0)} L ${W + 200} ${H + 600} L -200 ${H + 600} Z`} fill="url(#tw-und)" stroke="#E9FBFF" strokeWidth={5} strokeOpacity={0.8} />
+    {[...Array(6)].map((_, i) => <path key={i} d={`M ${60 + i * 330 + Math.sin(T * 0.03 + i) * 25} ${sea + 10} l 80 0 l 260 700 l -170 0 Z`} fill="url(#tw-ray2)" opacity={0.5} />)}
   </g>);
   if (mode === 'rescue') {   // under the surface: the sub slides in, its line on your ankle, reels you to the hatch; you vanish inside
     const subIn = lin(f, 0, len * 0.35, 1, 0, Easing.out(Easing.cubic));
@@ -328,7 +390,7 @@ function Surface({f, len, line}) {
         {inside < 1 && <g transform={`translate(${yx} ${yy}) rotate(${-20 + reel * 20}) scale(${0.34 * (1 - inside * 0.6)})`} opacity={1 - inside}><Figure who="you" pose="kick" expr="shock" f={T * 2} seed={3} shadow={false} /></g>}
         {inside < 1 && <path d={`M ${sx - 150} ${sy + 40} C ${sx - 300} ${sy + 60} ${yx + 60} ${yy + 420} ${yx} ${yy + 440 * 0.34 * (1 - inside * 0.6) * 1.3}`} fill="none" stroke="#10151C" strokeWidth={8} />}
         <YSub T={T} x={sx} y={sy} s={1.2} hatchOpen={lin(f, len * 0.5, len * 0.62, 0, 1) * (1 - lin(f, len * 0.82, len * 0.9, 0, 1))} youExpr="shock" youOut={inside < 1} pipExpr="smile" />
-        <Labels line={line} f={f} x0={80} y0={60} />
+        <Labels line={line} f={f} />
       </g>
     );
   }
@@ -341,7 +403,7 @@ function Surface({f, len, line}) {
         {open > 0.5 && <g transform={`translate(954 ${sea + 40 - 150 * 1.3 + (1 - open) * 160})`}><Bust who="you" x={0} y={0} s={0.42} expr="smile" f={T} arms="rest" /></g>}
         <YSub T={T} x={980} y={sea + 40 + up * 500} s={1.3} hatchOpen={open} pipExpr="smile" youExpr="smile" youOut={open > 0.5} cup={0.42} />
         {f < 40 && <g>{[...Array(9)].map((_, i) => { const a = -Math.PI * (0.12 + 0.76 * i / 8); return <path key={i} d={`M ${980 + Math.cos(a) * 120} ${sea} q ${Math.cos(a) * 90 * f / 40} ${-130 * f / 40} ${Math.cos(a) * 170 * f / 40} ${-40 * f / 40}`} stroke="#E6F7FF" strokeWidth={12} fill="none" strokeLinecap="round" opacity={1 - f / 40} />; })}</g>}
-        <Labels line={line} f={f} x0={80} y0={60} />
+        <Labels line={line} f={f} />
       </g>
     );
   }
@@ -360,9 +422,9 @@ function Surface({f, len, line}) {
       {sky}{under}
       {lineK > 0 && <path d={`M ${ankle[0]} ${ankle[1]} C ${ankle[0] + 60} ${ankle[1] + 260} ${ankle[0] - 40} ${sea + 700} ${ankle[0]} ${sea + 1400}`} fill="none" stroke="#10151C" strokeWidth={8} strokeDasharray={`${2200 * lineK} 3000`} />}
       <g transform={`translate(${bx} ${by}) rotate(${rot}) scale(${s})`}><Figure who="you" pose={yank > 0.3 ? 'kick' : 'lie'} expr={f >= tug ? (yank > 0.2 ? 'scared' : 'shock') : 'calm'} f={T * (yank > 0.3 ? 2 : 1)} seed={3} shadow={false} /></g>
-      <path d={`${waveTop(T + 20, sea + 16, 9, 1.5)} L ${W + 200} ${sea + 120} L -200 ${sea + 120} Z`} fill="#3FB0E8" opacity={0.5} />
+      <path d={`${waveTop(T + 20, sea + 16, 9, 1.5)} L ${W + 200} ${sea + 120} L -200 ${sea + 120} Z`} fill="#5CC6E4" opacity={0.5} />
       {f >= tug && f < down + 4 && <text x={bx - 140} y={by - 110} fontFamily={OSWALD} fontWeight={700} fontSize={110} fill="#FDE047" stroke={INK} strokeWidth={10} paintOrder="stroke" transform={`rotate(-8 ${bx - 140} ${by - 110})`}>!?</text>}
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <Labels line={line} f={f} />
     </g>
   );
 }
@@ -381,12 +443,15 @@ function Cabin({f, len, line}) {
   return (
     <g>
     <g transform={`translate(${W / 2 + hx} ${H / 2 + hy}) scale(${z}) translate(${-W / 2} ${-H / 2})`}>
-      <rect width={W} height={H} fill="#5B6472" />
-      <path d={`M -20 -20 L ${W + 20} -20 L ${W + 20} 140 C 1400 90 520 90 -20 140 Z`} fill="#4A5260" {...st(6)} />
-      {[...Array(14)].map((_, i) => <circle key={i} cx={60 + i * 140} cy={110 - Math.abs(i - 6.5) * 4} r={7} fill="#2E3440" />)}
+      <rect width={W} height={H} fill="#253140" />
+      <radialGradient id="tw-lamp" cx={0.27} cy={0.42} r={0.5}><stop offset="0" stopColor="#FFD9A0" stopOpacity={0.34} /><stop offset="1" stopColor="#FFD9A0" stopOpacity={0} /></radialGradient>
+      <rect width={W} height={H} fill="url(#tw-lamp)" />
+      <path d={`M -20 -20 L ${W + 20} -20 L ${W + 20} 140 C 1400 90 520 90 -20 140 Z`} fill="#1B2430" stroke="#0B1118" strokeWidth={6} />
+      {[...Array(14)].map((_, i) => <circle key={i} cx={60 + i * 140} cy={110 - Math.abs(i - 6.5) * 4} r={7} fill="#0F151D" />)}
       {/* the big window, the sea outside at this depth */}
       <g transform="translate(1340 420)">
-        <circle r={300} fill="#3B4250" {...st(9)} />
+        <circle r={330} fill="#7FD3EE" opacity={0.08} />
+        <circle r={300} fill="#1E2833" stroke="#0B1118" strokeWidth={9} />
         <clipPath id="tw-win"><circle r={262} /></clipPath>
         <g clipPath="url(#tw-win)"><g transform="translate(-960 -540)"><Water m={m} T={T} glow={m > 250 ? 0.8 : 0} />
           {p.see && <Passers line={line} f={f} T={T} />}
@@ -394,7 +459,7 @@ function Cabin({f, len, line}) {
           {p.cupout != null && <g transform="translate(1080 720)"><circle r={40} fill="#FFF6C8" opacity={0.3} />
             <path d="M -28 -36 L 28 -36 L 20 34 L -20 34 Z" fill="#FFFFFF" {...st(4)} transform={`scale(${p.cupout})`} /></g>}
         </g></g>
-        <circle r={262} fill="none" stroke="#9CA3AF" strokeWidth={22} />
+        <circle r={262} fill="none" stroke="#6B7785" strokeWidth={22} />
         {[...Array(12)].map((_, i) => { const a = i / 12 * Math.PI * 2; return <circle key={i} cx={Math.cos(a) * 282} cy={Math.sin(a) * 282} r={9} fill="#2E3440" />; })}
         <path d="M -180 -150 q 60 -60 150 -70" stroke="#fff" strokeWidth={10} fill="none" opacity={0.35} strokeLinecap="round" />
       </g>
@@ -419,7 +484,7 @@ function Cabin({f, len, line}) {
     </g>
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
-      <Labels line={line} f={f} x0={80} y0={36} />
+      <Labels line={line} f={f} x0={W - 80} y0={740} align="right" />
       <Meter m={m} f={f} op={p.meter === false ? 0 : 1} />
     </g>
   );
@@ -439,11 +504,14 @@ function Cards({f, len, line}) {
         <text x={0} y={-10} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={56} fill="#2563EB">YOU</text><path d="M -40 40 q 20 -24 40 0 q 20 24 40 0" stroke="#2563EB" strokeWidth={8} fill="none" /></g>}
       <People line={line} f={f} T={T} />
       {p.sub !== false && !p.alone && !p.cupbig && !p.people && <g transform={`translate(1600 ${790 + Math.sin(T * 0.05) * 10}) scale(0.55)`}><YSub T={T} beam={0} cup={cupAt(m)} pipExpr={p.pip || 'smile'} youExpr={p.you || 'worried'} /></g>}
-      {p.title && <g transform={`translate(960 ${p.chips ? 120 : 380}) scale(${sp(f, at(line, p.title_on || '', 0.05), 'heavy')})`}>
-        {p.title.map((t, i) => { const w = String(t).length * (p.title_size || 70) * 0.55 + 70; return <Box key={i} x={-w / 2} y={i * ((p.title_size || 70) * 1.75) - 50} w={w} h={(p.title_size || 70) * 1.35} text={t} fill={i % 2 ? '#FDE047' : '#FFFFFF'} rot={i % 2 ? 2 : -2} />; })}</g>}
+      {p.title && <g transform={`translate(${p.people ? 820 : 960} ${p.chips ? 250 : 380}) scale(${sp(f, at(line, p.title_on || '', 0.05), 'heavy')})`}>
+        {p.title.map((t, i) => { const sz = (p.title_size || 70) * 1.3;   // 2.75.8: the deep look's big rounded words, white then gold
+          return <text key={i} x={0} y={i * sz * 1.25 + sz * 0.3} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={sz} letterSpacing={-1} fill={i % 2 ? '#FFC23D' : '#FFFFFF'}
+            stroke="#02101A" strokeOpacity={0.62} strokeWidth={12} paintOrder="stroke" strokeLinejoin="round" style={{textTransform: 'uppercase'}}
+            {...(String(t).length * sz * 0.66 > (p.people ? 1250 : 1700) ? {textLength: p.people ? 1250 : 1700, lengthAdjust: 'spacingAndGlyphs'} : {})}>{t}</text>; })}</g>}
       <Card line={line} f={f} />
-      <Chips line={line} f={f} y0={p.title ? 330 : 230} />
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <Chips line={line} f={f} y0={p.title ? 430 : 240} />
+      <Labels line={line} f={f} />
       {p.meter !== false && p.sub !== false && <Meter m={m} f={f} />}
     </g>
   );
@@ -530,7 +598,7 @@ function Pressure({f, len, line}) {
       </g>
       {p.big && f >= ca + n * 8 && <g transform={`translate(1520 520) scale(${sp(f, ca + n * 8, 'heavy')})`}><Box x={-230} y={-70} w={460} h={140} text={p.big} fill="#FDE047" rot={-2} /></g>}
       <Card line={line} f={f} />
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <Labels line={line} f={f} x0={80} y0={150} />
       {p.meter !== false && <Meter m={p.m || 4000} f={f} />}
     </g>
   );
@@ -592,7 +660,7 @@ function Floor({f, len, line}) {
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
       <People line={line} f={f} T={T} x0={1640} y0={420} />
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <Labels line={line} f={f} />
       <Meter m={10935} f={f} op={p.meter === false ? 0 : 1} />
     </g>
   );
@@ -644,8 +712,11 @@ function Cup({f, len, line}) {
   const beads = p.beads && f >= at(line, p.beads_on || 'beads', 0.2);
   return (
     <g>
-      <linearGradient id="tw-cupsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7CC4F0" /><stop offset="1" stopColor="#E6F6FF" /></linearGradient>
+      {/* 2.75.8 the deep look: the cup under a warm light on the dark (white labels read; the sky made them vanish) */}
+      <linearGradient id="tw-cupsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0E3A50" /><stop offset="1" stopColor="#03111A" /></linearGradient>
+      <radialGradient id="tw-cupspot" cx={0.5} cy={0.5} r={0.5}><stop offset="0" stopColor="#FFF4D6" stopOpacity={0.3} /><stop offset="1" stopColor="#FFF4D6" stopOpacity={0} /></radialGradient>
       <rect width={W} height={H} fill="url(#tw-cupsky)" />
+      <ellipse cx={p.side ? 1000 : 960} cy={560} rx={760} ry={460} fill="url(#tw-cupspot)" />
       <g transform={`translate(${p.side ? 560 : 960} 560)`}>
         {p.side && <g transform="translate(0 0)"><path d="M -140 -200 L 140 -200 L 104 170 L -104 170 Z" fill="#fff" {...st(8)} /><text x={0} y={-30} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={60} fill="#2563EB">YOU</text><path d="M -50 40 q 25 -30 50 0 q 25 30 50 0" stroke="#2563EB" strokeWidth={10} fill="none" />
           <g transform="translate(-110 230)"><Box x={0} y={0} w={220} h={60} text="BEFORE" fill="#FFFFFF" rot={-2} /></g></g>}
@@ -663,7 +734,7 @@ function Cup({f, len, line}) {
           return <circle key={i} cx={Math.cos(a) * r * sq} cy={Math.sin(a) * r * sq} r={22 * sq} fill="#E0F2FE" {...st(3)} />; })}
         <g transform="translate(-150 190)"><Box x={0} y={0} w={300} h={56} text="AIR SQUEEZED OUT" fill="#FDE047" rot={-1} /></g></g>}
       <Card line={line} f={f} />
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <Labels line={line} f={f} />
     </g>
   );
 }
@@ -689,7 +760,7 @@ function Ballast({f, len, line}) {
       <g transform="translate(1580 520)"><path d={p.drop ? 'M 0 120 L 0 -120 M -40 -70 L 0 -120 L 40 -70' : 'M 0 -120 L 0 120 M -40 70 L 0 120 L 40 70'} stroke="#FDE047" strokeWidth={16} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={p.drop ? lin(f, da, da + 10, 0, 1) : lin(f, wa, wa + 10, 0, 1)} />
         <text x={0} y={190} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={52} fill="#fff" stroke={INK} strokeWidth={8} paintOrder="stroke">{p.drop ? 'RISE' : 'SINK'}</text></g>
       <Card line={line} f={f} />
-      <Labels line={line} f={f} x0={80} y0={60} />
+      <Labels line={line} f={f} />
     </g>
   );
 }

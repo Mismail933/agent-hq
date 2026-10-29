@@ -1236,6 +1236,14 @@ Agents never spend money without the owner's explicit approval.
     mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1 at 75% is as smooth as the source (marine-snow-75m.mp4). A rushed line inside
     a one-take voice: re-voice just that line (scratchpad revoice_q.py, ~50 characters) and set its `voice_file`. Patch one shot
     into a finished render: scratchpad yam_patch.py <sample> <line index> after `story_sample --prep`.
+    2.75.8 (the owner 14:35: the deep sample "could be our Short" and "this style is the new Storygraphics standard: make the full
+    Mariana video in exactly this style"): trench2's Water uses deep.jsx's palette (one dark teal sea), soft gradient light shafts and
+    specks in three depths (the near ones soft-edged by a radial gradient, no blur filter: filters on many small shapes cost render
+    time), and Opening puts the deep look's vignette over every tw_ shot. The full spec = scratchpad make_trench_deep_full.py: the
+    approved sample's 17 lines + a 13-line bridge + v7's lines 22-99 with v8-v11's edits, asserted word for word against episode 37's
+    script; real public-domain footage in the body too (dp_real: deep corals ~2,000 m on the midnight zone, NOAA's ghostlike octopod
+    photo held as a clip, footage/ghost-octopod-still.mp4, on the abyss floor). The Short = the sample rendered with captions false,
+    cut vertical by clipper (scratchpad trench_short_vertical.py: the phrases in big type aren't captioned again).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

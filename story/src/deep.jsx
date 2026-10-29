@@ -576,7 +576,7 @@ function Sub({f, len, line}) {
         {youK > 0.01 && <g opacity={youK}><You f={f} id={id} x={bx} y={by - 240 + (1 - youK) * 200} s={0.46 * (0.4 + 0.6 * youK)} pose="stand" expr="worried" /></g>}
         {r >= 0 && r < 26 && <circle cx={bx} cy={by} r={60 + r * 32} fill="none" stroke="#FFFFFF" strokeWidth={14 * (1 - r / 26)} opacity={1 - r / 26} />}
         {r >= 0 && r < 8 && <circle cx={bx} cy={by} r={300} fill="#FFFFFF" opacity={0.5 * (1 - r / 8)} filter={`url(#blur40-${id})`} />}
-        {r >= 0 && <g filter={`url(#lit-${id})`}><YSub T={f} x={bx} y={by} s={1.3 * form} beam={0} cup={1} bag={false} solo={!p.pip} youExpr={f > win - 10 ? 'smile' : 'worried'} pipExpr="smile" /></g>}
+        {r >= 0 && <g filter={`url(#lit-${id})`}><YSub lit={false} T={f} x={bx} y={by} s={1.3 * form} beam={0} cup={1} bag={false} solo={!p.pip} youExpr={f > win - 10 ? 'smile' : 'worried'} pipExpr="smile" /></g>}
       </g>
       <Vignette id={id} />
     </g>
@@ -604,7 +604,7 @@ function Title({f, len, line}) {
         <clipPath id={`tbc-${id}`}><path d={`M ${bx - 150} ${by + 8} L -200 ${by - 330} L -200 ${by + 470} Z`} /></clipPath>
         <g clipPath={`url(#tbc-${id})`}><Specks f={F} id={id} rise={F * 6} n={140} op={2.2} seed={57} /></g>
       </g>
-      <g filter={`url(#lit-${id})`}><YSub T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} solo={!p.pip} youExpr="determined" pipExpr="smile" /></g>
+      <g filter={`url(#lit-${id})`}><YSub lit={false} T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} solo={!p.pip} youExpr="determined" pipExpr="smile" /></g>
       <circle cx={bx - 236 * 0.62} cy={by + 12} r={18} fill="#FFFBE6" />
       <circle cx={bx - 236 * 0.62} cy={by + 12} r={70} fill="#FFF3C4" opacity={0.35} filter={`url(#blur18-${id})`} />
       <Vignette id={id} />
