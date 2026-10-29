@@ -402,6 +402,20 @@ Agents never spend money without the owner's explicit approval.
   fields, traders, canoe) moved onto the north shore (it stood in the river). Titles 'Into the Gulf of St. Lawrence' / 'Up the St.
   Lawrence River'. The sample is 1134 frames; Part 1 uses 186-1073 (29.6 s) with the event on line 3 at delay -11: line 2 holds 10.78 s
   (the voyage under music), line 3 lands on the arrival, line 4 'father of New France' on the spread, line 5 after the painting.
+  2.78.0 Chapter 1 levelled up (the owner 2026-10-29 22:45: "redo Chapter 1 at the Mariana level"; he dropped Chapter 2 for now;
+  NEVER the Storygraphics cast for Bassel, only the method). `maps/src/Earth.jsx`: NASA Blue Marble NG July 2004 topo+bathy (public
+  domain, 5400x2700, ~/.agent-hq-anim/geo/bluemarble, copied to the app's public/earth.jpg by maplong) reprojected per frame on a
+  half-size canvas under the vector layers (own orthographic inverse + bilinear; light falling off to the limb); spec `earth: true`
+  -> MapStory/MapShort `earth` (countries see-through, unfilled ones 16%). MapStory `Iris` = the zoom transition: a circle opens from
+  the place on the map onto the clip and closes back onto it; `EventClip` (event `ll`, a light lit grade) and `Footage` (line
+  `footage` {key, on, off|dur, from, ll, caption, zoom} -> long/footage/<key>.mp4 + credits.json, REAL FOOTAGE tag + credit).
+  `mapsound.py`: the effects track from the beats (Sonniss sea under every `ship` line, made-here creaks and distant cannon on `fx`
+  battles and battle events, event/footage beds, line `sfx`), levels against the narrator's speech (beds -26, accent peaks 0 = ~16 dB
+  under over 0.4 s, all ducked 6 dB while he speaks), `report`; spec `sound_fx`, `music_lufs` (-35 = ~19 dB under), `story_speed`,
+  `story_gap`. MapShort `vertical` + composition `VMapShort` (1080x1920, globe at 0.47 H, titles centred at y 210, the chart in the
+  lower middle at 0.82, the Brazil number centred) + `endCard` {at, q, title, cta}. Content: long/part-1-2-lvl (script = the approved
+  45 lines word for word + 4 footage lines + 4 hooks; scratchpad make_ch1_lvl.py), long/short-vertical (make_vshort.py: the approved
+  opening + one end line). Test stills without a render: scratchpad stills_lvl.py <part> [auto|s,s].
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
