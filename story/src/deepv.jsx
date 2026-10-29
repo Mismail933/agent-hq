@@ -95,7 +95,7 @@ const marksOf = (line, f) => {
 // ───────────── the type of each shot, laid out for the phone ─────────────
 function TypeOf({f, len, line, first}) {
   const p = P(line), shot = line.shot, v = p.footage || {};
-  const big = (p.big || []).map((b) => ({...b}));
+  const big = (Array.isArray(p.big) ? p.big : []).map((b) => ({...b}));
   if (shot === 'dp_float') {
     const pac = at(line, p.pac || 'pacific', 0.5), eyes = at(line, p.eyes || 'eyes', 0.75);
     return (
@@ -305,7 +305,7 @@ const FadeIn = ({on, children}) => {
 // the captions leave out a phrase the picture already shows in big type (p.big cue words, p.nocap) and stop at the end card
 const norm = (w) => String(w || '').toLowerCase().replace(/[^a-z0-9']/g, '');
 const capLines = (lines) => lines.filter((l) => l.shot !== 'dv_end').map((l) => {
-  const q = l.p || {}, cues = [...(q.big || []).map((b) => b.on), ...(q.nocap || [])].map(norm).filter(Boolean);
+  const q = l.p || {}, cues = [...(Array.isArray(q.big) ? q.big : []).map((b) => b.on), ...(q.nocap || [])].map(norm).filter(Boolean);
   if (!cues.length) return l;
   const ph = [], out = [];
   let cur = [];

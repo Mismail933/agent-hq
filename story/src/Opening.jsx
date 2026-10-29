@@ -499,7 +499,7 @@ const CaptionLayer = ({lines}) => {
   if (ci < 0) return null;
   const c = chunks[ci];
   // 2.75.0 (Israa: words shown twice): a phrase the screen already shows in big type (p.big cue words) gets no caption pill
-  const big = [...((l.p || {}).big || []).map((b) => b.on), ...((l.p || {}).nocap || [])].map((w) => String(w || '').toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
+  const bigs = (l.p || {}).big, big = [...(Array.isArray(bigs) ? bigs : []).map((b) => b.on), ...((l.p || {}).nocap || [])].map((w) => String(w || '').toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
   if (big.length && c.some((i) => big.some((b) => ws[i][0].toLowerCase().replace(/[^a-z0-9']/g, '').startsWith(b)))) return null;
   const now = c.reduce((a, i) => (ws[i][1] <= frame ? i : a), c[0]);
   return (
