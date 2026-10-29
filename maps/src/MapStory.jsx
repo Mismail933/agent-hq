@@ -431,11 +431,11 @@ function EventClip({ev, t0, f, fps, xy, lit}) {
   return (
     <Sequence from={a} durationInFrames={n}>
       <Iris a={a} n={n} xy={xy} f={f}>
-        <OffthreadVideo src={staticFile(`events/${ev.key}.mp4`)} muted style={lit ? {filter: 'contrast(1.07) saturate(1.1)'} : null} />
+        <OffthreadVideo src={staticFile(`events/${ev.key}.mp4`)} muted style={lit ? {filter: 'contrast(1.06) saturate(1.1) brightness(1.06)'} : null} />
         {lit ? <>
-          <AbsoluteFill style={{background: 'radial-gradient(ellipse at 22% 12%, rgba(255,214,150,0.30), rgba(255,214,150,0) 55%)', mixBlendMode: 'soft-light'}} />
-          <AbsoluteFill style={{background: 'linear-gradient(200deg, rgba(40,70,120,0) 40%, rgba(20,40,90,0.28) 100%)', mixBlendMode: 'multiply'}} />
-          <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)'}} />
+          <AbsoluteFill style={{background: 'radial-gradient(ellipse at 22% 12%, rgba(255,222,170,0.42), rgba(255,214,150,0) 60%)', mixBlendMode: 'screen', opacity: 0.35}} />
+          <AbsoluteFill style={{background: 'linear-gradient(200deg, rgba(40,70,120,0) 55%, rgba(20,40,90,0.16) 100%)', mixBlendMode: 'multiply'}} />
+          <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 46%, transparent 60%, rgba(0,0,0,0.32) 100%)'}} />
         </> : null}
       </Iris>
     </Sequence>

@@ -15,7 +15,7 @@ import numpy as np
 
 SR = 48000
 BED_DB = -26.0      # a bed's level under the narrator's speech
-ACCENT_DB = -13.0   # a cannon / creak at its loudest moment, under his speech
+ACCENT_DB = 0.0     # a cannon / creak at its PEAK, against his speech RMS: a shot is mostly crack, so over 0.4 s it sits ~16 dB under him once ducked (measured)
 DUCK_DB = -6.0      # everything, while he speaks
 BATTLE_EVENTS = {"algiers1830": 4, "samori1890s": 3, "vietnam1880s": 3, "madagascar1895": 4}   # event key -> cannon shots
 EVENT_BEDS = {"settle-1608": ["sea", "birds"], "sugar-1700s": ["birds"], "quebec1608": ["sea"], "prison1864": ["sea"], "newcal1853": ["sea"]}

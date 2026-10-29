@@ -69,7 +69,7 @@ const Text = ({x, y, children, size = 34, color = C.text, anchor = 'middle', op 
 
 export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = [], noEnd = false, earth = false, vertical = false, endCard = null}) => {
   VERT = vertical; W = vertical ? 1080 : W0; H = vertical ? 1920 : H0;
-  MAPX = vertical ? W * 0.5 : W * 0.42; MAPY = vertical ? H * 0.47 : H * 0.58; ZK = vertical ? 0.74 : 1;
+  MAPX = vertical ? W * 0.5 : W * 0.42; MAPY = vertical ? H * 0.47 : H * 0.58; ZK = vertical ? 1.0 : 1;
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const at = (k, d = 0) => Math.round(((cues[k] ?? 0) + d) * fps);
@@ -187,8 +187,8 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
         <g opacity={gfOp}>
           <Text {...xy(P([-53.15, 3.75]))} size={32} color="#FFFFFF" weight={800}>French Guiana</Text>
           <Text {...xy(P([-55.9, 4.2]))} size={34} op={named.SUR != null ? on(named.SUR, 8) : 1}>Suriname</Text>
-          <Text {...xy(P([-55.2, 1.0]))} size={42} op={on(named.BRA, 8)}>Brazil</Text>
-          <Text x={braAt[0] + 40} y={braAt[1] + 130} size={96} anchor="start" color={C.accent} op={on(at('km730'), 8)} spacing={0}
+          <Text {...xy(P([-55.2, 1.0]))} size={42} op={on(named.BRA, 8) * (VERT ? 1 - on(at('km730'), 6) : 1)}>Brazil</Text>
+          <Text x={VERT ? W / 2 : braAt[0] + 40} y={VERT ? braAt[1] + 150 : braAt[1] + 130} size={96} anchor={VERT ? 'middle' : 'start'} color={C.accent} op={on(at('km730'), 8)} spacing={0}
                 pop={f > at('km730', 1.2) ? pop(at('km730', 1.2)) : 1}>{`~${braNum} km`}</Text>
         </g>
         {cues.more ? TERR.map(([name, ll, key, [dx, dy]]) => {
@@ -239,7 +239,7 @@ const EndCard = ({f, fps, e}) => {
   const k = interpolate(f, [a, a + 14], [0, 1], clamp);
   const pk = (d) => spring({frame: f - a - d, fps, config: {damping: 13, stiffness: 150}, durationInFrames: 22});
   return (
-    <AbsoluteFill style={{background: `rgba(3,8,16,${0.7 * k})`, fontFamily: 'Space Grotesk', color: C.text, alignItems: 'center',
+    <AbsoluteFill style={{background: `rgba(3,8,16,${0.9 * k})`, fontFamily: 'Space Grotesk', color: C.text, alignItems: 'center',
                           justifyContent: 'center', textAlign: 'center', padding: '0 70px'}}>
       <div style={{fontSize: 62, fontWeight: 700, lineHeight: 1.1, opacity: k, transform: `scale(${0.85 + 0.15 * pk(0)})`}}>{e.q}</div>
       <div style={{marginTop: 46, fontSize: 30, letterSpacing: 8, color: C.sub, opacity: pk(10)}}>FULL STORY</div>
@@ -259,8 +259,8 @@ const Bars = ({f, at, km, source}) => {
   if (op <= 0.01) return null;
   const shown = rows.filter(([name, , , cue]) => (second > 0.01 ? true : name !== 'Brazil') && f >= at(cue) - 6);
   return (
-    <div style={{position: 'absolute', left: VERT ? 270 : 1330, top: VERT ? 1180 : 250, width: 540, opacity: op, fontFamily: 'Space Grotesk',
-                 ...(VERT ? {background: 'rgba(3,8,16,0.62)', padding: '18px 24px 20px', borderRadius: 12} : {})}}>
+    <div style={{position: 'absolute', left: VERT ? 240 : 1330, top: VERT ? 1215 : 250, width: VERT ? 600 : 540, opacity: op, fontFamily: 'Space Grotesk',
+                 ...(VERT ? {background: 'rgba(3,8,16,0.62)', padding: '18px 24px 20px', borderRadius: 12, transform: 'scale(0.82)', transformOrigin: 'top center'} : {})}}>
       <div style={{fontSize: 30, letterSpacing: 5, color: C.sub, borderBottom: '1px solid rgba(140,190,220,0.3)', paddingBottom: 10}}>LAND BORDERS (KM)</div>
       {shown.map(([name, km, color, cue]) => {
         const g = interpolate(f, [at(cue) - 6, at(cue) + 18], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});
