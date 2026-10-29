@@ -166,7 +166,7 @@ def tg_file(method, field, path, timeout=300, **params):
         parts.append(f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
     p = Path(path)
     parts.append(f'--{b}\r\nContent-Disposition: form-data; name="{field}"; filename="{p.name}"\r\n'
-                 f'Content-Type: application/octet-stream\r\n\r\n'.encode() + p.read_bytes() + b"\r\n")
+                 f'Content-Type: {MIME.get(p.suffix.lower(), "application/octet-stream")}\r\n\r\n'.encode() + p.read_bytes() + b"\r\n")
     parts.append(f"--{b}--\r\n".encode())
     req = urllib.request.Request(f"{API}/bot{token()}/{method}", data=b"".join(parts),
                                  headers={"Content-Type": f"multipart/form-data; boundary={b}"})
@@ -367,6 +367,28 @@ def waits():
     return out
 
 
+MIME = {".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".ogg": "audio/ogg", ".wav": "audio/wav", ".flac": "audio/flac", ".mp4": "video/mp4",
+        ".mov": "video/quicktime", ".webm": "video/webm", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+        ".gif": "image/gif", ".pdf": "application/pdf", ".md": "text/markdown", ".txt": "text/plain"}
+
+
+def _fit_audio(path):
+    """Any audio as a plain MP3 the phone plays (128k, 44.1 kHz), made once next to it as <name>.phone.mp3; an MP3 is sent as it is."""
+    path = Path(path)
+    if path.suffix.lower() == ".mp3" and path.stat().st_size <= MAX_VIDEO:
+        return path
+    out = path.with_name(path.stem + ".phone.mp3")
+    if out.exists() and out.stat().st_mtime >= path.stat().st_mtime:
+        return out
+    import subprocess
+    import shorts
+    r = subprocess.run([shorts.find_ffmpeg(), "-y", "-loglevel", "error", "-i", str(path), "-vn", "-c:a", "libmp3lame", "-b:a", "128k", "-ar", "44100",
+                        str(out)], capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if r.returncode != 0 or not out.exists():
+        raise TelegramError("couldn't make a phone copy of the audio")
+    return out
+
+
 def _fit_video(path):
     """A video small enough for a bot (50 MB): the file itself, or a 720p copy made once next to it (<name>.phone.mp4)."""
     path = Path(path)
@@ -419,8 +441,11 @@ def send_media(m, chat=None, quiet=False):
             tg_file("sendVideo", "video", _fit_video(path), supports_streaming="true", **common)
         elif kind == "photo" and path.stat().st_size <= 10 * 1024 * 1024:
             tg_file("sendPhoto", "photo", path, **common)
-        elif kind == "audio" and path.stat().st_size <= MAX_VIDEO:
-            tg_file("sendAudio", "audio", path, **common)
+        elif kind == "audio":
+            a = _fit_audio(path)
+            if a.stat().st_size > MAX_VIDEO:
+                raise TelegramError("over the 50 MB a bot may send")
+            tg_file("sendAudio", "audio", a, title=path.stem[:60], **common)
         elif path.stat().st_size <= MAX_VIDEO:
             tg_file("sendDocument", "document", path, **common)
         else:
