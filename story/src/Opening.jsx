@@ -481,7 +481,9 @@ const chunksOf = (l) => {
 };
 const CaptionLayer = ({lines}) => {
   const frame = useCurrentFrame();
-  const li = lines.findIndex((l, i) => (l.words || []).length && frame >= l.words[0][1] && frame < (lines[i + 1] && (lines[i + 1].words || []).length ? Math.min(lines[i + 1].words[0][1], l.end + 12) : l.end + 12));
+  // 2.75.5 (Israa: a line's last phrase rode over the next shot's first frames): a phrase also ends where the next picture comes in
+  const cutOf = (n) => (n.cut != null ? n.cut - ((n.p || {}).cut ? 8 : 0) : 1e9);
+  const li = lines.findIndex((l, i) => (l.words || []).length && frame >= l.words[0][1] && frame < (lines[i + 1] && (lines[i + 1].words || []).length ? Math.min(lines[i + 1].words[0][1], l.end + 12, cutOf(lines[i + 1])) : l.end + 12));
   if (li < 0) return null;
   const l = lines[li], ws = l.words;
   const chunks = chunksOf(l);

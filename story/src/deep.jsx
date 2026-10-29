@@ -113,6 +113,21 @@ const Defs = ({id, d, glow = '#9FE3FF', gd = null}) => {
         <feComposite in2="SourceAlpha" operator="in" result="shade" />
         <feMerge><feMergeNode in="col" /><feMergeNode in="shade" /><feMergeNode in="rim" /></feMerge>
       </filter>
+      <filter id={`lit-${id}`} x="-20%" y="-20%" width="140%" height="140%">
+        <feColorMatrix in="SourceGraphic" type="matrix" values="0.86 0 0 0 0  0 0.93 0 0 0.01  0 0 0.97 0 0.03  0 0 0 1 0" result="col" />
+        <feOffset in="SourceAlpha" dx={7} dy={7} result="off" />
+        <feComposite in="SourceAlpha" in2="off" operator="out" result="rimA" />
+        <feFlood floodColor="#CFF2FF" floodOpacity={0.9} />
+        <feComposite in2="rimA" operator="in" />
+        <feGaussianBlur stdDeviation={1.6} result="rim" />
+        <feOffset in="SourceAlpha" dx={0} dy={-60} result="sh0" />
+        <feComposite in="SourceAlpha" in2="sh0" operator="out" result="shA" />
+        <feFlood floodColor="#3A2A05" floodOpacity={0.38} />
+        <feComposite in2="shA" operator="in" />
+        <feGaussianBlur stdDeviation={10} />
+        <feComposite in2="SourceAlpha" operator="in" result="shade" />
+        <feMerge><feMergeNode in="col" /><feMergeNode in="shade" /><feMergeNode in="rim" /></feMerge>
+      </filter>
       <filter id={`soft-${id}`} x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx={0} dy={6} stdDeviation={10} floodColor="#000" floodOpacity={0.55} /></filter>
       <radialGradient id={`glow-${id}`}><stop offset="0" stopColor={glow} stopOpacity={0.55} /><stop offset="0.35" stopColor={glow} stopOpacity={0.18} /><stop offset="1" stopColor={glow} stopOpacity={0} /></radialGradient>
       <radialGradient id={`vig-${id}`} cx="50%" cy="48%" r="75%"><stop offset="0.55" stopColor="#000" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.78} /></radialGradient>
@@ -244,7 +259,7 @@ function Float({f, len, line}) {
         <Glow x={hx + 220} y={hy + 40} r={560} id={id} a={0.55} />
         {flare > 0 && <g style={{mixBlendMode: 'screen'}}><circle cx={1500 - flare * 200} cy={140} r={420} fill="#FFF3C8" opacity={0.55 * flare} filter={`url(#blur40-${id})`} />
           <path d={`M 1500 140 L ${700 - flare * 80} 760`} stroke="#FFF8E0" strokeWidth={60} opacity={0.12 * flare} filter={`url(#blur18-${id})`} /></g>}
-        <You f={f} id={id} x={hx} y={hy} s={0.44} rot={-84 + Math.sin(f * 0.05) * 2} pose="float" expr={p.expr || 'closed'} />
+        <You f={f} id={id} x={hx} y={hy} s={0.44} rot={-84 + Math.sin(f * 0.05) * 2} pose="backfloat" expr={p.expr || 'closed'} />
         {/* the water across him: what is under the surface takes the sea's colour */}
         <rect x={-400} y={SURF_Y + 4 + Math.sin(f * 0.05) * 3} width={W + 800} height={H} fill={water(160)[0]} opacity={0.38} />
         {/* sun glints on the water around you on 'warm' */}
@@ -302,9 +317,12 @@ function Yank({f, len, line}) {
         <circle cx={1330} cy={H - 190 + drag * 0.15} r={46} fill="#CFF6E8" opacity={0.18 * loom} filter={`url(#blur3-${id})`} />
         {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="#031722" opacity={0.95} />}
         {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="none" stroke="#2C7FA0" strokeWidth={2} opacity={0.35} />}
-        <You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'float'} expr={f > g ? 'shock' : 'closed'} />
+        <You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'backfloat'} expr={f > g ? 'shock' : 'closed'} />
         <Bubbles x={yx + 60} y={yy0 + 120} f={f} f0={pull} n={26} s={1.7} seed={7} />
       </g>
+      {f > len - 18 && (() => { const k = clamp((f - (len - 18)) / 18, 0, 1), R = rng(77);
+        return <g>{[...Array(60)].map((_, i) => { const x = R() * W, r = 30 + R() * 90, y = H + 200 - (k * 1.4 + R() * 0.4) * (H + 400);
+          return <circle key={i} cx={x + Math.sin(k * 7 + i) * 20} cy={y} r={r} fill="#E2F6FF" fillOpacity={0.35} stroke="#F2FBFF" strokeWidth={5} opacity={0.9} />; })}</g>; })()}
       <Vignette id={id} a={0.75 + 0.25 * after} />
     </g>
   );
@@ -321,8 +339,18 @@ function Real({f, len, line}) {
       {p.big && <BigWords f={f} line={line} id={id} words={p.big} y={p.big_y || 560} size={p.big_size || 150} x={p.big_x || W / 2} anchor={p.big_anchor || 'middle'} off={p.big_off} />}
       {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.2)} x={p.tag_x || 120} y={p.tag_y || 860} text={p.tag} />}
       {p.depth != null && <DepthBar f={f} d={p.depth} />}
+      {p.marks && (() => { const mk = p.marks.map(([w, m]) => [at(line, w, 0.5), m]); let dd = p.from != null ? p.from : 1000;
+        for (const [a, m] of mk) dd = dd + (m - dd) * L(f, a - 12, a, 0, 1);
+        const k = mk.findIndex(([a]) => f < a), cur = k < 0 ? mk.length - 1 : k - 1;
+        return <g>
+          <DepthBar f={f} d={dd} a={0} value={cur < 0} />
+          {cur >= 0 && <text x={1500} y={600} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={150} fill="#FFFFFF" opacity={clamp((f - mk[cur][0] + 4) / 9, 0, 1)} filter={`url(#soft-${id})`}>{fmt(mk[cur][1])} M</text>}
+        </g>; })()}
       <Credit text={v.credit} />
-      {flash > 0 && <ellipse cx={240} cy={520} rx={420 + (1 - flash) * 500} ry={320 + (1 - flash) * 300} fill="#FFF6D8" opacity={0.7 * flash} filter={`url(#blur40-${id})`} />}
+      {flash > 0 && <g style={{mixBlendMode: 'screen'}}>
+        <radialGradient id={`fl-${id}`}><stop offset="0" stopColor="#FFFFFF" stopOpacity={1} /><stop offset="0.25" stopColor="#FFF4D6" stopOpacity={0.85} /><stop offset="1" stopColor="#FFD98A" stopOpacity={0} /></radialGradient>
+        <circle cx={W / 2} cy={470} r={300 + Math.min(f, 8) * 140} fill={`url(#fl-${id})`} opacity={flash} />
+      </g>}
       {p.pin && (() => { const a = at(line, p.pin.on || '', 0.3), k = sp(f, a, 'bounce'); if (f < a) return null;
         const px = p.pin.x || W / 2, py = p.pin.y || H / 2, ring = ((f - a) % 40) / 40;
         return <g>
@@ -339,9 +367,11 @@ function Sink({f, len, line}) {
   const id = 's' + line.idx, p = P(line);
   const marks = (p.marks || []).map(([w, m]) => [at(line, w, 0.5), m]);
   let d = p.from != null ? p.from : 1000;
+  if (p.to != null && !marks.length) d = L(f, 0, len, d, p.to, (x) => x);
   for (const [a, m] of marks) d = d + (m - d) * L(f, a - 12, a, 0, 1);
-  const rise = f * 9;
-  const walls = L(f, 0, len, p.walls0 != null ? p.walls0 : 0.15, p.walls1 != null ? p.walls1 : 0.55);
+  const rise = f * 14;
+  const wOn = p.walls_on ? at(line, p.walls_on, 0.8) : 0;
+  const walls = p.walls1 ? L(f, wOn, wOn ? wOn + 30 : len, p.walls0 || 0, p.walls1) : 0;
   const [, bot] = water(d);
   const sway = Math.sin(f * 0.04) * 14;
   const k = marks.findIndex(([a]) => f < a), cur = k < 0 ? marks.length - 1 : k - 1;
@@ -352,9 +382,11 @@ function Sink({f, len, line}) {
       <Sea f={f} d={d} id={id} />
       <Walls k={walls} rise={rise} color={mix(bot, '#000000', 0.45)} rim={mix(bot, '#BFEFFF', 0.7)} />
       <Specks f={f} id={id} rise={rise} n={110} />
+      {p.surface && <g><Surface f={f} y={L(f, 0, len, 190, -30)} id={id} bright={L(f, 0, len, 1, 0.5)} /><Rays f={f} k={1} id={id} top={L(f, 0, len, 190, -30)} gain={1.5} /></g>}
       <Glow x={800 + sway} y={560} r={520} id={id} a={0.95} />
-      <You f={f} id={id} x={800 + sway} y={250 + Math.sin(f * 0.05) * 10} s={0.5} rot={Math.sin(f * 0.03) * 6} pose={p.pose || 'stand'} expr={p.expr || 'worried'} />
-      <Bubbles x={800 + sway} y={260} f={f} f0={0} n={4} s={0.9} seed={3} op={0.7} />
+      <You f={f} id={id} x={800 + sway} y={p.surface ? L(f, 0, len, 420, 360) : 250 + Math.sin(f * 0.05) * 10} s={p.surface ? L(f, 0, len, 0.5, 0.4) : 0.5}
+        rot={Math.sin((f + (line.start || 0)) * 0.018) * 16 + 8} pose={p.pose || 'backfloat'} expr={p.expr || 'worried'} />
+      {[0, 40, 80, 120, 160].map((o) => <Bubbles key={o} x={800 + sway} y={300} f={f} f0={o - 30} n={3} s={0.8} seed={3 + o} op={0.7} />)}
       <Vignette id={id} />
       <DepthBar f={f} d={d} a={0} value={cur < 0} />
       {cur >= 0 && (() => { const [a, m] = marks[cur]; const kk = sp(f, a - 2, 'heavy');
@@ -417,14 +449,14 @@ function Section({f, len, line}) {
             <path d={`M ${cx + 120} ${SY + 6} L ${cx + 150} ${SY + 6} L ${cx + 150} ${SY + 6 + (peakY - SY - 12) * clamp(k2, 0, 1)} L ${cx + 120} ${SY + 6 + (peakY - SY - 12) * clamp(k2, 0, 1)}`}
               fill="none" stroke="#FFC23D" strokeWidth={5} />
             <text x={cx + 180} y={(SY + peakY) / 2 + 14} fontFamily={NUN} fontWeight={900} fontSize={64} fill="#FFFFFF" opacity={clamp(k2, 0, 1)} filter={`url(#soft-${id})`}>2 KM</text>
-            <text x={cx + 182} y={(SY + peakY) / 2 + 52} fontFamily={OSWALD} fontWeight={500} fontSize={24} fill="#CFEFFF" letterSpacing={6} opacity={clamp(k2, 0, 1)}>OF WATER STILL ABOVE IT</text>
+            <text x={cx + 182} y={(SY + peakY) / 2 + 60} fontFamily={OSWALD} fontWeight={600} fontSize={38} fill="#FFFFFF" letterSpacing={4} opacity={clamp(k2, 0, 1)} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">OF WATER STILL ABOVE IT</text>
           </g>
         )}
         {/* the ruler */}
         <g opacity={0.8}>
           <path d={`M 70 ${SY} L 70 ${FL}`} stroke="#CFEFFF" strokeWidth={2} opacity={0.5} />
           {[...Array(12)].map((_, i) => <g key={i}><path d={`M 70 ${SY + i * KMP} l ${i % 2 ? 10 : 22} 0`} stroke="#CFEFFF" strokeWidth={2} />
-            {i % 2 === 0 && i > 0 && <text x={104} y={SY + i * KMP + 9} fontFamily={OSWALD} fontWeight={500} fontSize={24} fill="#CFEFFF" letterSpacing={3}>{i} KM</text>}</g>)}
+            {i % 2 === 0 && i > 0 && <text x={104} y={SY + i * KMP + 11} fontFamily={OSWALD} fontWeight={600} fontSize={32} fill="#FFFFFF" letterSpacing={3} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">{i} KM</text>}</g>)}
         </g>
         <Tag f={f} a={drop + 18} x={cx - 300} y={FL - 0.3 * EV} text="MOUNT EVEREST" anchor="end" size={30} rule={false} />
         <path d={`M ${cx + 180} ${FL + 4} L ${cx + 180} ${FL + 34}`} stroke="#FFFFFF" strokeWidth={3} opacity={0.85} />
@@ -476,6 +508,14 @@ function Close({f, len, line}) {
         );
       })()}
       {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.3)} x={1260} y={780} text={p.tag} />}
+      {p.bar_on && (() => { const a = at(line, p.bar_on, 0.8); if (f < a - 4) return null; const k = L(f, a, a + 10, 0.08, 1, Easing.out(Easing.cubic));
+        return <g opacity={clamp((f - a + 4) / 5, 0, 1)}>
+          <rect x={360} y={880} width={1200} height={10} rx={5} fill="#FFFFFF" opacity={0.3} />
+          <rect x={360} y={880} width={1200 * k} height={10} rx={5} fill="#FF2D2D" />
+          <circle cx={360 + 1200 * k} cy={885} r={16} fill="#FF2D2D" />
+          <path d="M 372 828 l 26 16 l -26 16 Z" fill="#FFFFFF" />
+          <text x={418} y={856} fontFamily={OSWALD} fontWeight={600} fontSize={30} fill="#FFFFFF">{k >= 1 ? '0:03 / 0:03' : '0:01 / 0:03'}</text>
+        </g>; })()}
     </g>
   );
 }
@@ -501,18 +541,18 @@ function Sub({f, len, line}) {
         <Sea f={f} d={d} id={id} />
         <Specks f={f} id={id} rise={f * 3} n={70} op={0.6} />
         <g opacity={lit * flick} style={{mixBlendMode: 'screen'}}>
-          <path d={`M 420 1100 L ${W / 2 - 300} 300 L ${W / 2 + 40} 300 L 760 1100 Z`} fill="#FFF3C4" opacity={0.42} filter={`url(#blur18-${id})`} />
-          <path d={`M 1500 1100 L ${W / 2 + 300} 300 L ${W / 2 - 40} 300 L 1160 1100 Z`} fill="#FFF3C4" opacity={0.42} filter={`url(#blur18-${id})`} />
-          <ellipse cx={W / 2} cy={330} rx={420} ry={150} fill="#FFF6D8" opacity={0.35} filter={`url(#blur40-${id})`} />
-          <clipPath id={`beam-${id}`}><path d={`M 420 1100 L ${W / 2 - 300} 300 L ${W / 2 + 300} 300 L 1500 1100 Z`} /></clipPath>
-          <g clipPath={`url(#beam-${id})`}><Specks f={f} id={id} rise={f * 3} n={140} op={2.4} seed={31} /></g>
+          <radialGradient id={`bm-${id}`} cx="50%" cy="100%" r="100%"><stop offset="0" stopColor="#FFF4D2" stopOpacity={0.85} /><stop offset="0.6" stopColor="#FFE9B0" stopOpacity={0.35} /><stop offset="1" stopColor="#FFE9B0" stopOpacity={0} /></radialGradient>
+          <path d={`M ${W / 2 - 150} 870 L ${W / 2 - 520} 140 L ${W / 2 - 60} 140 L ${W / 2 - 40} 870 Z`} fill={`url(#bm-${id})`} filter={`url(#blur18-${id})`} />
+          <path d={`M ${W / 2 + 150} 870 L ${W / 2 + 520} 140 L ${W / 2 + 60} 140 L ${W / 2 + 40} 870 Z`} fill={`url(#bm-${id})`} filter={`url(#blur18-${id})`} />
+          {[...Array(22)].map((_, i) => { const R = rng(90 + i); const side = i % 2 ? 1 : -1, t = R(), y = 860 - ((f * (1.2 + R()) + R() * 700) % 720);
+            const spread = 40 + (860 - y) * 0.55 * R(); return <circle key={i} cx={W / 2 + side * (60 + spread)} cy={y} r={3 + t * 5} fill="#FFF7E0" opacity={0.85} />; })}
         </g>
         {/* the porthole's rim around the frame */}
-        <path d={`M -10 -10 L ${W + 10} -10 L ${W + 10} ${H + 10} L -10 ${H + 10} Z M ${W / 2 - 560} 470 a 560 410 0 1 0 1120 0 a 560 410 0 1 0 -1120 0 Z`} fill="#05090D" fillRule="evenodd" />
-        <ellipse cx={W / 2} cy={470} rx={560} ry={410} fill="none" stroke="#8A97A4" strokeWidth={30} />
-        <ellipse cx={W / 2} cy={470} rx={560} ry={410} fill="none" stroke="#CBD5E1" strokeWidth={6} opacity={0.6} />
-        {[...Array(12)].map((_, i) => { const t = (i / 12) * Math.PI * 2; return <circle key={i} cx={W / 2 + Math.cos(t) * 560} cy={470 + Math.sin(t) * 410} r={8} fill="#5B6773" />; })}
-        <path d={`M ${W / 2 - 390} 210 q 150 -90 350 -100`} stroke="#FFFFFF" strokeWidth={12} fill="none" opacity={0.18} strokeLinecap="round" />
+        <path d={`M -10 -10 L ${W + 10} -10 L ${W + 10} ${H + 10} L -10 ${H + 10} Z M ${W / 2 - 400} 470 a 400 400 0 1 0 800 0 a 400 400 0 1 0 -800 0 Z`} fill="#05090D" fillRule="evenodd" />
+        <circle cx={W / 2} cy={470} r={400} fill="none" stroke="#9CA3AF" strokeWidth={34} />
+        <circle cx={W / 2} cy={470} r={400} fill="none" stroke="#CBD5E1" strokeWidth={6} opacity={0.6} />
+        {[...Array(12)].map((_, i) => { const t = (i / 12) * Math.PI * 2; return <circle key={i} cx={W / 2 + Math.cos(t) * 400} cy={470 + Math.sin(t) * 400} r={8} fill="#5B6773" />; })}
+        <path d={`M ${W / 2 - 280} 250 q 110 -90 260 -100`} stroke="#FFFFFF" strokeWidth={12} fill="none" opacity={0.18} strokeLinecap="round" />
         {p.tag && <Tag f={f} a={seat + 4} x={W / 2} y={170} text={p.tag} anchor="middle" rule={false} />}
       </g>
     );
@@ -527,7 +567,7 @@ function Sub({f, len, line}) {
         {youK > 0.01 && <g opacity={youK}><You f={f} id={id} x={bx} y={by - 240 + (1 - youK) * 200} s={0.46 * (0.4 + 0.6 * youK)} pose="stand" expr="worried" /></g>}
         {r >= 0 && r < 26 && <circle cx={bx} cy={by} r={60 + r * 32} fill="none" stroke="#FFFFFF" strokeWidth={14 * (1 - r / 26)} opacity={1 - r / 26} />}
         {r >= 0 && r < 8 && <circle cx={bx} cy={by} r={300} fill="#FFFFFF" opacity={0.5 * (1 - r / 8)} filter={`url(#blur40-${id})`} />}
-        {r >= 0 && <YSub T={f} x={bx} y={by} s={1.3 * form} beam={0} cup={1} bag={false} solo={!p.pip} youExpr={f > win - 10 ? 'smile' : 'worried'} pipExpr="smile" />}
+        {r >= 0 && <g filter={`url(#lit-${id})`}><YSub T={f} x={bx} y={by} s={1.3 * form} beam={0} cup={1} bag={false} solo={!p.pip} youExpr={f > win - 10 ? 'smile' : 'worried'} pipExpr="smile" /></g>}
       </g>
       <Vignette id={id} />
     </g>
@@ -550,13 +590,13 @@ function Title({f, len, line}) {
       <Walls k={0.45} rise={F * 6} color="#02070B" rim="#2F6F86" />
       <Specks f={F} id={id} rise={F * 6} n={110} />
       <g style={{mixBlendMode: 'screen'}}><path d={`M ${bx - 235} ${by + 20} L -200 ${by - 300} L -200 ${by + 520} Z`} fill="#FFF3C4" opacity={0.16} filter={`url(#blur18-${id})`} /></g>
-      <YSub T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} solo={!p.pip} youExpr="determined" pipExpr="smile" />
+      <g filter={`url(#lit-${id})`}><YSub T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} solo={!p.pip} youExpr="determined" pipExpr="smile" /></g>
       <circle cx={bx - 236 * 0.62} cy={by + 12} r={18} fill="#FFFBE6" />
       <Vignette id={id} />
       <g filter={`url(#soft-${id})`}>
-        <text x={W / 2 - 40} y={420 + (1 - k) * 40} textAnchor="end" fontFamily={NUN} fontWeight={900} fontSize={230} fill="#FFFFFF" opacity={clamp(k * 1.5, 0, 1)}>YOU</text>
-        <text x={W / 2} y={400} textAnchor="middle" fontFamily={OSWALD} fontWeight={400} fontSize={70} fill="#CFEFFF" opacity={clamp(k2 * 1.5, 0, 1)}>vs</text>
-        <text x={W / 2 + 40} y={420 + (1 - k2) * 40} fontFamily={NUN} fontWeight={900} fontSize={230} fill="#FFC23D" opacity={clamp(k2 * 1.5, 0, 1)}>11 KM</text>
+        <text x={W / 2 - 70} y={420 + (1 - k) * 40} textAnchor="end" fontFamily={NUN} fontWeight={900} fontSize={230} fill="#FFFFFF" opacity={clamp(k * 1.5, 0, 1)}>YOU</text>
+        <text x={W / 2} y={392} textAnchor="middle" fontFamily={OSWALD} fontWeight={600} fontSize={92} fill="#FFC23D" letterSpacing={4} opacity={clamp(k2 * 1.5, 0, 1)}>VS</text>
+        <text x={W / 2 + 70} y={420 + (1 - k2) * 40} fontFamily={NUN} fontWeight={900} fontSize={230} fill="#FFC23D" opacity={clamp(k2 * 1.5, 0, 1)}>11 KM</text>
       </g>
       <Tag f={f} a={slam + 16} x={W / 2} y={530} text="THE MARIANA TRENCH" anchor="middle" size={36} rule={false} />
       <DepthBar f={f} d={L(f, slam + 16, Math.max(slam + 40, len - 36), 0, 10935)} a={slam + 16} y={900} op={clamp(k3, 0, 1)} />
@@ -609,7 +649,7 @@ function SnowLens({f, len, line}) {
       </g>}
       {/* 'not the fun kind of snow': a snowflake, crossed out */}
       {f >= fun - 3 && (() => { const kk = clamp(sp(f, fun - 3, 'bounce'), 0, 1.2); return (
-        <g transform={`translate(330 300) scale(${kk})`} opacity={clamp(kk, 0, 1)}>
+        <g transform={`translate(1660 190) scale(${kk * 0.8})`} opacity={clamp(kk, 0, 1)}>
           {[0, 60, 120].map((a) => <path key={a} d="M 0 -90 L 0 90 M -22 -62 L 0 -40 L 22 -62 M -22 62 L 0 40 L 22 62" stroke="#FFFFFF" strokeWidth={12} strokeLinecap="round" fill="none" transform={`rotate(${a})`} />)}
           <circle r={128} fill="none" stroke="#FF5A4E" strokeWidth={18} />
           <path d="M -90 90 L 90 -90" stroke="#FF5A4E" strokeWidth={18} strokeLinecap="round" />

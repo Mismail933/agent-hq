@@ -323,7 +323,7 @@ export function Figure({who = 'juliane', pose = 'stand', expr = 'calm', f = 0, t
   const legR = pose === 'limp' ? (side ? dir : -1) * sw * 6 : -legL;
   const bob = walk ? -Math.abs(sw) * (pose === 'limp' ? 16 : 9) : Math.sin(f * 0.07 + seed) * 3;
   const arms = {
-    stand: [6, -6], star: [92, -92], float: [30, -30], walk: [-sw * 18 + 6, sw * 18 - 6], limp: [-sw * 10 + 10, sw * 6 - 30], run: [-sw * 40, sw * 40], wade: [40, -40],
+    stand: [6, -6], star: [92, -92], float: [30, -30], backfloat: [35, -4], walk: [-sw * 18 + 6, sw * 18 - 6], limp: [-sw * 10 + 10, sw * 6 - 30], run: [-sw * 40, sw * 40], wade: [40, -40],
     signal: [10, -165 + Math.sin(f * 0.5) * 18], shade: [8, -150], flail: [150 + Math.sin(f * 0.45) * 22, -150 + Math.sin(f * 0.45 + 1.4) * 22], kick: [150 + Math.sin(f * 0.45) * 22, -150 + Math.sin(f * 0.45 + 1.4) * 22], hold: [-40, 40], push: [-60 + sw * 10, 60 - sw * 10], hug: [0, 0], lie: [10, -10],
   }[pose] || [6, -6];
   const leg = (x, a, shoe) => (
