@@ -142,7 +142,7 @@ const CREATURES = {
 };
 // p.see = [{what, on (word), dir 1 left->right / -1, y, s, dur (frames to cross)}]
 const Passers = ({line, f, T}) => (P(line).see || []).map((c, i) => {
-  const a = at(line, c.on || '', 0.1 + 0.2 * i);
+  const a = at(line, c.on || '', 0.1 + 0.2 * i) - (c.lead != null ? c.lead : 45);
   const dur = c.dur || 220;
   if (f < a - 2 || f > a + dur) return null;
   const k = (f - a) / dur, dir = c.dir || -1;
@@ -153,12 +153,12 @@ const Passers = ({line, f, T}) => (P(line).see || []).map((c, i) => {
 });
 
 // ───────────── shared screen pieces ─────────────
-const People = ({line, f, T, x0 = 1640, y0 = 560}) => (P(line).people || []).map(([who, on, name], i) => {
+const People = ({line, f, T, x0 = 1640, y0 = 560, down = false}) => (P(line).people || []).map(([who, on, name], i) => {
   const a = at(line, on || '', 0.1 + 0.2 * i);
   if (f < a) return null;
   const s = sp(f, a, 'card');
   return (
-    <g key={who} transform={`translate(${x0 - i * 330} ${y0}) scale(${s})`}>
+    <g key={who} transform={`translate(${down ? x0 : x0 - i * 330} ${down ? y0 + i * 330 : y0}) scale(${s})`}>
       <circle r={150} fill="#F5E6C8" {...st(8)} />
       <clipPath id={`tw-pp-${who}`}><circle r={142} /></clipPath>
       <g clipPath={`url(#tw-pp-${who})`}><Bust who={who} x={0} y={-10} s={0.62} expr="calm" f={T} arms="rest" /></g>
@@ -183,9 +183,9 @@ const Card = ({line, f, y = 300}) => {   // p.card = {head, big, sub, on, fill}:
   const wBig = Math.max(420, String(c.big).length * 76 + 80);
   return (
     <g transform={`translate(960 ${y})`}>
-      {c.head && <g transform={`scale(${s2})`}><Box x={-(String(c.head).length * 22 + 60) / 2} y={-170} w={String(c.head).length * 22 + 60} h={64} text={c.head} fill="#FFFFFF" rot={-2} /></g>}
+      {c.head && <g transform={`scale(${s2})`}><Box x={-(String(c.head).length * 28 + 60) / 2} y={-186} w={String(c.head).length * 28 + 60} h={80} text={c.head} fill="#FFFFFF" rot={-2} /></g>}
       <g transform={`scale(${s})`}><Box x={-wBig / 2} y={-90} w={wBig} h={150} text={c.big} fill={c.fill || '#FFE11A'} rot={1} /></g>
-      {c.sub && <g transform={`scale(${s2})`}><Box x={-(String(c.sub).length * 24 + 60) / 2} y={90} w={String(c.sub).length * 24 + 60} h={70} text={c.sub} fill="#0B1F3A" color="#FFFFFF" rot={-1} /></g>}
+      {c.sub && <g transform={`scale(${s2})`}><Box x={-(String(c.sub).length * 30 + 60) / 2} y={90} w={String(c.sub).length * 30 + 60} h={84} text={c.sub} fill="#0B1F3A" color="#FFFFFF" rot={-1} /></g>}
     </g>
   );
 };
@@ -206,13 +206,15 @@ function Dive({f, len, line}) {
   const bob = Math.sin(T * 0.05) * 10;
   const cup = p.cup != null ? p.cup : cupAt(m);
   const beam = p.beam != null ? p.beam : (m > 900 ? 1 : 0);
-  const push = lin(f, 0, len, p.z0 || 1.0, p.z1 || 1.06);
+  const v = Math.abs(Math.round(line.start / 7)) % 4;   // a camera per line: four framings in turn
+  const push = lin(f, 0, len, p.z0 || [1.0, 1.12, 1.0, 1.08][v], p.z1 || [1.08, 1.0, 1.1, 1.0][v]);
+  const subX = p.subx || [900, 700, 1120, 820][v];
   return (
     <g>
       <g transform={`translate(${W / 2 + hx} ${H / 2 + hy}) scale(${push}) translate(${-W / 2} ${-H / 2})`}>
         <Water m={m} T={T} glow={glow} uid={line.start} />
         {!(p.see || []).some((c) => c.front) && <Passers line={line} f={f} T={T} />}
-        {!p.alone && <YSub T={T} x={p.subx || 900} y={(p.suby || (p.card ? 600 : 470)) + bob} s={p.s || 1.15} beam={beam} cup={cup} pipExpr={p.pip || 'smile'} youExpr={p.you || 'worried'} />}
+        {!p.alone && <YSub T={T} x={subX} y={(p.suby || (p.card ? 600 : 470)) + bob} s={p.s || 1.15} beam={beam} cup={cup} pipExpr={p.pip || 'smile'} youExpr={p.you || 'worried'} />}
         {p.alone && <g transform={`translate(960 ${300 + bob}) rotate(${Math.sin(T * 0.07) * 7}) scale(0.5)`}><Figure who="you" pose="kick" expr="scared" f={T * 2} seed={3} shadow={false} /></g>}
         {p.alone && <path d={`M 960 ${860 + bob} C 980 940 940 1000 960 ${H + 60}`} fill="none" stroke="#0A0E14" strokeWidth={8} />}
         {(p.see || []).some((c) => c.front) && <Passers line={line} f={f} T={T} />}
@@ -434,7 +436,7 @@ function Cards({f, len, line}) {
       {p.see && <Passers line={line} f={f} T={T} />}
       {p.alone && <g transform={`translate(1560 ${300 + Math.sin(T * 0.05) * 12}) rotate(${Math.sin(T * 0.07) * 7}) scale(0.42)`}><Figure who="you" pose="kick" expr="scared" f={T * 2} seed={3} shadow={false} /></g>}
       {p.cupbig && <g transform={`translate(1560 560) rotate(-6) scale(${sp(f, 2, 'card')})`}><path d="M -110 -150 L 110 -150 L 82 130 L -82 130 Z" fill="#fff" {...st(8)} />
-        <text x={0} y={0} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={56} fill="#2563EB">YOU</text></g>}
+        <text x={0} y={-10} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={56} fill="#2563EB">YOU</text><path d="M -40 40 q 20 -24 40 0 q 20 24 40 0" stroke="#2563EB" strokeWidth={8} fill="none" /></g>}
       <People line={line} f={f} T={T} />
       {p.sub !== false && !p.alone && !p.cupbig && !p.people && <g transform={`translate(1600 ${790 + Math.sin(T * 0.05) * 10}) scale(0.55)`}><YSub T={T} beam={0} cup={cupAt(m)} pipExpr={p.pip || 'smile'} youExpr={p.you || 'worried'} /></g>}
       {p.title && <g transform={`translate(960 ${p.chips ? 120 : 380}) scale(${sp(f, at(line, p.title_on || '', 0.05), 'heavy')})`}>
@@ -485,7 +487,7 @@ function Flashback({f, len, line}) {
         {mode === 'compare' && <g>
           <g transform="translate(560 330) scale(0.75)"><Trieste T={T} /></g>
           {(p.tags || []).map(([t, x, y, on], i) => f >= at(line, on || '', 0.1 + 0.4 * i) ? <g key={i} transform={`translate(${x} ${y}) scale(${sp(f, at(line, on || '', 0.1 + 0.4 * i), 'sticker')})`}>
-            <Box x={-(String(t).length * 15 + 40) / 2} y={0} w={String(t).length * 15 + 40} h={54} text={t} fill="#F5E6C8" rot={-2} /></g> : null)}
+            <Box x={-(String(t).length * 26 + 50) / 2} y={0} w={String(t).length * 26 + 50} h={70} text={t} fill="#FDE047" rot={-2} /></g> : null)}
           <g transform={`translate(1360 470) scale(${sp(f, at(line, p.right_on || 'cameron', 0.3), 'card') * 0.9})`}><Challenger /></g>
         </g>}
         {mode === 'bang' && f >= bang && f < bang + 26 && <g transform={`translate(1250 300) scale(${sp(f, bang, 'sticker')})`}><path d="M 0 -110 L 30 -30 L 110 -40 L 50 20 L 90 100 L 10 50 L -40 120 L -40 40 L -120 30 L -50 -20 L -90 -90 L -10 -50 Z" fill="#FDE047" {...st(7)} />
@@ -497,7 +499,7 @@ function Flashback({f, len, line}) {
       <g transform="translate(70 50)"><Box x={0} y={0} w={String(p.year || '1960').length * 30 + 70} h={78} text={p.year || '1960'} fill="#F5E6C8" rot={-3} /></g>
       <Card line={line} f={f} y={760} />
       <Chips line={line} f={f} y0={820} />
-      <People line={line} f={f} T={T} x0={1640} y0={620} />
+      <People line={line} f={f} T={T} x0={1720} y0={270} down />
       <Labels line={line} f={f} x0={80} y0={p.labels_y || 740} />
     </g>
   );
@@ -511,7 +513,7 @@ function Pressure({f, len, line}) {
   const p = P(line), T = line.start + f;
   const n = p.cars || 2;
   const ca = at(line, p.cars_on || 'cars', 0.4);
-  const sa = at(line, p.stamp_on || 'stamp', 0.2);
+  const sa = p.stamp_on === '' ? -99 : at(line, p.stamp_on || 'stamp', 0.2);
   const squash = lin(f, ca + n * 8, ca + n * 8 + 6, 0, 1);
   return (
     <g>
@@ -519,7 +521,7 @@ function Pressure({f, len, line}) {
       <rect width={W} height={H} fill="#000" opacity={0.15} />
       {p.floor && <g><path d={`M -200 860 C 300 840 700 870 1100 850 C 1500 835 1800 860 ${W + 200} 850 L ${W + 200} ${H + 200} L -200 ${H + 200} Z`} fill="#6B6E73" {...st(6)} />
         <g transform={`translate(380 ${700 + Math.sin(T * 0.05) * 8}) scale(0.6)`}><YSub T={T} beam={1} cup={0.42} /></g></g>}
-      <g transform={`translate(960 760) scale(${1.7 * sp(f, sa, 'card')})`}>
+      <g transform={`translate(960 640) scale(${1.6 * (sa < 0 ? 1 : sp(f, sa, 'card'))})`}>
         <rect x={-110} y={-6} width={220} height={150} fill="#F5F5F0" stroke={INK} strokeWidth={7} strokeDasharray="14 8" />
         <rect x={-90} y={14} width={180} height={110} fill="#E63946" opacity={0.85} />
         <text x={0} y={92} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={46} fill="#fff">1 IN²</text>
@@ -544,8 +546,8 @@ function FishLine({f, len, line}) {
     <g>
       <Water m={8000} T={T} glow={0.3} />
       <rect width={W} height={H} fill="#000" opacity={0.25} />
-      <path d={`M 300 ${y(7000)} L 300 ${y(9000)}`} stroke="#E6F2FF" strokeWidth={6} />
-      {[7000, 7500, 8000, 8500, 9000].map((mm) => <g key={mm}><path d={`M 300 ${y(mm)} l 26 0`} stroke="#E6F2FF" strokeWidth={5} />
+      {p.axis !== false && <path d={`M 300 ${y(7000)} L 300 ${y(9000)}`} stroke="#E6F2FF" strokeWidth={6} />}
+      {p.axis !== false && [7000, 7500, 8000, 8500, 9000].map((mm) => <g key={mm}><path d={`M 300 ${y(mm)} l 26 0`} stroke="#E6F2FF" strokeWidth={5} />
         <text x={340} y={y(mm) + 15} fontFamily={OSWALD} fontWeight={700} fontSize={44} fill="#E6F2FF">{mm.toLocaleString('en-US')} M</text></g>)}
       {p.band && (() => { const ba = p.band_on === '' ? -99 : at(line, p.band_on || '', 0.2); return f >= ba ? <rect x={480} y={y(8000)} width={1300} height={y(8500) - y(8000)} fill="#EF4444" opacity={0.16 * clamp((f - ba) / 10, 0, 1)} /> : null; })()}
       {f >= la && p.limit !== false && <g><path d={`M 480 ${y(8200)} L ${480 + 1300 * (la < 0 ? 1 : lin(f, la, la + 20, 0, 1))} ${y(8200)}`} stroke="#EF4444" strokeWidth={8} strokeDasharray="22 12" />
@@ -555,7 +557,7 @@ function FishLine({f, len, line}) {
           {(mk.n || 1) > 1 ? [...Array(mk.n)].map((_, k) => <g key={k} transform={`translate(${(k % 3) * 90 - 90} ${Math.floor(k / 3) * 50 - 20})`}><Snailfish s={0.55} T={T + k * 7} /></g>) : <Snailfish s={mk.s || 0.7} T={T} />}
           <g transform="translate(140 -40)"><Box x={0} y={0} w={String(mk.label).length * 26 + 50} h={60} text={mk.label} fill="#FDE047" rot={-2} /></g></g>; })}
       {p.protein && (() => { const a = at(line, p.protein_on || '', 0.3); const stiff = lin(f, at(line, p.stiff_on || 'stiff', 0.6), at(line, p.stiff_on || 'stiff', 0.6) + 12, 0, 1);
-        return f >= a ? <g transform={`translate(1200 520) scale(${sp(f, a, 'card')})`}>
+        return f >= a ? <g transform={`translate(${p.axis === false ? 960 : 1200} 520) scale(${(p.axis === false ? 1.5 : 1) * sp(f, a, 'card')})`}>
           <path d={stiff > 0.5 ? 'M -220 0 L 220 0' : `M -220 0 C -150 ${-80 + Math.sin(T * 0.2) * 30} -80 ${80 - Math.sin(T * 0.2) * 30} 0 0 C 80 ${-80 + Math.sin(T * 0.2) * 30} 150 ${80 - Math.sin(T * 0.2) * 30} 220 0`} stroke="#F9A8D4" strokeWidth={26} fill="none" strokeLinecap="round" />
           <text x={0} y={-90} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={48} fill="#fff">{stiff > 0.5 ? 'TOO STIFF TO FLEX' : 'A PROTEIN THAT FLEXES'}</text></g> : null; })()}
       <Card line={line} f={f} />
@@ -617,7 +619,8 @@ function Bag2019({f, len, line}) {
       <g transform={`translate(1240 760) scale(${zb}) translate(-1240 -760)`}>
       <Water m={10900} T={T} />
       <path d={`M -200 780 C 400 760 900 790 1400 770 C 1700 760 1900 780 ${W + 200} 775 L ${W + 200} ${H + 200} L -200 ${H + 200} Z`} fill="#6B6E73" {...st(6)} />
-      <path d="M 300 380 L 1300 700 L 1300 980 Z" fill="#FFF6C8" opacity={0.14} transform={`rotate(${Math.sin(T * 0.03) * 5} 420 400)`} />
+      {!p.nosub && <path d="M 300 380 L 1300 700 L 1300 980 Z" fill="#FFF6C8" opacity={0.14} transform={`rotate(${Math.sin(T * 0.03) * 5} 420 400)`} />}
+      {p.nosub && <ellipse cx={1240} cy={780} rx={420} ry={150} fill="#FFF6C8" opacity={0.1} />}
       {!p.nosub && <g transform={`translate(${lin(f, 0, len, 460, 520)} ${380 + Math.sin(T * 0.05) * 8}) scale(1.35)`}><LimitingFactor /></g>}
       {!p.nobag && f >= (p.bag_always ? 0 : ba) && <g transform={`translate(1240 760) scale(${p.bag_always ? 1 : sp(f, ba, 'card')})`}><Bag T={T} s={1.2} /></g>}
       </g>
@@ -644,12 +647,14 @@ function Cup({f, len, line}) {
       <linearGradient id="tw-cupsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7CC4F0" /><stop offset="1" stopColor="#E6F6FF" /></linearGradient>
       <rect width={W} height={H} fill="url(#tw-cupsky)" />
       <g transform={`translate(${p.side ? 560 : 960} 560)`}>
-        {p.side && <g transform="translate(0 0)"><path d="M -140 -200 L 140 -200 L 104 170 L -104 170 Z" fill="#fff" {...st(8)} /><text x={0} y={-10} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={60} fill="#2563EB">YOU</text>
+        {p.side && <g transform="translate(0 0)"><path d="M -140 -200 L 140 -200 L 104 170 L -104 170 Z" fill="#fff" {...st(8)} /><text x={0} y={-30} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={60} fill="#2563EB">YOU</text><path d="M -50 40 q 25 -30 50 0 q 25 30 50 0" stroke="#2563EB" strokeWidth={10} fill="none" />
           <g transform="translate(-110 230)"><Box x={0} y={0} w={220} h={60} text="BEFORE" fill="#FFFFFF" rot={-2} /></g></g>}
       </g>
       <g transform={`translate(${p.side ? 1360 : 960} ${560 + (1 - k) * 110})`}>
         <g transform={`scale(${p.side ? 0.42 : k})`}><path d="M -140 -200 L 140 -200 L 104 170 L -104 170 Z" fill="#fff" {...st(8 / Math.max(0.42, p.side ? 0.42 : k))} />
-          <text x={0} y={-10} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={60} fill="#2563EB">YOU</text></g>
+          <text x={0} y={-30} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={60} fill="#2563EB">YOU</text><path d="M -50 40 q 25 -30 50 0 q 25 30 50 0" stroke="#2563EB" strokeWidth={10} fill="none" /></g>
+        {p.arrows && (() => { const a = at(line, p.arrows_on || 'pushes', 0.3); const k = lin(f, a, a + 16, 0, 1); return f >= a ? <g opacity={k}>
+          {[[-300, 0, 0], [300, 0, 180], [0, -330, 90], [0, 260, -90]].map(([dx, dy, r], i) => <g key={i} transform={`translate(${dx * (1.1 - 0.1 * k)} ${dy * (1.1 - 0.1 * k)}) rotate(${r})`}><path d="M -70 0 L 20 0 M 0 -26 L 30 0 L 0 26" stroke="#E3232C" strokeWidth={22} fill="none" strokeLinecap="round" strokeLinejoin="round" /></g>)}</g> : null; })()}
         {p.side && <g transform="translate(-110 120)"><Box x={0} y={0} w={220} h={60} text="AFTER" fill="#FDE047" rot={2} /></g>}
       </g>
       {beads && <g transform={`translate(1650 300) scale(${0.85 * sp(f, at(line, p.beads_on || 'beads', 0.2), 'card')})`}>
@@ -672,13 +677,13 @@ function Ballast({f, len, line}) {
   return (
     <g>
       <Water m={p.m != null ? p.m : 60} T={T} />
-      <g transform={`translate(960 ${430 + (p.drop ? -drop * 120 : fill * 60)})`}>
+      <g transform={`translate(960 ${360 + (p.drop ? -drop * 120 : fill * 60)})`}>
         <g transform="scale(1.5)"><YSub T={T} x={0} y={0} s={1} cup={p.drop ? 0.42 : 1} /></g>
         <path d="M -360 0 L -300 0" stroke={INK} strokeWidth={10} />
         <g transform="translate(-460 0)"><rect x={-90} y={-60} width={180} height={120} rx={20} fill="#E5E7EB" opacity={0.95} {...st(6)} />
           <rect x={-84} y={54 - 108 * fill} width={168} height={108 * fill} rx={14} fill="#2563EB" opacity={0.8} />
           <text x={0} y={-76} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={34} fill="#fff" stroke={INK} strokeWidth={6} paintOrder="stroke">TANK</text></g>
-        {p.drop && [0, 1].map((i) => <g key={i} transform={`translate(${-80 + i * 160} ${230 + drop * 700})`}><rect x={-60} y={-30} width={120} height={60} fill="#475569" {...st(6)} />
+        {p.drop && [0, 1].map((i) => <g key={i} transform={`translate(${-80 + i * 160} ${230 + drop * 380})`}><rect x={-60} y={-30} width={120} height={60} fill="#475569" {...st(6)} />
           <text x={0} y={14} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={32} fill="#fff">STEEL</text></g>)}
       </g>
       <g transform="translate(1580 520)"><path d={p.drop ? 'M 0 120 L 0 -120 M -40 -70 L 0 -120 L 40 -70' : 'M 0 -120 L 0 120 M -40 70 L 0 120 L 40 70'} stroke="#FDE047" strokeWidth={16} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={p.drop ? lin(f, da, da + 10, 0, 1) : lin(f, wa, wa + 10, 0, 1)} />
