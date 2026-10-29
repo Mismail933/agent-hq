@@ -683,5 +683,34 @@ function SnowLens({f, len, line}) {
   );
 }
 
+// ───────────── a thumbnail in the deep look (an option next to the TIS-style one; the owner picks) ─────────────
+export function TrenchDeepArt() {
+  const id = 'td', f = 40;
+  vstart({});
+  const s = 0.62, x = 470, y = 230, rot = -20;
+  const ar = rot * Math.PI / 180, ankle = [x - 1040 * s * Math.sin(ar), y + 1040 * s * Math.cos(ar)];
+  const base = [ankle[0] + 520, H + 300];
+  return (
+    <g>
+      <Defs id={id} d={1800} gd={900} glow="#BFEFFF" />
+      <Sea f={f} d={700} id={id} rays={0.9} gain={2.2} d2={4000} />
+      <Specks f={f} id={id} n={120} op={1.1} />
+      <ellipse cx={1150} cy={H + 140} rx={900} ry={300} fill="#010A10" opacity={0.9} filter={`url(#blur40-${id})`} />
+      <circle cx={1060} cy={H - 60} r={20} fill="#CFF6E8" opacity={0.95} />
+      <circle cx={1060} cy={H - 60} r={60} fill="#CFF6E8" opacity={0.22} filter={`url(#blur3-${id})`} />
+      <Glow x={x + 120} y={y + 330} r={560} id={id} a={1} />
+      <path d={limb(base, [base[0] - 120, base[1] - 420], [ankle[0] + 300, ankle[1] + 260], [ankle[0] + 8, ankle[1] + 4], 110, 12)} fill="#031722" />
+      <You f={f} id={id} x={x} y={y} s={s} rot={rot} pose="flail" expr="shock" />
+      <Bubbles x={x + 10} y={y + 20} f={f} f0={22} n={14} s={1.5} seed={12} />
+      <g filter={`url(#soft-${id})`}>
+        <text x={1440} y={330} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={260} fill="#FFFFFF" stroke="#02101A" strokeOpacity={0.6} strokeWidth={12} paintOrder="stroke">YOU</text>
+        <text x={1440} y={445} textAnchor="middle" fontFamily={OSWALD} fontWeight={600} fontSize={96} fill="#FFC23D" letterSpacing={6} stroke="#02101A" strokeOpacity={0.6} strokeWidth={10} paintOrder="stroke">VS</text>
+        <text x={1440} y={690} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={270} fill="#FFC23D" stroke="#02101A" strokeOpacity={0.6} strokeWidth={12} paintOrder="stroke">11 KM</text>
+      </g>
+      <DepthBar f={f} d={10935} a={0} x0={1060} x1={1820} y={860} />
+      <Vignette id={id} a={0.9} />
+    </g>
+  );
+}
 export {Defs, Sea, Glow, Vignette, Specks as DeepSpecks, Rays, Credit, You, Bubbles, Surface, sp, L as lerp, NUN, fmt, mix, sun, vstart};
 export const DEEP_SHOTS = {dp_snow: SnowLens, dp_float: Float, dp_yank: Yank, dp_real: Real, dp_sink: Sink, dp_section: Section, dp_close: Close, dp_sub: Sub, dp_title: Title};
