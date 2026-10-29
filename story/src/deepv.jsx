@@ -220,8 +220,9 @@ function EndCard({f, len, line}) {
       <g transform={`translate(${DW / 2} ${DH / 2}) scale(${z}) translate(${-DW / 2} ${-DH / 2})`}>
         <g transform={`translate(${-(W - DW) / 2} 0) scale(1 ${DH / H})`}><Defs id={id} d={6000} glow="#FFF1B8" /><Sea f={F} d={6000} id={id} /></g>
         <g transform={`translate(${-(W - DW) / 2} ${(DH - H) / 2})`}><DeepSpecks f={F} id={id} rise={F * 5} n={130} /></g>
-        <radialGradient id={`eb-${id}`} cx="0%" cy="50%" r="100%"><stop offset="0" stopColor="#FFF4D2" stopOpacity={0.55} /><stop offset="1" stopColor="#FFE9B0" stopOpacity={0} /></radialGradient>
-        <path d={`M ${DW / 2 - 90} ${by + 8} L -100 ${by - 260} L -100 ${by + 330} Z`} fill={`url(#eb-${id})`} opacity={0.32} />
+        {/* the headlamp: a warm beam fading out from the lamp (it read as a flat grey triangle) */}
+        <linearGradient id={`eb-${id}`} gradientUnits="userSpaceOnUse" x1={DW / 2 - 150} y1={by} x2={-100} y2={by}><stop offset="0" stopColor="#FFF4D2" stopOpacity={0.7} /><stop offset="0.55" stopColor="#FFE9B0" stopOpacity={0.18} /><stop offset="1" stopColor="#FFE9B0" stopOpacity={0} /></linearGradient>
+        <g style={{mixBlendMode: 'screen'}}><path d={`M ${DW / 2 - 150} ${by + 10} L -100 ${by - 230} L -100 ${by + 300} Z`} fill={`url(#eb-${id})`} /></g>
         <YSub T={F} x={DW / 2} y={by} s={0.67} beam={0} cup={0.6} bag={false} solo youExpr="determined" pipExpr="smile" />
         <circle cx={DW / 2 - 236 * 0.67} cy={by + 12} r={16} fill="#FFFBE6" />
       </g>

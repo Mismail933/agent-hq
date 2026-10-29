@@ -300,7 +300,8 @@ function Yank({f, len, line}) {
   const reach = L(f, g - 22, g + 2, 0, 1, Easing.out(Easing.cubic));
   const loom = L(f, 0, g, 0.25, 1);
   const yank = L(f, pull - 2, pull + 10, 0, 1, Easing.in(Easing.cubic));
-  const after = clamp((f - pull - 10) / 36, 0, 1);
+  // 2.76.3: the follow-through eases out from the yank's own speed (a linear one after the fast yank read as a stall)
+  const after = Easing.out(Easing.cubic)(clamp((f - pull - 10) / 24, 0, 1));
   const cam = yank * 440 + after * 860;   // the camera follows you down: the surface leaves the top of the frame
   const shake = f >= pull && f < pull + 16 ? noise2D('yk', f * 0.6, 0) * 16 * (1 - (f - pull) / 16) : 0;
   const s = 0.44, yx = 700, yy0 = SURF_Y - 44 + Math.sin(f * 0.06) * 6 * (1 - reach);
@@ -330,7 +331,7 @@ function Yank({f, len, line}) {
         <g opacity={1 - clamp((f - (len - 22)) / 8, 0, 1)}><You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'backfloat'} expr={f > g ? 'shock' : 'closed'} /></g>
         <Bubbles x={yx + 60} y={yy0 + 120} f={f} f0={pull} n={26} s={1.7} seed={7} />
       </g>
-      {f > len - 26 && (() => { const k = clamp((f - (len - 26)) / 26, 0, 1), R = rng(77);
+      {f > len - 26 && (() => { const k = Easing.out(Easing.quad)(clamp((f - (len - 26)) / 26, 0, 1)), R = rng(77);   // slowing into the real footage
         return <g>{[...Array(60)].map((_, i) => { const x = R() * W, r = 30 + R() * 90, y = H + 200 - (k * 1.4 + R() * 0.4) * (H + 400);
           return <circle key={i} cx={x + Math.sin(k * 7 + i) * 20} cy={y} r={r} fill="#E2F6FF" fillOpacity={0.35} stroke="#F2FBFF" strokeWidth={5} opacity={0.9} />; })}</g>; })()}
       <Vignette id={id} a={0.75 + 0.25 * after} />
