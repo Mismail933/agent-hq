@@ -51,7 +51,7 @@ function Water({m, T, glow = 0, uid = ''}) {
 }
 
 // ───────────── Pip's yellow sub (TIS look), with the cup in its mesh bag ─────────────
-export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smile', youExpr = 'worried', hatchOpen = 0, flip = false, youOut = false, bag = true}) {
+export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smile', youExpr = 'worried', hatchOpen = 0, flip = false, youOut = false, bag = true, solo = false}) {
   const prop = T * 0.4;
   return (
     <g transform={`translate(${x} ${y}) scale(${flip ? -s : s} ${s})`}>
@@ -83,7 +83,7 @@ export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smil
           <circle r={58} fill="#9CA3AF" {...st(7)} />
           <circle r={46} fill="#BFE6FF" />
           <clipPath id={`tw-port-${who}`}><circle r={46} /></clipPath>
-          <g clipPath={`url(#tw-port-${who})`}>{!(who === 'you' && youOut) && <g transform="translate(0 16) scale(0.26)"><Head who={who} expr={ex} f={T} seed={who === 'pip' ? 2 : 5} /></g>}</g>
+          <g clipPath={`url(#tw-port-${who})`}>{!(who === 'you' && youOut) && !(who === 'pip' && solo) && <g transform="translate(0 16) scale(0.26)"><Head who={who} expr={ex} f={T} seed={who === 'pip' ? 2 : 5} /></g>}</g>
           <path d="M -28 -30 q 16 -12 34 -8" stroke="#fff" strokeWidth={6} fill="none" opacity={0.6} strokeLinecap="round" />
         </g>
       ))}

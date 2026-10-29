@@ -89,8 +89,8 @@ const Walls = ({k, rise = 0, color, rim, seed = 9}) => {
   return <g>{side(-1)}{side(1)}</g>;
 };
 // the defs every shot uses (ids carry the line index: two shots are on screen during a crossfade)
-const Defs = ({id, d, glow = '#9FE3FF'}) => {
-  const k = clamp(lg(d) / lg(4000), 0, 1);   // 0 at the surface, 1 from ~4 km down
+const Defs = ({id, d, glow = '#9FE3FF', gd = null}) => {
+  const k = clamp(lg(gd != null ? gd : d) / lg(4000), 0, 1);   // gd: the cast's grade depth (a close-up deep down keeps a warmer skin)   // 0 at the surface, 1 from ~4 km down
   // water absorbs red first, then green: the cartoon's colours sink with you; a teal ambient keeps them readable
   const kr = 1 - 0.62 * k, kg = 1 - 0.36 * k, kb = 1 - 0.18 * k;
   return (
@@ -153,7 +153,7 @@ export const BigWords = ({f, line, words, x = W / 2, y = 470, size = 150, anchor
     </g>
   );
 };
-export const Tag = ({f, a = 0, x, y, text, size = 34, anchor = 'start', color = '#E6F6FF', rule = true, b = 1e9}) => {
+export const Tag = ({f, a = 0, x, y, text, size = 36, anchor = 'start', color = '#FFFFFF', rule = true, b = 1e9}) => {
   const k = clamp((f - a) / 10, 0, 1) * (1 - clamp((f - b) / 8, 0, 1));
   if (k <= 0) return null;
   const w = String(text).length * size * 0.62 + (String(text).length - 1) * 8;
@@ -161,7 +161,8 @@ export const Tag = ({f, a = 0, x, y, text, size = 34, anchor = 'start', color = 
   return (
     <g opacity={k}>
       {rule && <path d={`M ${x0} ${y - size - 14} l ${70 * k} 0`} stroke="#FFD25A" strokeWidth={4} />}
-      <text x={x0 + (1 - k) * -14} y={y} fontFamily={OSWALD} fontWeight={500} fontSize={size} fill={color} letterSpacing={8} style={{textTransform: 'uppercase'}}>{text}</text>
+      <text x={x0 + (1 - k) * -14} y={y} fontFamily={OSWALD} fontWeight={600} fontSize={size} fill={color} letterSpacing={8} style={{textTransform: 'uppercase'}}
+        stroke="#02101A" strokeOpacity={0.6} strokeWidth={7} paintOrder="stroke" strokeLinejoin="round">{text}</text>
     </g>
   );
 };
@@ -173,8 +174,8 @@ export const DepthBar = ({f, d, a = 0, x0 = 360, x1 = 1560, y = 110, max = 11000
   const p = clamp(d / max, 0, 1), xm = x0 + (x1 - x0) * p;
   return (
     <g opacity={k}>
-      <text x={x0} y={y - 24} fontFamily={OSWALD} fontWeight={500} fontSize={26} fill="#CFEFFF" letterSpacing={8}>DEPTH</text>
-      {value && <text x={x1} y={y - 24} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={30} fill="#FFFFFF" letterSpacing={4}>{fmt(d)} M</text>}
+      <text x={x0} y={y - 24} fontFamily={OSWALD} fontWeight={600} fontSize={30} fill="#FFFFFF" letterSpacing={8} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">DEPTH</text>
+      {value && <text x={x1} y={y - 24} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={34} fill="#FFFFFF" letterSpacing={4} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">{fmt(d)} M</text>}
       <rect x={x0} y={y - 3} width={x1 - x0} height={6} rx={3} fill="#FFFFFF" opacity={0.18} />
       <rect x={x0} y={y - 3} width={xm - x0} height={6} rx={3} fill="#FFC23D" />
       {[...Array(12)].map((_, i) => <path key={i} d={`M ${x0 + (x1 - x0) * (i * 1000 / max)} ${y + 8} l 0 ${i % 5 ? 8 : 16}`} stroke="#FFFFFF" strokeWidth={2} opacity={0.45} />)}
@@ -188,9 +189,9 @@ const Credit = ({text}) => text ? (
 ) : null;
 
 // you, lit and coloured by the water
-const You = ({f, id, x, y, s = 0.4, rot = 0, pose = 'stand', expr = 'calm', seed = 3}) => (
+const You = ({f, id, x, y, s = 0.4, rot = 0, pose = 'stand', expr = 'calm', seed = 3, look = 0}) => (
   <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`} filter={`url(#uw-${id})`}>
-    <Figure who="you" pose={pose} expr={expr} f={f} seed={seed} shadow={false} />
+    <Figure who="you" pose={pose} expr={expr} f={f} seed={seed} shadow={false} look={look} />
   </g>
 );
 const Bubbles = ({x, y, f, f0, n = 9, seed = 2, s = 1, op = 1}) => {
@@ -225,7 +226,7 @@ function Float({f, len, line}) {
   // the camera: close on you, a slow pull back on 'the Pacific' (endless water), in close on your face for 'eyes closed', back out
   const zz = f < pac ? L(f, 0, pac, 1.12, 1.18) : f < eyes - 4 ? L(f, pac, eyes - 4, 1.18, 0.86) : L(f, eyes - 4, eyes + 14, 0.86, 2.3);
   const z = f > sunW + 6 ? L(f, sunW + 6, len, zz, zz * 0.9) : zz;
-  const hx = 700, bob = Math.sin(f * 0.06) * 7, hy = SURF_Y + 92 + bob;   // your head
+  const hx = 700, bob = Math.sin(f * 0.06) * 7, hy = SURF_Y - 6 + bob;   // your head: the face just above the water
   const fx = f >= eyes - 4 ? L(f, eyes - 4, eyes + 14, W / 2, hx) : W / 2, fy = f >= eyes - 4 ? L(f, eyes - 4, eyes + 14, H / 2, hy + 10) : H / 2;
   const glint = f >= warm ? clamp(1 - Math.abs(f - warm - 12) / 22, 0, 1) : 0;
   const flare = f >= sunW - 4 ? clamp(1 - Math.abs(f - sunW - 10) / 26, 0, 1) : 0;
@@ -241,16 +242,17 @@ function Float({f, len, line}) {
         <ellipse cx={1250} cy={H + 260 - creep * 200} rx={720} ry={300} fill="#021019" opacity={0.75 * creep} filter={`url(#blur40-${id})`} />
         <circle cx={1150} cy={H + 120 - creep * 200} r={14} fill="#CFF6E8" opacity={creep * (0.45 + 0.3 * Math.sin(f * 0.2))} />
         <Glow x={hx + 220} y={hy + 40} r={560} id={id} a={0.55} />
-        <You f={f} id={id} x={hx} y={hy} s={0.44} rot={-84 + Math.sin(f * 0.05) * 3} pose="wade" expr={p.expr || 'closed'} />
+        {flare > 0 && <g style={{mixBlendMode: 'screen'}}><circle cx={1500 - flare * 200} cy={140} r={420} fill="#FFF3C8" opacity={0.55 * flare} filter={`url(#blur40-${id})`} />
+          <path d={`M 1500 140 L ${700 - flare * 80} 760`} stroke="#FFF8E0" strokeWidth={60} opacity={0.12 * flare} filter={`url(#blur18-${id})`} /></g>}
+        <You f={f} id={id} x={hx} y={hy} s={0.44} rot={-84 + Math.sin(f * 0.05) * 2} pose="float" expr={p.expr || 'closed'} />
+        {/* the water across him: what is under the surface takes the sea's colour */}
+        <rect x={-400} y={SURF_Y + 4 + Math.sin(f * 0.05) * 3} width={W + 800} height={H} fill={water(160)[0]} opacity={0.38} />
         {/* sun glints on the water around you on 'warm' */}
         {glint > 0 && [...Array(9)].map((_, i) => { const R = rng(40 + i); const gx = 300 + R() * 1400, gy = SURF_Y + 6 + R() * 26;
           return <path key={i} d={`M ${gx - 18} ${gy} L ${gx} ${gy - 5} L ${gx + 18} ${gy} L ${gx} ${gy + 5} Z`} fill="#FFFFFF" opacity={glint * (0.5 + 0.5 * Math.sin(f * 0.6 + i))} />; })}
       </g>
-      {/* 'sun on your face': a light flare across the frame */}
-      {flare > 0 && <g style={{mixBlendMode: 'screen'}}><circle cx={1500 - flare * 200} cy={140} r={420} fill="#FFF3C8" opacity={0.55 * flare} filter={`url(#blur40-${id})`} />
-        <path d={`M 1500 140 L ${700 - flare * 80} 760`} stroke="#FFF8E0" strokeWidth={60} opacity={0.12 * flare} filter={`url(#blur18-${id})`} /></g>}
       <Vignette id={id} a={0.85} />
-      {p.big && <BigWords f={f} line={line} id={id} words={p.big} y={p.big_y || 640} size={p.big_size || 150} off={p.big_off} />}
+      {p.big && <BigWords f={f} line={line} id={id} words={p.big} x={p.big_x || W / 2} y={p.big_y || 640} size={p.big_size || 150} off={p.big_off} />}
       {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.4)} b={eyes - 6} x={120} y={980 - 120} text={p.tag} />}
     </g>
   );
@@ -277,8 +279,8 @@ function Yank({f, len, line}) {
   const after = clamp((f - pull - 10) / 36, 0, 1);
   const cam = yank * 440 + after * 860;   // the camera follows you down: the surface leaves the top of the frame
   const shake = f >= pull && f < pull + 16 ? noise2D('yk', f * 0.6, 0) * 16 * (1 - (f - pull) / 16) : 0;
-  const s = 0.44, yx = 760, yy0 = SURF_Y + 96 + Math.sin(f * 0.06) * 6 * (1 - reach);
-  const rot = -90 + 90 * yank;
+  const s = 0.44, yx = 700, yy0 = SURF_Y - 6 + Math.sin(f * 0.06) * 6 * (1 - reach);
+  const rot = -86 + 86 * yank;
   const drag = yank * 520 + after * 900;   // how far you are pulled down
   // the ankle (figure units 0, 1040) on screen
   const ar = rot * Math.PI / 180, yy = yy0 + drag, ax = yx - 1040 * s * Math.sin(ar), ay = yy + 1040 * s * Math.cos(ar);
@@ -300,7 +302,7 @@ function Yank({f, len, line}) {
         <circle cx={1330} cy={H - 190 + drag * 0.15} r={46} fill="#CFF6E8" opacity={0.18 * loom} filter={`url(#blur3-${id})`} />
         {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="#031722" opacity={0.95} />}
         {reach > 0.01 && <path d={limb(base, c1, c2, tipNow, 92, 10)} fill="none" stroke="#2C7FA0" strokeWidth={2} opacity={0.35} />}
-        <You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'stand'} expr={f > g ? 'shock' : 'closed'} />
+        <You f={f} id={id} x={yx} y={yy} s={s} rot={rot} pose={yank > 0.2 ? 'flail' : 'float'} expr={f > g ? 'shock' : 'closed'} />
         <Bubbles x={yx + 60} y={yy0 + 120} f={f} f0={pull} n={26} s={1.7} seed={7} />
       </g>
       <Vignette id={id} a={0.75 + 0.25 * after} />
@@ -320,7 +322,7 @@ function Real({f, len, line}) {
       {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.2)} x={p.tag_x || 120} y={p.tag_y || 860} text={p.tag} />}
       {p.depth != null && <DepthBar f={f} d={p.depth} />}
       <Credit text={v.credit} />
-      {flash > 0 && <ellipse cx={300} cy={540} rx={900 + (1 - flash) * 900} ry={700 + (1 - flash) * 500} fill="#FFF6D8" opacity={flash} filter={`url(#blur40-${id})`} />}
+      {flash > 0 && <ellipse cx={240} cy={520} rx={420 + (1 - flash) * 500} ry={320 + (1 - flash) * 300} fill="#FFF6D8" opacity={0.7 * flash} filter={`url(#blur40-${id})`} />}
       {p.pin && (() => { const a = at(line, p.pin.on || '', 0.3), k = sp(f, a, 'bounce'); if (f < a) return null;
         const px = p.pin.x || W / 2, py = p.pin.y || H / 2, ring = ((f - a) % 40) / 40;
         return <g>
@@ -364,7 +366,7 @@ function Sink({f, len, line}) {
 }
 
 // ───────────── dp_section: the trench in cross-section, Everest dropped into it ─────────────
-const SY = 150, FL = 960, KMP = (FL - SY) / 11;   // the surface, the Challenger Deep's floor, px a km
+const SY = 130, FL = 800, KMP = (FL - SY) / 11;   // the surface, the Challenger Deep's floor, px a km
 const EV = 8.85 * KMP;
 function Section({f, len, line}) {
   const id = 'x' + line.idx, p = P(line);
@@ -425,11 +427,11 @@ function Section({f, len, line}) {
             {i % 2 === 0 && i > 0 && <text x={104} y={SY + i * KMP + 9} fontFamily={OSWALD} fontWeight={500} fontSize={24} fill="#CFEFFF" letterSpacing={3}>{i} KM</text>}</g>)}
         </g>
         <Tag f={f} a={drop + 18} x={cx - 300} y={FL - 0.3 * EV} text="MOUNT EVEREST" anchor="end" size={30} rule={false} />
-        <path d={`M 1196 ${FL - 8} L 1270 ${FL - 96} L 1300 ${FL - 96}`} stroke="#FFFFFF" strokeWidth={3} fill="none" opacity={0.85} />
-        <Tag f={f} a={0} x={1310} y={FL - 84} text="CHALLENGER DEEP · 10,935 M" size={30} rule={false} color="#FFFFFF" />
-        <circle cx={cx - 420} cy={SY + 14} r={9} fill="#FFE08A" opacity={pulse} />
-        <circle cx={cx - 420} cy={SY + 14} r={22} fill="#FFC23D" opacity={0.25 * pulse} />
-        <text x={cx - 400} y={SY + 58} fontFamily={OSWALD} fontWeight={600} fontSize={26} fill="#FFE08A" letterSpacing={6}>YOU</text>
+        <path d={`M ${cx + 180} ${FL + 4} L ${cx + 180} ${FL + 34}`} stroke="#FFFFFF" strokeWidth={3} opacity={0.85} />
+        <Tag f={f} a={0} x={cx + 180} y={FL + 80} text="CHALLENGER DEEP · 10,935 M" size={32} rule={false} anchor="middle" />
+        <circle cx={cx - 250} cy={SY + 6.2 * KMP} r={9} fill="#FFE08A" opacity={pulse} />
+        <circle cx={cx - 250} cy={SY + 6.2 * KMP} r={22} fill="#FFC23D" opacity={0.25 * pulse} />
+        <text x={cx - 280} y={SY + 6.2 * KMP + 8} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={28} fill="#FFE08A" letterSpacing={6} stroke="#02101A" strokeOpacity={0.6} strokeWidth={6} paintOrder="stroke">YOU · 6,000 M</text>
       </g>
       <Vignette id={id} a={0.6} />
     </g>
@@ -442,20 +444,21 @@ function Close({f, len, line}) {
   const air = p.mode === 'air';
   const a0 = at(line, p.air_on || 'air', 0.2), a1 = at(line, p.air_off || 'metres', 0.7);
   const left = air ? L(f, a0, a1, 1, 0, Easing.inOut(Easing.quad)) : 1;
-  const z = L(f, 0, len, 1.04, 1.12);
+  const push = p.push_on ? at(line, p.push_on, 0.3) : -1;
+  const z = push >= 0 ? (f < push ? L(f, 0, push, 1.0, 1.04) : L(f, push, push + 24, 1.04, 1.22)) : L(f, 0, len, 1.04, 1.12);
   const sway = Math.sin(f * 0.035) * 16, lift = Math.sin(f * 0.05) * 12;
   const expr = air ? (left < 0.35 ? 'shock' : 'scared') : (p.expr || 'worried');
   const puff = air ? a0 : -999;
   return (
     <g>
-      <Defs id={id} d={p.depth || 300} glow="#AFE6FF" />
+      <Defs id={id} d={p.depth || 300} gd={500} glow="#AFE6FF" />
       <g transform={`translate(${W / 2} ${H / 2}) scale(${z}) translate(${-W / 2} ${-H / 2})`}>
         <Sea f={f} d={p.depth || 300} id={id} />
         <Specks f={f} id={id} rise={f * 4} n={80} />
-        <Glow x={820 + sway} y={460} r={600} id={id} a={1} />
-        <You f={f} id={id} x={820 + sway} y={380 + lift} s={0.9} rot={Math.sin(f * 0.03) * 4} pose="stand" expr={expr} />
-        <Bubbles x={830 + sway} y={470 + lift} f={f} f0={puff} n={18} s={1.6} seed={4} />
-        {air && f > puff && <Bubbles x={830 + sway} y={470 + lift} f={f} f0={puff + 26} n={10} s={1.1} seed={9} />}
+        <Glow x={820 + sway} y={500} r={560} id={id} a={1} />
+        <You f={f} id={id} x={820 + sway} y={330 + lift} s={0.62} rot={Math.sin(f * 0.03) * 4} pose="stand" expr={expr} look={p.look_on && f >= at(line, p.look_on, 0.3) ? 1 : 0} />
+        <Bubbles x={826 + sway} y={392 + lift} f={f} f0={puff} n={18} s={1.3} seed={4} />
+        {air && f > puff && <Bubbles x={826 + sway} y={392 + lift} f={f} f0={puff + 26} n={10} s={1.0} seed={9} />}
       </g>
       <Vignette id={id} />
       {air && (() => {
@@ -480,14 +483,14 @@ function Close({f, len, line}) {
 // ───────────── dp_sub: the cheat. A ring, and a little submarine is around you; its lamps come on ─────────────
 function Sub({f, len, line}) {
   const id = 'b' + line.idx, p = P(line);
-  const ring = at(line, p.ring || 'cheat', 0.2), win = at(line, p.win || 'window', 0.5), seat = at(line, p.seat || 'front', 0.8);
+  const ring = at(line, p.ring || 'cheat', 0.2), win = at(line, p.win || 'window', 0.5), seat = at(line, p.seat || 'seat', 0.85);
   const r = f - ring;
   const d = p.depth || 2500;
   const bx = 960, by = 560 + Math.sin(f * 0.05) * 8;
   const form = clamp(sp(f, ring + 3, 'bounce'), 0, 1.2);
   const youK = 1 - L(f, ring, ring + 10, 0, 1);
   // 'a window': the camera goes in on the porthole with your face in it
-  const zin = L(f, win - 6, win + 16, 1, 3.2);
+  const zin = L(f, win - 14, win + 4, 1, 3.2);
   const px = bx + 13 * 1.3, py = by - 8 * 1.3;
   const out = f >= seat - 3;   // the window view
   if (out) {
@@ -505,11 +508,11 @@ function Sub({f, len, line}) {
           <g clipPath={`url(#beam-${id})`}><Specks f={f} id={id} rise={f * 3} n={140} op={2.4} seed={31} /></g>
         </g>
         {/* the porthole's rim around the frame */}
-        <path d={`M -10 -10 L ${W + 10} -10 L ${W + 10} ${H + 10} L -10 ${H + 10} Z M ${W / 2 - 600} ${H / 2} a 600 520 0 1 0 1200 0 a 600 520 0 1 0 -1200 0 Z`} fill="#05090D" fillRule="evenodd" />
-        <ellipse cx={W / 2} cy={H / 2} rx={600} ry={520} fill="none" stroke="#8A97A4" strokeWidth={34} />
-        <ellipse cx={W / 2} cy={H / 2} rx={600} ry={520} fill="none" stroke="#CBD5E1" strokeWidth={6} opacity={0.6} />
-        {[...Array(12)].map((_, i) => { const t = (i / 12) * Math.PI * 2; return <circle key={i} cx={W / 2 + Math.cos(t) * 600} cy={H / 2 + Math.sin(t) * 520} r={9} fill="#5B6773" />; })}
-        <path d={`M ${W / 2 - 420} ${H / 2 - 330} q 160 -110 380 -120`} stroke="#FFFFFF" strokeWidth={12} fill="none" opacity={0.18} strokeLinecap="round" />
+        <path d={`M -10 -10 L ${W + 10} -10 L ${W + 10} ${H + 10} L -10 ${H + 10} Z M ${W / 2 - 560} 470 a 560 410 0 1 0 1120 0 a 560 410 0 1 0 -1120 0 Z`} fill="#05090D" fillRule="evenodd" />
+        <ellipse cx={W / 2} cy={470} rx={560} ry={410} fill="none" stroke="#8A97A4" strokeWidth={30} />
+        <ellipse cx={W / 2} cy={470} rx={560} ry={410} fill="none" stroke="#CBD5E1" strokeWidth={6} opacity={0.6} />
+        {[...Array(12)].map((_, i) => { const t = (i / 12) * Math.PI * 2; return <circle key={i} cx={W / 2 + Math.cos(t) * 560} cy={470 + Math.sin(t) * 410} r={8} fill="#5B6773" />; })}
+        <path d={`M ${W / 2 - 390} 210 q 150 -90 350 -100`} stroke="#FFFFFF" strokeWidth={12} fill="none" opacity={0.18} strokeLinecap="round" />
         {p.tag && <Tag f={f} a={seat + 4} x={W / 2} y={170} text={p.tag} anchor="middle" rule={false} />}
       </g>
     );
@@ -524,7 +527,7 @@ function Sub({f, len, line}) {
         {youK > 0.01 && <g opacity={youK}><You f={f} id={id} x={bx} y={by - 240 + (1 - youK) * 200} s={0.46 * (0.4 + 0.6 * youK)} pose="stand" expr="worried" /></g>}
         {r >= 0 && r < 26 && <circle cx={bx} cy={by} r={60 + r * 32} fill="none" stroke="#FFFFFF" strokeWidth={14 * (1 - r / 26)} opacity={1 - r / 26} />}
         {r >= 0 && r < 8 && <circle cx={bx} cy={by} r={300} fill="#FFFFFF" opacity={0.5 * (1 - r / 8)} filter={`url(#blur40-${id})`} />}
-        {r >= 0 && <YSub T={f} x={bx} y={by} s={1.3 * form} beam={0} cup={1} bag={false} youExpr={f > win ? 'smile' : 'worried'} pipExpr="smile" />}
+        {r >= 0 && <YSub T={f} x={bx} y={by} s={1.3 * form} beam={0} cup={1} bag={false} solo={!p.pip} youExpr={f > win - 10 ? 'smile' : 'worried'} pipExpr="smile" />}
       </g>
       <Vignette id={id} />
     </g>
@@ -547,7 +550,7 @@ function Title({f, len, line}) {
       <Walls k={0.45} rise={F * 6} color="#02070B" rim="#2F6F86" />
       <Specks f={F} id={id} rise={F * 6} n={110} />
       <g style={{mixBlendMode: 'screen'}}><path d={`M ${bx - 235} ${by + 20} L -200 ${by - 300} L -200 ${by + 520} Z`} fill="#FFF3C4" opacity={0.16} filter={`url(#blur18-${id})`} /></g>
-      <YSub T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} youExpr="determined" pipExpr="smile" />
+      <YSub T={F} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} solo={!p.pip} youExpr="determined" pipExpr="smile" />
       <circle cx={bx - 236 * 0.62} cy={by + 12} r={18} fill="#FFFBE6" />
       <Vignette id={id} />
       <g filter={`url(#soft-${id})`}>
@@ -596,10 +599,13 @@ function SnowLens({f, len, line}) {
         <circle cx={lx} cy={ly} r={R0 * k} fill="none" stroke="#DCE7EE" strokeWidth={16} />
         <path d={`M ${lx + R0 * k * 0.72} ${ly + R0 * k * 0.72} l ${120 * k} ${120 * k}`} stroke="#9AA6B2" strokeWidth={34} strokeLinecap="round" />
       </g>
-      <Tag f={f} a={open + 8} x={lx - R0} y={ly + R0 + 80} text="Dead plankton" size={30} rule={false} b={poop - 4} />
+      {f >= open + 6 && <g opacity={clamp((f - open - 6) / 6, 0, 1)}>
+        <path d={`M ${lx - R0 - 40} ${ly - 150} L ${lx - 80} ${ly - 40}`} stroke="#FFFFFF" strokeWidth={5} />
+        <text x={lx - R0 - 50} y={ly - 166} textAnchor="end" fontFamily={NUN} fontWeight={900} fontSize={58} fill="#FFFFFF" filter={`url(#soft-${id})`}>DEAD PLANKTON</text>
+      </g>}
       {f >= poop - 3 && <g opacity={clamp((f - poop + 3) / 6, 0, 1)}>
-        <path d={`M ${lx - 40} ${ly + R0 + 26} L ${lx + 60} ${ly + 110}`} stroke="#FFC23D" strokeWidth={6} />
-        <text x={lx - 60} y={ly + R0 + 96} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={64} fill="#FFC23D" filter={`url(#soft-${id})`}>FISH POOP</text>
+        <path d={`M ${lx - 40} ${ly + R0 + 26} L ${lx + 60} ${ly + 110}`} stroke="#FFC23D" strokeWidth={5} />
+        <text x={lx - 60} y={ly + R0 + 92} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={58} fill="#FFC23D" filter={`url(#soft-${id})`}>FISH POOP</text>
       </g>}
       {/* 'not the fun kind of snow': a snowflake, crossed out */}
       {f >= fun - 3 && (() => { const kk = clamp(sp(f, fun - 3, 'bounce'), 0, 1.2); return (

@@ -440,18 +440,41 @@ const DayLayer = ({lines}) => {
 
 // the spoken words along the bottom: a phrase at a time (breaks at punctuation, at most 6 words), the word being said in yellow.
 // Times are the voice's own word times, so the words never run ahead of or behind the narrator.
+const CAP_END_BAD = new Set(['a', 'an', 'the', 'and', 'or', 'but', 'of', 'to', 'in', 'on', 'at', 'for', 'with', 'from', 'by', 'into', 'onto',
+  'is', 'are', 'was', 'were', 'that', 'if', 'than', 'your', 'my', 'his', 'her', 'their', 'its', 'our', 'would', 'will', 'can', 'could']);
+const CAP_BREAK_BEFORE = new Set(['and', 'but', 'or', 'so', 'because', 'that', 'which', 'who', 'with', 'in', 'on', 'into', 'at', 'for', 'from',
+  'by', 'of', 'to', 'than', 'before', 'after', 'until', 'while', 'when', 'is', 'are', 'was', 'were', 'more', 'less', 'about', 'like']);
+const CAP_PAIRS = new Set(['more than', 'less than', 'long before', 'all the', 'the way', 'kind of', 'sort of', 'out of', 'a few', 'front-row seat']);
+const capNorm = (w) => w.toLowerCase().replace(/[^a-z0-9'-]/g, '');
 const chunksOf = (l) => {
-  const ws = l.words || [], out = [];
+  // 2.75.4 (Israa: chunks ended on 'the', 'of', 'if you', 'more'; 'YOU IS THIS:'): punctuation first, then phrase boundaries
+  const ws = l.words || [];
+  const txt = (a) => a.map((i) => ws[i][0]).join(' ');
+  const segs = [];
   let cur = [];
-  ws.forEach((w, i) => {
-    const prevNum = cur.length && /^[\d][\d.,]*$/.test(ws[cur[cur.length - 1]][0]);
-    if (cur.length >= 2 && !prevNum && cur.map((k) => ws[k][0]).join(' ').length + 1 + w[0].length > 40) { out.push(cur); cur = []; }
-    cur.push(i);
-    const end = /[.,!?;:\u2014]$/.test(w[0]) || /["\u201d]$/.test(w[0]);
-    const num = /^[\d][\d.,]*$/.test(w[0]) && i + 1 < ws.length;   // 2.61.1: "35 | METRES" split a number from its unit
-    if (end || (cur.length >= 6 && !num)) { out.push(cur); cur = []; }
-  });
-  if (cur.length) out.push(cur);
+  ws.forEach((w, i) => { cur.push(i); if (/[.,!?;:\u2014]$/.test(w[0]) || /["\u201d]$/.test(w[0])) { segs.push(cur); cur = []; } });
+  if (cur.length) segs.push(cur);
+  // a one-word opener ('So,' 'Now,' 'Yeah,') goes with what follows
+  for (let k = 0; k + 1 < segs.length; k++) if (segs[k].length === 1 && /,$/.test(ws[segs[k][0]][0]) && segs[k + 1].length <= 10) { segs[k + 1].unshift(...segs[k]); segs.splice(k, 1); k--; }
+  const pieces = (idx) => {
+    if (idx.length <= 8 && txt(idx).length <= 38) return [idx];
+    let best = -1, bs = -1e9;
+    const tail = /[.,!?;:]$/.test(ws[idx[idx.length - 1]][0]) ? 2 : 3;   // a punctuated tail may be two words ('are real,')
+    for (let k = 3; k <= idx.length - tail; k++) {
+      const lw = capNorm(ws[idx[k - 1]][0]), rw = capNorm(ws[idx[k]][0]);
+      let sc = 0;
+      if (CAP_BREAK_BEFORE.has(rw)) sc += 3;
+      if (CAP_END_BAD.has(lw)) sc -= 5;
+      if (CAP_PAIRS.has(lw + ' ' + rw)) sc -= 10;
+      if (/^[\d][\d.,]*$/.test(ws[idx[k - 1]][0])) sc -= 6;   // a number keeps its unit
+      const L = txt(idx.slice(0, k)).length, R = txt(idx.slice(k)).length;
+      sc -= Math.abs(L - R) * 0.08 + (L > 44 ? 3 : 0) + (R > 44 ? 3 : 0);
+      if (sc > bs) { bs = sc; best = k; }
+    }
+    if (best < 0) return [idx];
+    return [...pieces(idx.slice(0, best)), ...pieces(idx.slice(best))];
+  };
+  const out = segs.flatMap(pieces);
   // a lone word left at the end joins the phrase before it
   if (out.length > 1 && out[out.length - 1].length === 1 && out[out.length - 2].length < 6) out[out.length - 2].push(...out.pop());
   return out;
@@ -466,7 +489,7 @@ const CaptionLayer = ({lines}) => {
   if (ci < 0) return null;
   const c = chunks[ci];
   // 2.75.0 (Israa: words shown twice): a phrase the screen already shows in big type (p.big cue words) gets no caption pill
-  const big = ((l.p || {}).big || []).map((b) => String(b.on || '').toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
+  const big = [...((l.p || {}).big || []).map((b) => b.on), ...((l.p || {}).nocap || [])].map((w) => String(w || '').toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
   if (big.length && c.some((i) => big.some((b) => ws[i][0].toLowerCase().replace(/[^a-z0-9']/g, '').startsWith(b)))) return null;
   const now = c.reduce((a, i) => (ws[i][1] <= frame ? i : a), c[0]);
   return (
