@@ -1,7 +1,7 @@
 // The first 60 seconds of "She Survived a 3 km Fall" (2.49.0), in The Infographics Show's look (tis.jsx).
 // props: {lines: [{shot, text, start, end, words: [[word, frame]]}], audio, frames}. Each shot is drawn for exactly what its line says.
 import React from 'react';
-import {AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate, Img} from 'remotion';
+import {AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate, Img, OffthreadVideo} from 'remotion';
 import {W, H, INK, ST, st, clamp, lin, pop, rng, ease, Box, Label, Head, Bust, SeatBack, Plane, Bolt, Cloud, Canopy, at, OSWALD} from './tis';
 import {JulianeArt} from './Thumb';
 import {STORY_SHOTS, DayCard, DayCorner} from './jungle';
@@ -16,6 +16,7 @@ import {YAM3_SHOTS} from './yam3';
 import {YAM4_SHOTS} from './yam4';
 import {FONT_CSS} from './fonts';
 import {TRENCH_SHOTS} from './trench2';
+import {DEEP_SHOTS} from './deep';
 import {CameraMotionBlur} from '@remotion/motion-blur';
 
 // the frame (inside the line) where a word is said; fallback = a fraction of the line
@@ -292,11 +293,11 @@ function Title({f, len, line}) {
 }
 
 export const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
-  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS, ...MEG_SHOTS, ...MEG2_SHOTS, ...MEG3_SHOTS, ...MEG4_SHOTS, ...YAM_SHOTS, ...YAM2_SHOTS, ...YAM3_SHOTS, ...YAM4_SHOTS, ...TRENCH_SHOTS};
+  breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS, ...MEG_SHOTS, ...MEG2_SHOTS, ...MEG3_SHOTS, ...MEG4_SHOTS, ...YAM_SHOTS, ...YAM2_SHOTS, ...YAM3_SHOTS, ...YAM4_SHOTS, ...TRENCH_SHOTS, ...DEEP_SHOTS};
 
 // fast shots get a film camera's motion blur (2.55.0, @remotion/motion-blur: each frame is the average of a few moments within the
 // shutter time). Only these shots: it multiplies the rendering time of the frames it covers. line.p.blur forces it on (or off: false).
-const BLUR = new Set(['flood', 'sink', 'breakup', 'falling']);   // not on a shake (snag): blurring a fast back-and-forth jolt made frames that barely move
+const BLUR = new Set(['flood', 'sink', 'breakup', 'falling', 'dp_yank']);   // not on a shake (snag): blurring a fast back-and-forth jolt made frames that barely move
 const blurOf = (line) => ((line.p || {}).blur != null ? !!line.p.blur : BLUR.has(line.shot));
 
 // a real picture of a real event or finding (2.60.0): line.p.photo = {src (under public/), size [w, h] of the file, on (word), off (word,
@@ -335,6 +336,41 @@ const PhotoLayer = ({line, len}) => {
   );
 };
 
+// real footage (2.75.0, the owner: "switch between cartoon and reality"): line.p.footage = {src (under public/, "footage/<file>.mp4"),
+// from (seconds into the clip), rate, zoom [start, end] (a slow camera push), focus [x, y] (0..1, where the push goes), sat, con, bri,
+// tint (a colour laid over in soft-light, so real and drawn share one sea; false = none), credit}. Full frame, under the shot's svg.
+const FootageLayer = ({line, len}) => {
+  const f = useCurrentFrame();
+  const v = (line.p || {}).footage;
+  if (!v || !v.src) return null;
+  const [z0, z1] = v.zoom || [1.03, 1.1];
+  const [fx, fy] = v.focus || [0.5, 0.5];
+  const look = {filter: `saturate(${v.sat != null ? v.sat : 0.92}) contrast(${v.con != null ? v.con : 1.06}) brightness(${v.bri != null ? v.bri : 0.96})`};
+  if (v.center) {
+    // a world map that wraps round (equirectangular, v.aspect 2): the point v.center [u, v] of the frame is held at the screen's
+    // middle while the camera zooms in; copies to the left and right fill what lies past the date line
+    const z = lin(f, 0, len, z0, z1), vh = H * z, vw = vh * (v.aspect || 2);
+    const left = W / 2 - v.center[0] * vw, top = H / 2 - v.center[1] * vh;
+    return (
+      <AbsoluteFill style={{overflow: 'hidden', background: '#000'}}>
+        {[-1, 0, 1].filter((k) => left + k * vw < W && left + (k + 1) * vw > 0).map((k) => (
+          <OffthreadVideo key={k} src={staticFile(v.src)} startFrom={Math.round((v.from || 0) * 30)} playbackRate={v.rate || 1} muted
+            style={{position: 'absolute', left: left + k * vw, top, width: vw, height: vh, ...look}} />
+        ))}
+        {v.tint && <div style={{position: 'absolute', inset: 0, background: v.tint, mixBlendMode: 'soft-light', opacity: 0.45}} />}
+      </AbsoluteFill>
+    );
+  }
+  return (
+    <AbsoluteFill style={{overflow: 'hidden', background: '#000'}}>
+      <OffthreadVideo src={staticFile(v.src)} startFrom={Math.round((v.from || 0) * 30)} playbackRate={v.rate || 1} muted
+        style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${lin(f, 0, len, z0, z1)})`, transformOrigin: `${fx * 100}% ${fy * 100}%`,
+          filter: `saturate(${v.sat != null ? v.sat : 0.92}) contrast(${v.con != null ? v.con : 1.06}) brightness(${v.bri != null ? v.bri : 0.96})`}} />
+      {v.tint !== false && <div style={{position: 'absolute', inset: 0, background: v.tint || '#0B3A52', mixBlendMode: 'soft-light', opacity: 0.45}} />}
+    </AbsoluteFill>
+  );
+};
+
 const FadeIn = ({on, children}) => {
   const f = useCurrentFrame();
   return <AbsoluteFill style={{opacity: on ? clamp(f / 8, 0, 1) : 1}}>{children}</AbsoluteFill>;
@@ -345,7 +381,8 @@ const ShotLayer = ({line, len}) => {
   const S = SHOTS[line.shot] || Aerial;
   return (
     <AbsoluteFill>
-      <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}><S f={f} len={len} line={line} /></svg>
+      <FootageLayer line={line} len={len} />
+      <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}><S f={f} len={len} line={line} /></svg>
       <PhotoLayer line={line} len={len} />
     </AbsoluteFill>
   );

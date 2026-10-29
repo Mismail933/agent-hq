@@ -1085,6 +1085,23 @@ def install_photos(spec, folder):
         c = (cred.get(name) or {}).get("credit")
         if c and c not in PHOTO_CREDITS:
             PHOTO_CREDITS.append(c)
+    # real footage (2.75.0): p.footage.src ("footage/<file>.mp4") from the project's footage/ folder (public domain US government or
+    # CC0/CC BY, credits in footage/credits.json) into the app's public/footage/
+    fdir = folder.parent.parent / "footage"
+    fcred = json.loads((fdir / "credits.json").read_text(encoding="utf-8")) if (fdir / "credits.json").exists() else {}
+    for ln in spec["lines"]:
+        name = Path(str(((ln.get("p") or {}).get("footage") or {}).get("src", ""))).name
+        if not name:
+            continue
+        if not (fdir / name).exists():
+            raise SystemExit(f"footage {name} not found in {fdir}")
+        (story.APP / "public" / "footage").mkdir(parents=True, exist_ok=True)
+        dst = story.APP / "public" / "footage" / name
+        if not dst.exists() or dst.stat().st_size != (fdir / name).stat().st_size:
+            shutil.copy(fdir / name, dst)
+        c = (fcred.get(name) or {}).get("credit")
+        if c and c not in PHOTO_CREDITS:
+            PHOTO_CREDITS.append(c)
 
 
 def credits(folder):
