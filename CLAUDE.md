@@ -422,7 +422,9 @@ Agents never spend money without the owner's explicit approval.
   sends it to Atlas as an '(About project N)' chat message, his answer comes back to the phone), music while none is picked
   (`MU:<pid>.<track|none>`), the narrator's voice while none is chosen (`VO:<pid>.<index>`). Callback data stays under 64 bytes
   (indexes, resolved when tapped). `/today <kind>` and Atlas's `hq phone-resend [kind]` (`phone.resend`, `KINDS`: ghassan,
-  videos, characters, scripts, ideas, plans, voices); `hq send-phone <file> ["caption"]` (`phone.send_file`: only content/,
+  videos, characters, scripts, ideas, plans, voices); 2.75.3: documents he sends the bot (`DOC_IN`: md, txt, pdf, json, office files,
+  images, audio; <= 20 MB) are saved to Atlas-HQ/review/uploads/ like his videos and Atlas is told the path (an .md bounced before);
+  `hq send-phone <file> ["caption"]` (`phone.send_file`: only content/,
   briefs/, plans/, Atlas-HQ/review/; type by extension; logged `phone_file_sent`).
 - OverSimplified level (2.22.1, Atlas's pick for the owner's "reach this level" request; the owner's v3 character look is kept):
   - Movement: `Character.jsx ACTIONS` (walk_in/walk_out handled by `Short.jsx walkPos`, turn = facing flip, jump, flinch, facepalm,

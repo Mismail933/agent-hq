@@ -642,6 +642,9 @@ def on_message(m):
 
 
 VIDEO_IN = (".mp4", ".mov", ".m4v", ".webm")
+# 2.75.3: documents he sends are saved too (the Dar setup .md bounced with "you can only send photos")
+DOC_IN = (".md", ".txt", ".pdf", ".json", ".csv", ".js", ".html", ".css", ".py", ".docx", ".xlsx", ".pptx", ".zip",
+          ".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp3", ".m4a", ".ogg", ".wav")
 MAX_IN = 20 * 1024 * 1024   # a bot can download files up to 20 MB
 
 
@@ -650,22 +653,26 @@ def _save_video(m):
     use it: Atlas-HQ/review/uploads/<date>-phone-<name>. Returns the path, or raises ValueError with a reason to show him."""
     v = m.get("video") or m.get("animation") or m.get("document")
     name = str(v.get("file_name") or "phone-video.mp4")
-    if m.get("document") and not (str(v.get("mime_type", "")).startswith("video/") or name.lower().endswith(VIDEO_IN)):
-        raise ValueError("I can pass photos, videos and text to Atlas; that file isn't a video.")
+    is_video = not m.get("document") or str(v.get("mime_type", "")).startswith("video/") or name.lower().endswith(VIDEO_IN)
+    if not is_video and not name.lower().endswith(DOC_IN):
+        raise ValueError(f"I can pass photos, videos, text and documents ({', '.join(x[1:] for x in DOC_IN)}) to Atlas; "
+                         f"'{Path(name).suffix or name}' files aren't one of them.")
     if int(v.get("file_size") or 0) > MAX_IN:
-        raise ValueError(f"That video is {int(v['file_size']) // (1024 * 1024)} MB; a bot can only receive up to 20 MB. "
-                         "Send a shorter clip, or put it in the PC's Downloads folder and tell Atlas its name.")
+        raise ValueError(f"That file is {int(v['file_size']) // (1024 * 1024)} MB; a bot can only receive up to 20 MB. "
+                         "Put it in the PC's Downloads folder and tell Atlas its name.")
     f = tg("getFile", file_id=v["file_id"])
     import atlas_engine
     folder = atlas_engine.HOME / "review" / "uploads"
     folder.mkdir(parents=True, exist_ok=True)
-    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(name).stem)[:50] or "video"
-    ext = Path(name).suffix.lower() if Path(name).suffix.lower() in VIDEO_IN else ".mp4"
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(name).stem)[:50] or ("video" if is_video else "file")
+    ext = Path(name).suffix.lower()
+    if ext not in VIDEO_IN + DOC_IN:
+        ext = ".mp4"
     path = folder / f"{time.strftime('%Y-%m-%d-%H%M%S')}-phone-{stem}{ext}"
     with urllib.request.urlopen(f"{API}/file/bot{token()}/{f['file_path']}", timeout=120,
                                 context=_tls() if API.startswith("https") else None) as r:
         path.write_bytes(r.read())
-    cp.log("Owner", "phone_video_in", None, {"file": path.name, "bytes": path.stat().st_size})
+    cp.log("Owner", "phone_video_in" if is_video else "phone_file_in", None, {"file": path.name, "bytes": path.stat().st_size})
     return path
 
 
@@ -677,9 +684,14 @@ def _to_atlas(chat, text, m):
         except ValueError as e:
             return send(str(e), chat=chat, plain=True)
         except Exception as e:   # noqa: BLE001
-            return send(f"I couldn't get that video: {type(e).__name__}.", chat=chat, plain=True)
-        text = (text + "\n\n" if text else "") + (f"[The owner sent a video from his phone. It is saved as {path} . If it is a Gemini "
-                                                  "clip for a music-video shot, place it with hq mv-shot and render.]")
+            return send(f"I couldn't get that file: {type(e).__name__}.", chat=chat, plain=True)
+        if path.suffix.lower() in VIDEO_IN:
+            note = (f"[The owner sent a video from his phone. It is saved as {path} . If it is a Gemini "
+                    "clip for a music-video shot, place it with hq mv-shot and render.]")
+        else:
+            note = (f"[The owner sent a file from his phone: {path} (open it with Read). If it is meant for a Builder chat, "
+                    "give that chat this path in requests-for-builder.md.]")
+        text = (text + "\n\n" if text else "") + note
     if m.get("photo"):
         try:
             import base64
@@ -690,7 +702,7 @@ def _to_atlas(chat, text, m):
         except Exception as e:
             return send(f"I couldn't get that photo: {type(e).__name__}.", chat=chat, plain=True)
     if not text and not images:
-        return send("I can pass text, photos and videos to Atlas. /help lists the rest.", chat=chat, plain=True)
+        return send("I can pass text, photos, videos and documents to Atlas. /help lists the rest.", chat=chat, plain=True)
     STATE["reply_to_phone"] = True
     ok, msg = office("/api/chat", {"text": text, "images": images, "phone": True})
     if not ok:
