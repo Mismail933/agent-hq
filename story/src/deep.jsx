@@ -99,7 +99,19 @@ const Defs = ({id, d, glow = '#9FE3FF'}) => {
       <filter id={`blur3-${id}`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation={2.2} /></filter>
       <filter id={`blur40-${id}`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation={40} /></filter>
       <filter id={`uw-${id}`} x="-20%" y="-20%" width="140%" height="140%">
-        <feColorMatrix type="matrix" values={`${kr} 0 0 0 0  0 ${kg} 0 0 ${0.03 * k}  0 0 ${kb} 0 ${0.07 * k}  0 0 0 1 0`} />
+        <feColorMatrix in="SourceGraphic" type="matrix" values={`${kr} 0 0 0 0  0 ${kg} 0 0 ${0.03 * k}  0 0 ${kb} 0 ${0.07 * k}  0 0 0 1 0`} result="col" />
+        <feOffset in="SourceAlpha" dx={7} dy={7} result="off" />
+        <feComposite in="SourceAlpha" in2="off" operator="out" result="rimA" />
+        <feFlood floodColor={glow} floodOpacity={0.85} />
+        <feComposite in2="rimA" operator="in" />
+        <feGaussianBlur stdDeviation={1.6} result="rim" />
+        <feOffset in="SourceAlpha" dx={-44} dy={0} result="sh0" />
+        <feComposite in="SourceAlpha" in2="sh0" operator="out" result="shA" />
+        <feFlood floodColor="#02121C" floodOpacity={0.42} />
+        <feComposite in2="shA" operator="in" />
+        <feGaussianBlur stdDeviation={9} />
+        <feComposite in2="SourceAlpha" operator="in" result="shade" />
+        <feMerge><feMergeNode in="col" /><feMergeNode in="shade" /><feMergeNode in="rim" /></feMerge>
       </filter>
       <filter id={`soft-${id}`} x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx={0} dy={6} stdDeviation={10} floodColor="#000" floodOpacity={0.55} /></filter>
       <radialGradient id={`glow-${id}`}><stop offset="0" stopColor={glow} stopOpacity={0.55} /><stop offset="0.35" stopColor={glow} stopOpacity={0.18} /><stop offset="1" stopColor={glow} stopOpacity={0} /></radialGradient>
@@ -155,14 +167,14 @@ export const Tag = ({f, a = 0, x, y, text, size = 34, anchor = 'start', color = 
 };
 const fmt = (m) => Math.round(m).toLocaleString('en-US');
 // the running depth bar (his recurring timeline bar, ours in metres): thin track, gold fill, ticks every 1,000 m, the reading at its end
-export const DepthBar = ({f, d, a = 0, x0 = 360, x1 = 1560, y = 110, max = 11000, op = 1}) => {
+export const DepthBar = ({f, d, a = 0, x0 = 360, x1 = 1560, y = 110, max = 11000, op = 1, value = true}) => {
   const k = clamp((f - a) / 12, 0, 1) * op;
   if (k <= 0) return null;
   const p = clamp(d / max, 0, 1), xm = x0 + (x1 - x0) * p;
   return (
     <g opacity={k}>
       <text x={x0} y={y - 24} fontFamily={OSWALD} fontWeight={500} fontSize={26} fill="#CFEFFF" letterSpacing={8}>DEPTH</text>
-      <text x={x1} y={y - 24} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={30} fill="#FFFFFF" letterSpacing={4}>{fmt(d)} M</text>
+      {value && <text x={x1} y={y - 24} textAnchor="end" fontFamily={OSWALD} fontWeight={600} fontSize={30} fill="#FFFFFF" letterSpacing={4}>{fmt(d)} M</text>}
       <rect x={x0} y={y - 3} width={x1 - x0} height={6} rx={3} fill="#FFFFFF" opacity={0.18} />
       <rect x={x0} y={y - 3} width={xm - x0} height={6} rx={3} fill="#FFC23D" />
       {[...Array(12)].map((_, i) => <path key={i} d={`M ${x0 + (x1 - x0) * (i * 1000 / max)} ${y + 8} l 0 ${i % 5 ? 8 : 16}`} stroke="#FFFFFF" strokeWidth={2} opacity={0.45} />)}
@@ -193,9 +205,9 @@ const Bubbles = ({x, y, f, f0, n = 9, seed = 2, s = 1, op = 1}) => {
 // ───────────── dp_float: you, eyes closed, floating at the surface, seen from just under it ─────────────
 const SURF_Y = 300;
 const Surface = ({f, y, id, bright = 1}) => {
-  let d = `M -100 -400 L -100 ${y}`;
-  for (let x = -100; x <= W + 100; x += 30) d += ` L ${x} ${(y + Math.sin(x / 110 + f * 0.05) * 9 + Math.sin(x / 41 + f * 0.09) * 4).toFixed(1)}`;
-  d += ` L ${W + 100} -400 Z`;
+  let d = `M -500 -400 L -500 ${y}`;
+  for (let x = -500; x <= W + 500; x += 30) d += ` L ${x} ${(y + Math.sin(x / 110 + f * 0.05) * 9 + Math.sin(x / 41 + f * 0.09) * 4).toFixed(1)}`;
+  d += ` L ${W + 500} -400 Z`;
   return (
     <g>
       <linearGradient id={`sky-${id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E9FBFF" /><stop offset="1" stopColor="#8EDBF2" /></linearGradient>
@@ -209,21 +221,37 @@ const Surface = ({f, y, id, bright = 1}) => {
 };
 function Float({f, len, line}) {
   const id = 'f' + line.idx, p = P(line);
-  const z = L(f, 0, len, 1.0, 1.07);
-  const bob = Math.sin(f * 0.06) * 6;
+  const warm = at(line, p.warm || 'warm', 0.3), pac = at(line, p.pac || 'pacific', 0.5), eyes = at(line, p.eyes || 'eyes', 0.75), sunW = at(line, p.sun || 'sun', 0.88);
+  // the camera: close on you, a slow pull back on 'the Pacific' (endless water), in close on your face for 'eyes closed', back out
+  const zz = f < pac ? L(f, 0, pac, 1.12, 1.18) : f < eyes - 4 ? L(f, pac, eyes - 4, 1.18, 0.86) : L(f, eyes - 4, eyes + 14, 0.86, 2.3);
+  const z = f > sunW + 6 ? L(f, sunW + 6, len, zz, zz * 0.9) : zz;
+  const hx = 700, bob = Math.sin(f * 0.06) * 7, hy = SURF_Y + 92 + bob;   // your head
+  const fx = f >= eyes - 4 ? L(f, eyes - 4, eyes + 14, W / 2, hx) : W / 2, fy = f >= eyes - 4 ? L(f, eyes - 4, eyes + 14, H / 2, hy + 10) : H / 2;
+  const glint = f >= warm ? clamp(1 - Math.abs(f - warm - 12) / 22, 0, 1) : 0;
+  const flare = f >= sunW - 4 ? clamp(1 - Math.abs(f - sunW - 10) / 26, 0, 1) : 0;
+  const creep = L(f, Math.max(0, len - 110), len, 0, 1);   // the shadow below, rising into the last seconds
   return (
     <g>
-      <Defs id={id} d={4} glow="#FFFBE0" />
-      <g transform={`translate(${W / 2} ${H / 2}) scale(${z}) translate(${-W / 2} ${-H / 2})`}>
-        <Sea f={f} d={6} id={id} rays={1} gain={1.7} />
-        <Surface f={f} y={SURF_Y} id={id} />
-        <Specks f={f} id={id} n={45} op={0.6} />
-        <Glow x={1000} y={SURF_Y + 120} r={520} id={id} a={0.5} />
-        <You f={f} id={id} x={760} y={SURF_Y + 96 + bob} s={0.44} rot={-90} expr={p.expr || 'closed'} />
+      <Defs id={id} d={40} glow="#FFF6D6" />
+      <g transform={`translate(${fx} ${fy}) scale(${z}) translate(${-fx} ${-fy})`}>
+        <Sea f={f} d={160} id={id} rays={1} gain={2.4} />
+        <Surface f={f} y={SURF_Y} id={id} bright={0.92} />
+        <Specks f={f} id={id} n={70} op={0.75} />
+        {/* the shadow in the deep, and one pale eye, creeping up toward the end */}
+        <ellipse cx={1250} cy={H + 260 - creep * 200} rx={720} ry={300} fill="#021019" opacity={0.75 * creep} filter={`url(#blur40-${id})`} />
+        <circle cx={1150} cy={H + 120 - creep * 200} r={14} fill="#CFF6E8" opacity={creep * (0.45 + 0.3 * Math.sin(f * 0.2))} />
+        <Glow x={hx + 220} y={hy + 40} r={560} id={id} a={0.55} />
+        <You f={f} id={id} x={hx} y={hy} s={0.44} rot={-84 + Math.sin(f * 0.05) * 3} pose="wade" expr={p.expr || 'closed'} />
+        {/* sun glints on the water around you on 'warm' */}
+        {glint > 0 && [...Array(9)].map((_, i) => { const R = rng(40 + i); const gx = 300 + R() * 1400, gy = SURF_Y + 6 + R() * 26;
+          return <path key={i} d={`M ${gx - 18} ${gy} L ${gx} ${gy - 5} L ${gx + 18} ${gy} L ${gx} ${gy + 5} Z`} fill="#FFFFFF" opacity={glint * (0.5 + 0.5 * Math.sin(f * 0.6 + i))} />; })}
       </g>
-      <Vignette id={id} a={0.7} />
+      {/* 'sun on your face': a light flare across the frame */}
+      {flare > 0 && <g style={{mixBlendMode: 'screen'}}><circle cx={1500 - flare * 200} cy={140} r={420} fill="#FFF3C8" opacity={0.55 * flare} filter={`url(#blur40-${id})`} />
+        <path d={`M 1500 140 L ${700 - flare * 80} 760`} stroke="#FFF8E0" strokeWidth={60} opacity={0.12 * flare} filter={`url(#blur18-${id})`} /></g>}
+      <Vignette id={id} a={0.85} />
       {p.big && <BigWords f={f} line={line} id={id} words={p.big} y={p.big_y || 640} size={p.big_size || 150} off={p.big_off} />}
-      {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.4)} x={120} y={980 - 120} text={p.tag} />}
+      {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.4)} b={eyes - 6} x={120} y={980 - 120} text={p.tag} />}
     </g>
   );
 }
@@ -247,7 +275,7 @@ function Yank({f, len, line}) {
   const loom = L(f, 0, g, 0.25, 1);
   const yank = L(f, pull - 2, pull + 10, 0, 1, Easing.in(Easing.cubic));
   const after = clamp((f - pull - 10) / 36, 0, 1);
-  const cam = yank * 260 + after * 620;   // the camera follows you down: the surface leaves the top of the frame
+  const cam = yank * 440 + after * 860;   // the camera follows you down: the surface leaves the top of the frame
   const shake = f >= pull && f < pull + 16 ? noise2D('yk', f * 0.6, 0) * 16 * (1 - (f - pull) / 16) : 0;
   const s = 0.44, yx = 760, yy0 = SURF_Y + 96 + Math.sin(f * 0.06) * 6 * (1 - reach);
   const rot = -90 + 90 * yank;
@@ -308,8 +336,8 @@ function Real({f, len, line}) {
 function Sink({f, len, line}) {
   const id = 's' + line.idx, p = P(line);
   const marks = (p.marks || []).map(([w, m]) => [at(line, w, 0.5), m]);
-  let d = p.from != null ? p.from : 1000, last = 0;
-  for (const [a, m] of marks) { const k = sp(f, a - 2, 'snap'); d = d + (m - d) * clamp(k, 0, 1.02); if (f >= a) last = m; }
+  let d = p.from != null ? p.from : 1000;
+  for (const [a, m] of marks) d = d + (m - d) * L(f, a - 12, a, 0, 1);
   const rise = f * 9;
   const walls = L(f, 0, len, p.walls0 != null ? p.walls0 : 0.15, p.walls1 != null ? p.walls1 : 0.55);
   const [, bot] = water(d);
@@ -326,9 +354,9 @@ function Sink({f, len, line}) {
       <You f={f} id={id} x={800 + sway} y={250 + Math.sin(f * 0.05) * 10} s={0.5} rot={Math.sin(f * 0.03) * 6} pose={p.pose || 'stand'} expr={p.expr || 'worried'} />
       <Bubbles x={800 + sway} y={260} f={f} f0={0} n={4} s={0.9} seed={3} op={0.7} />
       <Vignette id={id} />
-      <DepthBar f={f} d={d} a={0} />
+      <DepthBar f={f} d={d} a={0} value={cur < 0} />
       {cur >= 0 && (() => { const [a, m] = marks[cur]; const kk = sp(f, a - 2, 'heavy');
-        return <text x={1500} y={600 + (1 - kk) * 40} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={150} fill="#FFFFFF" opacity={clamp((f - a + 2) / 5, 0, 1)}
+        return <text x={1500} y={600 + (1 - kk) * 26} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={150} fill="#FFFFFF" opacity={clamp((f - a + 4) / 9, 0, 1)}
           filter={`url(#soft-${id})`}>{fmt(m)} M</text>; })()}
       {dark > 0 && <rect x={0} y={0} width={W} height={H} fill="#000" opacity={dark} />}
     </g>
@@ -397,7 +425,8 @@ function Section({f, len, line}) {
             {i % 2 === 0 && i > 0 && <text x={104} y={SY + i * KMP + 9} fontFamily={OSWALD} fontWeight={500} fontSize={24} fill="#CFEFFF" letterSpacing={3}>{i} KM</text>}</g>)}
         </g>
         <Tag f={f} a={drop + 18} x={cx - 300} y={FL - 0.3 * EV} text="MOUNT EVEREST" anchor="end" size={30} rule={false} />
-        <Tag f={f} a={0} x={1240} y={FL - 16} text="CHALLENGER DEEP · 10,935 M" size={26} rule={false} />
+        <path d={`M 1196 ${FL - 8} L 1270 ${FL - 96} L 1300 ${FL - 96}`} stroke="#FFFFFF" strokeWidth={3} fill="none" opacity={0.85} />
+        <Tag f={f} a={0} x={1310} y={FL - 84} text="CHALLENGER DEEP · 10,935 M" size={30} rule={false} color="#FFFFFF" />
         <circle cx={cx - 420} cy={SY + 14} r={9} fill="#FFE08A" opacity={pulse} />
         <circle cx={cx - 420} cy={SY + 14} r={22} fill="#FFC23D" opacity={0.25 * pulse} />
         <text x={cx - 400} y={SY + 58} fontFamily={OSWALD} fontWeight={600} fontSize={26} fill="#FFE08A" letterSpacing={6}>YOU</text>
@@ -414,18 +443,19 @@ function Close({f, len, line}) {
   const a0 = at(line, p.air_on || 'air', 0.2), a1 = at(line, p.air_off || 'metres', 0.7);
   const left = air ? L(f, a0, a1, 1, 0, Easing.inOut(Easing.quad)) : 1;
   const z = L(f, 0, len, 1.04, 1.12);
-  const sway = Math.sin(f * 0.035) * 10;
+  const sway = Math.sin(f * 0.035) * 16, lift = Math.sin(f * 0.05) * 12;
   const expr = air ? (left < 0.35 ? 'shock' : 'scared') : (p.expr || 'worried');
   const puff = air ? a0 : -999;
   return (
     <g>
-      <Defs id={id} d={p.depth || 300} />
+      <Defs id={id} d={p.depth || 300} glow="#AFE6FF" />
       <g transform={`translate(${W / 2} ${H / 2}) scale(${z}) translate(${-W / 2} ${-H / 2})`}>
         <Sea f={f} d={p.depth || 300} id={id} />
         <Specks f={f} id={id} rise={f * 4} n={80} />
-        <Glow x={820 + sway} y={420} r={520} id={id} a={0.9} />
-        <You f={f} id={id} x={820 + sway} y={380} s={0.9} rot={Math.sin(f * 0.03) * 3} pose="stand" expr={expr} />
-        <Bubbles x={830 + sway} y={420} f={f} f0={puff} n={14} s={1.4} seed={4} />
+        <Glow x={820 + sway} y={460} r={600} id={id} a={1} />
+        <You f={f} id={id} x={820 + sway} y={380 + lift} s={0.9} rot={Math.sin(f * 0.03) * 4} pose="stand" expr={expr} />
+        <Bubbles x={830 + sway} y={470 + lift} f={f} f0={puff} n={18} s={1.6} seed={4} />
+        {air && f > puff && <Bubbles x={830 + sway} y={470 + lift} f={f} f0={puff + 26} n={10} s={1.1} seed={9} />}
       </g>
       <Vignette id={id} />
       {air && (() => {
@@ -450,35 +480,53 @@ function Close({f, len, line}) {
 // ───────────── dp_sub: the cheat. A ring, and a little submarine is around you; its lamps come on ─────────────
 function Sub({f, len, line}) {
   const id = 'b' + line.idx, p = P(line);
-  const ring = at(line, p.ring || 'cheat', 0.2), win = at(line, p.win || 'window', 0.5), lamp = at(line, p.lamp || 'front', 0.8);
+  const ring = at(line, p.ring || 'cheat', 0.2), win = at(line, p.win || 'window', 0.5), seat = at(line, p.seat || 'front', 0.8);
   const r = f - ring;
-  const subK = sp(f, ring + 4, 'bounce');
-  const lit = clamp((f - lamp) / 6, 0, 1);
-  const flick = lit > 0 && f - lamp < 10 ? (Math.sin((f - lamp) * 2.4) > -0.2 ? 1 : 0.35) : 1;
-  const d = p.depth || 300;
-  const bx = 1060, by = 560 + Math.sin(f * 0.05) * 8;
+  const d = p.depth || 2500;
+  const bx = 960, by = 560 + Math.sin(f * 0.05) * 8;
+  const form = clamp(sp(f, ring + 3, 'bounce'), 0, 1.2);
+  const youK = 1 - L(f, ring, ring + 10, 0, 1);
+  // 'a window': the camera goes in on the porthole with your face in it
+  const zin = L(f, win - 6, win + 16, 1, 3.2);
+  const px = bx + 13 * 1.3, py = by - 8 * 1.3;
+  const out = f >= seat - 3;   // the window view
+  if (out) {
+    const lit = clamp((f - seat) / 6, 0, 1), flick = f - seat < 10 ? (Math.sin((f - seat) * 2.4) > -0.2 ? 1 : 0.35) : 1;
+    return (
+      <g>
+        <Defs id={id} d={d} glow="#FFF1B8" />
+        <Sea f={f} d={d} id={id} />
+        <Specks f={f} id={id} rise={f * 3} n={70} op={0.6} />
+        <g opacity={lit * flick} style={{mixBlendMode: 'screen'}}>
+          <path d={`M 420 1100 L ${W / 2 - 300} 300 L ${W / 2 + 40} 300 L 760 1100 Z`} fill="#FFF3C4" opacity={0.42} filter={`url(#blur18-${id})`} />
+          <path d={`M 1500 1100 L ${W / 2 + 300} 300 L ${W / 2 - 40} 300 L 1160 1100 Z`} fill="#FFF3C4" opacity={0.42} filter={`url(#blur18-${id})`} />
+          <ellipse cx={W / 2} cy={330} rx={420} ry={150} fill="#FFF6D8" opacity={0.35} filter={`url(#blur40-${id})`} />
+          <clipPath id={`beam-${id}`}><path d={`M 420 1100 L ${W / 2 - 300} 300 L ${W / 2 + 300} 300 L 1500 1100 Z`} /></clipPath>
+          <g clipPath={`url(#beam-${id})`}><Specks f={f} id={id} rise={f * 3} n={140} op={2.4} seed={31} /></g>
+        </g>
+        {/* the porthole's rim around the frame */}
+        <path d={`M -10 -10 L ${W + 10} -10 L ${W + 10} ${H + 10} L -10 ${H + 10} Z M ${W / 2 - 600} ${H / 2} a 600 520 0 1 0 1200 0 a 600 520 0 1 0 -1200 0 Z`} fill="#05090D" fillRule="evenodd" />
+        <ellipse cx={W / 2} cy={H / 2} rx={600} ry={520} fill="none" stroke="#8A97A4" strokeWidth={34} />
+        <ellipse cx={W / 2} cy={H / 2} rx={600} ry={520} fill="none" stroke="#CBD5E1" strokeWidth={6} opacity={0.6} />
+        {[...Array(12)].map((_, i) => { const t = (i / 12) * Math.PI * 2; return <circle key={i} cx={W / 2 + Math.cos(t) * 600} cy={H / 2 + Math.sin(t) * 520} r={9} fill="#5B6773" />; })}
+        <path d={`M ${W / 2 - 420} ${H / 2 - 330} q 160 -110 380 -120`} stroke="#FFFFFF" strokeWidth={12} fill="none" opacity={0.18} strokeLinecap="round" />
+        {p.tag && <Tag f={f} a={seat + 4} x={W / 2} y={170} text={p.tag} anchor="middle" rule={false} />}
+      </g>
+    );
+  }
   return (
     <g>
       <Defs id={id} d={d} glow="#FFF1B8" />
-      <Sea f={f} d={d} id={id} />
-      <Specks f={f} id={id} rise={f * 3} n={80} />
-      {/* the lamps: two soft cones into the dark, the specks lit inside them */}
-      {lit > 0 && (
-        <g opacity={lit * flick} style={{mixBlendMode: 'screen'}}>
-          <clipPath id={`cone-${id}`}><path d={`M ${bx - 300} ${by + 26} L -200 ${by - 460} L -200 ${by + 660} Z`} /></clipPath>
-          <path d={`M ${bx - 300} ${by + 26} L -200 ${by - 460} L -200 ${by + 660} Z`} fill="#FFF3C4" opacity={0.34} filter={`url(#blur18-${id})`} />
-          <g clipPath={`url(#cone-${id})`}><Specks f={f} id={id} rise={f * 3} n={120} op={2.4} seed={31} /></g>
-        </g>
-      )}
-      {r < 0 && <You f={f} id={id} x={bx} y={260} s={0.46} pose="stand" expr="worried" />}
-      {r >= 0 && r < 26 && <circle cx={bx} cy={by} r={60 + r * 32} fill="none" stroke="#FFFFFF" strokeWidth={14 * (1 - r / 26)} opacity={1 - r / 26} />}
-      {r >= 0 && r < 8 && <circle cx={bx} cy={by} r={300} fill="#FFFFFF" opacity={0.5 * (1 - r / 8)} filter={`url(#blur40-${id})`} />}
-      {r >= 0 && <g filter={`url(#uw-${id})`}><YSub T={f} x={bx} y={by} s={1.3 * clamp(subK, 0, 1.2)} beam={0} cup={1} youExpr={f > lamp ? 'smile' : 'worried'} pipExpr="smile" /></g>}
-      {lit > 0 && <circle cx={bx - 307} cy={by + 26} r={30} fill="#FFFBE6" opacity={lit * flick} />}
-      {lit > 0 && <circle cx={bx - 307} cy={by + 26} r={110} fill="#FFF3C4" opacity={0.35 * lit * flick} filter={`url(#blur18-${id})`} />}
-      {f >= win && f < win + 40 && <circle cx={bx + 13} cy={by - 8} r={80 + (f - win) * 0.8} fill="none" stroke="#FFC23D" strokeWidth={6} opacity={1 - (f - win) / 40} />}
+      <g transform={`translate(${px} ${py}) scale(${zin}) translate(${-px} ${-py})`}>
+        <Sea f={f} d={d} id={id} />
+        <Specks f={f} id={id} rise={f * 3} n={80} />
+        <Glow x={bx} y={by} r={560} id={id} a={0.9} />
+        {youK > 0.01 && <g opacity={youK}><You f={f} id={id} x={bx} y={by - 240 + (1 - youK) * 200} s={0.46 * (0.4 + 0.6 * youK)} pose="stand" expr="worried" /></g>}
+        {r >= 0 && r < 26 && <circle cx={bx} cy={by} r={60 + r * 32} fill="none" stroke="#FFFFFF" strokeWidth={14 * (1 - r / 26)} opacity={1 - r / 26} />}
+        {r >= 0 && r < 8 && <circle cx={bx} cy={by} r={300} fill="#FFFFFF" opacity={0.5 * (1 - r / 8)} filter={`url(#blur40-${id})`} />}
+        {r >= 0 && <YSub T={f} x={bx} y={by} s={1.3 * form} beam={0} cup={1} bag={false} youExpr={f > win ? 'smile' : 'worried'} pipExpr="smile" />}
+      </g>
       <Vignette id={id} />
-      {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.3)} x={120} y={860} text={p.tag} />}
     </g>
   );
 }
@@ -497,7 +545,7 @@ function Title({f, len, line}) {
       <Walls k={0.45} rise={f * 6} color="#02070B" rim="#2F6F86" />
       <Specks f={f} id={id} rise={f * 6} n={110} />
       <g style={{mixBlendMode: 'screen'}}><path d={`M ${bx - 235} ${by + 20} L -200 ${by - 300} L -200 ${by + 520} Z`} fill="#FFF3C4" opacity={0.16} filter={`url(#blur18-${id})`} /></g>
-      <g filter={`url(#uw-${id})`}><YSub T={f} x={bx} y={by} s={0.62} beam={0} cup={1} youExpr="determined" pipExpr="smile" /></g>
+      <YSub T={f} x={bx} y={by} s={0.62} beam={0} cup={1} bag={false} youExpr="determined" pipExpr="smile" />
       <circle cx={bx - 236 * 0.62} cy={by + 12} r={18} fill="#FFFBE6" />
       <Vignette id={id} />
       <g filter={`url(#soft-${id})`}>
@@ -506,9 +554,61 @@ function Title({f, len, line}) {
         <text x={W / 2 + 40} y={420 + (1 - k2) * 40} fontFamily={NUN} fontWeight={900} fontSize={230} fill="#FFC23D" opacity={clamp(k2 * 1.5, 0, 1)}>11 KM</text>
       </g>
       <Tag f={f} a={slam + 16} x={W / 2} y={530} text="THE MARIANA TRENCH" anchor="middle" size={36} rule={false} />
-      <DepthBar f={f} d={L(f, slam + 16, len, 0, 10935)} a={slam + 16} y={900} op={clamp(k3, 0, 1)} />
+      <DepthBar f={f} d={L(f, slam + 16, Math.max(slam + 40, len - 36), 0, 10935)} a={slam + 16} y={900} op={clamp(k3, 0, 1)} />
     </g>
   );
 }
 
-export const DEEP_SHOTS = {dp_float: Float, dp_yank: Yank, dp_real: Real, dp_sink: Sink, dp_section: Section, dp_close: Close, dp_sub: Sub, dp_title: Title};
+// ───────────── dp_snow: a magnifier on one speck of marine snow (dead plankton, a faecal pellet), then 'not the fun kind' ─────────────
+function SnowLens({f, len, line}) {
+  const id = 'n' + line.idx, p = P(line);
+  const open = at(line, p.open || 'bits', 0.1), poop = at(line, p.poop || 'poop', 0.5), fun = at(line, p.fun || 'fun', 0.75);
+  const k = clamp(sp(f, open - 4, 'card'), 0, 1.1);
+  const lx = 1180, ly = 470, R0 = 330;
+  const sx = 640, sy = 560;   // the speck under the lens
+  const R = rng(5);
+  return (
+    <g>
+      <Defs id={id} d={1200} />
+      <Sea f={f} d={1200} id={id} />
+      <Specks f={f} id={id} rise={f * 2} n={110} op={1.1} />
+      <circle cx={sx} cy={sy} r={7} fill="#F1F7FA" />
+      {/* the lens: a ring, a handle, a line from the speck */}
+      <g opacity={clamp(k * 1.4, 0, 1)}>
+        <path d={`M ${sx + 10} ${sy - 6} L ${lx - R0 * k * 0.92} ${ly + 40}`} stroke="#E6F6FF" strokeWidth={3} strokeDasharray="10 8" opacity={0.6} />
+        <clipPath id={`lens-${id}`}><circle cx={lx} cy={ly} r={R0 * k} /></clipPath>
+        <circle cx={lx} cy={ly} r={R0 * k} fill="#0B2E40" />
+        <g clipPath={`url(#lens-${id})`}>
+          {/* a clump: bits of dead plankton (diatom discs, a copepod's empty shell, threads) stuck together */}
+          <g transform={`translate(${lx} ${ly}) rotate(${f * 0.15}) scale(${0.85 + 0.15 * k})`}>
+            <path d="M -170 -40 C -120 -120 40 -150 130 -80 C 200 -20 170 90 80 130 C -30 170 -170 120 -190 30 Z" fill="#9FB7A6" opacity={0.55} />
+            {[...Array(9)].map((_, i) => <circle key={i} cx={-120 + R() * 240} cy={-90 + R() * 180} r={16 + R() * 18} fill="#C9D9C4" stroke="#7E9C88" strokeWidth={4} opacity={0.9} />)}
+            {[...Array(9)].map((_, i) => <circle key={'d' + i} cx={-110 + R() * 220} cy={-80 + R() * 160} r={4} fill="#5F7D6A" />)}
+            <path d="M -40 -30 C -10 -70 50 -60 60 -20 C 66 10 40 40 0 36 C -36 32 -56 0 -40 -30 Z" fill="none" stroke="#E2D7B8" strokeWidth={5} />
+            <path d="M 60 -20 L 120 -60 M 58 -10 L 126 -30 M -40 -30 L -100 -80" stroke="#E2D7B8" strokeWidth={4} />
+            {[...Array(6)].map((_, i) => <path key={'t' + i} d={`M ${-150 + i * 50} ${80 + (i % 2) * 20} q 30 -40 60 0`} stroke="#B5C9BD" strokeWidth={3} fill="none" />)}
+            {/* the faecal pellet */}
+            <g opacity={f >= poop - 2 ? 1 : 0.6}><ellipse cx={95} cy={60} rx={46} ry={22} fill="#7A5230" stroke="#4A3018" strokeWidth={5} transform="rotate(-24 95 60)" /></g>
+          </g>
+        </g>
+        <circle cx={lx} cy={ly} r={R0 * k} fill="none" stroke="#DCE7EE" strokeWidth={16} />
+        <path d={`M ${lx + R0 * k * 0.72} ${ly + R0 * k * 0.72} l ${120 * k} ${120 * k}`} stroke="#9AA6B2" strokeWidth={34} strokeLinecap="round" />
+      </g>
+      <Tag f={f} a={open + 8} x={lx - R0} y={ly + R0 + 80} text="Dead plankton" size={30} rule={false} b={poop - 4} />
+      {f >= poop - 3 && <g opacity={clamp((f - poop + 3) / 6, 0, 1)}>
+        <path d={`M ${lx - 40} ${ly + R0 + 26} L ${lx + 60} ${ly + 110}`} stroke="#FFC23D" strokeWidth={6} />
+        <text x={lx - 60} y={ly + R0 + 96} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={64} fill="#FFC23D" filter={`url(#soft-${id})`}>FISH POOP</text>
+      </g>}
+      {/* 'not the fun kind of snow': a snowflake, crossed out */}
+      {f >= fun - 3 && (() => { const kk = clamp(sp(f, fun - 3, 'bounce'), 0, 1.2); return (
+        <g transform={`translate(330 300) scale(${kk})`} opacity={clamp(kk, 0, 1)}>
+          {[0, 60, 120].map((a) => <path key={a} d="M 0 -90 L 0 90 M -22 -62 L 0 -40 L 22 -62 M -22 62 L 0 40 L 22 62" stroke="#FFFFFF" strokeWidth={12} strokeLinecap="round" fill="none" transform={`rotate(${a})`} />)}
+          <circle r={128} fill="none" stroke="#FF5A4E" strokeWidth={18} />
+          <path d="M -90 90 L 90 -90" stroke="#FF5A4E" strokeWidth={18} strokeLinecap="round" />
+        </g>); })()}
+      <Vignette id={id} />
+    </g>
+  );
+}
+
+export const DEEP_SHOTS = {dp_snow: SnowLens, dp_float: Float, dp_yank: Yank, dp_real: Real, dp_sink: Sink, dp_section: Section, dp_close: Close, dp_sub: Sub, dp_title: Title};

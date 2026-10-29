@@ -1192,6 +1192,34 @@ Agents never spend money without the owner's explicit approval.
     `inset: 'tunnel'` and compare `tags`, Bag2019 push-in, question cards with `pause` (a beat before the answer). Sound effects as spec
     add_accents (the library has latch clicks, a deep submerge, booms, braams, metal bangs). Tarek: voice tempo 0.92, music -6.5.
     `sound_agent.merge_settings` merges add_accents line by line (a round's 3-item list had wiped the other 7).
+  - The "deep" look (2.75.0; the owner 10-29 09:45 on the Owen full video, "better but I don't fully like it": learn from TheBioGuys'
+    "Could you survive a nanosecond in the Mariana Trench?"; "switch between cartoon and reality", "level up our cartoon to the level he
+    starts with", "transitions like him", "learn the tone"; "I am really looking for another level now"). Study (captions + ~45 frames,
+    never downloaded): Atlas-HQ/review/builder-research.md section 7. Real footage: `content/project-5/footage/*.mp4` (silent 1920x1080
+    H.264 30 fps, made by scratchpad footage_dl.py from Wikimedia Commons; public domain US government (NOAA Ocean Exploration, NASA SVS,
+    USFWS) or CC0; `credits.json`), copied by `story_sample.install_photos` into the app's public/footage/ and credited in credits.txt.
+    Opening.jsx `FootageLayer` (under the shot's svg): line `p.footage` {src, from s, rate, zoom [a, b], focus [x, y], sat/con/bri,
+    tint (soft-light colour, false = none), center [u, v] + aspect (a wrapping world map held on a point: NASA's draining-oceans at
+    2:1, `draining-oceans-2to1.mp4`), credit}. `story/src/deep.jsx` `DEEP_SHOTS`: dp_float (from under the surface, sun and shafts),
+    dp_yank (a shadow with one pale eye, a tapered tentacle `limb`, the camera follows you down; motion blur), dp_real (footage + `BigWords`
+    (one <text>, each word shown on its spoken word), `Tag` (thin spaced caps + a gold rule), `DepthBar`, credit top-left, p.flash = a
+    lamp flare in, p.pin = a pulsing pin + label), dp_sink (the depth jumps to p.marks on their words, walls closing in, p.dip),
+    dp_section (Everest dropped into the trench, 2 KM bracket), dp_close (close on you; p.mode 'air' = the AIR ring draining),
+    dp_sub (a ring flash, Pip's sub around you, lamps with lit specks on 'front'), dp_title (YOU vs 11 KM). The water colours by depth
+    (`water(d)`), the cast gets an underwater colour matrix (`uw-<id>`), ids carry the line index (two shots overlap in a crossfade).
+    Spec: scratchpad make_deep_sample.py -> samples/trench-deep.json (14 lines, ~75 s, Owen v4 one take; lines rewritten in his tone).
+    Quick look before any voice: scratchpad deep_preview.py <spec> <abs out> (estimated word times, GIF at 2 fps -> sheet).
+    2.75.1 (Israa on the first render: redo 6, "a real step up" in the middle; Tarek round 1): the cast's `uw-<id>` filter also draws a
+    rim of light (top-left edges, the glow's colour) and a soft shade on the right side; dp_float rebuilt (deeper teal under the bright
+    surface, pose 'wade' bobbing, a beat on 'warm' (glints) / 'pacific' (pull back) / 'eyes' (in on the face) / 'sun' (a flare), the
+    shadow and its eye creeping up at the end); dp_snow = a magnifier on one speck of marine snow (dead plankton, a faecal pellet, FISH
+    POOP, a crossed-out snowflake on 'fun'); dp_sink lands exactly on each spoken number (no spring overshoot) and hides the bar's
+    reading while the big number shows; dp_sub = a ring, the sub forms around you, in on the porthole on 'window', the view out of the
+    window with two lamp beams on 'front' (then the footage); the sub is never water-graded (it read olive); YSub `bag` (false = no mesh
+    bag); captions skip a phrase that the shot's p.big already shows; footage `hue`, `tint_a` (the green comb jelly graded into the navy
+    sea). A late label (`tag_on` near a line's end) holds the picture into the next line (story_sample's reveal hold): put labels early
+    on a line that hands over to a "This ..." line. Footage motion warnings on handheld clips are the camera operator's, not ours
+    (measured: no repeated frames; the source has the same frame-to-frame pattern).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

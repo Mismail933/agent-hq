@@ -51,14 +51,14 @@ function Water({m, T, glow = 0, uid = ''}) {
 }
 
 // ───────────── Pip's yellow sub (TIS look), with the cup in its mesh bag ─────────────
-export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smile', youExpr = 'worried', hatchOpen = 0, flip = false, youOut = false}) {
+export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smile', youExpr = 'worried', hatchOpen = 0, flip = false, youOut = false, bag = true}) {
   const prop = T * 0.4;
   return (
     <g transform={`translate(${x} ${y}) scale(${flip ? -s : s} ${s})`}>
       {beam > 0 && <path d="M -260 30 L -1500 -380 L -1500 520 Z" fill="#FFF6C8" opacity={0.22 * beam} />}
       {/* the mesh bag on its clip, the cup inside (cup = its size, 1 = new) */}
-      <path d="M 60 120 L 60 170" stroke={INK} strokeWidth={6} />
-      <g transform="translate(60 230)">
+      {bag && <path d="M 60 120 L 60 170" stroke={INK} strokeWidth={6} />}
+      {bag && <g transform="translate(60 230)">
         <path d="M -48 -60 L 48 -60 L 40 50 L -40 50 Z" fill="none" stroke="#E5E7EB" strokeWidth={4} />
         {[...Array(5)].map((_, i) => <path key={i} d={`M ${-46 + i * 23} -60 L ${-38 + i * 19} 50`} stroke="#E5E7EB" strokeWidth={3} />)}
         {[...Array(4)].map((_, i) => <path key={'h' + i} d={`M -46 ${-34 + i * 22} L 46 ${-34 + i * 22}`} stroke="#E5E7EB" strokeWidth={3} />)}
@@ -66,7 +66,7 @@ export function YSub({T, x = 0, y = 0, s = 1, beam = 0, cup = 1, pipExpr = 'smil
           <path d="M -28 -36 L 28 -36 L 20 34 L -20 34 Z" fill="#FFFFFF" {...st(4)} />
           <path d="M -14 -6 q 8 -10 14 0 q 6 10 14 0" stroke="#2563EB" strokeWidth={4} fill="none" />
         </g>
-      </g>
+      </g>}
       {/* skids, fins, propeller */}
       <path d="M -170 118 L 170 118" stroke={INK} strokeWidth={10} strokeLinecap="round" />
       <path d="M -110 80 L -130 118 M 110 80 L 130 118" stroke={INK} strokeWidth={8} />

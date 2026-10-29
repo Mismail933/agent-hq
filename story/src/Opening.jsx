@@ -345,7 +345,7 @@ const FootageLayer = ({line, len}) => {
   if (!v || !v.src) return null;
   const [z0, z1] = v.zoom || [1.03, 1.1];
   const [fx, fy] = v.focus || [0.5, 0.5];
-  const look = {filter: `saturate(${v.sat != null ? v.sat : 0.92}) contrast(${v.con != null ? v.con : 1.06}) brightness(${v.bri != null ? v.bri : 0.96})`};
+  const look = {filter: `saturate(${v.sat != null ? v.sat : 0.92}) contrast(${v.con != null ? v.con : 1.06}) brightness(${v.bri != null ? v.bri : 0.96})${v.hue ? ` hue-rotate(${v.hue}deg)` : ''}`};
   if (v.center) {
     // a world map that wraps round (equirectangular, v.aspect 2): the point v.center [u, v] of the frame is held at the screen's
     // middle while the camera zooms in; copies to the left and right fill what lies past the date line
@@ -357,7 +357,7 @@ const FootageLayer = ({line, len}) => {
           <OffthreadVideo key={k} src={staticFile(v.src)} startFrom={Math.round((v.from || 0) * 30)} playbackRate={v.rate || 1} muted
             style={{position: 'absolute', left: left + k * vw, top, width: vw, height: vh, ...look}} />
         ))}
-        {v.tint && <div style={{position: 'absolute', inset: 0, background: v.tint, mixBlendMode: 'soft-light', opacity: 0.45}} />}
+        {v.tint && <div style={{position: 'absolute', inset: 0, background: v.tint, mixBlendMode: 'soft-light', opacity: v.tint_a != null ? v.tint_a : 0.45}} />}
       </AbsoluteFill>
     );
   }
@@ -365,8 +365,8 @@ const FootageLayer = ({line, len}) => {
     <AbsoluteFill style={{overflow: 'hidden', background: '#000'}}>
       <OffthreadVideo src={staticFile(v.src)} startFrom={Math.round((v.from || 0) * 30)} playbackRate={v.rate || 1} muted
         style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${lin(f, 0, len, z0, z1)})`, transformOrigin: `${fx * 100}% ${fy * 100}%`,
-          filter: `saturate(${v.sat != null ? v.sat : 0.92}) contrast(${v.con != null ? v.con : 1.06}) brightness(${v.bri != null ? v.bri : 0.96})`}} />
-      {v.tint !== false && <div style={{position: 'absolute', inset: 0, background: v.tint || '#0B3A52', mixBlendMode: 'soft-light', opacity: 0.45}} />}
+          ...look}} />
+      {v.tint !== false && <div style={{position: 'absolute', inset: 0, background: v.tint || '#0B3A52', mixBlendMode: 'soft-light', opacity: v.tint_a != null ? v.tint_a : 0.45}} />}
     </AbsoluteFill>
   );
 };
@@ -465,6 +465,9 @@ const CaptionLayer = ({lines}) => {
   const ci = chunks.findIndex((c, k) => frame >= ws[c[0]][1] && (k + 1 >= chunks.length || frame < ws[chunks[k + 1][0]][1]));
   if (ci < 0) return null;
   const c = chunks[ci];
+  // 2.75.0 (Israa: words shown twice): a phrase the screen already shows in big type (p.big cue words) gets no caption pill
+  const big = ((l.p || {}).big || []).map((b) => String(b.on || '').toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
+  if (big.length && c.some((i) => big.some((b) => ws[i][0].toLowerCase().replace(/[^a-z0-9']/g, '').startsWith(b)))) return null;
   const now = c.reduce((a, i) => (ws[i][1] <= frame ? i : a), c[0]);
   return (
     <AbsoluteFill style={{justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 46}}>
