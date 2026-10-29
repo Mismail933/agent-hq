@@ -1222,6 +1222,20 @@ Agents never spend money without the owner's explicit approval.
     sea). A late label (`tag_on` near a line's end) holds the picture into the next line (story_sample's reveal hold): put labels early
     on a line that hands over to a "This ..." line. Footage motion warnings on handheld clips are the camera operator's, not ours
     (measured: no repeated frames; the source has the same frame-to-frame pattern).
+    2.75.2-2.75.6 (Israa 7 -> 7.5 -> 7.5, Tarek 2 more rounds): dp_title on the absolute clock + slam 'none' (a question line, then the
+    answer line); captions (Opening `chunksOf`) split at punctuation, then at phrase boundaries (`CAP_END_BAD`, `CAP_BREAK_BEFORE`,
+    `CAP_PAIRS`; <= 8 words / 38 characters; a punctuated tail may be 2 words; 'So,' joins what follows), end at the next picture's
+    cut, and skip p.big / p.nocap words; Tag = white with a dark halo; the cast pose 'backfloat' [35, -4] (the arm above the water along
+    the body) and 'float'; dp_sink = a slow tumble around his middle (pose 'star', rotation on the absolute clock), p.surface (the
+    bright surface shrinking away), p.to (a steady descent), p.walls_on, p.push_on; dp_real p.marks (spoken depths over footage), the
+    credit bottom right when a depth bar is up, p.flash = an additive bloom from the window; dp_close p.push_on, p.bar_on (a video
+    player's bar snaps to the end), Defs `gd` (the cast's grade depth); dp_sub = a round porthole view with warm beams and lit
+    specks, the sub under `lit-<id>` (rim + shade, stays yellow), YSub `solo` (one face); the yank ends in a bubble burst that hides
+    him before the next shot fades in. Slowed footage: never playbackRate < 1 (Remotion repeats frames = judder); make a slowed copy
+    with ffmpeg: `framerate` blend is smooth at exactly 50% (but streaks), at 75% it pulses every 4 frames; `minterpolate`
+    mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1 at 75% is as smooth as the source (marine-snow-75m.mp4). A rushed line inside
+    a one-take voice: re-voice just that line (scratchpad revoice_q.py, ~50 characters) and set its `voice_file`. Patch one shot
+    into a finished render: scratchpad yam_patch.py <sample> <line index> after `story_sample --prep`.
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on

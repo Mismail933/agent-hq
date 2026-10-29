@@ -241,7 +241,7 @@ function Float({f, len, line}) {
   // the camera: close on you, a slow pull back on 'the Pacific' (endless water), in close on your face for 'eyes closed', back out
   const zz = f < pac ? L(f, 0, pac, 1.12, 1.18) : f < eyes - 4 ? L(f, pac, eyes - 4, 1.18, 0.86) : L(f, eyes - 4, eyes + 14, 0.86, 2.3);
   const z = f > sunW + 6 ? L(f, sunW + 6, len, zz, zz * 0.9) : zz;
-  const hx = 700, bob = Math.sin(f * 0.06) * 7, hy = SURF_Y - 6 + bob;   // your head: the face just above the water
+  const hx = 700, bob = Math.sin(f * 0.06) * 7, hy = SURF_Y - 44 + bob;   // your head: face and chest above the water
   const fx = f >= eyes - 4 ? L(f, eyes - 4, eyes + 14, W / 2, hx) : W / 2, fy = f >= eyes - 4 ? L(f, eyes - 4, eyes + 14, H / 2, hy + 10) : H / 2;
   const glint = f >= warm ? clamp(1 - Math.abs(f - warm - 12) / 22, 0, 1) : 0;
   const flare = f >= sunW - 4 ? clamp(1 - Math.abs(f - sunW - 10) / 26, 0, 1) : 0;
@@ -294,7 +294,7 @@ function Yank({f, len, line}) {
   const after = clamp((f - pull - 10) / 36, 0, 1);
   const cam = yank * 440 + after * 860;   // the camera follows you down: the surface leaves the top of the frame
   const shake = f >= pull && f < pull + 16 ? noise2D('yk', f * 0.6, 0) * 16 * (1 - (f - pull) / 16) : 0;
-  const s = 0.44, yx = 700, yy0 = SURF_Y - 6 + Math.sin(f * 0.06) * 6 * (1 - reach);
+  const s = 0.44, yx = 700, yy0 = SURF_Y - 44 + Math.sin(f * 0.06) * 6 * (1 - reach);
   const rot = -86 + 86 * yank;
   const drag = yank * 520 + after * 900;   // how far you are pulled down
   // the ankle (figure units 0, 1040) on screen
@@ -378,6 +378,8 @@ function Sink({f, len, line}) {
   const sway = Math.sin(f * 0.04) * 14;
   const k = marks.findIndex(([a]) => f < a), cur = k < 0 ? marks.length - 1 : k - 1;
   const dark = p.dip ? clamp((f - (len - 14)) / 12, 0, 1) : 0;   // a dip to dark into the next shot
+  const numOut = p.num_off ? clamp((f - at(line, p.num_off, 0.4) - 6) / 10, 0, 1) : 0;
+  const lightOut = p.dark_on ? L(f, at(line, p.dark_on, 0.5), at(line, p.dark_on, 0.5) + 14, 1, 0.15) : 1;
   return (
     <g>
       <Defs id={id} d={d} />
@@ -386,9 +388,9 @@ function Sink({f, len, line}) {
       <g transform={`translate(${W / 2} ${H / 2}) scale(${pz}) translate(${-W / 2} ${-H / 2})`}>
       <Specks f={f} id={id} rise={rise} n={110} op={f > push ? L(f, push, len, 1, 2.2) : 1} />
       {p.surface && <g><Surface f={f} y={L(f, 0, len, 190, -30)} id={id} bright={L(f, 0, len, 1, 0.5)} /><Rays f={f} k={1} id={id} top={L(f, 0, len, 190, -30)} gain={1.5} /></g>}
-      <Glow x={800 + sway} y={500} r={520} id={id} a={0.95} />
+      <Glow x={800 + sway} y={500} r={520} id={id} a={0.95 * lightOut} />
       {/* a slow tumble around his middle (the absolute clock, so it carries from shot to shot) */}
-      <g transform={`translate(${800 + sway} ${p.surface ? L(f, 0, len, 560, 500) : 500}) rotate(${((f + (line.start || 0)) * 0.42) % 360 - 20})`}>
+      <g transform={`translate(${800 + sway} ${p.surface ? L(f, 0, len, 560, 500) : 500}) rotate(${40 + ((f + (line.start || 0)) * 0.2) % 100})`}>
         <You f={f} id={id} x={0} y={-545 * (p.surface ? L(f, 0, len, 0.5, 0.42) : 0.5)} s={p.surface ? L(f, 0, len, 0.5, 0.42) : 0.5} pose={p.pose || 'star'} expr={p.expr || 'worried'} />
       </g>
       {[0, 40, 80, 120, 160].map((o) => <Bubbles key={o} x={800 + sway} y={360} f={f} f0={o - 30} n={3} s={0.8} seed={3 + o} op={0.7} />)}
@@ -396,7 +398,7 @@ function Sink({f, len, line}) {
       <Vignette id={id} />
       <DepthBar f={f} d={d} a={0} value={cur < 0} />
       {cur >= 0 && (() => { const [a, m] = marks[cur]; const kk = sp(f, a - 2, 'heavy');
-        return <text x={1500} y={600 + (1 - kk) * 26} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={150} fill="#FFFFFF" opacity={clamp((f - a + 4) / 9, 0, 1)}
+        return <text x={1500} y={600 + (1 - kk) * 26} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={150} fill="#FFFFFF" opacity={clamp((f - a + 4) / 9, 0, 1) * (1 - numOut)}
           filter={`url(#soft-${id})`}>{fmt(m)} M</text>; })()}
       {dark > 0 && <rect x={0} y={0} width={W} height={H} fill="#000" opacity={dark} />}
     </g>
@@ -494,9 +496,9 @@ function Close({f, len, line}) {
         <Sea f={f} d={p.depth || 300} id={id} />
         <Specks f={f} id={id} rise={f * 4} n={80} />
         <Glow x={820 + sway} y={500} r={560} id={id} a={1} />
-        <You f={f} id={id} x={820 + sway} y={330 + lift} s={0.62} rot={Math.sin(f * 0.03) * 4} pose="stand" expr={expr} look={p.look_on && f >= at(line, p.look_on, 0.3) ? 1 : 0} />
-        <Bubbles x={826 + sway} y={392 + lift} f={f} f0={puff} n={18} s={1.3} seed={4} />
-        {air && f > puff && <Bubbles x={826 + sway} y={392 + lift} f={f} f0={puff + 26} n={10} s={1.0} seed={9} />}
+        <You f={f} id={id} x={820 + sway} y={250 + lift} s={1.0} rot={5 + Math.sin(f * 0.025) * 5} pose="backfloat" expr={expr} look={p.look_on && f >= at(line, p.look_on, 0.3) ? 1 : 0} />
+        <Bubbles x={826 + sway} y={350 + lift} f={f} f0={puff} n={18} s={1.4} seed={4} />
+        {air && f > puff && <Bubbles x={826 + sway} y={350 + lift} f={f} f0={puff + 26} n={10} s={1.1} seed={9} />}
       </g>
       <Vignette id={id} />
       {air && (() => {
