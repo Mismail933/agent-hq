@@ -303,6 +303,7 @@ Judge the mix and the narration. Then fix what the sound settings can fix (you m
 - no_beds: places to leave without a bed (sea, deep, jungle, night, river, rain, cabin)
 - beds: {place: [searches]} another recording for a place; accents: {shot: [searches]} another sound for that scene's accent
 - drop_accents: [seconds or shot names]; add_accents: [{line (1-based), word (the spoken word it lands on), for (a search)}]
+  (add_accents merge line by line with the earlier rounds: give only the lines you change; {line, word, for: ""} removes that line's sound)
 - voice (when the narrator is Chatterbox, the free voice on this PC; changing it costs no credits, only a few minutes of re-voicing):
   THE OWNER'S RULE (2026-10-28): the pace must be EVEN ("slow then fast suddenly then slow ... inhuman"). A video with style "even"
   keeps it: only tempo (0.92..1.08, one speed for the WHOLE video), gap and max_pause may change there; wpm, pace_spread and the
@@ -389,6 +390,10 @@ def merge_settings(old, new):
     sound must not undo the seabed's), lists kept unless the round gives its own."""
     out = dict(old)
     for k, v in new.items():
+        if k == "add_accents" and isinstance(v, list):   # per line: a round that swaps one sound keeps the others (a 3-item round
+            lines = {a.get("line") for a in v}            # wiped 7 sounds Tarek had said he kept, on the trench video 2026-10-29)
+            out[k] = [a for a in (old.get(k) or []) if a.get("line") not in lines] + v
+            continue
         out[k] = {**(old.get(k) or {}), **v} if k in ("beds", "accents", "music", "voice") and isinstance(v, dict) else v
     if (old.get("voice") or {}).get("style") == "even":   # the owner's even-pace rule (10-28) is not Tarek's to switch off
         out["voice"]["style"] = "even"

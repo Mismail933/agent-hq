@@ -1195,6 +1195,10 @@ def scene_sound(lines, total, music, sfx):
             continue
         w = re.sub(r"[^a-z0-9]", "", str(x.get("word", "")).lower())
         at_ = next((s for wd, s, e in l["words"] if w and re.sub(r"[^a-z0-9]", "", wd.lower()).startswith(w)), l["t_start"] + 0.2)
+        if not str(x.get("for", "x")).strip():   # an empty search = the sound agent removed this line's sound
+            continue
+        if any(abs(at_ - float(d)) < 0.6 for d in (SOUND.get("drop_accents") or []) if not isinstance(d, str)):
+            continue
         NEED[0] = x.get("need") or NEEDS.get(l["shot"])
         if real(sfx, at_ - 0.03, [x.get("for") or "impact"], float(x.get("dur", 2.0)), float(x.get("gain", 0.7)), hit=True):
             ACCENTS.append(round(at_, 2))
