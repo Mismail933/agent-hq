@@ -130,8 +130,8 @@ const snowcap = (g) => {
   const p = (u, v) => `${540 + u * 400} ${FLOOR - v * h}`;
   return `M ${p(-0.16, 0.86)} L ${p(-0.06, 0.93)} L ${p(0, 1)} L ${p(0.08, 0.95)} L ${p(0.2, 0.8)} L ${p(0.12, 0.78)} L ${p(0.04, 0.84)} L ${p(-0.04, 0.8)} L ${p(-0.1, 0.83)} Z`;
 };
-function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1}) {
-  const ocean = OCEAN_STOPS.map(([km, c]) => [km, mix(c, '#02060C', dark * (km < 0.3 ? 0.4 : 0.75))]);
+function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1, ruler = 1}) {
+  const ocean = OCEAN_STOPS.map(([km, c]) => [km, mix(c, '#02060C', dark * (km < 0.3 ? 0.4 : 0.9))]);
   return (
     <g>
       <linearGradient id="v-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mix('#5AA9E6', '#1B2A44', dark)} /><stop offset="1" stopColor={mix('#CDEBFF', '#3B5578', dark)} /></linearGradient>
@@ -161,7 +161,7 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1}) {
         </g>
       )}
       {/* the depth ruler down the left edge */}
-      <g opacity={0.95}>
+      <g opacity={0.95 * ruler}>
         <path d={`M 34 ${SURF} L 34 ${FLOOR}`} stroke="#E6F2FF" strokeWidth={4} opacity={0.6} />
         {[...Array(12)].map((_, k) => <g key={k}><path d={`M 34 ${SURF + k * KM} l ${k % 5 ? 14 : 30} 0`} stroke="#E6F2FF" strokeWidth={k % 5 ? 4 : 7} opacity={0.8} />
           {k % 5 === 0 && k > 0 && <text x={72} y={SURF + k * KM + 16} fontFamily={OSWALD} fontWeight={700} fontSize={48} fill="#E6F2FF" stroke={INK} strokeWidth={6} paintOrder="stroke">{k} KM</text>}</g>)}
@@ -192,7 +192,7 @@ export const VShort = ({lines = [], captions = true}) => {
     cKick = wordAt(L3, 'kick', 0.55), cDrop = wordAt(L3, 'dropping', 0.65), cDark = wordAt(L3, 'dark', 0.85), cDarker = wordAt(L3, 'darker', 0.95);
   const cEleven = wordAt(L4, 'eleven', 0.3), cDeepest = wordAt(L4, 'deepest', 0.6), cWay = wordAt(L4, 'way', 0.95);
   const cBottom = wordAt(L5, 'bottom', 0.4), cChannel = wordAt(L5, 'channel', 0.9), cWhat = wordAt(L5, "what's", 0.15), cWhole = wordAt(L5, 'whole', 0.6), cAt = wordAt(L5, 'at', 0.3);
-  const tIn = L2.start - 4, tDive = cUnder + 30, tOut = L4.start - 2, tEnd = L5.start - 2;
+  const tIn = Math.max(L1.end - 2, L2.start - 16), tDive = cUnder + 30, tOut = L4.start - 2, tEnd = L5.start - 2;
   const end = (lines[lines.length - 1] || {}).until || L5.end + 60;
   const hand = [noise2D('hx', f * 0.02, 0) * 10, noise2D('hy', 0, f * 0.02) * 8];   // a hand-held drift: the camera never sits dead still
 
@@ -229,7 +229,7 @@ export const VShort = ({lines = [], captions = true}) => {
           <Chip x={560} y={120} text="THE DEEPEST PLACE ON EARTH" s={1 + 0.03 * Math.sin(f * 0.15)} anchor="middle" rot={-1} size={52} fill="#FFFFFF" />
           {f >= LAND + 2 && <Chip x={600} y={860} text="MOUNT EVEREST" s={clamp(sp(f, LAND + 2, 'sticker'), 0, 1.1)} anchor="middle" fill="#FFFFFF" rot={-3} />}
           {f >= cTwo && <Chip x={860} y={300} text="2 KM OF WATER" s={clamp(sp(f, cTwo + 4, 'sticker'), 0, 1.1)} anchor="end" rot={2} size={58} />}
-          {f >= cNine && <Chip x={30} y={360} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
+          {f >= cNine && <Chip x={600} y={960} anchor="middle" text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
         </g>
       </g>
     );
@@ -253,7 +253,7 @@ export const VShort = ({lines = [], captions = true}) => {
       <g transform={`translate(${VW / 2 + shake} ${VH / 2}) scale(${zoomIn}) translate(${-560 + hand[0] * 0.6} ${-960 - camY + hand[1] * 0.6})`}>
         <linearGradient id="v-sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#4FA3E6" /><stop offset="1" stopColor="#D9F0FF" /></linearGradient>
         <rect x={-200} y={-200} width={VW + 400} height={sea + 260} fill="url(#v-sky2)" />
-        <Sun x={770} y={640} r={80} f={f} heat={heat} />
+        <Sun x={660} y={690} r={56} f={f} heat={heat} />
         {heat > 0.05 && [...Array(4)].map((_, i) => <path key={i} d={`M ${300 + i * 60} ${880 - ((f * 2 + i * 20) % 60)} q 12 -14 0 -28 q -12 -14 0 -28`} fill="none" stroke="#FF8C42" strokeWidth={6} opacity={0.7 * heat} strokeLinecap="round" />)}
         <linearGradient id="v-under" gradientUnits="userSpaceOnUse" x1="0" y1={sea} x2="0" y2={sea + 1800}><stop offset="0" stopColor="#3FB0E8" /><stop offset="1" stopColor="#1C6EA8" /></linearGradient>
         <path d={wavePath(f, sea, 12, 0, -200, VW + 200, sea + 2400)} fill="url(#v-under)" stroke={INK} strokeWidth={6} />
@@ -309,7 +309,7 @@ export const VShort = ({lines = [], captions = true}) => {
           return <g key={i} transform={`translate(${x} ${y}) scale(${1 + (i % 2) * 0.2})`} opacity={0.75}><path d="M -26 0 C -10 -14 14 -14 26 0 C 14 14 -10 14 -26 0 Z M -26 0 L -42 -12 L -42 12 Z" fill="#0E3B33" /></g>; })}
         {f > cGrey && [...Array(14)].map((_, i) => { const R = rng(70 + i); const x = R() * VW, y = R() * VH, blink = Math.max(0, Math.sin(f * 0.18 + i * 1.7));
           return <circle key={i} cx={x} cy={(y - rise * 0.5) % VH + (y - rise * 0.5 < 0 ? VH : 0)} r={6 + 6 * blink} fill={i % 3 ? '#5EEAD4' : '#60A5FA'} opacity={0.75 * blink * L(f, cGrey, cGrey + 20, 0, 1)} />; })}
-        {f > cDark - 30 && (() => { const t = (f - cDark + 30) / 80, x = 880 - t * 220, y = 1500 - t * 900;
+        {f > cDark - 30 && (() => { const t = (f - cDark + 30) / 80, x = 900 - t * 90, y = 1500 - t * 900;
           return <g transform={`translate(${x} ${y})`} opacity={L(f, cDark - 30, cDark, 0, 0.9)}>
             <circle cx={0} cy={0} r={90} fill="#67E8F9" opacity={0.12} />
             <path d="M -60 0 C -60 -60 60 -60 60 0 Z" fill="#A5F3FC" opacity={0.55} stroke="#CFFAFE" strokeWidth={4} />
@@ -327,7 +327,7 @@ export const VShort = ({lines = [], captions = true}) => {
         {/* the dark closes in: a hole of light around you that shrinks with depth */}
         <radialGradient id="v-dark" cx={0.5} cy={0.42} r={0.75 * light + 0.25}><stop offset="0.35" stopColor="#000" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.92} /></radialGradient>
         <rect width={VW} height={VH} fill="url(#v-dark)" opacity={1 - light * 0.8} />
-        {f >= cPop - 4 && f < cPop + 34 && <Chip x={head[0] + 150} y={420} text="POP!" s={clamp(sp(f, cPop - 4, 'sticker'), 0, 1.15) * (1 - L(f, cPop + 24, cPop + 34, 0, 1))} rot={8} size={70} />}
+        {f >= cPop - 4 && f < cPop + 34 && <Chip x={VW / 2 + (head[0] - camCx) * z + 90} y={VH / 2 + (head[1] - camCy) * z - 150} size={92} text="POP!" s={clamp(sp(f, cPop - 4, 'sticker'), 0, 1.15) * (1 - L(f, cPop + 24, cPop + 34, 0, 1))} rot={8} size={70} />}
         {/* the depth meter (top left, clear of the Shorts buttons) */}
         <g transform="translate(60 170)" opacity={fadeIn}>
           <rect x={0} y={0} width={360} height={150} fill="#0B1F3A" opacity={0.85} stroke={INK} strokeWidth={6} />
@@ -352,10 +352,10 @@ export const VShort = ({lines = [], captions = true}) => {
     world = (
       <g>
         <g transform={`translate(${VW / 2} ${VH / 2}) scale(${z}) translate(${-540 - hand[0] * 0.5} ${-cy - hand[1] * 0.5})`}>
-          <Section f={f} dark={0.97 - 0.12 * L(f, tOut + 30, tOut + 60, 0, 1)} />
-          <path d={`M 540 ${speckY} L 540 ${FLOOR - 30}`} stroke="#FDE047" strokeWidth={4} strokeDasharray="10 14" opacity={0.6 * L(f, cWay - 10, cWay + 10, 0, 1)} />
-          {k < 0.7 && <g opacity={1 - L(f, tOut + 14, tOut + 26, 0, 1)}><You f={f} pose="kick" expr="scared" x={540} y={speckY - (250 / z) * (1 - k)} s={0.33 / z} kick /></g>}
-          <g opacity={(1 - endK) * L(f, tOut + 8, tOut + 22, 0, 1)}><circle cx={540} cy={speckY} r={26 + 6 * Math.sin(f * 0.25)} fill="#FDE047" opacity={0.25} />
+          <Section f={f} dark={0.97 - 0.12 * L(f, tOut + 30, tOut + 60, 0, 1)} ruler={L(f, tOut + 46, tOut + 58, 0, 1)} />
+          <path d={`M 540 ${speckY} L 540 ${FLOOR - 30}`} stroke="#FDE047" strokeWidth={4} strokeDasharray="10 14" opacity={0.6 * L(f, tOut + 50, tOut + 62, 0, 1)} />
+          {k < 0.7 && <g opacity={1 - L(f, tOut + 12, tOut + 22, 0, 1)}><You f={f} pose="kick" expr="scared" x={540} y={speckY - (250 / z) * (1 - k)} s={0.33 / z} kick /></g>}
+          <g opacity={(1 - endK) * L(f, tOut + 22, tOut + 32, 0, 1)}><circle cx={540} cy={speckY} r={26 + 6 * Math.sin(f * 0.25)} fill="#FDE047" opacity={0.25} />
           <circle cx={540} cy={speckY} r={10} fill="#FFF7B0" stroke={INK} strokeWidth={4} /></g>
           <Bracket x={880} y0={SURF} y1={FLOOR} k={b} side={1} />
           {pin > 0.01 && <g transform={`translate(540 ${FLOOR}) scale(${clamp(pin, 0, 1.15)})`}>
@@ -369,7 +369,7 @@ export const VShort = ({lines = [], captions = true}) => {
         <rect width={VW} height={VH} fill="#04060A" opacity={0.75 * (1 - L(f, tOut, tOut + 14, 0, 1))} />
         <g opacity={1 - endK}>
           {f >= cEleven && <Chip x={860} y={680} text="10,935 M" s={clamp(sp(f, cEleven + 3, 'sticker'), 0, 1.1)} anchor="end" rot={-2} size={80} />}
-          {f >= cWay - 12 && <Chip x={590} y={speckSy - 130} text="YOU" s={clamp(sp(f, cWay - 12, 'sticker'), 0, 1.1)} rot={-6} size={54} fill="#FDE047" />}
+          {f >= tOut + 50 && <Chip x={590} y={speckSy - 130} text="YOU" s={clamp(sp(f, tOut + 50, 'sticker'), 0, 1.1)} rot={-6} size={54} fill="#FDE047" />}
         </g>
         {endK > 0 && (
           <g>
@@ -428,8 +428,9 @@ const VCaptions = ({lines, stop = 1e9}) => {
   const ci = ch.findIndex((c, k) => frame >= ws[c[0]][1] - 2 && (k + 1 >= ch.length || frame < ws[ch[k + 1][0]][1] - 2));
   if (ci < 0) return null;
   const c = ch[ci];
-  const lastEnd = ws[c[c.length - 1]][1] + 50;
-  if (ci + 1 >= ch.length && frame > lastEnd) return null;
+  const lastEnd = ws[c[c.length - 1]][1] + 18;
+  const nextStart = ci + 1 < ch.length ? ws[ch[ci + 1][0]][1] - 2 : 1e9;
+  if (frame > lastEnd && nextStart - frame > 6) return null;
   const now = c.reduce((a, i) => (ws[i][1] <= frame ? i : a), c[0]);
   const s = 0.85 + 0.15 * clamp((frame - ws[c[0]][1] + 2) / 3, 0, 1);
   return (
