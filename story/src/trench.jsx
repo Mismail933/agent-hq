@@ -136,7 +136,7 @@ function Section({f, grow = 0, dark = 0, sunHeat = 0, drop = 0, squash = 1}) {
     <g>
       <linearGradient id="v-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mix('#5AA9E6', '#1B2A44', dark)} /><stop offset="1" stopColor={mix('#CDEBFF', '#3B5578', dark)} /></linearGradient>
       <rect x={-600} y={-1200} width={VW + 1200} height={SURF + 1260} fill="url(#v-sky)" />
-      {dark < 0.5 && <Sun x={1000} y={210} r={44} f={f} heat={sunHeat} />}
+      {dark < 0.5 && <Sun x={74} y={212} r={32} f={f} heat={sunHeat} />}
       <linearGradient id="v-sea" gradientUnits="userSpaceOnUse" x1="0" y1={SURF} x2="0" y2={FLOOR}>
         {ocean.map(([km, c]) => <stop key={km} offset={km / 11} stopColor={c} />)}
       </linearGradient>
@@ -191,7 +191,7 @@ export const VShort = ({lines = [], captions = true}) => {
   const cGreen = wordAt(L3, 'green', 0.1), cBlue = wordAt(L3, 'blue', 0.18), cGrey = wordAt(L3, 'grey', 0.26), cPop = wordAt(L3, 'pop', 0.38),
     cKick = wordAt(L3, 'kick', 0.55), cDrop = wordAt(L3, 'dropping', 0.65), cDark = wordAt(L3, 'dark', 0.85), cDarker = wordAt(L3, 'darker', 0.95);
   const cEleven = wordAt(L4, 'eleven', 0.3), cDeepest = wordAt(L4, 'deepest', 0.6), cWay = wordAt(L4, 'way', 0.95);
-  const cBottom = wordAt(L5, 'bottom', 0.4), cChannel = wordAt(L5, 'channel', 0.9), cWhat = wordAt(L5, "what's", 0.15), cWhole = wordAt(L5, 'whole', 0.6);
+  const cBottom = wordAt(L5, 'bottom', 0.4), cChannel = wordAt(L5, 'channel', 0.9), cWhat = wordAt(L5, "what's", 0.15), cWhole = wordAt(L5, 'whole', 0.6), cAt = wordAt(L5, 'at', 0.3);
   const tIn = L2.start - 4, tDive = cUnder + 30, tOut = L4.start - 2, tEnd = L5.start - 2;
   const end = (lines[lines.length - 1] || {}).until || L5.end + 60;
   const hand = [noise2D('hx', f * 0.02, 0) * 10, noise2D('hy', 0, f * 0.02) * 8];   // a hand-held drift: the camera never sits dead still
@@ -204,13 +204,15 @@ export const VShort = ({lines = [], captions = true}) => {
     const drop = L(f, 0, LAND, -880, 0, Easing.in(Easing.quad));
     const squash = f >= LAND ? 1 - 0.07 * Math.sin(clamp((f - LAND) / 9, 0, 1) * Math.PI) : 1;
     const jolt = f >= LAND && f < LAND + 14 ? Math.sin((f - LAND) * 2.4) * (LAND + 14 - f) * 1.6 : 0;
-    const cy = 960 + jolt, cx0 = 540;
-    const z = 1.0 + 0.05 * L(f, LAND, tIn, 0, 1);
+    const push = L(f, LAND, tIn, 0, 1, (t) => t);
+    const cy = 960 - 120 * push + jolt, cx0 = 540;
+    const z = 1.0 + 0.1 * push;
     const grow = 1;
     const b2 = sp(f, cTwo, 'snap'), b9 = sp(f, cNine, 'snap');
     // the zoom THROUGH the surface into the next scene (the signature move): from tIn the camera dives into the sea at x 540
     const zin = f >= tIn ? L(f, tIn, tIn + 14, 0, 1, Easing.in(Easing.quad)) : 0;
-    const zz = z * (1 + zin * 7), ccx = cx0 + hand[0] * (1 - zin), ccy = cy + (SURF + 30 - cy) * zin + hand[1] * (1 - zin);
+    const aim = L(f, tIn - 12, tIn + 2, 0, 1);
+    const zz = z * (1 + zin * 7), ccx = cx0 + (240 - cx0) * aim + hand[0] * (1 - aim), ccy = cy + (SURF + 24 - cy) * aim + hand[1] * (1 - aim);
     world = (
       <g>
         <g transform={`translate(${VW / 2} ${VH / 2}) scale(${zz}) translate(${-ccx} ${-ccy})`}>
@@ -224,10 +226,10 @@ export const VShort = ({lines = [], captions = true}) => {
         </g>
         {/* labels are drawn on the screen (they stay readable whatever the zoom) */}
         <g opacity={1 - L(f, tIn - 8, tIn, 0, 1)}>
-          <Chip x={510} y={120} text="THE DEEPEST PLACE ON EARTH" s={1 + 0.03 * Math.sin(f * 0.15)} anchor="middle" rot={-1} size={56} fill="#FFFFFF" />
+          <Chip x={560} y={120} text="THE DEEPEST PLACE ON EARTH" s={1 + 0.03 * Math.sin(f * 0.15)} anchor="middle" rot={-1} size={52} fill="#FFFFFF" />
           {f >= LAND + 2 && <Chip x={600} y={860} text="MOUNT EVEREST" s={clamp(sp(f, LAND + 2, 'sticker'), 0, 1.1)} anchor="middle" fill="#FFFFFF" rot={-3} />}
           {f >= cTwo && <Chip x={1010 - 20} y={300} text="2 KM OF WATER" s={clamp(sp(f, cTwo + 4, 'sticker'), 0, 1.1)} anchor="end" rot={2} size={58} />}
-          {f >= cNine && <Chip x={235} y={620} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
+          {f >= cNine && <Chip x={30} y={360} text="8.8 KM TALL" s={clamp(sp(f, cNine + 4, 'sticker'), 0, 1.1)} rot={-4} size={58} fill="#FFFFFF" />}
         </g>
       </g>
     );
@@ -280,7 +282,8 @@ export const VShort = ({lines = [], captions = true}) => {
     const col2 = keys(f, [[tDive, '#1A6FA6'], [cGreen + 6, '#1D6153'], [cBlue + 6, '#11346E'], [cGrey + 6, '#262D38'], [cDark + 6, '#0A0D12'], [cDarker + 10, '#020305']]);
     const depth = num(f, [[tDive, 12], [cGreen, 60], [cBlue, 180], [cGrey, 420], [cPop, 560], [cKick, 720], [cDark, 950], [tOut + 16, 1300]]);
     const speed = clamp(0.4 + 0.6 * L(f, cKick, cDrop + 10, 0, 1) - 0.3 * L(f, cKick - 4, cKick + 10, 0, 1) * (1 - L(f, cKick + 10, cDrop, 0, 1)), 0, 1);
-    const rise = (f - tDive) * 9 + Math.max(0, f - cDrop) * 8;
+    const ramp = (x) => (x <= 0 ? 0 : x < 30 ? (x * x) / 60 : x - 15);   // a speed that grows over a second, never in one frame
+    const rise = (f - tDive) * 9 + 8 * ramp(f - cDrop + 10);
     const rays = 1 - L(f, cGreen, cGrey + 10, 0, 1);
     const light = L(f, cGrey, cDarker + 10, 1, 0.15);
     const popK = f >= cPop ? L(f, cPop, cPop + 14, 0, 1, Easing.out(Easing.cubic)) : 0;
@@ -341,7 +344,7 @@ export const VShort = ({lines = [], captions = true}) => {
     const speckY = SURF + num(f, [[tOut, 1.3], [cWay, 2.6], [end, 4.2]]) * KM;
     const k2 = L(f, tOut + 18, tOut + 48, 0, 1);   // you stay in the middle while the camera pulls out, THEN the frame settles on the column
     const cy = speckY + (960 - speckY) * k2;   // the pull-back starts ON you and opens to the whole column
-    const z = 6 - 5 * k + 0.08 * L(f, cDeepest, end, 0, 1);
+    const z = 10 - 9 * k + 0.08 * L(f, cDeepest, end, 0, 1);
     const b = sp(f, cEleven, 'snap');
     const pin = sp(f, cDeepest, 'sticker');
     const endK = f >= tEnd ? L(f, tEnd, tEnd + 12, 0, 1) : 0;
@@ -351,7 +354,7 @@ export const VShort = ({lines = [], captions = true}) => {
         <g transform={`translate(${VW / 2} ${VH / 2}) scale(${z}) translate(${-540 - hand[0] * 0.5} ${-cy - hand[1] * 0.5})`}>
           <Section f={f} dark={0.85} />
           <path d={`M 540 ${speckY} L 540 ${FLOOR - 30}`} stroke="#FDE047" strokeWidth={4} strokeDasharray="10 14" opacity={0.6 * L(f, cWay - 10, cWay + 10, 0, 1)} />
-          {k < 0.7 && <g opacity={1 - L(f, tOut + 14, tOut + 26, 0, 1)}><You f={f} pose="kick" expr="scared" x={540} y={speckY - 30 / z} s={0.42 / z} kick /></g>}
+          {k < 0.7 && <g opacity={1 - L(f, tOut + 14, tOut + 26, 0, 1)}><You f={f} pose="kick" expr="scared" x={540} y={speckY - (250 / z) * (1 - k)} s={0.33 / z} kick /></g>}
           <g opacity={(1 - endK) * L(f, tOut + 8, tOut + 22, 0, 1)}><circle cx={540} cy={speckY} r={26 + 6 * Math.sin(f * 0.25)} fill="#FDE047" opacity={0.25} />
           <circle cx={540} cy={speckY} r={10} fill="#FFF7B0" stroke={INK} strokeWidth={4} /></g>
           <Bracket x={1000} y0={SURF} y1={FLOOR} k={b} side={1} />
@@ -363,14 +366,14 @@ export const VShort = ({lines = [], captions = true}) => {
           {f >= cDeepest && <g opacity={1 - endK}><path d={`M 500 ${FLOOR - 120} L 470 ${FLOOR - 170}`} stroke="#FFFFFF" strokeWidth={6} />
             <Chip x={490} y={FLOOR - 250} text="CHALLENGER DEEP" s={clamp(sp(f, cDeepest + 5, 'sticker'), 0, 1.1)} fill="#EF4444" color="#FFFFFF" rot={-2} size={54} anchor="end" /></g>}
         </g>
-        <rect width={VW} height={VH} fill="#04060A" opacity={0.6 * (1 - L(f, tOut, tOut + 10, 0, 1))} />
+        <rect width={VW} height={VH} fill="#04060A" opacity={0.75 * (1 - L(f, tOut, tOut + 14, 0, 1))} />
         <g opacity={1 - endK}>
           {f >= cEleven && <Chip x={975} y={680} text="10,935 M" s={clamp(sp(f, cEleven + 3, 'sticker'), 0, 1.1)} anchor="end" rot={-2} size={80} />}
           {f >= cWay - 12 && <Chip x={590} y={speckSy - 130} text="YOU" s={clamp(sp(f, cWay - 12, 'sticker'), 0, 1.1)} rot={-6} size={54} fill="#FDE047" />}
         </g>
         {endK > 0 && (
           <g>
-            <rect width={VW} height={VH} fill="#02060C" opacity={0.93 * endK} />
+            <rect width={VW} height={VH} fill="#02060C" opacity={endK} />
             <radialGradient id="v-glow" cx={0.5} cy={0.62} r={0.4}><stop offset="0" stopColor="#FDE047" stopOpacity={0.35} /><stop offset="1" stopColor="#FDE047" stopOpacity={0} /></radialGradient>
             <rect width={VW} height={VH} fill="url(#v-glow)" opacity={endK * (0.6 + 0.4 * Math.sin(f * 0.12))} />
             <g transform={`translate(540 380) scale(${clamp(spr((f - tEnd) / 30, 10, 0.9), 0, 1.05) * (1 + 0.04 * L(f, tEnd, end, 0, 1))})`}>
@@ -378,8 +381,8 @@ export const VShort = ({lines = [], captions = true}) => {
               <text x={-40} y={60} fontFamily={OSWALD} fontWeight={700} fontSize={86} fill="#FFFFFF" textAnchor="middle" stroke={INK} strokeWidth={10} paintOrder="stroke">vs</text>
               <Chip x={190} y={-60} text="11 KM" size={120} fill="#FFFFFF" rot={3} anchor="middle" />
             </g>
-            {f >= cWhat && <g transform={`translate(540 700) scale(${clamp(sp(f, cWhat, 'card'), 0, 1.08)})`}><Chip x={0} y={-80} text="WHAT'S WAITING" size={90} fill="#FFFFFF" rot={-2} anchor="middle" /></g>}
-            {f >= cBottom - 4 && <g transform={`translate(540 840) scale(${clamp(sp(f, cBottom - 4, 'card'), 0, 1.08)})`}><Chip x={0} y={-80} text="AT THE BOTTOM?" size={90} fill="#FDE047" rot={2} anchor="middle" /></g>}
+            {f >= cWhat && <g transform={`translate(540 700) scale(${clamp(sp(f, cWhat, 'snap'), 0, 1.08)})`}><Chip x={0} y={-80} text="WHAT'S WAITING" size={90} fill="#FFFFFF" rot={-2} anchor="middle" /></g>}
+            {f >= cAt && <g transform={`translate(540 840) scale(${clamp(sp(f, cAt, 'snap'), 0, 1.08)})`}><Chip x={0} y={-80} text="AT THE BOTTOM?" size={90} fill="#FDE047" rot={2} anchor="middle" /></g>}
             {f >= cWhole && <g transform={`translate(540 1010) scale(${clamp(sp(f, cWhole, 'sticker'), 0, 1.1)})`}><Chip x={0} y={0} text="THE WHOLE DIVE" size={66} fill="#EF4444" color="#FFFFFF" rot={-1} anchor="middle" /></g>}
             {f >= cChannel - 6 && <g transform={`translate(540 1130) scale(${clamp(sp(f, cChannel - 6, 'sticker'), 0, 1.1)})`}><Chip x={0} y={0} text="IS ON OUR CHANNEL" size={66} fill="#FFFFFF" rot={1} anchor="middle" /></g>}
           </g>
