@@ -975,14 +975,112 @@ function Africa1960({f}) {
   );
 }
 
+
+// ───────── Part 3 round 2 (Bassel 10-29 16:17): battles where France fought its way in, like the New Caledonia scene: the camera flies in
+// from the region to the field, French troops (blue coat, red trousers, kepi) and the local fighters stand up on the board, advance in
+// hops, fire, a few pieces topple like chess pieces (no wounds, no blood), the French flag goes up, the camera pulls back with the land in
+// French blue. The year is on the title card (Bassel: fewer years spoken).
+const Trooper = ({fire = 0}) => (   // a French soldier of the later 1800s: dark blue coat, madder-red trousers, a kepi, a rifle
+  <svg width={120} height={200} viewBox="0 0 120 200" style={{overflow: 'visible'}}>
+    <defs><Lacquer id="trc" c="#2B3E7A" dark="#121C3C" light="#6E86C8" /><Lacquer id="trp" c="#B0302C" dark="#5A1210" light="#E07A70" /><Skin id="trs" /></defs>
+    <Base team="fr" />
+    <path d="M 44 152 L 46 116 L 58 116 L 56 152 Z M 64 152 L 62 116 L 74 116 L 76 152 Z" fill="url(#trp)" stroke="#5A1210" strokeWidth={1} />
+    <path d="M 36 122 C 36 102 42 90 46 78 L 74 78 C 78 90 84 102 84 122 Z" fill="url(#trc)" stroke="#121C3C" strokeWidth={1.2} />
+    <circle cx={60} cy={62} r={15} fill="url(#trs)" stroke="#6E4630" strokeWidth={1} />
+    <path d="M 46 56 L 47 40 L 73 40 L 74 56 Z" fill="#B0302C" stroke="#5A1210" /><path d="M 44 56 L 80 56 L 76 60 L 46 60 Z" fill="#1A1A22" />
+    <g transform={`rotate(${-18 + fire * 62} 74 86)`}><rect x={72} y={18} width={5} height={84} rx={2} fill="#5A3A22" /><rect x={72.5} y={14} width={4} height={14} fill="#9AA3AA" /></g>
+    <ellipse cx={46} cy={60} rx={6} ry={14} fill="#FFFFFF" opacity={0.18} />
+  </svg>
+);
+const FOES = {   // the local fighters, drawn plainly: [robe, robe dark, robe light], headwear, weapon
+  algeria: {robe: ['#E6DCC6', '#9A8E74', '#FFFFFF'], head: 'wrap', headc: '#F2ECDC', arm: 'rifle', tan: true},
+  sahel: {robe: ['#3E5A8A', '#1E2E4A', '#7A92BE'], head: 'wrap', headc: '#2A2A30', arm: 'rifle', tan: false},
+  vietnam: {robe: ['#3A3428', '#1A1610', '#6E6450'], head: 'hat', headc: '#C8A86A', arm: 'spear', tan: true},
+  merina: {robe: ['#E8E2D2', '#9A9480', '#FFFFFF'], head: 'bare', headc: '#120C08', arm: 'rifle', tan: true},
+  tahiti: {robe: ['#8A5A3A', '#4A2E1C', '#B08460'], head: 'bare', headc: '#120C08', arm: 'spear', tan: true},
+  kanak: {robe: ['#6E6A4A', '#3A3826', '#9A9670'], head: 'bare', headc: '#120C08', arm: 'spear', tan: false},
+};
+const Fighter = ({kind = 'algeria', k = 0, fire = 0}) => {
+  const F = FOES[kind] || FOES.algeria, skin = F.tan ? ['#8E5E3E', '#4E321E', '#B8845E'] : ['#5E3A26', '#2E1A10', '#8A5A3E'];
+  const id = `fg${kind}${k}`;
+  return (
+    <svg width={120} height={200} viewBox="0 0 120 200" style={{overflow: 'visible'}}>
+      <defs><Lacquer id={`${id}r`} c={F.robe[0]} dark={F.robe[1]} light={F.robe[2]} /><Lacquer id={`${id}s`} c={skin[0]} dark={skin[1]} light={skin[2]} /></defs>
+      <Base team="ally" />
+      <path d="M 38 152 C 38 126 42 98 46 80 L 74 80 C 78 98 82 126 82 152 Z" fill={`url(#${id}r)`} stroke={F.robe[1]} strokeWidth={1.2} />
+      <circle cx={60} cy={63} r={15} fill={`url(#${id}s)`} stroke={skin[1]} strokeWidth={1} />
+      {F.head === 'wrap' && <path d="M 44 60 C 42 42 78 42 76 60 C 70 54 50 54 44 60 Z" fill={F.headc} stroke="#6E6450" strokeWidth={1} />}
+      {F.head === 'hat' && <path d="M 30 56 L 60 36 L 90 56 Z" fill={F.headc} stroke="#7A6440" strokeWidth={1} />}
+      {F.head === 'bare' && <path d="M 45 60 C 44 44 76 44 75 60 C 70 52 50 52 45 60 Z" fill={F.headc} />}
+      {F.arm === 'rifle'
+        ? <g transform={`rotate(${18 - fire * 62} 46 86)`}><rect x={43} y={18} width={5} height={84} rx={2} fill="#5A3A22" /><rect x={43.5} y={14} width={4} height={14} fill="#9AA3AA" /></g>
+        : <g transform={`rotate(${14 - fire * 40} 46 90)`}><rect x={44} y={6} width={3.5} height={104} rx={1.5} fill="#6A4A2A" /><path d="M 41 8 L 45.75 -10 L 50.5 8 Z" fill="#AEB6BC" stroke="#4E565C" strokeWidth={0.8} /></g>}
+      <ellipse cx={74} cy={62} rx={6} ry={14} fill="#FFFFFF" opacity={0.12} />
+    </svg>
+  );
+};
+// [title, subtitle, result], the region's box, the field, the zoom, the fighters, the land that turns French blue
+const BATTLES = {
+  algiers1830: {t: ['Algiers, 1830', 'The French army lands', 'Decades of war follow'], box: [[-2, 30], [9, 38]], at: [3.15, 36.42], z: 7, foe: 'algeria', land: ['DZA'], dir: -1},
+  samori1890s: {t: ["Samori Touré's empire, 1882–1898", 'Years of war in West Africa', 'Samori is captured, 1898'], box: [[-14, 6], [2, 16]], at: [-8.4, 10.6], z: 4.2, foe: 'sahel', land: ['GIN', 'MLI', 'CIV'], dir: 1},
+  vietnam1880s: {t: ['Vietnam, 1859–1885', 'Decades of resistance', 'French Indochina, 1887'], box: [[100, 8], [110, 22]], at: [105.8, 21.0], z: 4.5, foe: 'vietnam', land: ['VNM'], dir: -1},
+  madagascar1895: {t: ['Madagascar, 1895', 'The march on Antananarivo', 'The capital falls'], box: [[42, -26], [51, -12]], at: [47.52, -18.9], z: 5, foe: 'merina', land: ['MDG'], dir: -1},
+  tahiti1844: {t: ['Tahiti, 1844–1847', "Queen Pōmare's people fight back", 'A French protectorate'], box: [[-151.5, -18.6], [-148.6, -16.6]], at: [-149.45, -17.62], z: 3.2, foe: 'tahiti', land: ['PYF'], dir: 1},
+  kanak1878: {t: ['New Caledonia, 1878', "Ataï's revolt", 'Crushed within months'], box: [[163.6, -22.8], [168.2, -19.6]], at: [165.5, -21.35], z: 3.6, foe: 'kanak', land: ['NCL'], dir: 1},
+};
+function Battle({f, id}) {
+  const B = BATTLES[id];
+  const base = geoMercator().fitExtent([[760, 680], [PW - 760, PH - 680]], {type: 'MultiPoint', coordinates: B.box}).scale();
+  const mid = [(B.box[0][0] + B.box[1][0]) / 2, (B.box[0][1] + B.box[1][1]) / 2];
+  const cam = cameraAt(f, [[0, mid, 0.95], [24, mid, 1.0], [96, B.at, B.z], [250, B.at, B.z * 1.04], [296, mid, 1.05], [330, mid, 1.0]]);
+  const turn = lerp(f, 24, 96, 0, 8 * B.dir) + lerp(f, 250, 296, 0, -8 * B.dir);
+  const proj = geoMercator().scale(base * cam[2]).center(cam[1]).translate([PW / 2, PH / 2]).clipExtent([[-600, -600], [PW + 600, PH + 600]]);
+  const path = geoPath(proj);
+  const [cx, cy] = proj(B.at);
+  const close = lerp(f, 86, 104, 0, 1) * (1 - lerp(f, 252, 272, 0, 1));
+  const rise = (at) => lerp(f, at, at + 16, 0, 1, Easing.out(Easing.back(1.6)));
+  const frMove = hops(lerp(f, 118, 160, 0, 1, (q) => q), 2), foeMove = hops(lerp(f, 122, 162, 0, 1, (q) => q), 2);
+  const fireFR = lerp(f, 172, 180, 0, 1) - lerp(f, 180, 192, 0, 1), fireFoe = lerp(f, 184, 192, 0, 1) - lerp(f, 192, 204, 0, 1);
+  const fireFR2 = lerp(f, 206, 214, 0, 1) - lerp(f, 214, 226, 0, 1);
+  const rows = [-150, -50, 50, 150];
+  const gap = 260 - 60 * frMove.u - 40 * foeMove.u;
+  const pieces = [
+    ...rows.map((dy, i) => ({y: cy + dy, el: f >= 92 + i * 4 && (
+      <Piece key={`fr${i}`} x={cx - gap - (i % 2) * 40} y={cy + dy} turn={turn} w={120} h={200} op={close} lift={frMove.lift * 24} rise={rise(92 + i * 4)}
+             fall={i === 3 ? lerp(f, 196, 218, 0, 1, Easing.out(Easing.bounce)) : 0}><Trooper fire={i % 2 ? fireFR2 : fireFR} /></Piece>)})),
+    ...rows.map((dy, i) => ({y: cy + dy + 20, el: f >= 96 + i * 4 && (
+      <Piece key={`fo${i}`} x={cx + gap + (i % 2) * 40} y={cy + dy + 20} turn={turn} w={120} h={200} op={close} lift={foeMove.lift * 24} rise={rise(96 + i * 4)}
+             fall={i === 1 || i === 2 ? lerp(f, 186 + i * 12, 208 + i * 12, 0, 1, Easing.out(Easing.bounce)) : 0}><Fighter kind={B.foe} k={i} fire={fireFoe} /></Piece>)})),
+    ...[0, 1, 2, 3].map((i) => ({y: cy + rows[i], el: f > 170 && f < 236 && (
+      <Piece key={`sm${i}`} x={i % 2 ? cx + gap - 40 : cx - gap + 40} y={cy + rows[i]} turn={turn} w={140} h={120} op={close}>
+        <Smoke k={lerp(f, 172 + i * 6, 214 + i * 6, 0, 1, Easing.out(Easing.quad))} /></Piece>)})),
+    {y: cy - 230, el: f >= 226 && (
+      <Piece key="flag" x={cx} y={cy - 230} turn={turn} s={1.15} w={80} h={200} op={close} rise={rise(226)}>
+        <Pole flag={<Tricolore />} f={f} raise={lerp(f, 230, 252, 0, 1, Easing.out(Easing.cubic))} /></Piece>)},
+  ].sort((a, b) => a.y - b.y);
+  const feat = (a3) => geo.detail.features.find((ft) => ft.properties.a3 === a3) || geo.world.features.find((ft) => ft.properties.a3 === a3);
+  const blue = lerp(f, 262, 300, 0, 1);
+  return (
+    <Table turn={turn} lit={lerp(f, 0, 18, 0, 1)} overlay={<Title f={f} items={[[B.t[0], 8, true], [B.t[1], 100, false, 240], [B.t[2], 246, false]]} />}>
+      <Board path={path}>
+        <g clipPath="url(#landclip)">{B.land.map((a3) => { const ft = feat(a3); return ft && <path key={a3} d={path(ft)} fill="#3FB8DE" fillOpacity={0.45 * blue} />; })}</g>
+        {B.land.map((a3) => { const ft = feat(a3); return ft && <path key={`o${a3}`} d={path(ft)} fill="none" stroke="#F4FBFF" strokeWidth={4} strokeLinejoin="round" opacity={blue} />; })}
+      </Board>
+      {pieces.map((p) => p.el)}
+    </Table>
+  );
+}
+const battle = (id) => ({f}) => <Battle f={f} id={id} />;
+
 const Quebec1608Sample = ({f}) => (
   <AbsoluteFill>
     {f < 604 + D1608 + H1608 && <Quebec1608 f={f} />}
     {f >= 580 + D1608 + H1608 && <AbsoluteFill style={{opacity: lerp(f, 580 + D1608 + H1608, 604 + D1608 + H1608, 0, 1)}}><PaintingCoda f={f - 580 - D1608 - H1608} len={220} /></AbsoluteFill>}
   </AbsoluteFill>
 );
-const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803, newcal1853: NewCal1853, africa1960: Africa1960};
-export const WAR_FRAMES = {quebec1608: 760 + D1608 + H1608, quebec1608map: 600 + D1608 + H1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360, africa1960: 330};
+const SCENES = {quebec1608: Quebec1608Sample, quebec1608map: Quebec1608, quebec1759: Quebec1759, sugar: Sugar, treaty1763: Treaty1763, sale1803: Sale1803, newcal1853: NewCal1853, africa1960: Africa1960,
+  ...Object.fromEntries(Object.keys(BATTLES).map((k) => [k, battle(k)]))};
+export const WAR_FRAMES = {quebec1608: 760 + D1608 + H1608, quebec1608map: 600 + D1608 + H1608, quebec1759: 390, sugar: 360, treaty1763: 330, sale1803: 330, newcal1853: 360, africa1960: 330, ...Object.fromEntries(Object.keys(BATTLES).map((k) => [k, 330]))};
 
 export const WarTable = ({id = 'quebec1608', frame}) => {
   const cur = useCurrentFrame();
