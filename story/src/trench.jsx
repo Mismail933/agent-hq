@@ -423,7 +423,7 @@ const chunks3 = (ws) => {
   if (cur.length) out.push(cur);
   return out;
 };
-const VCaptions = ({lines, stop = 1e9}) => {
+export const VCaptions = ({lines, stop = 1e9}) => {
   const frame = useCurrentFrame();
   if (frame >= stop) return null;   // the end card says its own words
   const ws = lines.flatMap((l) => l.words || []);

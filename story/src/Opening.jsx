@@ -318,6 +318,7 @@ const PhotoLayer = ({line, len}) => {
   const rot = ph.rot != null ? ph.rot : (left ? -3 : 3);
   const pad = 18, strip = ph.credit ? 52 : pad;
   const lab = clamp(pop(f, a + 8, 150, 12), 0, 1.1) * (1 - clamp((f - b) / 8, 0, 1));
+  const deepLook = ph.deep != null ? ph.deep : /^(tw_|dp_)/.test(String(line.shot));
   return (
     <AbsoluteFill>
       <div style={{position: 'absolute', inset: 0, background: '#050A14', opacity: (ph.dim != null ? ph.dim : 0.38) * clamp((f - a) / 8, 0, 1) * (1 - clamp((f - b) / 8, 0, 1))}} />
@@ -329,7 +330,12 @@ const PhotoLayer = ({line, len}) => {
         {ph.credit && <div style={{position: 'absolute', left: pad, right: pad, bottom: 8, fontFamily: OSWALD, fontSize: 24, color: '#52525B', whiteSpace: 'nowrap',
           overflow: 'hidden', textOverflow: 'ellipsis'}}>{ph.credit}</div>}
       </div>
-      {ph.label && <div style={{position: 'absolute', left: cx - w / 2 - 30, top: cy - h / 2 - 96, background: '#FFE11A', border: `6px solid ${INK}`,
+      {ph.label && deepLook && (() => {   // 2.76.0 the deep look's label: spaced caps with a halo and a gold rule, above the print (below it when no room)
+        const above = cy - h / 2 - pad - 26 >= 70, ty = above ? cy - h / 2 - pad - 26 : cy + h / 2 + strip + 64;
+        return <div style={{position: 'absolute', left: cx - w / 2 - pad, top: ty - 58, opacity: clamp(lab, 0, 1), fontFamily: OSWALD, fontWeight: 600, fontSize: 40,
+          letterSpacing: 7, color: '#FFFFFF', textTransform: 'uppercase', whiteSpace: 'nowrap', WebkitTextStroke: '7px rgba(2,16,26,0.62)', paintOrder: 'stroke fill'}}>
+          <div style={{width: 80 * clamp(lab, 0, 1), height: 5, background: '#FFD25A', marginBottom: 12}} />{ph.label}</div>; })()}
+      {ph.label && !deepLook && <div style={{position: 'absolute', left: cx - w / 2 - 30, top: cy - h / 2 - 96, background: '#FFE11A', border: `6px solid ${INK}`,
         boxShadow: '8px 10px 0 rgba(0,0,0,0.35)', padding: '2px 22px', fontFamily: OSWALD, fontWeight: 700, fontSize: 56, color: INK, textTransform: 'uppercase',
         transform: `rotate(${rot - 4}deg) scale(${lab})`, transformOrigin: '0% 100%', whiteSpace: 'nowrap'}}>{ph.label}</div>}
     </AbsoluteFill>

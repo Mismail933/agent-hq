@@ -1244,6 +1244,14 @@ Agents never spend money without the owner's explicit approval.
     script; real public-domain footage in the body too (dp_real: deep corals ~2,000 m on the midnight zone, NOAA's ghostlike octopod
     photo held as a clip, footage/ghost-octopod-still.mp4, on the abyss floor). The Short = the sample rendered with captions false,
     cut vertical by clipper (scratchpad trench_short_vertical.py: the phrases in big type aren't captioned again).
+    2.76.0 the vertical Short in the deep look (`story/src/deepv.jsx`, composition `VDeep`; Israa redo 5.5 on the clipper cut: "not a
+    Short ... rebuild it as a real vertical composition"): each deep.jsx shot is drawn through its own 9:16 window of the wide stage (`VCAM`
+    [cx, cy, width], or line p.vcam); line.vert makes the shots' backgrounds reach `EXT` px past the stage and leaves their type to
+    `TypeOf` (big words stacked, tags split at " · " into 40 px rows, `VBar` depth bar across the top, numbers mid-screen, a waist-up fade
+    on close-ups so captions never cross the body); the cross-section stands tall (`SEC`: x 1:1, y x1.27, floor at y 1150, labels clear of
+    the captions); footage cropped round its subject (`vfocus`, `vzoom`; the world map `vscale`); `dv_end` = the end card that says its
+    own words; captions = trench.jsx `VCaptions` without the phrases shown in big type. Spec: scratchpad make_deep_vshort.py. PhotoLayer
+    labels on tw_/dp_ shots are the deep tags (photo.deep overrides).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
