@@ -118,7 +118,7 @@ function TypeOf({f, len, line, first}) {
       <g>
         <VCredit text={v.credit} />
         {big.length > 0 && <Rows f={f} line={line} rows={big} y={p.vbig_y || 820} size={p.vbig_size || 160} off={p.big_off} />}
-        {p.tag && <VTag f={f} a={at(line, p.tag_on || '', 0.2)} text={p.tag} plate />}
+        {p.tag && <VTag f={f} a={at(line, p.tag_on || '', 0.2)} b={p.tag_off ? at(line, p.tag_off, 0.9) : 1e9} y={p.vtag_y || 1250} text={p.tag} plate />}
         {M && <VBar f={f} d={M.d} />}
         {M && M.cur >= 0 && <BigNum f={f} a={M.mk[M.cur][0]} text={`${fmt(M.mk[M.cur][1])} M`} y={760} />}
         {flash > 0 && <g style={{mixBlendMode: 'screen'}}><radialGradient id={`vfl-${line.idx}`}><stop offset="0" stopColor="#FFFFFF" stopOpacity={1} /><stop offset="0.25" stopColor="#FFF4D6" stopOpacity={0.85} /><stop offset="1" stopColor="#FFD98A" stopOpacity={0} /></radialGradient>

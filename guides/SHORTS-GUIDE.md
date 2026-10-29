@@ -22,6 +22,16 @@ then fast"). Read this before making the next Short; the reviewers check every p
 - Captions at ~70% of the height (y ~1330), centred, max width 900.
 - Check every tag on the LAST frame of any push-in, not the first (a slow push carries tags off the edge).
 
+## Real footage (the deep look, 2026-10-29: Israa's three looks at the Mariana Short, redo 7.5 -> 8 -> release 8.5)
+- Build the Short natively (`deepv.jsx` `VDeep`): each scene through its own 9:16 window; never the wide video in a strip with
+  blurred bands (that cut got redo 5.5: "a reposted clip, not a channel's own upload").
+- Every real clip carries a tag with what it is, the place and the year when the source states them (say only what the source
+  says: "filmed by NOAA" when it gives no place or date), on a dark plate, and it must not contradict the words or numbers over it
+  (a seabed from a 2 km-deep gulf under "6,000 M" did). Prefer a clip from the place the story is in.
+- Crop the clip to 9:16 round its subject (follow a moving animal with a keyframed `vfocus`); check burned-in source subtitles,
+  logos and title cards (crop or skip them); keep a world map covering the whole phone at every frame.
+- Check every tag on the LAST frame of its push-in: the animal moves into it.
+
 ## Captions
 - 3 words at a time (a sentence's last 3 words get their own chunk, never a lone last word), big Oswald with a thick outline, the
   spoken word yellow. Readable from the first frame: start at 85% size, full in 3 frames.

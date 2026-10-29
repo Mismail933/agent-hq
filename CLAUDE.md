@@ -1259,6 +1259,16 @@ Agents never spend money without the owner's explicit approval.
     `vfocus` [from, to] follows a swimming animal; the depth reading stays on the bar; the player-bar gag above his head; the porthole
     at ~40% of the height; the title's bar lands on 10,935 M; one passenger in every sub shot; the end card picks up the title's sub
     where it is (a crossfade showed two).
+    2.76.2-2.76.5 (Israa redo 8 -> release 8.5 on the vertical Short; the full render once stopped at a caption crash): captions skip
+    p.big only when it is a list (tw_pressure's p.big is text); the hook's creature (a long dark body with a rim of light, a blinking
+    eye, a tentacle tip curling up at ~3 s); dp_sink `p.fx` and, vertical, walls of lighter rock with a bright edge; the bar moves on
+    the spoken number; the map covers the phone (`vscale` >= 1.2); a big-word row may start `with` an earlier row's word, gold rows
+    on a heavier halo; dp_title `vslam` / `bar_from` / `bar_to` / `held`; VCaptions `hold` (45 in VDeep) and a break before a
+    preposition after two plain words; a dark band behind captions on footage; footage tags `tag_off`, `vtag_y`; the yank's
+    follow-through eases out from its own speed. The 'down there' clip is the 2016 Marianas jellyfish seen from below
+    (marianas-jelly-b.mp4 from 8 s; Commons has no other Marianas footage). guides/SHORTS-GUIDE.md: a real-footage section. A long
+    render holds the heavy-job lock past 3 h: keep its mtime fresh (touch) or another job takes it as stale; a short patch beside a
+    long render: scratchpad patch_comp.py --comp=<composition> --nolock (concurrency 1, never drops another job's lock).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
