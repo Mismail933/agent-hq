@@ -1,0 +1,151 @@
+{
+ "date": "2026-10-30",
+ "focus": "agents",
+ "note": "One idea today: we never check whether Israa's scores match what you decide. The rest of the sweep had nothing that needs you (no new models; Claude Code 2.1.312-314 are small fixes).",
+ "research": {
+  "searches": 4,
+  "pages_read": 14,
+  "minutes": 12,
+  "questions": [
+   "Does the evidence on LLM judges say a second judge (Israa + Builder) gives independent checking?",
+   "Do we have any measure of how well Israa's verdicts match the owner's approve/reject?",
+   "Did Claude Code, the API or YouTube change anything this week that touches our workers or policy?"
+  ],
+  "gaps": [
+   "Only 4 web searches (not 15): this was a short run, so the sweep is thinner than RICHARD.md asks.",
+   "Did not open the full PDFs of the judge papers, only their abstracts.",
+   "No official YouTube announcement for Oct 2026 found; only third-party roundups (grade C, not used)."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.314: new setting permissions.blockWritesOutsideWorkingDirectories; claude -p now exits 1 with an error if startup fails (was exit 0, no output)",
+  "Claude Code 2.1.312: cloud routines can pick an effort level; 2.1.311: non-retryable API errors are no longer retried in -p",
+  "API 2026-10-28: Messages API request limit raised 32 MB to 128 MB; 2026-10-29: Usage and Cost Analytics API (beta)",
+  "Anthropic 2026-10-22: Agent Skills standard donated to the Agentic AI Foundation (Linux Foundation); no change for claude -p",
+  "No new Claude models"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.314 is newest; the claude -p exit-code fix helps workers.py's failure handling, nothing to change"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "request size and analytics API do not touch us"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "IPO filing, science partnerships, skills donation"
+  },
+  {
+   "title": "Simon Willison on skills donation",
+   "url": "https://simonwillison.net/2026/Oct/22/donating-agent-skills/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "confirms the donation, no CLI change"
+  },
+  {
+   "title": "YouTube inauthentic content policy",
+   "url": "https://support.google.com/youtube/answer/1311392",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "last change July 2025; already covered by the 10-18 idea"
+  },
+  {
+   "title": "Judge reliability study, 21 judges (arXiv 2606.19544)",
+   "url": "https://arxiv.org/abs/2606.19544",
+   "tier": "A",
+   "result": "used",
+   "why": "abstract: raw agreement overstates quality, kappa is 33-41 points lower; stable scores can hide bias"
+  },
+  {
+   "title": "A Second Judge is Not a Second Opinion (NeurIPS 2026)",
+   "url": "https://neurips.cc/virtual/2026/172889",
+   "tier": "A",
+   "result": "used",
+   "why": "two judges agreed with each other (kappa 0.88) but with humans at 0.19; open-weight judges, so only partly relevant"
+  },
+  {
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:%3E2026-09-30&sort=stars",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "general skill hubs, nothing that fits our workers"
+  },
+  {
+   "title": "GitHub search: faceless Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "tier": "A",
+   "result": "rejected",
+   "why": "all 0-1 star repos, mostly no licence"
+  },
+  {
+   "title": "GitHub search: LLM judge evaluation",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+evaluation+rubric+judge",
+   "tier": "A",
+   "result": "used",
+   "why": "found small kappa/rubric tools; we do not need a library, the check is ~30 lines"
+  },
+  {
+   "title": "Web search: judge reliability 2026",
+   "url": "https://www.google.com/search?q=LLM-as-judge+reliability",
+   "tier": "C",
+   "result": "used",
+   "why": "pointed to the two papers above"
+  },
+  {
+   "title": "Web search: YouTube Shorts Oct 2026 policy",
+   "url": "https://www.google.com/search?q=YouTube+Shorts+October+2026",
+   "tier": "C",
+   "result": "rejected",
+   "why": "third-party blogs only"
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "Calibre-Labs/reforge-ai-evals",
+   "url": "https://github.com/Calibre-Labs/reforge-ai-evals",
+   "licence": "MIT",
+   "stars": 94,
+   "last_commit": "2026-10-28",
+   "verdict": "watch",
+   "fit": "skills that help write rubrics and judge prompts",
+   "why": "young, 94 stars; we do not need it for the idea below"
+  }
+ ],
+ "ideas": [
+  {
+   "id": "2026-10-30-1",
+   "title": "Measure how often Israa's verdict matches the owner's decision",
+   "area": "agents",
+   "problem": "Scripts now pass a gate of Israa (score >= 8) plus the Builder chat (script.min_score, script.builder_review). Both are Claude. Nothing records whether Israa's pass/rework agrees with what the owner then does. New research says judges can agree with each other and still disagree with humans (kappa 0.88 between two judges, 0.19 with humans; abstract at neurips.cc/virtual/2026/172889), and that raw percent agreement overstates quality by 33-41 points (arXiv 2606.19544). That was open-weight judges; the Claude judge in the same paper did better, so our gap may be small. We simply do not know.",
+   "proposal": "Add a small read-only function in quality.py, e.g. judge_agreement(): for every episode that has data.review (Israa's verdict/score) and an owner decision (status approved/rejected after awaiting_approval, from decide_episode in agents.py, by='Owner'), build the 2x2 table Israa pass/rework vs owner approve/reject, and report percent agreement, Cohen's kappa, and the list of disagreements with the owner's note. Show it as one line in Atlas's `hq status` and in the Learning tab. No prompt change, no extra model call, no cost. If kappa is low after ~15 decided scripts, the next step (a separate idea) is to feed the owner's rejection notes into Israa's criteria.",
+   "gain": "Turns 'Israa said 8' into a known quantity. Tells the owner whether the gate saves his 3 hours a week or only adds delay. Measured by: the number exists and updates after each owner decision.",
+   "test": "Normal: 10 episodes with both fields give a table whose cells add to 10. Edge: an episode rejected by the owner after Israa's rework verdict, and an episode with no Israa review, must be skipped or counted separately, not crash. Failure case: all decisions the same (kappa undefined) must print 'not enough variety yet', not divide by zero. Pass = Atlas reports the agreement line and the three cases behave as described.",
+   "effort": "S",
+   "confidence": "moderate",
+   "confidence_why": "The method (chance-corrected agreement against human decisions) rests on two A-grade abstracts; I did not read the full papers and neither tests Claude as judge on stories, so the size of any gap for us is unknown.",
+   "risks": "Few decided scripts so far, so early numbers are noisy: label it 'n = N'. Owner decisions also reflect taste, not only quality. No outside code, no licence issue.",
+   "links": [
+    {
+     "title": "A Second Judge is Not a Second Opinion",
+     "url": "https://neurips.cc/virtual/2026/172889"
+    },
+    {
+     "title": "Large-scale LLM-as-a-Judge study (arXiv 2606.19544)",
+     "url": "https://arxiv.org/abs/2606.19544"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
+}

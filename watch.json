@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.312 (routines effort picker; claude -p no-output fix)",
-   "checked": "2026-10-29"
+   "last_seen": "2.1.314 (permissions.blockWritesOutsideWorkingDirectories; claude -p exits 1 on startup failure)",
+   "checked": "2026-10-30"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-21 API version, Python SDK 2.0.0 (breaking, Apache 2.0); Sonnet 5.5 cache read $0.10/MTok; Haiku 5.5 Oct 7",
-   "checked": "2026-10-29"
+   "last_seen": "2026-10-29 Usage and Cost Analytics API beta; 10-28 request limit 128 MB",
+   "checked": "2026-10-30"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-28 AI for Science; 10-26 S-1; no new models",
-   "checked": "2026-10-29"
+   "last_seen": "2026-10-28 AI for Science; 10-22 Agent Skills donated to AAIF; no new models",
+   "checked": "2026-10-30"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -197,6 +197,13 @@
    "verdict": "watch",
    "checked": "2026-10-21",
    "note": "MIT harness collection; API listing only, not read deeply."
+  },
+  "Calibre-Labs/reforge-ai-evals": {
+   "stars": 94,
+   "last_commit": "2026-10-28",
+   "verdict": "watch",
+   "checked": "2026-10-30",
+   "note": "rubric/judge-prompt skills, MIT, young"
   }
  },
  "issues": {

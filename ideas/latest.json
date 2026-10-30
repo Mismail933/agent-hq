@@ -1,117 +1,151 @@
 {
- "date": "2026-10-29",
- "focus": "tokens",
- "note": "No idea today. Nothing new in Claude Code (still 2.1.312) or Anthropic news. One thing to know: Anthropic's Python SDK 2.0.0 (API version 2026-10-21) has breaking changes, but our llm.py does not use the removed parts, so nothing to do now. I did fewer searches than my target (12, not 15), so I preferred bringing nothing over a thin idea.",
+ "date": "2026-10-30",
+ "focus": "agents",
+ "note": "One idea today: we never check whether Israa's scores match what you decide. The rest of the sweep had nothing that needs you (no new models; Claude Code 2.1.312-314 are small fixes).",
  "research": {
-  "searches": 12,
-  "pages_read": 9,
-  "minutes": 15,
+  "searches": 4,
+  "pages_read": 14,
+  "minutes": 12,
   "questions": [
-   "Did anything after Claude Code 2.1.312 change claude -p, --json-schema, sessions or caching that our workers rely on?",
-   "Does the new Anthropic API version 2026-10-21 / Python SDK 2.0.0 break llm.py (the paid backup path), given requirements.txt says anthropic>=0.70 with no upper limit?",
-   "Do our one-shot claude -p workers pay a cache-TTL penalty we could remove with a setting?"
+   "Does the evidence on LLM judges say a second judge (Israa + Builder) gives independent checking?",
+   "Do we have any measure of how well Israa's verdicts match the owner's approve/reject?",
+   "Did Claude Code, the API or YouTube change anything this week that touches our workers or policy?"
   ],
   "gaps": [
-   "Did not read Python SDK 2.0.0's own changelog on GitHub; only the official migration guide and a search summary",
-   "The migration guide's MessageParam union change was not tested against llm.py's messages.append of response blocks",
-   "No measured cache_creation numbers from our workers, so no token claim",
-   "Fewer than 15 searches"
+   "Only 4 web searches (not 15): this was a short run, so the sweep is thinner than RICHARD.md asks.",
+   "Did not open the full PDFs of the judge papers, only their abstracts.",
+   "No official YouTube announcement for Oct 2026 found; only third-party roundups (grade C, not used)."
   ]
  },
  "new_today": [
-  "Claude Code: no release after 2.1.312 in the changelog (2.1.306-311 only fixes: claude -p transcript order, compaction after 'prompt too long', routine retry fix)",
-  "Claude API: version 2026-10-21 released; Python SDK 2.0.0, Apache 2.0; temperature/top_p/top_k now return 400 (llm.py sends none)",
-  "Claude API: prompt cache reads on Sonnet 5.5 cost $0.10/MTok (Oct 7); Haiku 5.5 released Oct 7",
-  "Anthropic news: nothing new for us (S-1 filing Oct 26, GSA, science programs)",
-  "Support article on Agent SDK / claude -p billing: updated Oct 7; signed-in claude -p still draws from subscription limits; Max/Team get monthly API credits for API-key use",
-  "Claude Code prompt-caching doc: claude -p counts as 'main conversation' (1 h TTL on subscription); subagents/workflows get 5 m unless subagentPromptCacheTtl is set"
+  "Claude Code 2.1.314: new setting permissions.blockWritesOutsideWorkingDirectories; claude -p now exits 1 with an error if startup fails (was exit 0, no output)",
+  "Claude Code 2.1.312: cloud routines can pick an effort level; 2.1.311: non-retryable API errors are no longer retried in -p",
+  "API 2026-10-28: Messages API request limit raised 32 MB to 128 MB; 2026-10-29: Usage and Cost Analytics API (beta)",
+  "Anthropic 2026-10-22: Agent Skills standard donated to the Agentic AI Foundation (Linux Foundation); no change for claude -p",
+  "No new Claude models"
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "nothing new",
-   "why": "Newest is 2.1.312, already seen"
+   "result": "used",
+   "why": "2.1.314 is newest; the claude -p exit-code fix helps workers.py's failure handling, nothing to change"
   },
   {
-   "title": "Claude Platform release notes",
+   "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "used",
-   "why": "API version 2026-10-21, SDK 2.0.0, cache price drop"
-  },
-  {
-   "title": "Migrating to API version 2026-10-21",
-   "url": "https://platform.claude.com/docs/en/api/migration-2026-10-21",
-   "tier": "A",
-   "result": "used",
-   "why": "Breaking changes; none hit llm.py's call shape (no sampling params)"
+   "result": "nothing new",
+   "why": "request size and analytics API do not touch us"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "No new model or product since Haiku 5.5"
+   "why": "IPO filing, science partnerships, skills donation"
   },
   {
-   "title": "Claude Code prompt caching doc",
-   "url": "https://code.claude.com/docs/en/prompt-caching",
+   "title": "Simon Willison on skills donation",
+   "url": "https://simonwillison.net/2026/Oct/22/donating-agent-skills/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "confirms the donation, no CLI change"
+  },
+  {
+   "title": "YouTube inauthentic content policy",
+   "url": "https://support.google.com/youtube/answer/1311392",
    "tier": "A",
    "result": "nothing new",
-   "why": "claude -p is 'main conversation'; subagent TTL setting exists; no action"
+   "why": "last change July 2025; already covered by the 10-18 idea"
   },
   {
-   "title": "Use the Agent SDK with your Claude plan",
-   "url": "https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan",
+   "title": "Judge reliability study, 21 judges (arXiv 2606.19544)",
+   "url": "https://arxiv.org/abs/2606.19544",
+   "tier": "A",
+   "result": "used",
+   "why": "abstract: raw agreement overstates quality, kappa is 33-41 points lower; stable scores can hide bias"
+  },
+  {
+   "title": "A Second Judge is Not a Second Opinion (NeurIPS 2026)",
+   "url": "https://neurips.cc/virtual/2026/172889",
+   "tier": "A",
+   "result": "used",
+   "why": "two judges agreed with each other (kappa 0.88) but with humans at 0.19; open-weight judges, so only partly relevant"
+  },
+  {
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:%3E2026-09-30&sort=stars",
    "tier": "A",
    "result": "nothing new",
-   "why": "Oct 7 update: signed-in claude -p unchanged"
+   "why": "general skill hubs, nothing that fits our workers"
   },
   {
-   "title": "GitHub search: claude code subagents (30 days)",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Role/prompt collections (wshobson/agents, VoltAgent) already known or reference only"
-  },
-  {
-   "title": "GitHub search: faceless youtube shorts automation",
-   "url": "https://api.github.com/search/repositories?q=faceless+youtube+shorts+automation",
-   "tier": "B",
+   "title": "GitHub search: faceless Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "tier": "A",
    "result": "rejected",
-   "why": "All 0-1 stars, several with no licence, some auto-upload"
+   "why": "all 0-1 star repos, mostly no licence"
   },
   {
-   "title": "GitHub search: llm token cost reduction",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction",
-   "tier": "B",
-   "result": "rejected",
-   "why": "2 stars or less, one non-standard licence"
+   "title": "GitHub search: LLM judge evaluation",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+evaluation+rubric+judge",
+   "tier": "A",
+   "result": "used",
+   "why": "found small kappa/rubric tools; we do not need a library, the check is ~30 lines"
   },
   {
-   "title": "Search: YouTube Shorts policy Oct 2026",
-   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
+   "title": "Web search: judge reliability 2026",
+   "url": "https://www.google.com/search?q=LLM-as-judge+reliability",
    "tier": "C",
-   "result": "nothing new",
-   "why": "Same Oct 1 original-content reach change already tracked; '3 min Shorts Oct 15' is the 2024 change, not new"
+   "result": "used",
+   "why": "pointed to the two papers above"
   },
   {
-   "title": "Search: Remotion 5.0 license",
-   "url": "https://remotion.dev/docs/5-0-migration",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Still not confirmed released; contractors will count toward team size"
-  },
-  {
-   "title": "Search: claude -p billing 2026",
-   "url": "https://the-decoder.com/claude-subscriptions-get-separate-budgets-for-programmatic-use-billed-at-full-api-prices/",
+   "title": "Web search: YouTube Shorts Oct 2026 policy",
+   "url": "https://www.google.com/search?q=YouTube+Shorts+October+2026",
    "tier": "C",
    "result": "rejected",
-   "why": "Describes the June change that Anthropic's own article says was paused"
+   "why": "third-party blogs only"
   }
  ],
- "repo_watch": [],
- "ideas": []
+ "repo_watch": [
+  {
+   "name": "Calibre-Labs/reforge-ai-evals",
+   "url": "https://github.com/Calibre-Labs/reforge-ai-evals",
+   "licence": "MIT",
+   "stars": 94,
+   "last_commit": "2026-10-28",
+   "verdict": "watch",
+   "fit": "skills that help write rubrics and judge prompts",
+   "why": "young, 94 stars; we do not need it for the idea below"
+  }
+ ],
+ "ideas": [
+  {
+   "id": "2026-10-30-1",
+   "title": "Measure how often Israa's verdict matches the owner's decision",
+   "area": "agents",
+   "problem": "Scripts now pass a gate of Israa (score >= 8) plus the Builder chat (script.min_score, script.builder_review). Both are Claude. Nothing records whether Israa's pass/rework agrees with what the owner then does. New research says judges can agree with each other and still disagree with humans (kappa 0.88 between two judges, 0.19 with humans; abstract at neurips.cc/virtual/2026/172889), and that raw percent agreement overstates quality by 33-41 points (arXiv 2606.19544). That was open-weight judges; the Claude judge in the same paper did better, so our gap may be small. We simply do not know.",
+   "proposal": "Add a small read-only function in quality.py, e.g. judge_agreement(): for every episode that has data.review (Israa's verdict/score) and an owner decision (status approved/rejected after awaiting_approval, from decide_episode in agents.py, by='Owner'), build the 2x2 table Israa pass/rework vs owner approve/reject, and report percent agreement, Cohen's kappa, and the list of disagreements with the owner's note. Show it as one line in Atlas's `hq status` and in the Learning tab. No prompt change, no extra model call, no cost. If kappa is low after ~15 decided scripts, the next step (a separate idea) is to feed the owner's rejection notes into Israa's criteria.",
+   "gain": "Turns 'Israa said 8' into a known quantity. Tells the owner whether the gate saves his 3 hours a week or only adds delay. Measured by: the number exists and updates after each owner decision.",
+   "test": "Normal: 10 episodes with both fields give a table whose cells add to 10. Edge: an episode rejected by the owner after Israa's rework verdict, and an episode with no Israa review, must be skipped or counted separately, not crash. Failure case: all decisions the same (kappa undefined) must print 'not enough variety yet', not divide by zero. Pass = Atlas reports the agreement line and the three cases behave as described.",
+   "effort": "S",
+   "confidence": "moderate",
+   "confidence_why": "The method (chance-corrected agreement against human decisions) rests on two A-grade abstracts; I did not read the full papers and neither tests Claude as judge on stories, so the size of any gap for us is unknown.",
+   "risks": "Few decided scripts so far, so early numbers are noisy: label it 'n = N'. Owner decisions also reflect taste, not only quality. No outside code, no licence issue.",
+   "links": [
+    {
+     "title": "A Second Judge is Not a Second Opinion",
+     "url": "https://neurips.cc/virtual/2026/172889"
+    },
+    {
+     "title": "Large-scale LLM-as-a-Judge study (arXiv 2606.19544)",
+     "url": "https://arxiv.org/abs/2606.19544"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
 }
