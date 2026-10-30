@@ -3,8 +3,8 @@
  "focus": "agents",
  "note": "One idea today: we never check whether Israa's scores match what you decide. The rest of the sweep had nothing that needs you (no new models; Claude Code 2.1.312-314 are small fixes).",
  "research": {
-  "searches": 4,
-  "pages_read": 14,
+  "searches": 6,
+  "pages_read": 10,
   "minutes": 12,
   "questions": [
    "Does the evidence on LLM judges say a second judge (Israa + Builder) gives independent checking?",
@@ -12,7 +12,7 @@
    "Did Claude Code, the API or YouTube change anything this week that touches our workers or policy?"
   ],
   "gaps": [
-   "Only 4 web searches (not 15): this was a short run, so the sweep is thinner than RICHARD.md asks.",
+   "Only 6 searches (3 web, 3 GitHub queries), not 15: a short run, so the sweep is thinner than RICHARD.md asks.",
    "Did not open the full PDFs of the judge papers, only their abstracts.",
    "No official YouTube announcement for Oct 2026 found; only third-party roundups (grade C, not used)."
   ]
