@@ -198,12 +198,12 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
     const fr = a3 === 'FRA' || (FRANCE.has(a3) && k > 0 && !tint[a3]);   // a tint (e.g. ':uk') wins over France's colour   // a French territory turns France's colour once the story reaches it
     const fill = fr ? 'url(#france)' : k > 0 ? (tint[a3] || C.fill) : C.land;
     const op = fr ? (a3 === 'FRA' ? 1 : 0.3 + 0.7 * k) : k > 0 ? 0.35 + 0.6 * k : 1;
-    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (k > 0 || a3 === 'FRA' ? op * 0.72 : 0.16) : op}
+    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (k > 0 || a3 === 'FRA' ? Math.min(0.94, op) : 0.08) : op}
                  stroke={fr ? '#E8FBFF' : C.line} strokeWidth={fr ? 2 : 1.6} />;
   });
   const world = WORLD.map((ft) => {
     const k = fills[ft.properties.a3] || 0;
-    return <path key={ft.properties.a3} d={path(ft)} fill={k > 0 ? (tint[ft.properties.a3] || C.fill) : C.world} fillOpacity={k > 0 ? (0.35 + 0.6 * k) * (earth ? 0.72 : 1) : earth ? 0.16 : 1} stroke={C.line} strokeWidth={1.1} />;
+    return <path key={ft.properties.a3} d={path(ft)} fill={k > 0 ? (tint[ft.properties.a3] || C.fill) : C.world} fillOpacity={k > 0 ? 0.35 + 0.6 * k : earth ? 0.08 : 1} stroke={C.line} strokeWidth={1.1} />;
   });
   // regions [{id, color, ring [[lon, lat]...]}]: a drawn historical area (approximate claims, not a modern border). It stays from its
   // line on; a later line naming the same id recolours it (color 'none' hides it). Rings are turned the way d3 needs (small side filled).
@@ -240,7 +240,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
     }
     return (
       <g key={`g${id}`} clipPath="url(#land)">
-        <path d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.62 : op} />
+        <path d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.8 : op * 1.25} />
         <path d={path(r.ft)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeOpacity={(b ? r.k : 1 - r.k) * 0.95} strokeLinejoin="round" />
       </g>
     );
@@ -274,6 +274,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
   return (
     <AbsoluteFill style={{background: `radial-gradient(circle at 50% 45%, ${C.bg[0]}, ${C.bg[1]})`}}>
       <style>{FONT_CSS}</style>
+      <div style={earth ? tiltOf(cam[2]) : {position: 'absolute', left: 0, top: 0, width: W, height: H}}>
       {earth ? <Earth cam={cam} cx={MAPX} cy={MAPY} W={W} H={H} /> : null}
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <defs>
@@ -324,13 +325,17 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
           return (
             <g key={`p${i}-${k}`}>
               {i === li ? <circle cx={x} cy={y} r={ring} fill="none" stroke={C.accent} strokeWidth={2} opacity={1 - (((f - at(pa)) % 45) / 45)} /> : null}
-              <circle cx={x} cy={y} r={8} fill={C.accent} stroke={C.white} strokeWidth={2} opacity={on(pa, 6)} />
+              <circle cx={x} cy={y} r={earth ? 12 : 8} fill={C.accent} stroke={C.white} strokeWidth={3} opacity={on(pa, 6)} />
             </g>
           );
         }))}
         {lines.flatMap((l, i) => (i <= li ? (l.march || []).map((m, k) => <March key={`mr${i}-${k}`} m={m} path={path} P={P} f={f} fps={fps} live={i === li} />) : []))}
         {(line.fx || []).map((x, i) => <Battle key={`fx${i}`} x={x} P={P} f={f} fps={fps} />)}
         {line.shake ? <Shake s={line.shake} P={P} f={f} fps={fps} /> : null}
+        {lines.flatMap((l, i) => (i === li && earth && cam[2] >= 1500 ? (l.flags || []).map((x, k) => {
+          const [fx, fy] = P(x.ll);
+          return isFinite(fx) && t >= x.at ? <PoleFlag key={`fg${i}-${k}`} x={fx} y={fy} s={spring({frame: f - at(x.at), fps, config: {damping: 11, stiffness: 150}, durationInFrames: 18})} f={f + k * 7} name={x.name} /> : null;
+        }) : []))}
       </svg>
       {line.photo ? <Photo ph={line.photo} a={line.photo.at != null ? line.photo.at : line.t0 + 0.35}
                            b={line.photo.until != null ? line.photo.until : line.photo2 ? line.photo2.at - 0.1 : nextT0 - 0.15} f={f} fps={fps} /> : null}
@@ -340,14 +345,16 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
           const pa = pinAt(line, p, fps);
           if (!p.label || t < pa - 0.05 || (p.until != null && t >= p.until) || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
-          return <Text key={`n${k}`} x={x + 18 + (p.off ? p.off[0] : 0)} y={y - 16 + (p.off ? p.off[1] : 0)} size={34} anchor="start" op={on(pa, 8)} pop={pop(pa)}>{p.label}</Text>;
+          return <Text key={`n${k}`} x={x + 22 + (p.off ? p.off[0] : 0)} y={y - 18 + (p.off ? p.off[1] : 0)} size={earth ? (cam[2] < 1000 ? 36 : 54) : 34} weight={800} anchor="start" op={on(pa, 8)} pop={pop(pa)}>{p.label}</Text>;
         })}
         {(line.labels || []).map((lb, k) => (t >= lb.at - 0.05 && geoDistance(cam.slice(0, 2), lb.ll) < 1.45
-          ? <Text key={`lb${k}`} {...xy(P(lb.ll))} size={34} color={C.sub} op={on(lb.at, 12)}>{lb.text}</Text> : null))}
-        {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={40} color={C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
+          ? <Text key={`lb${k}`} {...xy(P(lb.ll))} size={earth ? 50 : 34} color={earth ? C.white : C.sub} op={on(lb.at, 12)}>{lb.text}</Text> : null))}
+        {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={earth ? 62 : 40} weight={800} color={earth ? C.white : C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
         {(line.regions || []).filter((r) => r.label && r.color !== 'none').map((r) => (
-          <Text key={`rl${r.id}`} {...xy(P(r.label[1]))} size={30} color={C.white} op={on(line.t0 + 0.5, 12)}>{r.label[0]}</Text>))}
+          <Text key={`rl${r.id}`} {...xy(P(r.label[1]))} size={earth ? 48 : 30} weight={800} color={C.white} op={on(line.t0 + 0.5, 12)}>{r.label[0]}</Text>))}
       </svg>
+      </div>
+      {line.mention && t >= line.mention.at ? <Mention m={line.mention} f={f} fps={fps} /> : null}
       {line.legend ? (
         <div style={{position: 'absolute', left: 60, bottom: 60, fontFamily: 'Space Grotesk', fontSize: 28, color: C.white, opacity: on(line.t0 + 0.3, 12),
                      background: 'rgba(3,8,16,0.72)', padding: '14px 20px', borderRadius: 8}}>
@@ -367,10 +374,71 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
       <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)'}} />
       <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}{earth ? ' · Imagery: NASA Blue Marble (public domain)' : ''}</div>
       {lines.map((l, i) => (l.event ? <EventClip key={`e${i}`} ev={l.event} t0={l.t0} f={f} fps={fps} xy={l.event.ll ? P(l.event.ll) : null} lit={earth} /> : null))}
+      {lines.flatMap((l, i) => (l.plates || []).map((v, k) => <Plate key={`pl${i}-${k}`} v={v} f={f} fps={fps} xy={v.ll ? P(v.ll) : null} />))}
+      {lines.map((l, i) => (l.card ? <SectionCard key={`c${i}`} c={l.card} f={f} fps={fps} /> : null))}
       {lines.map((l, i) => (l.footage ? <Footage key={`v${i}`} v={l.footage} f={f} fps={fps} xy={l.footage.ll ? P(l.footage.ll) : null} /> : null))}
     </AbsoluteFill>
   );
 };
+
+const tiltOf = (s) => {
+  const k = Math.max(0, Math.min(1, (s - 1300) / 2400));
+  return {position: 'absolute', left: 0, top: 0, width: W, height: H, transformOrigin: '50% 62%',
+          transform: `perspective(2400px) rotateX(${(17 * k).toFixed(2)}deg) scale(${(1 + 0.2 * k).toFixed(3)})`};
+};
+
+// plate {key, at, dur, size, cap, credit, from [z, x, y], to [z, x, y], fit, plain}: a period picture on the whole screen, moving slowly. It opens
+// out of its place on the map (plain: fades, for one picture after another); fit: an upright portrait stands on a blurred copy of itself
+function Plate({v, f, fps, xy}) {
+  const a = Math.round(v.at * fps), n = Math.round((v.dur || 4) * fps);
+  if (f < a - 1 || f > a + n + 1) return null;
+  const e = interpolate(f, [a, a + n], [0, 1], clamp);
+  const [z0, x0, y0] = v.from || [1.04, 50, 50], [z1, x1, y1] = v.to || [1.14, 50, 50];
+  const z = z0 + (z1 - z0) * e, px = x0 + (x1 - x0) * e, py = y0 + (y1 - y0) * e;
+  const src = staticFile(`photos/${v.key}.jpg`);
+  const tag = interpolate(f, [a + 12, a + 22, a + n - 14, a + n - 6], [0, 1, 1, 0], clamp);
+  const fade = v.plain ? interpolate(f, [a, a + 9, a + n - 9, a + n], [0, 1, 1, 0], clamp) : 1;
+  const body = (
+    <AbsoluteFill style={{background: '#050608', overflow: 'hidden'}}>
+      {v.fit ? <>
+        <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 45%, #26303F 0%, #0A0E15 75%)'}} />
+        <Img src={src} style={{position: 'absolute', height: H * 0.88 * z / 1.1, left: `${px}%`, top: `${py - 3}%`, transform: 'translate(-50%, -50%)', border: '6px solid #E9E2D0', boxShadow: '0 24px 80px rgba(0,0,0,0.85)'}} />
+      </> : <Img src={src} style={{position: 'absolute', width: W, height: H, objectFit: 'cover', objectPosition: `${px}% ${py}%`, transform: `scale(${z})`, transformOrigin: `${px}% ${py}%`}} />}
+      <AbsoluteFill style={{background: 'linear-gradient(0deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0) 26%)'}} />
+      {v.cap ? <div style={{position: 'absolute', left: 64, bottom: 44, opacity: tag, transform: `translateY(${(1 - tag) * 10}px)`, fontFamily: 'Space Grotesk', color: C.white, fontSize: 40, fontWeight: 700, textShadow: '0 2px 14px rgba(0,0,0,0.9)', maxWidth: 1500}}>{v.cap}</div> : null}
+      {v.credit ? <div style={{position: 'absolute', right: 30, bottom: 18, opacity: tag * 0.8, fontFamily: 'Space Grotesk', fontSize: 16, color: '#E6EEF5', textShadow: '0 1px 6px rgba(0,0,0,0.9)'}}>{v.credit}</div> : null}
+    </AbsoluteFill>
+  );
+  return v.plain ? <AbsoluteFill style={{opacity: fade}}>{body}</AbsoluteFill> : <Iris a={a} n={n} xy={xy} f={f}>{body}</Iris>;
+}
+
+// card {at, year, title}: where we are in the story: a band across the picture, a little over 2 s
+function SectionCard({c, f, fps}) {
+  const a = Math.round(c.at * fps), n = Math.round((c.dur || 2.4) * fps);
+  if (f < a || f > a + n) return null;
+  const k = interpolate(f, [a, a + 9, a + n - 9, a + n], [0, 1, 1, 0], {...clamp, easing: Easing.out(Easing.cubic)});
+  return (
+    <div style={{position: 'absolute', left: 0, right: 0, top: H * 0.34, height: H * 0.32, background: `rgba(4,8,16,${0.82 * k})`, display: 'flex', flexDirection: 'column',
+                 alignItems: 'center', justifyContent: 'center', fontFamily: 'Space Grotesk', color: C.white, opacity: k, clipPath: `inset(0 ${(1 - k) * 50}% 0 ${(1 - k) * 50}%)`}}>
+      <div style={{fontSize: 118, fontWeight: 700, letterSpacing: 6, lineHeight: 1}}>{c.year}</div>
+      <div style={{width: 120, height: 5, background: '#FFD37A', margin: '16px 0 14px'}} />
+      <div style={{fontSize: 52, fontWeight: 700, letterSpacing: 10, textTransform: 'uppercase', color: '#FFD37A'}}>{c.title}</div>
+    </div>
+  );
+}
+
+// mention {at, flag, text, dur}: a country only named: its flag and name in the corner, the camera stays where the story is
+function Mention({m, f, fps}) {
+  const a = Math.round(m.at * fps), n = Math.round((m.dur || 3.5) * fps);
+  if (f > a + n) return null;
+  const k = spring({frame: f - a, fps, config: {damping: 12, stiffness: 160}, durationInFrames: 18}) * interpolate(f, [a + n - 8, a + n], [1, 0], clamp);
+  return (
+    <div style={{position: 'absolute', left: 60, top: 56, opacity: k, transform: `translateX(${(k - 1) * 40}px)`, display: 'flex', alignItems: 'center', gap: 20, background: 'rgba(3,8,16,0.72)', padding: '14px 26px', borderRadius: 10}}>
+      <svg width={112} height={72} viewBox="0 0 56 36">{FLAG[m.flag]}</svg>
+      <div style={{fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 46, letterSpacing: 4, color: C.white, textTransform: 'uppercase'}}>{m.text}</div>
+    </div>
+  );
+}
 
 // a real picture of the time (public domain / CC0 / CC BY, credited on its frame): a framed print over the dimmed map, a slow push-in;
 // up from `a` to `b` seconds (by default from just after the line starts until the next line: Israa, a print gone before its line ended)

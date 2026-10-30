@@ -67,7 +67,7 @@ const Text = ({x, y, children, size = 34, color = C.text, anchor = 'middle', op 
   );
 };
 
-export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = [], noEnd = false, earth = false, vertical = false, endCard = null}) => {
+export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra: 730}, source = '', endLine = 'FIND OUT IN THE FULL STORY ▶ LINK BELOW', unnamed = [], noEnd = false, earth = false, vertical = false, endCard = null, words = []}) => {
   VERT = vertical; W = vertical ? 1080 : W0; H = vertical ? 1920 : H0;
   MAPX = vertical ? W * 0.5 : W * 0.42; MAPY = vertical ? H * 0.47 : H * 0.58; ZK = vertical ? 1.0 : 1;
   const f = useCurrentFrame();
@@ -112,7 +112,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
     const focus = a3 === 'FRA' || a3 === 'GUF' || OVERSEAS.has(a3);
     const t = named[a3] != null ? on(named[a3], 12) : 0;
     const fill = focus ? 'url(#france)' : C.fill[a3] ? mix(C.land, C.fill[a3], t * 0.92) : C.land;
-    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (focus ? 0.78 : C.fill[a3] ? 0.16 + 0.6 * t : 0.16) : 1}
+    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (focus ? 0.94 : C.fill[a3] ? 0.08 + 0.86 * t : 0.08) : 1}
                  stroke={focus ? '#E8FBFF' : C.line} strokeWidth={focus ? 2 : C.lineW} />;
   });
   const pDeu = prog(named.DEU, named.DEU + 30), pEsp = prog(named.ESP, named.ESP + 30), pSur = prog(named.SUR, named.SUR + 24);
@@ -146,7 +146,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
         <circle cx={MAPX} cy={MAPY} r={s * 1.16} fill="url(#atmo)" />
         <path d={path({type: 'Sphere'})} fill={C.sea} fillOpacity={earth ? 0.3 : 1} stroke={`${C.atmo}66`} strokeWidth={2} />
         <path d={path(GRAT)} fill="none" stroke={C.grat} strokeWidth={1} />
-        <path d={path(WORLD)} fill={C.world} fillOpacity={earth ? 0.16 : 1} stroke={C.line} strokeWidth={1.1} />
+        <path d={path(WORLD)} fill={C.world} fillOpacity={earth ? 0.08 : 1} stroke={C.line} strokeWidth={1.1} />
         {detail}
         <Draw d={path(geo.borders.deu)} p={pDeu} color={C.white} width={5} glow />
         <Draw d={path(geo.borders.esp)} p={pEsp} color={C.white} width={5} glow />
@@ -188,7 +188,7 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
           <Text {...xy(P([-53.15, 3.75]))} size={32} color="#FFFFFF" weight={800}>French Guiana</Text>
           <Text {...xy(P([-55.9, 4.2]))} size={34} op={named.SUR != null ? on(named.SUR, 8) : 1}>Suriname</Text>
           <Text {...xy(P([-55.2, 1.0]))} size={42} op={on(named.BRA, 8) * (VERT ? 1 - on(at('km730'), 6) : 1)}>Brazil</Text>
-          <Text x={VERT ? W / 2 : braAt[0] + 40} y={VERT ? braAt[1] + 150 : braAt[1] + 130} size={96} anchor={VERT ? 'middle' : 'start'} color={C.accent} op={on(at('km730'), 8)} spacing={0}
+          <Text x={VERT ? W / 2 : braAt[0] + 40} y={VERT ? braAt[1] + 120 : braAt[1] + 130} size={96} anchor={VERT ? 'middle' : 'start'} color={C.accent} op={on(at('km730'), 8)} spacing={0}
                 pop={f > at('km730', 1.2) ? pop(at('km730', 1.2)) : 1}>{`~${braNum} km`}</Text>
         </g>
         {cues.more ? TERR.map(([name, ll, key, [dx, dy]]) => {
@@ -224,11 +224,27 @@ export const MapShort = ({cues = {}, seconds = 35, km = {deu: 418, esp: 646, bra
         <div style={{fontSize: 40, color: C.sub}}>France&rsquo;s longest border is with</div>
         <div style={{fontSize: 110, color: C.accent}}>Brazil</div>
       </div>
+      {VERT && words.length ? <Captions words={words} f={f} fps={fps} until={endCard ? endCard.at : 1e9} /> : null}
       {endCard ? <EndCard f={f} fps={fps} e={endCard} /> : null}
       <Img src={staticFile('grain.png')} style={{position: 'absolute', width: W, height: H, objectFit: 'cover', opacity: 0.04, mixBlendMode: 'overlay'}} />
       <AbsoluteFill style={{background: 'radial-gradient(ellipse at 45% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)'}} />
       <div style={{position: 'absolute', right: 28, bottom: 20, fontFamily: 'Space Grotesk', fontSize: 15, color: 'rgba(150,190,215,0.5)'}}>{geo.credit}{earth ? ' · Imagery: NASA Blue Marble (public domain)' : ''}</div>
     </AbsoluteFill>
+  );
+};
+
+// the Short's words: three at a time, big, the spoken one yellow (RealLifeLore's Short on this very topic); y 1500 clears YouTube's buttons
+const Captions = ({words, f, fps, until}) => {
+  const t = f / fps;
+  if (t >= until || !words.length) return null;
+  let i = words.findIndex((w) => t < w[2]);
+  if (i < 0 || t < words[0][1] - 0.1) return null;
+  if (t < words[i][1] - 0.5) return null;
+  const st = i - (i % 3), row = words.slice(st, st + 3);
+  return (
+    <div style={{position: 'absolute', left: 40, right: 40, top: 1490, textAlign: 'center', fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 66, lineHeight: 1.1, textTransform: 'uppercase', WebkitTextStroke: '10px #05080F', paintOrder: 'stroke'}}>
+      {row.map((w, k) => <span key={k} style={{color: st + k === i ? '#FFD84A' : '#FFFFFF', marginRight: 18}}>{w[0].replace(/[.,!?;:]+$/, '')}</span>)}
+    </div>
   );
 };
 
@@ -259,8 +275,8 @@ const Bars = ({f, at, km, source}) => {
   if (op <= 0.01) return null;
   const shown = rows.filter(([name, , , cue]) => (second > 0.01 ? true : name !== 'Brazil') && f >= at(cue) - 6);
   return (
-    <div style={{position: 'absolute', left: VERT ? 240 : 1330, top: VERT ? 1215 : 250, width: VERT ? 600 : 540, opacity: op, fontFamily: 'Space Grotesk',
-                 ...(VERT ? {background: 'rgba(3,8,16,0.62)', padding: '18px 24px 20px', borderRadius: 12, transform: 'scale(0.82)', transformOrigin: 'top center'} : {})}}>
+    <div style={{position: 'absolute', left: VERT ? 240 : 1330, top: VERT ? 1185 : 250, width: VERT ? 600 : 540, opacity: op, fontFamily: 'Space Grotesk',
+                 ...(VERT ? {background: 'rgba(3,8,16,0.62)', padding: '18px 24px 20px', borderRadius: 12, transform: 'scale(0.66)', transformOrigin: 'top center'} : {})}}>
       <div style={{fontSize: 30, letterSpacing: 5, color: C.sub, borderBottom: '1px solid rgba(140,190,220,0.3)', paddingBottom: 10}}>LAND BORDERS (KM)</div>
       {shown.map(([name, km, color, cue]) => {
         const g = interpolate(f, [at(cue) - 6, at(cue) + 18], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});

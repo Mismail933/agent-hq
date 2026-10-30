@@ -416,6 +416,12 @@ Agents never spend money without the owner's explicit approval.
   lower middle at 0.82, the Brazil number centred) + `endCard` {at, q, title, cta}. Content: long/part-1-2-lvl (script = the approved
   45 lines word for word + 4 footage lines + 4 hooks; scratchpad make_ch1_lvl.py), long/short-vertical (make_vshort.py: the approved
   opening + one end line). Test stills without a render: scratchpad stills_lvl.py <part> [auto|s,s].
+  2.79.0 Chapter 1 v3 (the owner 10-30: "not acceptable", study map channels first; Atlas-HQ/review/map-channels-research.md): Earth.jsx `REGIONS` = NASA 500 m crops
+  (geo/bluemarble/500m, 240 px a degree, canvas 0.75 when close); MapStory: solid colours, 54 px labels (36 on a small globe), `tiltOf` (close views lie back up to 17 deg),
+  line `plates` [{key, on, off|dur, cap, from, to, fit, plain, ll}] (period pictures on the whole screen, slow move; fit = an upright portrait on a dark backdrop), `card`
+  {on, year, title} (section band), `mention` {on, flag, text} (a country only named: corner flag, the camera stays), `flags` [[name, lon, lat, cue]] (own line only). mapsound.py = real
+  recordings only, long/sfx-era (ElevenLabs effects, each checked with Earshot; line `sfx` [[kind, cue, seconds]]). VMapShort `words` = burned captions. Content: long/part-1-2-v3
+  (scratchpad make_ch1_v3.py: approved lines asserted word for word), speed back to 1.08. Picture downloads from Commons: originals, 40 s apart (thumbs get 429).
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen

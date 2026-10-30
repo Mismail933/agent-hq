@@ -168,6 +168,11 @@ def part(folder):
             with urllib.request.urlopen(url, context=ssl.create_default_context(cafile=certifi.where()), timeout=300) as r:
                 tex.write_bytes(r.read())
         shutil.copy(tex, mapsample.APP / "public" / "earth.jpg")
+        fine = tex.parent / "500m"   # the story's places at 500 m (NASA, public domain)
+        (mapsample.APP / "public" / "earth").mkdir(exist_ok=True)
+        for f in fine.glob("*.jpg"):
+            if not re.fullmatch(r"[A-D][12]", f.stem) and not (mapsample.APP / "public" / "earth" / f.name).exists():
+                shutil.copy(f, mapsample.APP / "public" / "earth" / f.name)
     fdir = folder.parent / "footage"   # real footage (Commons, PD / CC0 / CC BY) + credits.json
     fcred = json.loads((fdir / "credits.json").read_text(encoding="utf-8")) if (fdir / "credits.json").exists() else {}
     beats = []
@@ -214,6 +219,23 @@ def part(folder):
             b["footage"] = {"key": v["key"], "at": round(at, 3), "dur": round(max(2.5, dur), 2), "from": v.get("from", 0),
                             "caption": v["caption"], **({"ll": v["ll"]} if v.get("ll") else {}), **({"zoom": v["zoom"]} if v.get("zoom") else {}),
                             "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons"}
+        if s.get("plates"):   # [{key, on, off | dur, cap, from, to, fit, plain, ll}]: a period picture on the whole screen
+            b["plates"] = []
+            for v in s["plates"]:
+                src = pdir / f"{v['key']}.jpg"
+                shutil.copy(src, mapsample.APP / "public" / "photos" / src.name)
+                c = credits.get(v["key"], {})
+                who = re.sub(r"\s+", " ", c.get("author") or "").strip()[:50]
+                at = cue(v["on"]) + float(v.get("delay") or 0) if v.get("on") else b["t0"] + float(v.get("delay") or 0)
+                dur = (cue(v["off"]) - at) if v.get("off") else float(v.get("dur") or 4)
+                b["plates"].append({**{k: x for k, x in v.items() if k not in ("on", "off", "delay")}, "at": round(at, 3), "dur": round(max(2.0, dur), 2),
+                                    "credit": f"{who + ', ' if who else ''}{c.get('licence', 'Public domain')}, via Wikimedia Commons"})
+        if s.get("card"):   # {on?, year, title}: where we are in the story
+            b["card"] = {**s["card"], "at": cue(s["card"]["on"]) if s["card"].get("on") else b["t0"]}
+        if s.get("mention"):   # {on, flag, text}: a country only named: a flag in the corner, the camera stays
+            b["mention"] = {**s["mention"], "at": cue(s["mention"]["on"])}
+        if s.get("flags"):   # [[name, lon, lat, cue]]: a flag planted on a place
+            b["flags"] = [{"name": x[0], "ll": [x[1], x[2]], "at": cue(x[3])} for x in s["flags"]]
         if s.get("sfx"):   # [[kind, cue, seconds]]: a line's own sound (sea, creak, cannon, birds, rumble)
             b["sfx"] = [[k, cue(w), d] for k, w, d in s["sfx"]]
         for slot in ("photo", "photo2"):   # photo2: a second print on its word (e.g. Saint-Louis after Pondicherry)
@@ -262,7 +284,7 @@ def part(folder):
                     **({"footage": {**b["footage"], "at": b["footage"]["at"] + split}} if b.get("footage") else {}),
                     **({"sfx": [[k, t + split, d] for k, t, d in b["sfx"]]} if b.get("sfx") else {})} for b in beats]
         fx = folder / "sfx.wav"
-        placed = mapsound.build(shifted, total, vo, fx)
+        placed = mapsound.build(shifted, total, vo, fx, folder.parent / "sfx-era")
         (folder / "sfx-placed.json").write_text(json.dumps(placed, indent=1), encoding="utf-8")
         fxa, _ = sf.read(str(fx), dtype="float32")
         print("SOUND", json.dumps(mapsound.report(vo, fxa, folder / "sfx-report.json")), len(placed), "sounds")
