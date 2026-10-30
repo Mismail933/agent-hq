@@ -282,8 +282,7 @@ def part(folder):
           tmp.replace(part_f)
       import shorts as _sh
       lst = folder / "_story-concat.txt"
-      lst.write_text("".join(f"file '{c.as_posix()}'
-" for c in parts), encoding="utf-8")
+      lst.write_text("".join(f"file '{c.as_posix()}'\n" for c in parts), encoding="utf-8")
       subprocess.run([_sh.find_ffmpeg(), "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(folder / "story.mp4")], check=True)
     clips.append(folder / "story.mp4")
     import shorts
