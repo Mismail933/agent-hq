@@ -61,12 +61,17 @@ def save_image(data, folder, stem):
     if not ext:
         raise ValueError("That isn't a PNG, JPG, WEBP or GIF image.")
     folder.mkdir(parents=True, exist_ok=True)
-    base = f"{time.strftime('%Y-%m-%d')}-{re.sub(r'[^a-z0-9]+', '-', stem.lower()).strip('-')[:40] or 'image'}"
-    path, n = folder / f"{base}{ext}", 2
-    while path.exists():
-        path, n = folder / f"{base}-{n}{ext}", n + 1
-    path.write_bytes(data)
-    return path
+    # 2.78.6: the time in the name and an exclusive create, so two images arriving together never take the same name
+    base = f"{time.strftime('%Y-%m-%d-%H%M%S')}-{re.sub(r'[^a-z0-9]+', '-', stem.lower()).strip('-')[:40] or 'image'}"
+    n = 1
+    while True:
+        path = folder / (f"{base}{ext}" if n == 1 else f"{base}-{n}{ext}")
+        try:
+            with open(path, "xb") as fh:
+                fh.write(data)
+            return path
+        except FileExistsError:
+            n += 1
 
 
 def _meta(page, name):

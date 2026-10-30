@@ -44,6 +44,9 @@ STATE = {"port": None, "running": False, "code": f"{secrets.randbelow(10 ** 6):0
 ASK = {}          # chat id -> the button that waits for a reason: {"label", "path", "field", "body"}
 OUT = []          # news waiting to be sent
 OUT_LOCK = threading.Lock()
+INBOX = []        # (2.78.6) his messages for Atlas that arrived while Atlas was still answering: passed on as soon as he is free
+INBOX_LOCK = threading.Lock()
+BUSY_WORDS = "still working"
 SAVE_LOCK = threading.Lock()
 STATUS_FN = [lambda: []]   # server.py sets this: what is running right now, as short lines
 PROVIDERS = []             # server.py adds functions that return more waiting cards (voice versions, characters, music, voices)
@@ -705,6 +708,14 @@ def _to_atlas(chat, text, m):
         return send("I can pass text, photos, videos and documents to Atlas. /help lists the rest.", chat=chat, plain=True)
     STATE["reply_to_phone"] = True
     ok, msg = office("/api/chat", {"text": text, "images": images, "phone": True})
+    if not ok and BUSY_WORDS in msg:   # Atlas is answering: keep it (photos included) and pass it on when he is free
+        with INBOX_LOCK:
+            first = not INBOX
+            INBOX.append({"text": text, "images": images})
+        if first:
+            send("📥 Atlas is still answering your last message. I'll pass this on the moment he's free (send more if you like: "
+                 "it all goes together).", chat=chat, plain=True)
+        return
     if not ok:
         STATE["reply_to_phone"] = False
         return send(f"⚠ {msg}", chat=chat, plain=True)
@@ -924,6 +935,45 @@ def _push():
         time.sleep(3)
 
 
+def _deliver_inbox():
+    """Pass the held messages to Atlas once he is free: their texts joined, at most 4 images a message (the chat's limit); the rest
+    waits for the next turn. Returns True when something was delivered."""
+    with INBOX_LOCK:
+        if not INBOX:
+            return False
+        batch, imgs, k = [], [], 0
+        for it in INBOX:
+            if batch and len(imgs) + len(it["images"]) > 4:
+                break
+            batch.append(it)
+            imgs += it["images"]
+            k += 1
+    texts = [it["text"] for it in batch if it["text"]]
+    text = "\n\n".join(texts)
+    if len(batch) > 1:
+        text = f"[{len(batch)} messages he sent while you were answering, together:]\n\n" + text
+    STATE["reply_to_phone"] = True
+    ok, msg = office("/api/chat", {"text": text, "images": imgs[:4], "phone": True})
+    if not ok and BUSY_WORDS in msg:
+        return False   # still busy: try again in a few seconds
+    with INBOX_LOCK:
+        del INBOX[:k]
+    if not ok:
+        STATE["reply_to_phone"] = False
+        send(f"⚠ {msg}", plain=True)
+    return ok
+
+
+def _inbox_loop():
+    while True:
+        try:
+            if INBOX:
+                _deliver_inbox()
+        except Exception as e:   # never dies; the next turn tries again
+            print("Phone inbox:", repr(e)[:300], flush=True)
+        time.sleep(4)
+
+
 def start(port):
     """Start the bot if a token is set. Safe to call again after the token changes."""
     STATE["port"] = port
@@ -943,6 +993,7 @@ def start(port):
     if not STATE.get("pushing"):
         STATE["pushing"] = True
         threading.Thread(target=_push, daemon=True).start()
+        threading.Thread(target=_inbox_loop, daemon=True).start()
     if owner_chat():
         print(f"  Your phone: @{STATE['bot']} is connected.\n", flush=True)
     else:

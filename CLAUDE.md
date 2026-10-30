@@ -438,6 +438,12 @@ Agents never spend money without the owner's explicit approval.
   (indexes, resolved when tapped). `/today <kind>` and Atlas's `hq phone-resend [kind]` (`phone.resend`, `KINDS`: ghassan,
   videos, characters, scripts, ideas, plans, voices); 2.75.3: documents he sends the bot (`DOC_IN`: md, txt, pdf, json, office files,
   images, audio; <= 20 MB) are saved to Atlas-HQ/review/uploads/ like his videos and Atlas is told the path (an .md bounced before);
+  2.78.6 (Atlas's request 10-30, "phone photos overwrite each other"; the real cause: /api/chat answers 409 while Atlas is still
+  answering, BEFORE it saves the images, and the bot dropped the message, so the owner's two thumbnail photos were never saved):
+  a message that gets "still working" is held in `INBOX` (photos included), the owner is told once, and `_inbox_loop` (every 4 s)
+  passes the held messages on together the moment Atlas is free (`_deliver_inbox`: texts joined, at most 4 images a message, the
+  rest next turn); `linkpeek.save_image` names = date + HHMMSS + stem, created exclusively (`open(..., 'xb')`, -2, -3...), so two
+  images at once never overwrite. Tested offline: scratchpad test_phone_inbox.py.
   `hq send-phone <file> ["caption"]` (`phone.send_file`: only content/,
   briefs/, plans/, Atlas-HQ/review/; type by extension; logged `phone_file_sent`).
 - OverSimplified level (2.22.1, Atlas's pick for the owner's "reach this level" request; the owner's v3 character look is kept):
