@@ -235,7 +235,7 @@ const PLACES = {lima: [-77.04, -12.05, 'LIMA', -1], pucallpa: [-74.55, -8.38, 'P
   na: [-100, 42, 'NORTH AMERICA', 1], sa: [-60, -12, 'SOUTH AMERICA', 1], eu: [12, 48, 'EUROPE', 1], af: [20, 4, 'AFRICA', 1], asia: [95, 38, 'ASIA', 1], au: [134, -24, 'AUSTRALIA', -1],   // Storygraphics #3
   california: [-117.2, 32.7, 'CALIFORNIA', 1], swansea: [-3.94, 51.62, 'SWANSEA', 1], kursk: [37.6, 69.6, 'KURSK, 2000', 1], as28: [160.0, 52.6, 'AS-28, 2005', -1],
   challenger: [142.2, 11.35, 'CHALLENGER DEEP', 1], guam: [144.79, 13.44, 'GUAM', -1], saipan: [145.75, 15.18, 'SAIPAN', -1],
-  you_here: [147.6, 15.0, 'YOU ARE HERE', 1]};   // Storygraphics #5
+  you_here: [142.2, 11.35, 'YOU ARE HERE', 1, 52]};   // the label under the pin (above it, it ran through Guam's)   // Storygraphics #5
 // 2.75.8 p.dark (the Storygraphics deep look): a dark teal sea, muted land with a faint rim, labels in spaced caps with a halo
 const DarkLabel = ({x, y, text, f, at: a = 0, anchor = 'start', size = 40}) => {
   const k = clamp((f - a) / 10, 0, 1);
@@ -296,7 +296,7 @@ function Map({f, len, line}) {
       {pins.map((pl, i) => { const a = at(line, (p.pin_on || [])[i] || '', 0.15 + i * 0.15); const s = clamp(pop(f, a, 150, 12), 0, 1.15);
         return (<g key={i} transform={`translate(${sx(pl[0])} ${sy(pl[1])})`}>
           <g transform={`scale(${s})`}><path d="M 0 0 Q -30 -40 -30 -60 A 30 30 0 0 1 30 -60 Q 30 -40 0 0 Z" fill={pl[2] === 'CRASH SITE' ? '#E3232C' : '#FFE11A'} {...st(5)} /><circle cx={0} cy={-60} r={10} fill={INK} /></g>
-          {p.dark ? <DarkLabel x={pl[3] < 0 ? -40 : 40} y={-90} text={pl[2]} f={f} at={a + 4} anchor={pl[3] < 0 ? 'end' : 'start'} />
+          {p.dark ? <DarkLabel x={pl[3] < 0 ? -40 : 40} y={pl[4] != null ? pl[4] : -90} text={pl[2]} f={f} at={a + 4} anchor={pl[3] < 0 ? 'end' : 'start'} />
             : <Label x={pl[3] < 0 ? -40 - pl[2].length * 25 - 40 : 40} y={-120} text={pl[2]} f={f} at={a + 4} h={58} fill={pl[2] === 'CRASH SITE' ? '#E3232C' : '#FFE11A'} color={pl[2] === 'CRASH SITE' ? '#fff' : INK} />}
         </g>); })}
       {p.dark ? (p.labels || []).map((l, i) => <DarkLabel key={i} x={80} y={900 - ((p.labels || []).length - 1 - i) * 80} text={l.text} f={f} at={at(line, l.on || '', 0.15 + i * 0.2)} size={44} />)

@@ -702,7 +702,7 @@ function NextCard({f, len, line}) {
   const id = 'nx' + line.idx, p = P(line), F = f + (line.start || 0);
   vstart(line);
   const k1 = clamp(sp(f, 4, 'card'), 0, 1.05), k2 = clamp(sp(f, 14, 'card'), 0, 1.05);
-  const cx = 160, cy = 330, cw = 800, ch = 450;
+  const cx = 160, cy = 270, cw = 800, ch = 450;
   return (
     <g>
       <Defs id={id} d={3000} glow="#FFF1B8" />

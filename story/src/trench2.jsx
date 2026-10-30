@@ -37,13 +37,14 @@ const Box = ({x, y, w, h, text, fill, s = 1}) => {
     </g>
   );
 };
-const Tag = ({f, a = 0, b = 1e9, x, y, text, size = 40, anchor = 'start', color = '#FFFFFF'}) => {   // deep.jsx's label: a gold rule, spaced caps, a halo
+const Tag = ({f, a = 0, b = 1e9, x, y, text, size = 40, anchor = 'start', color = '#FFFFFF', plate = false}) => {   // deep.jsx's label: a gold rule, spaced caps, a halo
   const k = clamp((f - a) / 10, 0, 1) * (1 - clamp((f - b) / 8, 0, 1));
   if (k <= 0) return null;
   const w = String(text).length * size * 0.62 + (String(text).length - 1) * 8;
   const x0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x;
   return (
     <g opacity={k}>
+      {plate && <rect x={x0 - 16} y={y - size - 4} width={w + 32} height={size + 22} rx={10} fill="#02101A" opacity={0.55} />}
       <path d={`M ${x0} ${y - size - 14} l ${70 * k} 0`} stroke="#FFD25A" strokeWidth={4} />
       <text x={x0 + (1 - k) * -14} y={y} fontFamily={OSWALD} fontWeight={600} fontSize={size} fill={color} letterSpacing={8} style={{textTransform: 'uppercase'}}
         stroke="#02101A" strokeOpacity={0.6} strokeWidth={7} paintOrder="stroke" strokeLinejoin="round">{text}</text>
@@ -51,11 +52,11 @@ const Tag = ({f, a = 0, b = 1e9, x, y, text, size = 40, anchor = 'start', color 
   );
 };
 // p.labels as deep tags: bottom left, stacked up from above the captions (as in the sample), unless a scene gives its own place
-const Labels = ({line, f, x0 = 80, y0 = null, align = 'left'}) => { const ls = P(line).labels || []; return ls.map((l, i) => {
+const Labels = ({line, f, x0 = 80, y0 = null, align = 'left', plate = false}) => { const ls = P(line).labels || []; return ls.map((l, i) => {
   const size = l.big ? 54 : 42, a = at(line, l.on || '', 0.15 + i * 0.2);
   const y = l.y != null ? l.y + size + 26 : y0 == null ? 900 - (ls.length - 1 - i) * 86 : y0 + i * 96 + size + 26;
   const b = P(line).labels_off ? at(line, P(line).labels_off, 1) : 1e9;
-  return <Tag key={i} f={f} a={a} b={b} x={l.x != null ? l.x : x0} y={y} text={l.text} size={size} anchor={align === 'right' ? 'end' : 'start'} color={l.color === 'red' ? '#FF7A6B' : '#FFFFFF'} />;
+  return <Tag key={i} f={f} a={a} b={b} plate={plate} x={l.x != null ? l.x : x0} y={y} text={l.text} size={size} anchor={align === 'right' ? 'end' : 'start'} color={l.color === 'red' ? '#FF7A6B' : '#FFFFFF'} />;
 }); };
 const cupAt = (m) => 1 - 0.58 * clamp(m / 11000, 0, 1);   // the foam cup in the mesh bag shrinks as the pressure grows (0.42 at the bottom)
 
@@ -228,13 +229,14 @@ const Passers = ({line, f, T}) => (P(line).see || []).map((c, i) => {
 });
 
 // ───────────── shared screen pieces ─────────────
+const BADGE = {yancey: '#BFE3F5', cameron: '#CFE8C4', vescovo: '#F5D9B8', walsh: '#F5E6C8', piccard: '#EADCF5'};
 const People = ({line, f, T, x0 = 1640, y0 = 560, down = false}) => (P(line).people || []).map(([who, on, name], i) => {
   const a = at(line, on || '', 0.1 + 0.2 * i);
   if (f < a) return null;
   const s = sp(f, a, 'card');
   return (
     <g key={who} transform={`translate(${down ? x0 : x0 - i * 330} ${down ? y0 + i * 330 : y0}) scale(${s})`}>
-      <circle r={150} fill="#F5E6C8" {...st(8)} />
+      <circle r={150} fill={BADGE[who] || '#F5E6C8'} {...st(8)} />
       <clipPath id={`tw-pp-${who}`}><circle r={142} /></clipPath>
       <g clipPath={`url(#tw-pp-${who})`}><Bust who={who} x={0} y={-10} s={0.62} expr="calm" f={T} arms="rest" /></g>
       <g transform="translate(0 150)"><Box x={-(String(name).length * 17 + 40) / 2} y={0} w={String(name).length * 17 + 40} h={54} text={name} fill="#FFFFFF" rot={-2} /></g>
@@ -283,6 +285,11 @@ const Chips = ({line, f, y0 = 230}) => (P(line).chips || []).map((c, i) => {   /
 
 // ───────────── 1. the dive: the sub falling through the column ─────────────
 function Dive({f, len, line}) {
+  if (P(line).flash_until) {
+    const cut = Math.max(0, at(line, P(line).flash_until, 0.4) - 6);
+    if (f < cut) return <FlashbackArt f={f} len={cut} line={{...line, p: {mode: 'glow', ...(P(line).flash || {})}}} />;
+    return <Dive f={f} len={len} line={{...line, p: {...P(line), flash_until: null}}} />;
+  }
   const p = P(line), T = line.start + f;
   const m = depthOf(line, f, len);
   const [hx, hy] = hand(T);
@@ -611,7 +618,7 @@ function Cabin({f, len, line}) {
       {p.lungs && <AirSpaces f={f} a={at(line, p.lungs, 0.4)} />}
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
-      <Labels line={line} f={f} x0={W - 80} y0={740} align="right" />
+      <Labels line={line} f={f} x0={W - 80} y0={740} align="right" plate />
       <Meter m={m} f={f} op={p.meter === false ? 0 : 1} />
     </g>
   );
@@ -641,7 +648,7 @@ function Cards({f, len, line}) {
       {!(p.alone_big_on && f >= at(line, p.alone_big_on, 0.5)) && <Card line={line} f={f} />}
       <Chips line={line} f={f} y0={p.title ? 430 : 240} />
       <Labels line={line} f={f} />
-      {p.foot && <Tag f={f} a={at(line, p.foot.w || '', 0.8)} x={80} y={900} text={p.foot.text} size={42} />}
+      {p.foot && <Tag f={f} a={at(line, p.foot.w || '', 0.8)} x={80} y={900} text={p.foot.text} size={42} plate />}
       {p.meter !== false && p.sub !== false && <Meter m={m} f={f} />}
     </g>
   );
@@ -849,7 +856,7 @@ function Floor({f, len, line}) {
       <Card line={line} f={f} />
       <Chips line={line} f={f} />
       <People line={line} f={f} T={T} x0={1640} y0={420} />
-      <Labels line={line} f={f} x0={80} y0={150} />
+      <Labels line={line} f={f} x0={80} y0={150} plate />
       <Meter m={10935} f={f} op={p.meter === false ? 0 : 1} />
     </g>
   );
@@ -958,13 +965,13 @@ function Ballast({f, len, line}) {
   return (
     <g>
       <Water m={p.m != null ? p.m : 60} T={T} />
-      <g transform={`translate(960 ${360 + (p.drop ? -drop * 80 : fill * 60)})`}>
+      <g transform={`translate(960 ${(p.drop ? 420 : 360) + (p.drop ? -drop * 70 : fill * 60)})`}>
         <g transform="scale(1.5)"><YSub T={T} x={0} y={0} s={1} cup={cupAt(p.m != null ? p.m : 60)} bag={p.bag !== false} /></g>
         <path d="M -360 0 L -300 0" stroke={INK} strokeWidth={10} />
         <g transform="translate(-460 0)"><rect x={-90} y={-60} width={180} height={120} rx={20} fill="#E5E7EB" opacity={0.95} {...st(6)} />
           <rect x={-84} y={54 - 108 * fill} width={168} height={108 * fill} rx={14} fill="#2563EB" opacity={0.8} />
           <text x={0} y={-76} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={34} fill="#fff" stroke={INK} strokeWidth={6} paintOrder="stroke">TANK</text></g>
-        {p.drop && [0, 1].map((i) => <g key={i} transform={`translate(${-80 + i * 160} ${230 + drop * 380})`}><rect x={-60} y={-30} width={120} height={60} fill="#475569" {...st(6)} />
+        {p.drop && [0, 1].map((i) => <g key={i} transform={`translate(${-80 + i * 160} ${230 + drop * 300})`} opacity={1 - clamp((drop - 0.55) / 0.45, 0, 1)}><rect x={-60} y={-30} width={120} height={60} fill="#475569" {...st(6)} />
           <text x={0} y={14} textAnchor="middle" fontFamily={OSWALD} fontWeight={700} fontSize={32} fill="#fff">STEEL</text></g>)}
       </g>
       <g transform="translate(1580 520)"><path d={p.drop ? 'M 0 120 L 0 -120 M -40 -70 L 0 -120 L 40 -70' : 'M 0 -120 L 0 120 M -40 70 L 0 120 L 40 70'} stroke="#FDE047" strokeWidth={16} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={show} />

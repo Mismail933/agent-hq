@@ -135,7 +135,7 @@ export const CAST = {
   piccard: {hair: '#3A2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#6B7280', dressShade: '#4B5563', style: 'short', glasses: true},   // Jacques Piccard, 1960
   cameron: {hair: '#A8A29A', hairLight: '#CFCAC3', brow: '#7C766F', dress: '#2F5D50', dressShade: '#22453B', style: 'short', beard: true},   // James Cameron, 2012: grey hair and beard (2.77.0)
   vescovo: {hair: '#22160F', hairLight: '#3A2A1E', brow: '#1A100A', dress: '#1F2937', dressShade: '#111827', style: 'thin', beard: true},   // Victor Vescovo, 2019: shaved head, dark beard (2.77.0)
-  yancey: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#7C2D12', dressShade: '#5C210D', style: 'short', glasses: true, beard: true},   // Paul Yancey, 2014
+  yancey: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#2B5C8A', dressShade: '#1F4466', style: 'thin', glasses: true, beard: true},   // Paul Yancey, 2014
   pip: {hair: '#7A4A26', hairLight: '#9A6236', brow: '#5A3418', dress: '#FACC15', dressShade: '#CA8A04', style: 'short'},   // Pip, the yellow sub's pilot (Storygraphics #5)
   you: {hair: '#3B2A1E', hairLight: '#5A4030', brow: '#2A1A10', dress: '#F97316', dressShade: '#C2410C', style: 'short', pants: '#1E3A5F'},   // Storygraphics #5: "you", the viewer, in the trench what-if
   visitor: {hair: '#B8BEC6', hairLight: '#D1D5DB', brow: '#8A9099', dress: '#1F2937', dressShade: '#111827', style: 'short', beard: true, pants: '#111827'},
