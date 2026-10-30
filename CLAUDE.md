@@ -1294,6 +1294,20 @@ Agents never spend money without the owner's explicit approval.
     the deep look (a teaser card for the next video, SUBSCRIBE); dp_real's flash a flare, not a white-out. Spec: scratchpad
     make_trench_deep_full.py ('Israa on the full render' block). Smoke test before a long render: scratchpad gif_check.py (every 90th
     frame through the real composition, ~5 min: caught nothing this time, but the 2.76.2 caption crash would have been).
+    2.78.1 (Israa on the second full render: redo 7.5, 18 notes, 'kit-level, not a rebuild'): trench2 Passers put a creature 38%
+    across the picture ON its word (`lead` overrides; never entering before the line); YSub's mesh bag is hidden while it would hang
+    below y 890 (close frames: it reached the captions) and on any line with p.bag false (the spec hides it until the cup is clipped
+    on); Cabin `Blanket` (draped over both shoulders, a wool check, hands holding it shut: it read as a red bowl) and the gauge fades
+    while a card is up; Card `head_on` / `sub_on` (the card builds with the words); Flashback `dive_until` (the line opens on Pip's sub
+    still sinking, a hard cut to 1960 on its word), `push_on` + `push_to` [x, y, zoom] (in on the tunnel window), `panel_on` (the
+    Trieste's instrument panel), `bignum` {t, on, x, y} (a big depth number, gone on the bang), and with a print on the left the
+    Trieste moves right and the labels go right (they collided: 'DON THE TRIESTE NAVY'); FishLine labels under the depth bar, record
+    tags readable from their first frame; Section `pin_sub` / `pin_sub_on` (35,876 FT under the pin); `Bag` redrawn see-through with
+    handles, a faint printed stripe and a slow drift in the silt (it read as a ghost); Cup stands left of a photo; Ballast `tank`
+    empty | full (fills on its word, stays full; rising keeps it full and only drops the weights; SINK/RISE and the arrow together).
+    Facts: the melon-headed whales clip is tagged 'a kind of dolphin' (no public-domain whale clip on Commons); the 4:00 cups photo
+    (usgs-shrunken-cups.jpg) is decorated cups, not before/after: the payoff uses photos/ooi-shrunken-cups.jpg (OOI, public domain,
+    cropped to the two shrunk Irminger Sea cups); Pisces III's '76 hours' matches Storygraphics #2 (76 on the seabed, 84.5 inside).
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
