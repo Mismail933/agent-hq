@@ -218,7 +218,8 @@ def part(folder):
             who = re.sub(r"\s+", " ", c.get("author") or "").strip()[:50]
             b["footage"] = {"key": v["key"], "at": round(at, 3), "dur": round(max(2.5, dur), 2), "from": v.get("from", 0),
                             "caption": v["caption"], **({"ll": v["ll"]} if v.get("ll") else {}), **({"zoom": v["zoom"]} if v.get("zoom") else {}),
-                            "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons"}
+                            "credit": "AI recreation, Google Gemini" if c.get("licence") == "AI recreation" else f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons",
+                            **({"ai": True} if c.get("licence") == "AI recreation" else {})}
         if s.get("duo"):   # [{key, caption, side, on}]: two portraits at once, one each side of the map
             b["duo"] = []
             for ph in s["duo"]:
