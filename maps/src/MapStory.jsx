@@ -77,7 +77,9 @@ function camera(f, lines, fps) {
 function move(prev, next, e) {
   const far = geoDistance(prev.slice(0, 2), next.slice(0, 2));
   const la = Math.log(prev[2]), lb = Math.log(next[2]);
-  const bump = far > 0.5 ? Math.max(0, (la + lb) / 2 - Math.log(360)) : 0;
+  // a long flight pulls back a little, to half the wider view at most; from or to a whole globe it never pulls back (the owner: no zooming in and out)
+  const low = Math.min(prev[2], next[2]);
+  const bump = far > 0.5 && low > 800 ? Math.max(0, (la + lb) / 2 - Math.log(Math.max(560, low * 0.5))) : 0;
   const c = geoInterpolate(prev.slice(0, 2), next.slice(0, 2))(e);
   return e >= 1 ? next : [c[0], c[1], Math.exp(la + (lb - la) * e - bump * Math.sin(Math.PI * e))];
 }
