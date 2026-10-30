@@ -359,7 +359,7 @@ function Real({f, len, line}) {
       <Defs id={id} d={2000} />
       <Vignette id={id} a={v.vignette != null ? v.vignette : 0.8} />
       {p.big && <BigWords f={f} line={line} id={id} words={p.big} y={p.big_y || 560} size={p.big_size || 150} x={p.big_x || W / 2} anchor={p.big_anchor || 'middle'} off={p.big_off} />}
-      {p.tag && <Tag f={f} a={at(line, p.tag_on || '', 0.2)} x={p.tag_x || 120} y={p.tag_y || 860} text={p.tag} />}
+      {p.tag && <Tag f={f} a={at(line, p.tag_from || p.tag_on || '', 0.2)} x={p.tag_x || 120} y={p.tag_y || 860} text={p.tag} />}
       {p.depth != null && <DepthBar f={f} d={p.depth} />}
       {p.marks && (() => { const mk = p.marks.map(([w, m]) => [at(line, w, 0.5), m]); let dd = p.from != null ? p.from : 1000;
         for (const [a, m] of mk) dd = dd + (m - dd) * L(f, a - 12, a, 0, 1);
