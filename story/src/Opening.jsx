@@ -303,6 +303,37 @@ const blurOf = (line) => ((line.p || {}).blur != null ? !!line.p.blur : BLUR.has
 // a real picture of a real event or finding (2.60.0): line.p.photo = {src (under public/), size [w, h] of the file, on (word), off (word,
 // else the end of the line), side left|right, x, y (its centre), w (its width), rot, label, credit}. It pops in as a framed print over
 // the cartoon, which dims a little; a slow push inside the frame keeps it alive; the credit sits in the frame's bottom strip.
+// 2.78.4 real faces (the owner 10-30: "when quoting a real person and showing their face, use their REAL photo, never a drawn portrait"):
+// line.p.faces = {who: "photos/face-<who>.jpg"}; trench2's People skips that person and the photo badge is drawn here, where People
+// would have put it (FACE_AT by shot: x, y, 1 = stacked downwards) and on the same word, with the same name tag under it
+const FACE_AT = {tw_dive: [1640, 560], tw_cards: [1640, 560], tw_flash: [1720, 270, 1], tw_fishline: [1640, 760], tw_floor: [1640, 420], tw_bag: [1660, 330]};
+const PortraitLayer = ({line}) => {
+  const f = useCurrentFrame();
+  const p = line.p || {}, faces = p.faces || {}, base = FACE_AT[line.shot];
+  if (!base || !Object.keys(faces).length) return null;
+  return (
+    <AbsoluteFill>
+      {(p.people || []).map(([who, on, name], i) => {
+        if (!faces[who]) return null;
+        const a = at(line, on || '', 0.1 + 0.2 * i);
+        if (f < a) return null;
+        const s = clamp(pop(f, a, 150, 12), 0, 1.15);
+        const x = base[2] ? base[0] : base[0] - i * 330, y = base[2] ? base[1] + i * 330 : base[1];
+        return (
+          <div key={who} style={{position: 'absolute', left: x - 150, top: y - 150, width: 300, height: 300, transform: `scale(${s})`, transformOrigin: '50% 50%'}}>
+            <div style={{position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', border: `8px solid ${INK}`, background: '#1C2530', boxSizing: 'border-box',
+              boxShadow: '8px 10px 0 rgba(0,0,0,0.35)'}}>
+              <Img src={staticFile(faces[who])} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+            </div>
+            <div style={{position: 'absolute', left: '50%', top: 300, transform: 'translateX(-50%) rotate(-2deg)', background: '#FFFFFF', border: `5px solid ${INK}`,
+              padding: '1px 18px', fontFamily: OSWALD, fontWeight: 700, fontSize: 32, color: INK, whiteSpace: 'nowrap', textTransform: 'uppercase'}}>{name}</div>
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+};
+
 const PhotoLayer = ({line, len}) => {
   const f = useCurrentFrame();
   const ph = (line.p || {}).photo;
@@ -392,6 +423,7 @@ const ShotLayer = ({line, len}) => {
       {/* 2.75.8: the deep look's vignette over the older trench scenes too (one sea for the whole video) */}
       {String(line.shot).startsWith('tw_') && <AbsoluteFill style={{background: 'radial-gradient(ellipse 75% 75% at 50% 48%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.72) 100%)', pointerEvents: 'none'}} />}
       <PhotoLayer line={line} len={len} />
+      <PortraitLayer line={line} />
     </AbsoluteFill>
   );
 };

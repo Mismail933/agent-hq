@@ -231,6 +231,7 @@ const Passers = ({line, f, T}) => (P(line).see || []).map((c, i) => {
 // ───────────── shared screen pieces ─────────────
 const BADGE = {yancey: '#BFE3F5', cameron: '#CFE8C4', vescovo: '#F5D9B8', walsh: '#F5E6C8', piccard: '#EADCF5'};
 const People = ({line, f, T, x0 = 1640, y0 = 560, down = false}) => (P(line).people || []).map(([who, on, name], i) => {
+  if ((P(line).faces || {})[who]) return null;   // 2.78.4: a real photo instead (Opening.jsx PortraitLayer, same place, same word)
   const a = at(line, on || '', 0.1 + 0.2 * i);
   if (f < a) return null;
   const s = sp(f, a, 'card');
