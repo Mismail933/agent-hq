@@ -1308,6 +1308,21 @@ Agents never spend money without the owner's explicit approval.
     Facts: the melon-headed whales clip is tagged 'a kind of dolphin' (no public-domain whale clip on Commons); the 4:00 cups photo
     (usgs-shrunken-cups.jpg) is decorated cups, not before/after: the payoff uses photos/ooi-shrunken-cups.jpg (OOI, public domain,
     cropped to the two shrunk Irminger Sea cups); Pisces III's '76 hours' matches Storygraphics #2 (76 on the seabed, 84.5 inside).
+    2.78.2-2.78.4 (Israa redo 8 -> RELEASE 8.6 -> 8.7; Tarek fix -> GOOD; delivered 10-30 10:01, package upload/05-you-vs-11km/):
+    patches instead of renders: new spec keys never end in `_on` (story_sample's reveal hold reads every *_on as a trigger; a moved
+    trigger near a line's end moves every later cut), so after `--prep` the cut list is compared and scratchpad yam_patch.py splices
+    only the changed lines (34, then 35, then 10 lines; 10-40 min instead of ~1 h 45). Kit: Cabin `PipArm` (from the shoulder),
+    items 'valve', p.cupbag / p.bagout / p.lungs (`AirSpaces`) / p.floodlight words; Cards p.foot {text, w}; FishLine p.dots / p.more /
+    p.dots_all (TMAO as dots on a PROTEIN wave), marks `tag` above|below on leaders, FISH LIMIT left; Flashback with a print: the
+    Trieste at 1120,590 x0.62, p.card_y, labels_off, the tunnel window cracked from inset_on; Dive p.flash_until (opens on the 1960
+    Trieste); Passers `dy`; Floor/Pressure skids in the silt, no bag; Tag `plate` on cabin/floor/foot labels; BADGE ring colour per
+    person; deep.jsx tag_from; jungle PLACES 5th field = the pin label's y. Footage: never `fps=30` on a 59.94 source with uneven
+    timestamps (it picks frames unevenly = judder): `setpts=N/(60000/1001)/TB,framestep=2,setpts=N/30/TB`. A mix muxed onto a patched
+    picture must be cut to the picture's length (`-t`): mix.wav ran 1 s longer. Real faces (the owner 10-30: never a drawn portrait of a
+    real person; no free photo = no face): line p.faces {who: "photos/face-<who>.jpg"} -> trench2 People skips that person and
+    Opening.jsx `PortraitLayer` (HTML Img, `FACE_AT` by shot) draws the photo badge in the same place on the same word;
+    install_photos copies and credits p.faces too. photos/face-walsh-1960 (US Navy PD), face-cameron-2013 (US Navy PD),
+    face-vescovo-2021 (CC BY 4.0 Rico1835); Paul Yancey has no free photo.
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
