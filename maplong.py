@@ -219,6 +219,15 @@ def part(folder):
             b["footage"] = {"key": v["key"], "at": round(at, 3), "dur": round(max(2.5, dur), 2), "from": v.get("from", 0),
                             "caption": v["caption"], **({"ll": v["ll"]} if v.get("ll") else {}), **({"zoom": v["zoom"]} if v.get("zoom") else {}),
                             "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons"}
+        if s.get("duo"):   # [{key, caption, side, on}]: two portraits at once, one each side of the map
+            b["duo"] = []
+            for ph in s["duo"]:
+                src = pdir / f"{ph['key']}.jpg"
+                shutil.copy(src, mapsample.APP / "public" / "photos" / src.name)
+                c = credits.get(ph["key"], {})
+                who = re.sub(r"\s+", " ", c.get("author") or "").strip()[:60]
+                b["duo"].append({"key": ph["key"], "caption": ph["caption"], "size": list(Image.open(src).size), "side": ph.get("side", "left"), "at": cue(ph["on"]),
+                                 "credit": f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons"})
         if s.get("plates"):   # [{key, on, off | dur, cap, from, to, fit, plain, ll}]: a period picture on the whole screen
             b["plates"] = []
             for v in s["plates"]:

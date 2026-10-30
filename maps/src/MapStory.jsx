@@ -46,7 +46,7 @@ function camera(f, lines, fps) {
     const l = lines[i];
     const a = Math.round((l.t0 - 0.15) * fps);
     if (i > 0 && f < a) break;
-    const dur = l.follow ? 30 : Math.max(18, Math.min(48, Math.round((l.t1 - l.t0) * fps * 0.5)));
+    const dur = l.follow ? 30 : l.move_s ? Math.round(l.move_s * fps) : Math.max(40, Math.min(90, Math.round((l.t1 - l.t0) * fps * 0.6)));
     if (i > 0) {
       const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.spin ? [l.spin.from, l.spin.lat, l.spin.scale] : l.view;
       cur = move(prev, next, interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease}));
@@ -61,14 +61,14 @@ function camera(f, lines, fps) {
     if (l.spin && l.spin.wait && f < sa) cur = move(l.view, [l.spin.from, l.spin.lat, l.spin.scale], interpolate(f, [Math.max(0, a), sa], [0, 1], {...clamp, easing: ease}));
     if (l.spin && f >= sa) {
       const end = Math.round((l.t1 + (l.spin.extra != null ? l.spin.extra : 0.4)) * fps);   // extra: the turn runs on into the line's silence
-      cur = [interpolate(f, [sa, end], [l.spin.from, l.spin.to], {...clamp, easing: Easing.inOut(Easing.sin)}), l.spin.lat, l.spin.scale];
+      cur = [interpolate(f, [sa, end], [l.spin.from, l.spin.to], l.spin.even ? clamp : {...clamp, easing: Easing.inOut(Easing.sin)}), l.spin.lat, l.spin.scale];
     }
     // views [{at, view}]: the camera moves on mid-line (e.g. from Pondicherry to Saint-Louis on 'the island of Saint Louis')
     let base = l.view;
     for (const v of l.views || []) {
       const va = Math.round(v.at * fps);
       if (f < va) break;
-      cur = move(base, v.view, interpolate(f, [va, va + 40], [0, 1], {...clamp, easing: ease}));
+      cur = move(base, v.view, interpolate(f, [va, va + 75], [0, 1], {...clamp, easing: ease}));
       base = v.view;
     }
   }
@@ -319,6 +319,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
                 p={interpolate(f, [at(l.t0), at(l.t0) + 40], [0, 1], {...clamp, easing: ease})} color={C.accent} width={4} />) : null))}
         {lines.flatMap((l, i) => (l.pins || []).map((p, k) => {
           if (i > li || t < pinAt(l, p, fps) - 0.05) return null;
+          if (lines.some((m, j) => j > i && j <= li && m.lost && t >= m.t0 && (m.lost === '*' || m.lost.includes(p.label)))) return null;
           if (geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
           const pa = pinAt(l, p, fps), ring = 10 + 26 * (((f - at(pa)) % 45) / 45);
@@ -340,23 +341,25 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
       {line.photo ? <Photo ph={line.photo} a={line.photo.at != null ? line.photo.at : line.t0 + 0.35}
                            b={line.photo.until != null ? line.photo.until : line.photo2 ? line.photo2.at - 0.1 : nextT0 - 0.15} f={f} fps={fps} /> : null}
       {line.photo2 ? <Photo ph={line.photo2} a={line.photo2.at} b={nextT0 - 0.15} f={f} fps={fps} /> : null}
+      {(line.duo || []).map((ph, i) => <Photo key={`d${i}`} ph={ph} a={ph.at} b={nextT0 - 0.15} f={f} fps={fps} />)}
       <svg width={W} height={H} style={{position: 'absolute'}}>
         {(line.pins || []).map((p, k) => {
           const pa = pinAt(line, p, fps);
           if (!p.label || t < pa - 0.05 || (p.until != null && t >= p.until) || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
-          return <Text key={`n${k}`} x={x + 22 + (p.off ? p.off[0] : 0)} y={y - 18 + (p.off ? p.off[1] : 0)} size={earth ? (cam[2] < 1000 ? 36 : 54) : 34} weight={800} anchor="start" op={on(pa, 8)} pop={pop(pa)}>{p.label}</Text>;
+          const sz = earth ? (cam[2] < 1000 ? 36 : 54) : 34, wide = String(p.label).length * sz * 0.68, flip = x + 22 + (p.off ? p.off[0] : 0) + wide > W - 40;
+          return <Text key={`n${k}`} x={flip ? x - 22 : x + 22 + (p.off ? p.off[0] : 0)} y={y - 18 + (p.off ? p.off[1] : 0)} size={sz} weight={800} anchor={flip ? 'end' : 'start'} op={on(pa, 8)} pop={pop(pa)}>{p.label}</Text>;
         })}
         {(line.labels || []).map((lb, k) => (t >= lb.at - 0.05 && geoDistance(cam.slice(0, 2), lb.ll) < 1.45
           ? <Text key={`lb${k}`} {...xy(P(lb.ll))} size={earth ? 50 : 34} color={earth ? C.white : C.sub} op={on(lb.at, 12)}>{lb.text}</Text> : null))}
         {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={earth ? 62 : 40} weight={800} color={earth ? C.white : C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
         {(line.regions || []).filter((r) => r.label && r.color !== 'none').map((r) => (
-          <Text key={`rl${r.id}`} {...xy(P(r.label[1]))} size={earth ? 48 : 30} weight={800} color={C.white} op={on(line.t0 + 0.5, 12)}>{r.label[0]}</Text>))}
+          <Text key={`rl${r.id}`} {...xy(P(r.label[1]))} size={earth ? 48 : 30} weight={800} color={C.white} op={li > 0 && (lines[li - 1].regions || []).some((q) => q.id === r.id && q.label) ? 1 : on(line.t0 + 0.5, 12)}>{r.label[0]}</Text>))}
       </svg>
       </div>
       {line.mention && t >= line.mention.at ? <Mention m={line.mention} f={f} fps={fps} /> : null}
       {line.legend ? (
-        <div style={{position: 'absolute', left: 60, bottom: 60, fontFamily: 'Space Grotesk', fontSize: 28, color: C.white, opacity: on(line.t0 + 0.3, 12),
+        <div style={{position: 'absolute', left: 60, bottom: 60, fontFamily: 'Space Grotesk', fontSize: 36, color: C.white, opacity: on(line.t0 + 0.3, 12),
                      background: 'rgba(3,8,16,0.72)', padding: '14px 20px', borderRadius: 8}}>
           {line.legend.map(([c, txt]) => (
             <div key={txt} style={{display: 'flex', alignItems: 'center', gap: 14, margin: '4px 0'}}>
@@ -384,7 +387,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
 const tiltOf = (s) => {
   const k = Math.max(0, Math.min(1, (s - 1300) / 2400));
   return {position: 'absolute', left: 0, top: 0, width: W, height: H, transformOrigin: '50% 62%',
-          transform: `perspective(2400px) rotateX(${(17 * k).toFixed(2)}deg) scale(${(1 + 0.2 * k).toFixed(3)})`};
+          transform: `perspective(2400px) rotateX(${(7 * k).toFixed(2)}deg) scale(${(1 + 0.08 * k).toFixed(3)})`};
 };
 
 // plate {key, at, dur, size, cap, credit, from [z, x, y], to [z, x, y], fit, plain}: a period picture on the whole screen, moving slowly. It opens
@@ -397,7 +400,7 @@ function Plate({v, f, fps, xy}) {
   const z = z0 + (z1 - z0) * e, px = x0 + (x1 - x0) * e, py = y0 + (y1 - y0) * e;
   const src = staticFile(`photos/${v.key}.jpg`);
   const tag = interpolate(f, [a + 12, a + 22, a + n - 14, a + n - 6], [0, 1, 1, 0], clamp);
-  const fade = v.plain ? interpolate(f, [a, a + 9, a + n - 9, a + n], [0, 1, 1, 0], clamp) : 1;
+  const fade = v.plain ? interpolate(f, [a, a + 24, a + n - 24, a + n], [0, 1, 1, 0], {...clamp, easing: Easing.inOut(Easing.sin)}) : 1;
   const body = (
     <AbsoluteFill style={{background: '#050608', overflow: 'hidden'}}>
       {v.fit ? <>
@@ -444,18 +447,18 @@ function Mention({m, f, fps}) {
 // up from `a` to `b` seconds (by default from just after the line starts until the next line: Israa, a print gone before its line ended)
 const Photo = ({ph, a: as, b: bs, f, fps}) => {
   const a = Math.round(as * fps), b = Math.max(a + 30, Math.round(bs * fps));
-  const op = interpolate(f, [a, a + 10, b - 8, b], [0, 1, 1, 0], clamp);
+  const op = interpolate(f, [a, a + 20, b - 20, b], [0, 1, 1, 0], {...clamp, easing: Easing.inOut(Easing.sin)});
   if (op <= 0.01) return null;
   const [iw, ih] = ph.size || [4, 3];
   const maxW = 780, maxH = 580;   // smaller prints keep the named place free (Israa, part 1)
   const k = Math.min(maxW / iw, maxH / ih);
   const w = Math.round(iw * k), h = Math.round(ih * k);
-  const left = ph.side === 'left' ? 90 : W - w - 90;
+  const left = ph.x != null ? ph.x : ph.side === 'left' ? 90 : W - w - 90;
   const top = Math.max(110, (H - h - 70) / 2);
   const zoom = interpolate(f, [a, b], [1.0, 1.07], clamp);
   return (
     <>
-      <AbsoluteFill style={{background: 'rgba(2,6,14,0.42)', opacity: op}} />
+      <AbsoluteFill style={{background: 'rgba(2,6,14,0.14)', opacity: op}} />
       <div style={{position: 'absolute', left, top, width: w, opacity: op, transform: `translateY(${(1 - op) * 18}px)`}}>
         <div style={{width: w, height: h, overflow: 'hidden', border: '8px solid #F2EEE4', boxShadow: '0 18px 50px rgba(0,0,0,0.65)', background: '#111'}}>
           <Img src={staticFile(`photos/${ph.key}.jpg`)} style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoom})`}} />
@@ -472,22 +475,11 @@ const Photo = ({ph, a: as, b: bs, f, fps}) => {
 // the map opens onto a picture and closes back onto it (the owner 2026-10-29, "zoom transitions from the map into scenes and back, no hard
 // cuts"): a circle grows from the place on the map (or the middle) to the whole screen while the picture inside settles from a close
 // push, a thin light ring on its edge; at the end it shrinks back onto that place
-function Iris({a, n, xy, f, children, ring = true}) {
-  const R = Math.hypot(W, H) * 0.62, inn = 18, out = 16;
-  const [cx, cy] = xy && isFinite(xy[0]) ? [Math.min(W - 80, Math.max(80, xy[0])), Math.min(H - 80, Math.max(80, xy[1]))] : [MAPX, MAPY];
-  const kin = interpolate(f, [a, a + inn], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});
-  const kout = interpolate(f, [a + n - out, a + n], [0, 1], {...clamp, easing: Easing.in(Easing.cubic)});
-  const r = R * Math.min(kin, 1 - kout);
-  if (r <= 1) return null;
-  const sc = 1.32 - 0.32 * kin + 0.18 * kout;   // in: settles from close; out: pushes in as it closes
-  return (
-    <AbsoluteFill>
-      <AbsoluteFill style={{clipPath: `circle(${r.toFixed(1)}px at ${cx}px ${cy}px)`}}>
-        <AbsoluteFill style={{transform: `scale(${sc})`, transformOrigin: `${cx}px ${cy}px`}}>{children}</AbsoluteFill>
-      </AbsoluteFill>
-      {ring && r < R * 0.98 ? <svg width={W} height={H} style={{position: 'absolute'}}><circle cx={cx} cy={cy} r={r} fill="none" stroke="#F4FBFF" strokeOpacity={0.75} strokeWidth={4} /></svg> : null}
-    </AbsoluteFill>
-  );
+function Iris({a, n, f, children}) {
+  const op = interpolate(f, [a, a + 24, a + n - 24, a + n], [0, 1, 1, 0], {...clamp, easing: Easing.inOut(Easing.sin)});
+  if (op <= 0) return null;
+  const sc = interpolate(f, [a, a + n], [1.03, 1.0], clamp);
+  return <AbsoluteFill style={{opacity: op}}><AbsoluteFill style={{transform: `scale(${sc})`}}>{children}</AbsoluteFill></AbsoluteFill>;
 }
 
 // event {key, delay, dur}: an animated scene of the event (rendered beforehand into public/events/<key>.mp4), full screen over the map
@@ -526,8 +518,8 @@ function Footage({v, f, fps, xy}) {
         </AbsoluteFill>
         <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 26%, rgba(0,0,0,0) 78%, rgba(0,0,0,0.45) 100%)'}} />
         <div style={{position: 'absolute', left: 70, top: 64, opacity: tag, transform: `translateY(${(1 - tag) * 10}px)`, fontFamily: 'Space Grotesk', color: C.white}}>
-          <div style={{fontSize: 22, letterSpacing: 6, fontWeight: 700, color: '#FFD37A'}}>REAL FOOTAGE</div>
-          <div style={{width: 64, height: 3, background: '#FFD37A', margin: '10px 0 12px'}} />
+          {v.ai ? null : <><div style={{fontSize: 22, letterSpacing: 6, fontWeight: 700, color: '#FFD37A'}}>REAL FOOTAGE</div>
+          <div style={{width: 64, height: 3, background: '#FFD37A', margin: '10px 0 12px'}} /></>}
           <div style={{fontSize: 40, fontWeight: 700, textShadow: '0 2px 16px rgba(0,0,0,0.8)', maxWidth: 1100}}>{v.caption}</div>
         </div>
         <div style={{position: 'absolute', right: 34, bottom: 26, opacity: tag * 0.8, fontFamily: 'Space Grotesk', fontSize: 17, color: '#E6EEF5',
