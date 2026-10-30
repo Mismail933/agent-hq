@@ -241,8 +241,10 @@ const Captions = ({words, f, fps, until}) => {
   if (i < 0 || t < words[0][1] - 0.1) return null;
   if (t < words[i][1] - 0.5) return null;
   const st = i - (i % 3), row = words.slice(st, st + 3);
+  // a long row is set smaller to stay on one line ('BELGIUM LUXEMBOURG SWITZERLAND' ran off the screen)
+  const chars = row.reduce((n, w) => n + w[0].length + 1, 0), size = chars > 21 ? Math.floor((66 * 21) / chars) : 66;
   return (
-    <div style={{position: 'absolute', left: 40, right: 40, top: 1490, textAlign: 'center', fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 66, lineHeight: 1.1, textTransform: 'uppercase', WebkitTextStroke: '10px #05080F', paintOrder: 'stroke'}}>
+    <div style={{position: 'absolute', left: 40, right: 40, top: 1490, textAlign: 'center', whiteSpace: 'nowrap', fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: size, lineHeight: 1.1, textTransform: 'uppercase', WebkitTextStroke: '10px #05080F', paintOrder: 'stroke'}}>
       {row.map((w, k) => <span key={k} style={{color: st + k === i ? '#FFD84A' : '#FFFFFF', marginRight: 18}}>{w[0].replace(/[.,!?;:]+$/, '')}</span>)}
     </div>
   );
