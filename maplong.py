@@ -26,6 +26,7 @@ GAP_SHORT = {1: 0.75, 2: 0.8, 3: 0.55, 5: 0.35, 6: 0.3, 7: 0.7, 8: 0.45, 12: 0.5
 SHORT_GAP_SCALE = 0.55
 SHORT_SPEED = 1.03
 SHORT_Q_SPEED = 0.95
+CHUNK = 2400   # frames a render piece
 STORY_SPEED = 1.08
 GAP_STORY = 0.32   # Bassel (10-26 20:50): the story a little faster
 MUSIC = Path.home() / ".agent-hq-anim" / "music" / "scott-buckley" / "convergence.mp3"
@@ -265,8 +266,25 @@ def part(folder):
     if os.environ.get("HQ_KEEP_STORY") == "1" and (folder / "story.mp4").exists():   # only the short section changed
         pass
     else:
-      mapsample._remotion(animate, ["render", "src/index.jsx", "MapStory", str(folder / "story.mp4"),
-                                    "--props=" + _props_file(folder, {"lines": beats, "seconds": secs, "earth": earth}), "--concurrency=2", "--crf=18", "--muted"])
+      # in saved pieces, each with a fresh browser: a crash at 94% (10-30, memory) cost 80 minutes. A piece already made is kept when the props are the same.
+      props = _props_file(folder, {"lines": beats, "seconds": secs, "earth": earth})
+      import hashlib
+      sig = hashlib.sha1(Path(props).read_bytes()).hexdigest()[:10]
+      n, parts = int(round(secs * 30)), []
+      for a0 in range(0, n, CHUNK):
+          a1 = min(n, a0 + CHUNK) - 1
+          part_f = folder / f"_story-{sig}-{a0:05d}.mp4"
+          parts.append(part_f)
+          if part_f.exists():
+              continue
+          tmp = part_f.with_suffix(".part.mp4")
+          mapsample._remotion(animate, ["render", "src/index.jsx", "MapStory", str(tmp), "--props=" + props, f"--frames={a0}-{a1}", "--concurrency=2", "--crf=18", "--muted"])
+          tmp.replace(part_f)
+      import shorts as _sh
+      lst = folder / "_story-concat.txt"
+      lst.write_text("".join(f"file '{c.as_posix()}'
+" for c in parts), encoding="utf-8")
+      subprocess.run([_sh.find_ffmpeg(), "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(folder / "story.mp4")], check=True)
     clips.append(folder / "story.mp4")
     import shorts
     ff = shorts.find_ffmpeg()
