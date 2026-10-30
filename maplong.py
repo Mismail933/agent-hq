@@ -271,6 +271,12 @@ def part(folder):
       import hashlib
       sig = hashlib.sha1(Path(props).read_bytes()).hexdigest()[:10]
       n, parts = int(round(secs * 30)), []
+      # one bundle for all the pieces: a render from src/ leaves ~450 MB in Temp each time (10-30: that filled the disk)
+      bundle = folder / "_bundle"
+      missing = [a0 for a0 in range(0, n, CHUNK) if not (folder / f"_story-{sig}-{a0:05d}.mp4").exists()]
+      if missing:
+          shutil.rmtree(bundle, ignore_errors=True)
+          mapsample._remotion(animate, ["bundle", "src/index.jsx", "--out-dir=" + str(bundle)])
       for a0 in range(0, n, CHUNK):
           a1 = min(n, a0 + CHUNK) - 1
           part_f = folder / f"_story-{sig}-{a0:05d}.mp4"
@@ -278,8 +284,9 @@ def part(folder):
           if part_f.exists():
               continue
           tmp = part_f.with_suffix(".part.mp4")
-          mapsample._remotion(animate, ["render", "src/index.jsx", "MapStory", str(tmp), "--props=" + props, f"--frames={a0}-{a1}", "--concurrency=2", "--crf=18", "--muted"])
+          mapsample._remotion(animate, ["render", str(bundle), "MapStory", str(tmp), "--props=" + props, f"--frames={a0}-{a1}", "--concurrency=2", "--crf=18", "--muted"])
           tmp.replace(part_f)
+      shutil.rmtree(bundle, ignore_errors=True)
       import shorts as _sh
       lst = folder / "_story-concat.txt"
       lst.write_text("".join(f"file '{c.as_posix()}'\n" for c in parts), encoding="utf-8")
