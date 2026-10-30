@@ -1337,6 +1337,13 @@ Agents never spend money without the owner's explicit approval.
     Opening.jsx `PortraitLayer` (HTML Img, `FACE_AT` by shot) draws the photo badge in the same place on the same word;
     install_photos copies and credits p.faces too. photos/face-walsh-1960 (US Navy PD), face-cameron-2013 (US Navy PD),
     face-vescovo-2021 (CC BY 4.0 Rico1835); Paul Yancey has no free photo.
+    2.80.3 test scene at the Squire Explains level (the owner 10-31, reference youtu.be/1vPQmuX3Ckc, studied in the browser, nothing
+    downloaded: second person, ~205 wpm, flat vector, sharp foreground over blurred ranks, ground detail): `story/src/rome.jsx`,
+    composition `RomeTest`, our own cast and script. `Soldier` rig (feet at y 0, ~700 units: big round head, tube `Limb`s, helmet
+    roman|cone|centurion, `Scutum`, `Pilum`, `Face` expressions by brows/eyes/mouth, armR angles, hold = spear angle or null, open =
+    an open hand), `Rank` (a row at a blur depth), `Land`, `Scatter`, `Dust`, five shots (r_you, r_enemy, r_centurion, r_throw, r_miss).
+    samples/rome-test(.json|.mp4), scratchpad make_rome_test.py (--fake = estimated word times, so stills_props.py checks the drawings
+    before any voice). Not a channel look yet: he decides. Also: scratchpad phone_text.py sends a text file as a plain phone message.
 - The storytelling voice (2.64.0; the owner 2026-10-21: "i want a new voice for story telling", then picked sample 8 of 8: "go with
   chatter box am micheal"). Samples: content/project-5/voice-samples/2026-10-21/ (4 ElevenLabs library voices, now in his account:
   Quentin, David, Russell, Max; 4 Chatterbox; check.json = Whisper's heard %, pitch range). Chatterbox Nano (Resemble AI, MIT) runs on
