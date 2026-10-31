@@ -18,7 +18,19 @@ measure them, the owner plays one of their videos on the PC and `voice_match.py 
 | America Built a Bomb Made of Bats (older, a flop) | 5K | 46 s | 168 |
 | Our Roman test, for comparison | - | 16 s | 154 |
 
-Aim for 180-205 overall. Slow down only for the final payoff.
+Aim for 180-205 overall for this dry, smug tone. Slow down only for the final payoff.
+
+**Pace alone is not the secret.** Two other channels get millions of views at very different speeds (read the same way, 2026-10-31):
+
+| Channel | Subscribers | Short | Views | wpm | What it does |
+| --- | --- | --- | --- | --- | --- |
+| Zack D. Films | 29.5M | Stuck In The Sky With Balloons | 3.8M | 152 | "You", present tense, each beat worse ("now..."), an ironic ending, 46 s |
+| History Matters | 1.92M | Why was Napoleon exiled to Elba? | 2.3M | 231 | One question in the title, answered from start to finish |
+| Squire Explains | - | She Went to War Disguised as Her Brother | 3.4M | 206 | One named person, a chain of but / so |
+
+Hits run from 152 to 231 wpm. What they share is **one clear question or person, escalating to the end**. Choose the pace that suits the
+tone; don't speed up a weak story. Simple History (5.12M subscribers) makes gear-focused Shorts, and most of those I saw got 6K-287K: an
+object with no person or question draws far fewer views, though I only saw part of its list.
 
 ## The tone
 

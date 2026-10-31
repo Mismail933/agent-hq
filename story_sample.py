@@ -1500,7 +1500,7 @@ def run(a, spec, folder):
     # (its ffmpeg exited -2 after 24 minutes of frames, 2026-10-17)
     silent = folder / "_picture.mp4"
     story.remotion(["render", "src/index.jsx", spec.get("composition", "Opening"), str(silent), f"--props={folder / 'props.json'}", f"--concurrency={story.CONCURRENCY}", "--codec=h264",
-                    "--crf=18", "--muted", "--overwrite", "--log=error"])
+                    f"--crf={spec.get('crf', 18)}", "--muted", "--overwrite", "--log=error"] + ([f"--scale={spec['render_scale']}"] if spec.get("render_scale") else []))   # 2 = a 4K Short: YouTube serves 2160p uploads with a better codec and bitrate
     ff = shorts.find_ffmpeg()
     r = subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(silent), "-i", str(wav), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
                         "-shortest", "-movflags", "+faststart", str(out)], capture_output=True, text=True)

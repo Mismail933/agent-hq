@@ -56,3 +56,20 @@ then fast"). Read this before making the next Short; the reviewers check every p
 ## Reviews before the owner
 Israa (`scratchpad israa_sample.py <sample> "" <note>` with `vsheets.py` 1-frame-a-second sheets) and Tarek (`hq sound <spec> <video>`)
 both, then the Builder's own dense tile of the opening, the transitions and the end.
+
+## What the big Shorts channels do (studied 2026-10-31: Squire Explains, Zack D. Films, History Matters, Simple History)
+
+Read in the browser: titles, views, captions and picture sheets, nothing downloaded. The voice's sound wasn't measured.
+
+- **Topic:** one person or one question. A plain title that says it ("Stuck In The Sky With Balloons", "Why was Napoleon exiled to Elba?").
+  Pace is free: hits run 152-231 wpm (table in VOICE-TONE.md).
+- **First line:** the whole paradox or danger, not a mood.
+- **A new picture on nearly every sentence:** the 3.4M Squire Short changes picture about once a second. New place, new prop, new colour.
+- **Props that explain:** a route on a map, a stamped form, a document, a clock.
+- **Sharpness:** Squire Explains and Zack D. Films upload 2160p at 30 fps, History Matters 1080p. A vector cartoon can render at 4K for free
+  (spec `render_scale: 2`, `crf: 16`): crisp lines, and YouTube tends to serve 4K uploads at a higher bitrate. 60 fps isn't needed.
+- **Captions:** 1-3 bold words, no box, at about 70% of the height, never over a face.
+- **No blur or haze:** it washed out our Roman test. Get depth from layers and colour.
+- **Check the silhouette:** a dark fringe, a small moustache and German banners read as Hitler (our first spy, caught on stills). Look at
+  every historical character at thumbnail size before rendering.
+

@@ -8,15 +8,17 @@ import {AbsoluteFill, Sequence, useCurrentFrame} from 'remotion';
 import {at, clamp} from './tis';
 import {FONT_CSS} from './fonts';
 
-const W = 1920, H = 1080, INK = '#2B221C', SKIN = '#FBF7EE', SHADE = '#E7DFCE', BRONZE = '#C2983F', BRONZE_D = '#8F6C2C', BRONZE_L = '#E2C271';
+const W = 1920, H = 1080;
+export const INK = '#2B221C', SKIN = '#FBF7EE', SHADE = '#E7DFCE';
+const BRONZE = '#C2983F', BRONZE_D = '#8F6C2C', BRONZE_L = '#E2C271';
 const NUN = "'Nunito', 'Arial Rounded MT Bold', sans-serif", OSW = "'Oswald', sans-serif";
-const lin = (f, a, b, x, y) => x + (y - x) * clamp((f - a) / Math.max(1, b - a), 0, 1);
+export const lin = (f, a, b, x, y) => x + (y - x) * clamp((f - a) / Math.max(1, b - a), 0, 1);
 const io = (t) => { const k = clamp(t, 0, 1); return k * k * (3 - 2 * k); };
-const eas = (f, a, b, x, y) => x + (y - x) * io((f - a) / Math.max(1, b - a));
-const spr = (x, w = 15, z = 0.72) => { if (x <= 0) return 0; const wd = w * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w * x) * (Math.cos(wd * x) + (z * w / wd) * Math.sin(wd * x)); };
-const pop = (f, a, w = 15, z = 0.62) => clamp(spr((f - a) / 30, w, z), 0, 1.2);
+export const eas = (f, a, b, x, y) => x + (y - x) * io((f - a) / Math.max(1, b - a));
+export const spr = (x, w = 15, z = 0.72) => { if (x <= 0) return 0; const wd = w * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w * x) * (Math.cos(wd * x) + (z * w / wd) * Math.sin(wd * x)); };
+export const pop = (f, a, w = 15, z = 0.62) => clamp(spr((f - a) / 30, w, z), 0, 1.2);
 const rngOf = (seed) => { let s = seed * 9301 + 49297; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; };
-const st = (w = 7) => ({stroke: INK, strokeWidth: w, strokeLinejoin: 'round', strokeLinecap: 'round'});
+export const st = (w = 7) => ({stroke: INK, strokeWidth: w, strokeLinejoin: 'round', strokeLinecap: 'round'});
 const rad = (d) => d * Math.PI / 180;
 
 const LEGION = {tunic: '#B5452F', tunicD: '#8F3322', skin: SKIN};
@@ -24,11 +26,11 @@ const SAMNITE = {tunic: '#3E6E8E', tunicD: '#2C5169', skin: '#F4EBDA'};
 const BLINKS = (f, seed) => { const p = 90 + (seed * 37) % 70, k = (f + seed * 23) % p; return k < 4; };
 
 // a tube limb with its outline: shoulder/hip, joint, end
-const Limb = ({pts, w = 30, fill = SKIN}) => {
+export const Limb = ({pts, w = 30, fill = SKIN}) => {
   const d = pts.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
   return (<g fill="none" strokeLinecap="round" strokeLinejoin="round"><path d={d} stroke={INK} strokeWidth={w + 13} /><path d={d} stroke={fill} strokeWidth={w} /></g>);
 };
-const arm = (sx, sy, a1, a2, l1 = 92, l2 = 92) => {
+export const arm = (sx, sy, a1, a2, l1 = 92, l2 = 92) => {
   const ex = sx + Math.sin(rad(a1)) * l1, ey = sy + Math.cos(rad(a1)) * l1;
   return [[sx, sy], [ex, ey], [ex + Math.sin(rad(a2)) * l2, ey + Math.cos(rad(a2)) * l2]];
 };
@@ -57,22 +59,24 @@ const Scutum = ({kind = 'roman', k = 1}) => kind === 'roman' ? (
   </g>
 );
 // faces: dx slides the features across the head for a 3/4 look; each expression is only brows, eyes and a mouth
-const Face = ({expr = 'calm', blink = false, look = 0, lookY = 0, dx = 14}) => {
-  const big = expr === 'scared' || expr === 'nervous' || expr === 'stunned';
+export const Face = ({expr = 'calm', blink = false, look = 0, lookY = 0, dx = 14}) => {
+  const big = expr === 'scared' || expr === 'nervous' || expr === 'stunned' || expr === 'hopeful';
   const rr = expr === 'scared' ? 27 : expr === 'stunned' ? 25 : 21;
-  const brow = {calm: [-4, -4], nervous: [-16, 16], scared: [-20, 20], stare: [17, -17], shout: [17, -17], deadpan: [0, 0], side: [0, 3], stunned: [-14, 14]}[expr] || [0, 0];
+  const brow = {calm: [-4, -4], nervous: [-16, 16], scared: [-20, 20], stare: [17, -17], shout: [17, -17], deadpan: [0, 0], side: [0, 3], stunned: [-14, 14], smug: [2, -10], wink: [8, -12], hopeful: [-10, 10]}[expr] || [0, 0];
   const by = big ? -44 : -30;
   return (
     <g transform={`translate(${dx} 0)`}>
       {[-1, 1].map((d, i) => (
         <g key={d} transform={`translate(${d * 44} 0)`}>
-          {blink ? <path d="M -16 2 Q 0 8 16 2" fill="none" {...st(6)} />
+          {blink || (expr === 'wink' && i === 0) ? <path d="M -16 2 Q 0 8 16 2" fill="none" {...st(6)} />
             : big ? <g><circle r={rr} fill="#fff" {...st(5)} /><circle cx={look * 8} cy={lookY * 8} r={9.5} fill={INK} /></g>
-            : <g><circle cx={look * 9} cy={lookY * 7} r={10.5} fill={INK} />{(expr === 'deadpan' || expr === 'stare') && <path d="M -19 -6 L 19 -6" {...st(6)} />}</g>}
+            : <g><circle cx={look * 9} cy={lookY * 7} r={10.5} fill={INK} />{(expr === 'deadpan' || expr === 'stare' || expr === 'smug') && <path d="M -19 -6 L 19 -6" {...st(6)} />}</g>}
           <path d={`M -24 ${by - brow[i]} L 24 ${by + brow[i]}`} fill="none" {...st(7)} />
         </g>
       ))}
       {expr === 'calm' && <path d="M -18 56 Q 2 66 22 52" fill="none" {...st(6)} />}
+      {(expr === 'smug' || expr === 'wink') && <path d="M -18 58 Q 10 72 34 46" fill="none" {...st(6)} />}
+      {expr === 'hopeful' && <path d="M -24 50 Q 2 78 28 50" fill="#4A1F20" {...st(6)} />}
       {expr === 'nervous' && <path d="M -26 60 q 9 -10 18 0 t 18 0 t 18 0" fill="none" {...st(6)} />}
       {expr === 'stunned' && <ellipse cx={0} cy={60} rx={11} ry={13} fill={INK} />}
       {expr === 'scared' && <g><ellipse cx={0} cy={62} rx={25} ry={30} fill="#4A1F20" {...st(6)} /><ellipse cx={0} cy={80} rx={13} ry={9} fill="#E98C94" /></g>}
