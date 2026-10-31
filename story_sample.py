@@ -1207,7 +1207,7 @@ def scene_sound(lines, total, music, sfx):
                 ACCENTS.append(round(acc[0], 2))
         if p.get("day") not in (None,):
             day = p.get("day")
-    for x in SOUND.get("add_accents") or []:   # accents the sound agent adds: {line (1-based), word, for, gain}
+    for x in SOUND.get("add_accents") or []:   # accents the sound agent adds: {line (1-based), word, for, gain, offset}
         try:
             l = lines[int(x["line"]) - 1]
         except (KeyError, ValueError, IndexError):
@@ -1219,6 +1219,7 @@ def scene_sound(lines, total, music, sfx):
         if any(abs(at_ - float(d)) < 0.6 for d in (SOUND.get("drop_accents") or []) if not isinstance(d, str)):
             continue
         NEED[0] = x.get("need") or NEEDS.get(l["shot"])
+        at_ += float(x.get("offset", 0))   # seconds after the word: three stamps on one word
         if real(sfx, at_ - 0.03, [x.get("for") or "impact"], float(x.get("dur", 2.0)), float(x.get("gain", 0.7)), hit=True):
             ACCENTS.append(round(at_, 2))
 

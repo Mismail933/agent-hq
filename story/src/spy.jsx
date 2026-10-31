@@ -113,8 +113,8 @@ function ShotMedals({f, line, T}) {
       {!close && <Person x={781 + (1 - bIn) * 560} y={1320} s={0.88} flip fit="british" T={T} seed={7} expr="calm" look={1} walk={1 - bIn} armR={[14 + 56 * reach, -4 + 44 * reach]} />}
       <Person x={495} y={1340} s={1.0} T={T} seed={3} expr={close ? 'wink' : f >= m ? 'smug' : 'calm'} look={close ? 0.6 : f < b ? -0.8 : 0.8} medals={[f >= m ? pin(m) : 0, f >= m + 5 ? pin(m + 5) : 0]} />
     </Cam>
-      {!close && !chest && f >= g && <Tag x={190} y={110} text="GERMANY" size={54} k={clamp(pop(f, g, 20, 0.6), 0, 1.15)} />}
-      {!close && !chest && f >= b && <Tag x={850} y={110} text="BRITAIN" size={54} k={clamp(pop(f, b, 20, 0.6), 0, 1.15)} />}
+      {!close && !chest && f >= g && <Tag x={190} y={170} text="GERMANY" size={54} k={clamp(pop(f, g, 20, 0.6), 0, 1.15)} />}
+      {!close && !chest && f >= b && <Tag x={850} y={170} text="BRITAIN" size={54} k={clamp(pop(f, b, 20, 0.6), 0, 1.15)} />}
       {close && <Tag x={540} y={1262} text="JUAN PUJOL GARCÍA" size={62} k={clamp(pop(f, same - 8, 20, 0.6), 0.7, 1.15)} />}</g>
   );
 }
