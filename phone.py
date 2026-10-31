@@ -393,7 +393,8 @@ def _fit_audio(path):
 
 
 def _fit_video(path):
-    """A video small enough for a bot (50 MB): the file itself, or a 720p copy made once next to it (<name>.phone.mp4)."""
+    """A video small enough for a bot (50 MB): the file itself, or a copy made once next to it (<name>.phone.mp4): 1080p at the
+    best quality that fits, then the old 720p steps for long videos (the owner 10-31: a 4K Short reached him at 406x720, 134 kb/s)."""
     path = Path(path)
     if path.stat().st_size <= MAX_VIDEO:
         return path
@@ -407,6 +408,12 @@ def _fit_video(path):
         ffmpeg = "ffmpeg"
     import subprocess
     quiet = {"capture_output": True, "timeout": 1800, "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
+    sharp = "scale='if(gt(iw,ih),-2,min(1080,iw))':'if(gt(iw,ih),min(1080,ih),-2)':flags=lanczos:out_range=tv,format=yuv420p"
+    for crf in (18, 21, 24, 27):   # the shortest side at most 1080; stop at the first that fits
+        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", sharp, "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
+                        "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(small)], **quiet)
+        if small.exists() and small.stat().st_size <= MAX_VIDEO:
+            return small
     for crf in (28, 33):   # 720p (it said 720p but kept 1080: the height was capped at 1280)
         subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", "scale=-2:'min(720,ih)'", "-c:v", "libx264",
                         "-preset", "veryfast", "-crf", str(crf), "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(small)], **quiet)

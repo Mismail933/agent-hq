@@ -1180,6 +1180,7 @@ Agents never spend money without the owner's explicit approval.
   2.73.4: `phone._fit_video` really makes 720p (the height was capped at 1280, so 1080p stayed) and, when crf 28/33 don't fit a
   long video, sizes a bitrate from its length (480p under ~900 kbit/s, mono 48k): the 21-minute Storygraphics #4 came out at 54 MB and
   never reached the phone; tested on megalodon-full (20 min) -> 42.7 MB.
+  2.81.9: `_fit_video` tries 1080p first (crf 18, 21, 24, 27: the first under 50 MB): the owner called the 4K Garbo Short 'low quality' because its phone copy was 406x720 at 134 kb/s, about 22x less sharp measured.
 - Storygraphics #5 (2.74.x): "You vs 11 km: Falling to the Bottom of the Mariana Trench" (the owner picked #1 on 10-28; "level up" the
   Shorts, interactivity and animation). Script = episode 37 v7 through the gate (Israa 8, Builder 8.5; the Builder's rounds made it
   flowing for the even voice, scratchpad ep37_flow.py / ep37_v5-7.py). A what-if: "you" fall in, Pip's yellow sub (imagined, labelled)
