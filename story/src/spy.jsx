@@ -122,7 +122,7 @@ function ShotMedals({f, line, T}) {
 // ───────────── 2. turned down: the embassy door, the three stamps; then the Germans ─────────────
 function ShotRejected({f, line, T}) {
   const shut = cue(line, 'shut', 'turned', 0.25), three = cue(line, 'three', 'three', 0.45), so = cue(line, 'so', 'so', 0.6), joined = cue(line, 'joined', 'joined', 0.72);
-  if (f >= so - 2) {   // the German office: red light, one handshake, a briefcase
+  if (f >= so - 2 && !(line.p && line.p.no_office)) {   // the German office: red light, one handshake, a briefcase
     const k = spr((f - joined + 6) / 30, 15, 0.7);
     return (
       <Cam x={540} y={880} z={eas(f, so, so + 50, 1.02, 1.14)}>
@@ -254,7 +254,7 @@ function ShotMap({f, line, T}) {
       {/* the real landing, Normandy, and the place he pointed them at instead, Calais */}
       <path d={`M ${fx} ${fy} Q ${(fx + nx) / 2 - 70} ${(fy + ny) / 2} ${fx + (nx - fx) * kk} ${fy + (ny - fy) * kk}`} fill="none" stroke="#C7301F" strokeWidth={15} strokeDasharray="30 20" />
       {land !== null && f < radio && [0, 1, 2].map((i) => { const q = clamp(kk - i * 0.12, 0, 1); return <path key={i} transform={`translate(${fx + (nx - fx) * q + (i - 1) * 46} ${fy + (ny - fy) * q - 14})`} d="M -26 0 L 26 0 L 18 14 L -18 14 Z M -8 0 L -8 -12 L 8 -12 L 8 0" fill="#3C4650" stroke="#F7F1DF" strokeWidth={3} />; })}
-      {land !== null && f < radio && <Tag x={540} y={100} text="D-DAY + 3 DAYS" size={58} fill="#FDE047" k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} />}
+      {land !== null && f < radio && <Tag x={540} y={100} text={f >= cue(line, 'three', 'three', 0.4) ? 'D-DAY + 3 DAYS' : 'D-DAY: 6 JUNE 1944'} size={58} fill="#FDE047" k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} />}
       <circle cx={nx} cy={ny} r={18} fill="#C7301F" {...st(5)} /><Tag x={nx - 220} y={ny + 96} text="NORMANDY" size={50} />
       <circle cx={cx} cy={cy} r={18} fill={INK} />{f < trick + 6 && <Tag x={cx - 30} y={cy - 40} text="CALAIS" size={44} />}
       <Stamp text={(line.p && line.p.stamp) || 'A TRICK'} f={f} a={trick - 1} x={nx + 20} y={ny - 170} rot={-11} size={68} k0={0.35} plate />
@@ -277,7 +277,7 @@ const Radio = ({f, T}) => (
     <Tag x={850} y={430} text="TO BERLIN" size={58} k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} /></g>
 );
 // the payoff of the lie: rows of tanks on the French shore, looking at nothing
-const Beach = ({f, T, watch}) => (
+const Beach = ({f, T, watch, instead = 1e9}) => (
   <g>
     <rect x={-100} y={-100} width={SW + 200} height={760} fill="#A9CDE0" /><circle cx={820} cy={230} r={70} fill="#F7E7A8" />
     <rect x={-100} y={560} width={SW + 200} height={260} fill="#3D7FA3" />{[0, 1, 2, 3].map((i) => <path key={i} d={`M ${-120 + ((f * (1 + i * 0.3)) % 180)} ${600 + i * 54} q 90 -16 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0`} fill="none" stroke="#fff" strokeOpacity={0.3} strokeWidth={5} />)}
@@ -285,15 +285,78 @@ const Beach = ({f, T, watch}) => (
     {[...Array(21)].map((_, i) => { const row = Math.floor(i / 7), c = i % 7, a = i * 1.1, k = clamp(pop(f, a, 16, 0.6), 0, 1.1), sc = 0.68 + row * 0.14; return f < a ? null : <g key={i} transform={`translate(${70 + c * 156 + (row % 2) * 40} ${862 + row * 92}) scale(${sc * k})`}><path d="M -68 0 L 68 0 L 54 26 L -54 26 Z" fill="#2B241D" {...st(5)} /><rect x={-58} y={-30} width={116} height={32} rx={8} fill="#566050" {...st(5)} /><path d="M -22 -30 L -14 -58 L 28 -58 L 34 -30 Z" fill="#6F7A63" {...st(5)} /><rect x={2} y={-96} width={12} height={46} fill="#2B241D" stroke={INK} strokeWidth={3} /></g>; })}
     {f >= 8 && <Tag x={540} y={170} text="21 GERMAN DIVISIONS" size={64} fill="#FDE047" k={clamp(pop(f, 8, 18, 0.6), 0.7, 1.15)} />}
     {f >= watch && <g transform={`translate(${eas(f, watch - 2, watch + 12, 1240, 610)} 1810)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={0.2} lookY={-1} armR={[150, 30]} armL={[-150, -30]} shadow={false} /></g>}
-    {f >= watch + 10 && <Tag x={380} y={680} text="NOTHING" size={56} k={clamp(pop(f, watch + 10, 18, 0.6), 0.7, 1.15)} />}
+    {f >= watch + 10 && f < instead && <Tag x={380} y={680} text="NOTHING" size={56} k={clamp(pop(f, watch + 10, 18, 0.6), 0.7, 1.15)} />}
+    {f >= instead && <Tag x={540} y={320} text="NOT IN NORMANDY" size={72} fill="#fff" k={clamp(pop(f, instead, 18, 0.6), 0.7, 1.15)} />}
   </g>
 );
 // 'Hitler awarded him': the real wording, on a telegram; nobody draws Hitler
 const Telegram = ({f}) => (
   <g><rect x={-100} y={-100} width={SW + 200} height={SH + 200} fill="#6E2620" />
     <g transform={`rotate(-3 540 700) scale(${eas(f, 0, 50, 1, 1.05)})`}><rect x={120} y={300} width={840} height={620} fill="#F0E2BF" {...st(9)} /><text x={540} y={410} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={66} letterSpacing={8} fill={INK}>TELEGRAM</text><path d="M 180 450 L 900 450" {...st(6)} />
-      {['TO: OUR BEST AGENT', 'THE FÜHRER AWARDS YOU', 'THE IRON CROSS'].map((t, i) => <text key={t} x={175} y={560 + i * 96} fontFamily="'Courier New', monospace" fontWeight={700} fontSize={52} fill={i === 2 ? '#C7301F' : INK}>{t.slice(0, Math.floor(clamp(f - i * 10, 0, 40) * 1.8))}</text>)}</g></g>
+      {['TO: OUR BEST AGENT', 'THE FÜHRER AWARDS YOU', 'THE IRON CROSS'].map((t, i) => <text key={t} x={175} y={560 + i * 96} fontFamily="'Courier New', monospace" fontWeight={700} fontSize={52} fill={i === 2 ? '#C7301F' : INK}>{t.slice(0, Math.floor(clamp(f - i * 10, 0, 40) * 1.8))}</text>)}</g>
+    <g transform={`translate(540 1130) scale(${4 * clamp(pop(f, 24, 18, 0.6), 0, 1.1)})`}><IronCross /></g></g>
 );
+
+const Hen = ({x, y, s = 1, flip, T = 0, seed = 0}) => { const b = Math.sin(T * 0.22 + seed * 2) * 6, peck = (Math.floor((T + seed * 17) / 40) % 3 === 0) ? 22 : 0;
+  return (<g transform={`translate(${x} ${y}) scale(${(flip ? -s : s)} ${s})`}><path d="M -8 30 L -8 62 M 18 30 L 18 62" stroke="#D98E2B" strokeWidth={8} /><path d="M -62 -14 C -60 -56 -10 -40 10 -32 C 44 -28 52 10 22 30 C -8 44 -50 32 -62 -14 Z" fill="#F7F1DF" {...st(6)} />
+    <g transform={`translate(${34} ${-34 + b + peck}) rotate(${peck})`}><circle r={24} fill="#F7F1DF" {...st(6)} /><path d="M 18 -4 L 42 4 L 18 10 Z" fill="#E7A531" {...st(4)} /><path d="M -12 -22 q 6 -18 12 -6 q 6 -14 12 4 Z" fill="#C7301F" {...st(4)} /><circle cx={6} cy={-4} r={4} fill={INK} /></g></g>); };
+// who he was: a farm in Spain, and what he wanted
+function ShotFarm({f, line, T}) {
+  const nm = cue(line, 'name', 'Juan', 0.2), hen = cue(line, 'farm', 'chicken', 0.5), want = cue(line, 'want', 'wanted', 0.65), z = eas(f, 0, nm + 40, 1.04, 1.12);
+  return (
+    <g><Cam x={540} y={880} z={z}><rect x={-300} y={-300} width={SW + 600} height={1220} fill="#8CCFEF" /><circle cx={880} cy={220} r={86} fill="#F7D56E" />
+      <path d="M -300 800 C 100 660 400 740 600 690 C 800 650 1100 700 1400 660 L 1400 1000 L -300 1000 Z" fill="#C9A85C" /><rect x={-300} y={900} width={SW + 600} height={1400} fill="#B98E4E" />
+      <g transform="translate(790 900)"><path d="M -150 0 L -150 -180 L 150 -180 L 150 0 Z" fill="#D9C7A0" {...st(7)} /><path d="M -190 -180 L 0 -300 L 190 -180 Z" fill="#B5412F" {...st(7)} /><rect x={-40} y={-100} width={80} height={100} fill="#5E3820" {...st(6)} /></g>
+      {[...Array(7)].map((_, i) => <rect key={i} x={40 + i * 150} y={860} width={18} height={100} fill="#8C5A34" {...st(4)} />)}<path d="M 0 884 L 1080 884 M 0 930 L 1080 930" stroke="#8C5A34" strokeWidth={9} />
+      <Person x={330} y={1320} s={1.08} T={T} seed={3} expr={f >= want ? 'hopeful' : 'calm'} look={1} lookY={f >= want ? -0.7 : 0} />
+      {f >= hen - 8 && [[640, 1180, 0], [800, 1260, 1], [120, 1210, 2]].map(([x, y, i]) => <Hen key={i} x={x} y={y} s={1.15 * clamp(pop(f, hen - 8 + i * 3, 16, 0.6), 0, 1.1)} flip={i === 2} T={T} seed={i} />)}
+      {f >= want - 2 && <g transform={`translate(670 470) scale(${clamp(pop(f, want - 2, 18, 0.6), 0, 1.1)})`}><path d="M -210 -130 C -250 -180 250 -180 210 -130 C 280 -60 240 120 120 120 L -120 120 C -240 120 -280 -60 -210 -130 Z" fill="#fff" {...st(7)} /><g transform="translate(0 -8)"><rect x={-130} y={-80} width={260} height={160} fill="#1F3F8F" {...st(4)} /><path d="M -130 -80 L 130 80 M 130 -80 L -130 80" stroke="#fff" strokeWidth={30} /><path d="M -130 -80 L 130 80 M 130 -80 L -130 80" stroke="#C8102E" strokeWidth={12} /><path d="M 0 -80 L 0 80 M -130 0 L 130 0" stroke="#fff" strokeWidth={46} /><path d="M 0 -80 L 0 80 M -130 0 L 130 0" stroke="#C8102E" strokeWidth={26} /></g><circle cx={-90} cy={150} r={18} fill="#fff" {...st(5)} /><circle cx={-120} cy={190} r={11} fill="#fff" {...st(4)} /></g>}
+    </Cam>
+    {f >= hen - 2 && f < want - 2 && <Tag x={540} y={200} text="HE ONCE RAN A CHICKEN FARM" size={52} k={clamp(pop(f, hen - 2, 18, 0.6), 0.7, 1.15)} />}</g>
+  );
+}
+// the plan, on a board, line by line on its words
+function ShotPlan({f, line, T}) {
+  const one = cue(line, 'one', 'become', 0.45), two = cue(line, 'two', 'then', 0.75);
+  const typ = (t, a) => t.slice(0, Math.floor(clamp(f - a + 2, 0, 60) * 1.5));
+  return (
+    <Cam x={540} y={850} z={eas(f, 0, two + 40, 1.0, 1.06)}><Room wall="#3C2F27" wallD="#32271F" floor="#6F4728" floorD="#5A3920" fy={1090}><g /></Room>
+      <rect x={70} y={150} width={940} height={760} rx={10} fill="#2D4A3C" stroke="#8C5A34" strokeWidth={22} />
+      <text x={540} y={270} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={84} letterSpacing={8} fill="#F7F1DF">THE PLAN</text><path d="M 170 300 L 910 300" stroke="#F7F1DF" strokeWidth={6} />
+      <text x={130} y={420} fontFamily={NUN} fontWeight={900} fontSize={60} fill="#FDE047">1</text><text x={190} y={420} fontFamily={NUN} fontWeight={800} fontSize={58} fill="#F7F1DF">{f >= one - 2 ? typ('BECOME A GERMAN SPY', one) : ''}</text>
+      {f >= two - 2 && <g><text x={130} y={560} fontFamily={NUN} fontWeight={900} fontSize={60} fill="#FDE047">2</text><text x={190} y={560} fontFamily={NUN} fontWeight={800} fontSize={58} fill="#F7F1DF">{typ('OFFER BRITAIN A SPY', two)}</text><text x={190} y={640} fontFamily={NUN} fontWeight={800} fontSize={58} fill="#F7F1DF">{f >= two + 12 ? typ('ALREADY INSIDE', two + 12) : ''}</text></g>}
+      <Person x={230} y={1330} s={0.86} T={T} seed={3} expr="smug" look={1} lookY={-0.8} armR={[150, 24]} />
+    </Cam>
+  );
+}
+// what a double agent is, in one picture: he stands between them; one is his real boss, the other only thinks so
+function ShotDouble({f, line, T}) {
+  const lon = cue(line, 'london', 'London', 0.15), dbl = cue(line, 'double', 'double', 0.4), nm = cue(line, 'name', 'codename', 0.5), wrk = cue(line, 'work', 'worked', 0.62), th = cue(line, 'think', 'thought', 0.8);
+  if (f < dbl - 2) {
+    return (<g><rect x={-100} y={-100} width={SW + 200} height={SH + 200} fill="#7C8FA3" /><g transform="translate(760 1000)"><rect x={-70} y={-740} width={140} height={740} fill="#C2A25F" {...st(7)} /><path d="M -80 -740 L 0 -900 L 80 -740 Z" fill="#7A8C8A" {...st(7)} /><circle cy={-610} r={56} fill="#F7F1DF" {...st(6)} /><path d="M 0 -610 L 0 -650 M 0 -610 L 28 -594" {...st(6)} /></g>
+      <rect x={-100} y={1000} width={SW + 200} height={1100} fill="#4E5660" /><Tag x={350} y={230} text="LONDON, 1942" size={70} k={clamp(pop(f, Math.max(0, lon - 2), 18, 0.6), 0.7, 1.15)} />
+      <Person x={300} y={1330} s={1.05} T={T} seed={3} expr="smug" look={1} lookY={-0.5} /></g>);
+  }
+  return (
+    <g><rect x={-100} y={-100} width={SW / 2 + 100} height={SH + 200} fill="#27477F" /><rect x={SW / 2} y={-100} width={SW / 2 + 100} height={SH + 200} fill="#5A2A24" />
+      <rect x={-100} y={1110} width={SW + 200} height={1000} fill="#3C2F27" />
+      <Person x={165} y={1330} s={0.76} fit="british" T={T} seed={7} expr={f >= wrk ? 'smug' : 'calm'} look={1} />
+      <Person x={830} y={1330} s={0.76} flip fit="german" T={T} seed={4} expr={f >= th ? 'hopeful' : 'stare'} look={1} />
+      <Person x={495} y={1330} s={0.96} T={T} seed={3} expr={f >= th ? 'wink' : 'smug'} look={f >= th ? 1 : -1} />
+      <Tag x={500} y={170} text={f >= nm - 2 ? 'CODENAME: GARBO' : 'DOUBLE AGENT'} size={70} fill="#FDE047" k={clamp(pop(f, f >= nm - 2 ? nm - 2 : dbl - 2, 18, 0.6), 0.7, 1.15)} />
+      {f >= wrk - 2 && <Tag x={235} y={480} text="HIS REAL BOSS" size={46} k={clamp(pop(f, wrk - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= th - 2 && <Tag x={740} y={480} text="THINKS HE'S THEIRS" size={42} k={clamp(pop(f, th - 2, 18, 0.6), 0.7, 1.15)} />}
+    </g>
+  );
+}
+// the turn: the words alone, in the dark
+function ShotTurn({f, line}) {
+  const k = eas(f, 0, 12, 0.9, 1);
+  return (<g><rect x={-100} y={-100} width={SW + 200} height={SH + 200} fill="#141821" /><g transform={`translate(500 720) scale(${k * eas(f, 0, 80, 1, 1.06)})`}>
+    <text y={-70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={104} letterSpacing={4} fill="#F7F1DF">THE LIE THAT</text><text y={70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={138} letterSpacing={4} fill="#FDE047">MATTERED</text>
+    <text y={170} textAnchor="middle" fontFamily={OSW} fontWeight={500} fontSize={54} letterSpacing={10} fill="#A9B0BC">JUNE 1944</text></g></g>);
+}
+const ShotBeach = ({f, line, T}) => <Beach f={f} T={T} watch={cue(line, 'watch', 'waiting', 0.5)} instead={cue(line, 'instead', 'instead', 0.8)} />;
 const Sea = ({children, tone = '#2F6F8F'}) => (<g><rect x={-200} y={-200} width={SW + 400} height={SH + 400} fill={tone} />{[...Array(11)].map((_, i) => <path key={i} d={`M -100 ${80 + i * 130} q 90 -22 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0`} fill="none" stroke="#FFFFFF" strokeOpacity={0.14} strokeWidth={6} />)}{children}</g>);
 const Ship = ({x, y, s = 1, flip, hull = '#4A5560', ghost, k = 1}) => (<g transform={`translate(${x} ${y}) scale(${(flip ? -s : s) * k} ${s * k})`} opacity={ghost ? 0.9 : 1}><path d="M -130 0 L 130 0 L 100 44 L -100 44 Z" fill={ghost ? 'none' : hull} stroke={ghost ? '#F7F1DF' : INK} strokeWidth={7} strokeDasharray={ghost ? '16 12' : 'none'} /><rect x={-54} y={-40} width={88} height={40} fill={ghost ? 'none' : '#8995A0'} stroke={ghost ? '#F7F1DF' : INK} strokeWidth={6} strokeDasharray={ghost ? '12 10' : 'none'} /><rect x={-14} y={-76} width={26} height={36} fill={ghost ? 'none' : '#2B241D'} stroke={ghost ? '#F7F1DF' : INK} strokeWidth={5} strokeDasharray={ghost ? '10 8' : 'none'} /></g>);
 
@@ -312,8 +375,14 @@ const Newsreel = ({f, T}) => (
 
 // 'told to go to Britain' -> a real map: Madrid, the arrow to Britain struck out, the arrow to Lisbon drawn
 function ShotLisbon({f, line, T}) {
-  const brit = cue(line, 'brit', 'Britain', 0.4), lis = cue(line, 'lis', 'Lisbon', 0.8), ppd = 46, clon = -5, clat = 46.5;
+  const brit = cue(line, 'brit', 'Britain', 0.4), lis = cue(line, 'lis', 'Lisbon', 0.8), xat = cue(line, 'x', 'Lisbon', 0.7), mapAt = line.p && line.p.cue && line.p.cue.map ? at(line, line.p.cue.map, 0.2) : 0, ppd = 46, clon = -5, clat = 46.5;
   const sx = (lon) => SW / 2 + (lon - clon) * ppd, sy = (lat) => 640 - (lat - clat) * ppd * 1.3;
+  if (f < mapAt - 2) {
+    const k = spr((f + 6) / 30, 15, 0.7);
+    return (<Cam x={540} y={880} z={eas(f, 0, mapAt, 1.02, 1.1)}><Room wall="#6E2620" wallD="#57201C" floor="#3C2A22" floorD="#2B1E18" fy={1120}><g /></Room>
+      <Person x={200} y={1340} s={1.1} T={T} seed={3} expr="smug" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} />
+      <Person x={800} y={1340} s={1.1} flip fit="german" T={T} seed={4} expr="stare" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} /></Cam>);
+  }
   const M = [sx(-3.7), sy(40.4)], B = [sx(-1), sy(52)], L = [sx(-9.14), sy(38.72)], k1 = eas(f, Math.max(0, brit - 10), brit + 6, 0, 1), k2 = eas(f, lis - 8, lis + 8, 0, 1);
   return (
     <g>
@@ -321,8 +390,8 @@ function ShotLisbon({f, line, T}) {
       <clipPath id="spyeu"><rect x={70} y={150} width={880} height={1000} /></clipPath>
       <g clipPath="url(#spyeu)"><rect x={70} y={150} width={880} height={1000} fill="#7FB4C4" /><g transform={`translate(${sx(-180)} ${sy(90)}) scale(${ppd / K} ${ppd * 1.3 / K})`}><path d={LAND} fill="#E2CF9C" stroke="#3B2B1E" strokeWidth={0.35} /></g></g>
       <rect x={70} y={150} width={880} height={1000} fill="none" stroke="#F2E6C8" strokeWidth={9} />
-      <path d={`M ${M[0]} ${M[1]} L ${M[0] + (B[0] - M[0]) * k1} ${M[1] + (B[1] - M[1]) * k1}`} fill="none" stroke={f >= lis - 8 ? '#8A8F96' : '#C7301F'} strokeWidth={13} strokeDasharray="26 18" />
-      {f >= lis - 8 && <path d={`M ${(M[0] + B[0]) / 2 - 44} ${(M[1] + B[1]) / 2 - 44} l 88 88 m 0 -88 l -88 88`} stroke="#C7301F" strokeWidth={16} strokeLinecap="round" />}
+      <path d={`M ${M[0]} ${M[1]} L ${M[0] + (B[0] - M[0]) * k1} ${M[1] + (B[1] - M[1]) * k1}`} fill="none" stroke={f >= xat - 2 ? '#8A8F96' : '#C7301F'} strokeWidth={13} strokeDasharray="26 18" />
+      {f >= xat - 2 && <path d={`M ${(M[0] + B[0]) / 2 - 44} ${(M[1] + B[1]) / 2 - 44} l 88 88 m 0 -88 l -88 88`} stroke="#C7301F" strokeWidth={16} strokeLinecap="round" />}
       <path d={`M ${M[0]} ${M[1]} L ${M[0] + (L[0] - M[0]) * k2} ${M[1] + (L[1] - M[1]) * k2}`} fill="none" stroke="#FDE047" strokeWidth={13} />
       {[[M, 'MADRID', 130, 16], [B, 'BRITAIN', 170, 16], [L, 'LISBON', -30, -36]].map(([q, t, dx, dy]) => <g key={t}><circle cx={q[0]} cy={q[1]} r={15} fill={INK} /><Tag x={q[0] + dx} y={q[1] + dy} text={t} size={42} fill={t === 'LISBON' && f >= lis - 2 ? '#FDE047' : '#fff'} /></g>)}
       <rect y={1270} width={SW} height={SH - 1270} fill="#C9A46B" />
@@ -416,13 +485,13 @@ function ShotEnd({f, line, T}) {
     </Cam>
   );
 }
-const SHOTS = {s_lisbon: ShotLisbon, s_wine: ShotWine, s_convoy: ShotConvoy, s_medals2: ShotMedals2, s_end: ShotEnd, s_medals: ShotMedals, s_rejected: ShotRejected, s_guide: ShotGuide, s_agents: ShotAgents, s_map: ShotMap};
+const SHOTS = {s_farm: ShotFarm, s_plan: ShotPlan, s_double: ShotDouble, s_turn: ShotTurn, s_beach: ShotBeach, s_lisbon: ShotLisbon, s_wine: ShotWine, s_convoy: ShotConvoy, s_medals2: ShotMedals2, s_end: ShotEnd, s_medals: ShotMedals, s_rejected: ShotRejected, s_guide: ShotGuide, s_agents: ShotAgents, s_map: ShotMap};
 
 // captions: two or three bold words at a time, no box, the spoken word yellow, clear of the Shorts buttons
 const Caps = ({lines}) => {
   const f = useCurrentFrame();
   const l = lines.find((x, i) => f >= x.cut && (i + 1 >= lines.length || f < lines[i + 1].cut));
-  if (!l || !(l.words || []).length) return null;
+  if (!l || !(l.words || []).length || (l.p && l.p.nocap)) return null;
   if (l === lines[0] && f < l.words[0][1] - 1) return null;
   let at0 = 0;
   const groups = (l.p && l.p.caps || []).map((n) => { const x = l.words.slice(at0, at0 + n); at0 += n; return x; });
