@@ -421,9 +421,15 @@ def short(folder, music_db=-24.0):
     secs = round(float(meta["words"][-1][2]) + 2.8, 2)
     animate = ensure_app()
     pic = folder / "picture.mp4"
-    props = {"cues": cues, "seconds": secs, **({"km": meta["km"]} if meta.get("km") else {}), **({"source": meta["source"]} if meta.get("source") else {}), **({"endLine": meta["end_line"]} if meta.get("end_line") else {}), **({"unnamed": meta["unnamed"]} if meta.get("unnamed") else {})}
-    _remotion(animate, ["render", "src/index.jsx", "MapShort", str(pic), "--props=" + json.dumps(props),
+    props = {"cues": cues, "seconds": secs, **({"km": meta["km"]} if meta.get("km") else {}), **({"source": meta["source"]} if meta.get("source") else {}), **({"endLine": meta["end_line"]} if meta.get("end_line") else {}), **({"unnamed": meta["unnamed"]} if meta.get("unnamed") else {}), **({"earth": True} if meta.get("earth") else {})}
+    (folder / "props.json").write_text(json.dumps(props), encoding="utf-8")
+    _remotion(animate, ["render", "src/index.jsx", "MapShort", str(pic), "--props=" + str(folder / "props.json"),
                         "--concurrency=2", "--crf=18", "--muted"])
+    return _short_mux(folder, pic, secs, cues, music_db)
+
+
+def _short_mux(folder, pic, secs, cues, music_db):
+    import shorts
     ff = shorts.find_ffmpeg()
     track = HOME / "music" / "scott-buckley" / "convergence.mp3"
     out = folder / "short.mp4"
