@@ -99,7 +99,7 @@ const Tag = ({x, y, text, k = 1, size = 54, fill = '#FFFFFF', color = INK}) => (
 function ShotMedals({f, line, T}) {
   const g = at(line, 'germany', 0.02), b = at(line, 'britain', 0.1), m = at(line, 'medal', 0.45), same = at(line, 'same', 0.7);
   const close = f >= same - 5, chest = !close && f >= m - 2, reach = eas(f, m - 16, m - 5, 0, 1);
-  const gIn = spr((f - g + 8) / 30, 13, 0.75), bIn = spr((f - b + 6) / 30, 13, 0.75);
+  const gIn = 0.86 + 0.14 * spr(f / 24, 13, 0.75), bIn = 0.86 + 0.14 * spr(f / 24, 13, 0.75);
   const pin = (a) => clamp(pop(f, a, 22, 0.5), 0, 1.25);
   const z = close ? eas(f, same - 5, same + 26, 2.25, 2.5) : chest ? eas(f, m - 2, same, 2.6, 2.75) : eas(f, 0, m, 1.0, 1.1);
   return (
@@ -114,9 +114,9 @@ function ShotMedals({f, line, T}) {
       {!close && !chest && <Person x={781 + (1 - bIn) * 560} y={1320} s={0.88} flip fit="british" T={T} seed={7} expr="calm" look={1} walk={1 - bIn} armR={[14 + 56 * reach, -4 + 44 * reach]} />}
       <Person x={495} y={1340} s={1.0} T={T} seed={3} expr={close ? 'wink' : f >= m ? 'smug' : 'calm'} look={close ? 0.6 : f < b ? -0.8 : 0.8} medals={[f >= m ? pin(m) : 0, f >= m + 5 ? pin(m + 5) : 0]} />
     </Cam>
-      {!close && !chest && f >= g && <Tag x={190} y={170} text="GERMANY" size={54} k={clamp(pop(f, g, 20, 0.6), 0, 1.15)} />}
-      {!close && !chest && f >= b && <Tag x={850} y={170} text="BRITAIN" size={54} k={clamp(pop(f, b, 20, 0.6), 0, 1.15)} />}
-      {close && <Tag x={520} y={1200} text="JUAN PUJOL GARCÍA" size={62} k={clamp(pop(f, same - 8, 20, 0.6), 0.7, 1.15)} />}</g>
+      {!close && !chest && <Tag x={190} y={170} text="GERMANY" size={54} />}
+      {!close && !chest && <Tag x={850} y={170} text="BRITAIN" size={54} />}
+      </g>
   );
 }
 // ───────────── 2. turned down: the embassy door, the three stamps; then the Germans ─────────────
@@ -127,7 +127,7 @@ function ShotRejected({f, line, T}) {
     return (
       <Cam x={540} y={880} z={eas(f, so, so + 50, 1.02, 1.14)}>
         <Room wall="#6E2620" wallD="#57201C" floor="#3C2A22" floorD="#2B1E18" fy={1120}>
-          <g><rect x={330} y={120} width={420} height={330} fill="#F0E2BF" {...st(8)} /><path d="M 390 200 L 690 200 M 390 260 L 650 260 M 390 320 L 690 320" stroke="#A58C5A" strokeWidth={9} /><circle cx={650} cy={380} r={30} fill="none" stroke="#C7301F" strokeWidth={8} /></g>
+          
         </Room>
         <Person x={200} y={1340} s={1.1} T={T} seed={3} expr="smug" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} />
         <Person x={800} y={1340} s={1.1} flip fit="german" T={T} seed={4} expr="stare" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} />
@@ -157,7 +157,7 @@ function ShotRejected({f, line, T}) {
   const isFace = f >= juan - 2 && f < form - 2, isForm = f >= form - 2 && f < shut - 8;
   return (
     <g>
-    <Cam x={isFace ? 290 : isForm ? 590 : 540} y={isFace ? 760 : isForm ? 1000 : 860} z={isFace ? eas(f, juan, form, 2.1, 2.25) : isForm ? eas(f, form - 2, shut - 8, 3.4, 3.6) : eas(f, 0, three, 1.06, 1.16)}>
+    <Cam x={isFace ? 350 : isForm ? 590 : 540} y={isFace ? 760 : isForm ? 1000 : 860} z={isFace ? eas(f, juan, form, 2.1, 2.25) : isForm ? eas(f, form - 2, shut - 8, 3.4, 3.6) : eas(f, 0, three, 1.06, 1.16)}>
       <rect x={-300} y={-300} width={SW + 600} height={1440} fill="#E2C89A" />
       {[...Array(5)].map((_, i) => <path key={i} d={`M -300 ${i * 230} L ${SW + 300} ${i * 230}`} stroke="#CDB184" strokeWidth={6} />)}
       <rect x={-300} y={1140} width={SW + 600} height={1200} fill="#B8A483" />
@@ -168,14 +168,13 @@ function ShotRejected({f, line, T}) {
       </g>
       <Person x={290} y={1270} s={1.14} T={T} seed={3} expr={f >= shut + 2 ? 'stunned' : 'hopeful'} look={1} lean={f >= shut + 2 ? -3 : 1} armR={[62, 44]} held={<g transform="rotate(-8) translate(-50 -66)"><rect width={100} height={124} fill="#F3EBD6" {...st(5)} /><text x={50} y={22} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={13} fill={INK}>I WANT TO SPY</text><text x={50} y={38} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={13} fill={INK}>FOR BRITAIN</text><path d="M 16 58 L 84 58 M 16 78 L 84 78 M 16 98 L 66 98" stroke="#A9A087" strokeWidth={5} /></g>} />
     </Cam>
-    {has && f < juan - 2 && <Tag x={540} y={190} text="MADRID, 1941" size={70} k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} />}
-    {isFace && <Tag x={540} y={1240} text="JUAN PUJOL GARCÍA" size={62} k={clamp(pop(f, juan - 2, 18, 0.6), 0.7, 1.15)} />}
+    {has && f < juan - 2 && <Tag x={290} y={120} text="MADRID, 1941" size={58} k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} />}
     </g>
   );
 }
 // ───────────── 3. the reports: a café in Lisbon, never been to Britain, one guidebook ─────────────
 function ShotGuide({f, line, T}) {
-  const g = cue(line, 'book', 'tourist', 0.5), reel = line.p && line.p.cue && line.p.cue.reel ? at(line, line.p.cue.reel, 0.8) : 1e9, close = f >= g - 3;
+  const g = cue(line, 'book', 'tourist', 0.5), reel = line.p && line.p.cue && line.p.cue.reel ? at(line, line.p.cue.reel, 0.8) : 1e9, close = f >= g - 6;
   if (f >= reel - 2) return <Newsreel f={f - reel} T={T} />;
   if (close) {
     const k = clamp(pop(f, g - 3, 16, 0.65), 0.7, 1.15);
@@ -257,9 +256,9 @@ function ShotMap({f, line, T}) {
       {land !== null && f < radio && [0, 1, 2].map((i) => { const q = clamp(kk - i * 0.12, 0, 1); return <path key={i} transform={`translate(${fx + (nx - fx) * q + (i - 1) * 46} ${fy + (ny - fy) * q - 14})`} d="M -26 0 L 26 0 L 18 14 L -18 14 Z M -8 0 L -8 -12 L 8 -12 L 8 0" fill="#3C4650" stroke="#F7F1DF" strokeWidth={3} />; })}
       {land !== null && f < radio && <Tag x={540} y={100} text="D-DAY + 3 DAYS" size={58} fill="#FDE047" k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} />}
       <circle cx={nx} cy={ny} r={18} fill="#C7301F" {...st(5)} /><Tag x={nx - 220} y={ny + 96} text="NORMANDY" size={50} />
-      <circle cx={cx} cy={cy} r={18} fill={INK} /><Tag x={cx + 10} y={cy - 40} text="CALAIS" size={44} />
-      <Stamp text={(line.p && line.p.stamp) || 'A TRICK'} f={f} a={trick - 1} x={nx + 20} y={ny - 150} rot={-11} size={80} k0={0.35} plate />
-      {f >= trick + 6 && <Tag x={cx - 130} y={cy - 116} text="THE REAL ONE?" size={40} fill="#FDE047" k={clamp(pop(f, trick + 6, 18, 0.6), 0, 1.15)} />}
+      <circle cx={cx} cy={cy} r={18} fill={INK} />{f < trick + 6 && <Tag x={cx - 30} y={cy - 40} text="CALAIS" size={44} />}
+      <Stamp text={(line.p && line.p.stamp) || 'A TRICK'} f={f} a={trick - 1} x={nx + 20} y={ny - 170} rot={-11} size={68} k0={0.35} plate />
+      {f >= trick + 6 && <Tag x={cx - 165} y={cy - 40} text="REAL ONE: CALAIS" size={44} fill="#FDE047" k={clamp(pop(f, trick + 6, 18, 0.6), 0.7, 1.15)} />}
       {f >= trick && [0, 14].map((d) => { const q = clamp((f - trick - d) / 24, 0, 1); return <circle key={d} cx={cx} cy={cy} r={18 + q * 90} fill="none" stroke="#C7301F" strokeWidth={9} opacity={1 - q} />; })}
       <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, 1230, 700)} 1780)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr={f >= trick ? 'hopeful' : 'stare'} look={f >= told + 14 ? 0.3 : 1} lookY={f >= told + 14 ? -1 : 0} armR={[62, 118]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
       <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, -200, 280)} 1780)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={1} armR={[60, 140]} shadow={false} /></g>
@@ -282,10 +281,10 @@ const Beach = ({f, T, watch}) => (
   <g>
     <rect x={-100} y={-100} width={SW + 200} height={760} fill="#A9CDE0" /><circle cx={820} cy={230} r={70} fill="#F7E7A8" />
     <rect x={-100} y={560} width={SW + 200} height={260} fill="#3D7FA3" />{[0, 1, 2, 3].map((i) => <path key={i} d={`M ${-120 + ((f * (1 + i * 0.3)) % 180)} ${600 + i * 54} q 90 -16 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0`} fill="none" stroke="#fff" strokeOpacity={0.3} strokeWidth={5} />)}
-    <rect x={-100} y={800} width={SW + 200} height={1300} fill="#D9C08C" />
+    <rect x={-100} y={800} width={SW + 200} height={1300} fill="#D9C08C" /><rect x={-100} y={1075} width={SW + 200} height={1000} fill="#5E4E30" />
     {[...Array(21)].map((_, i) => { const row = Math.floor(i / 7), c = i % 7, a = i * 1.1, k = clamp(pop(f, a, 16, 0.6), 0, 1.1), sc = 0.68 + row * 0.14; return f < a ? null : <g key={i} transform={`translate(${70 + c * 156 + (row % 2) * 40} ${862 + row * 92}) scale(${sc * k})`}><path d="M -68 0 L 68 0 L 54 26 L -54 26 Z" fill="#2B241D" {...st(5)} /><rect x={-58} y={-30} width={116} height={32} rx={8} fill="#566050" {...st(5)} /><path d="M -22 -30 L -14 -58 L 28 -58 L 34 -30 Z" fill="#6F7A63" {...st(5)} /><rect x={2} y={-96} width={12} height={46} fill="#2B241D" stroke={INK} strokeWidth={3} /></g>; })}
     {f >= 8 && <Tag x={540} y={170} text="21 GERMAN DIVISIONS" size={64} fill="#FDE047" k={clamp(pop(f, 8, 18, 0.6), 0.7, 1.15)} />}
-    {f >= watch && <g transform={`translate(${eas(f, watch - 2, watch + 12, 1240, 790)} 1810)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={0.2} lookY={-1} armR={[150, 30]} armL={[-150, -30]} shadow={false} /></g>}
+    {f >= watch && <g transform={`translate(${eas(f, watch - 2, watch + 12, 1240, 610)} 1810)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={0.2} lookY={-1} armR={[150, 30]} armL={[-150, -30]} shadow={false} /></g>}
     {f >= watch + 10 && <Tag x={380} y={680} text="NOTHING" size={56} k={clamp(pop(f, watch + 10, 18, 0.6), 0.7, 1.15)} />}
   </g>
 );
@@ -307,7 +306,7 @@ const Newsreel = ({f, T}) => (
       <rect x={90} y={250} width={900} height={90} fill="#2B2A2E" /><text x={540} y={312} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={54} letterSpacing={6} fill="#F2EFE6">NEWS OF THE WEEK</text>
       {[...Array(5)].map((_, i) => <rect key={i} x={120 + ((f * 37 + i * 211) % 840)} y={350 + ((f * 13 + i * 97) % 520)} width={3} height={60} fill="#fff" opacity={0.3} />)}</g>
     <path d="M 540 1240 L 110 880 L 970 880 Z" fill="#FFF3C4" opacity={0.08} />
-    <Person x={540} y={2040} s={1.05} T={T} seed={3} expr="smug" lookY={-1} shadow={false} />
+    {[[250, 1600, 1], [540, 1560, 1.25], [830, 1600, 1]].map(([x, y, k], i) => <g key={i} transform={`translate(${x} ${y}) scale(${k})`}><path d="M -150 330 C -150 170 -80 110 0 110 C 80 110 150 170 150 330 Z" fill={i === 1 ? '#3C4250' : '#2B2830'} /><circle r={112} fill={i === 1 ? '#5A3820' : '#37323C'} /></g>)}
   </g>
 );
 
@@ -337,7 +336,7 @@ function ShotWine({f, line, T}) {
   const pint = cue(line, 'pint', 'pint', 0.55), ok = cue(line, 'ok', 'trusting', 0.8), rep = cue(line, 'wine', 'wine', 0.35), l1 = cue(line, 'l1', 'contact', 0.1), l2 = cue(line, 'l2', 'would', 0.2);
   if (f >= ok - 2) {
     return (
-      <g><Room wall="#6E2620" wallD="#57201C" floor="#3C2A22" floorD="#2B1E18" fy={1060}><rect x={330} y={120} width={420} height={300} fill="#F0E2BF" {...st(8)} /></Room>
+      <g><Room wall="#6E2620" wallD="#57201C" floor="#3C2A22" floorD="#2B1E18" fy={1060}></Room>
         <path d="M 60 1030 L 1020 1030 L 1060 1140 L 20 1140 Z" fill="#7A4A2A" {...st(8)} />
         <Person x={540} y={1120} s={0.98} fit="german" T={T} seed={4} expr="smug" lookY={0.8} armR={[60, 74]} armL={[-60, -74]} />
         <path d="M 60 1030 L 1020 1030 L 1060 1140 L 20 1140 Z" fill="#7A4A2A" {...st(8)} />
@@ -351,15 +350,18 @@ function ShotWine({f, line, T}) {
         <rect x={-100} y={1040} width={SW + 200} height={500} fill="#7A4A2A" {...st(8)} />
         <g transform={`translate(330 1040) scale(${clamp(pop(f, pint - 3, 16, 0.6), 0.6, 1.1)})`}><path d="M -105 -430 L 105 -430 L 82 0 L -82 0 Z" fill="#D9892B" {...st(9)} /><path d="M -112 -430 C -120 -500 120 -500 112 -430 Z" fill="#FBF7EE" {...st(8)} /><rect x={105} y={-330} width={55} height={190} rx={26} fill="none" {...st(13)} /></g>
         <g transform={`translate(760 1040) rotate(4) scale(${clamp(pop(f, pint + 3, 16, 0.6), 0.6, 1.1)})`}><path d="M -70 0 L 70 0 L 70 -300 C 70 -360 28 -380 28 -440 L 28 -520 L -28 -520 L -28 -440 C -28 -380 -70 -360 -70 -300 Z" fill="#5B1E2D" {...st(9)} /><rect x={-58} y={-230} width={116} height={130} fill="#F3EBD6" {...st(5)} /><text y={-152} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={46} fill={INK}>1 L</text>
-          {f >= pint + 8 && <path d="M -120 -500 L 120 -40 M 120 -500 L -120 -40" stroke="#C7301F" strokeWidth={22} strokeLinecap="round" />}</g>
-        <Tag x={330} y={330} text="BRITAIN: PINTS" size={52} k={clamp(pop(f, pint - 1, 16, 0.6), 0.7, 1.15)} /></g>
+          </g>
+        <Tag x={330} y={460} text="PINT" size={78} fill="#FDE047" k={clamp(pop(f, pint - 1, 16, 0.6), 0.7, 1.15)} />
+        <Tag x={760} y={400} text="LITRE" size={78} k={clamp(pop(f, pint + 3, 16, 0.6), 0.7, 1.15)} />
+        {f >= pint + 8 && <path d={`M 620 ${342 + eas(f, pint + 8, pint + 13, 0, 66)} L ${620 + eas(f, pint + 8, pint + 13, 0, 280)} ${408 - eas(f, pint + 8, pint + 13, 0, 66) + 0}`} stroke="#C7301F" strokeWidth={18} strokeLinecap="round" />}
+        <Tag x={540} y={210} text="BRITAIN IN THE 1940s" size={48} /></g>
     );
   }
   return (
     <g><rect x={-100} y={-100} width={SW + 200} height={SH + 200} fill="#C97B3A" />
       <g transform={`rotate(-2 540 680) scale(${eas(f, 0, 90, 1, 1.05)})`}><rect x={120} y={190} width={840} height={960} fill="#F3EBD6" {...st(9)} />
         <text x={540} y={300} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={64} letterSpacing={6} fill={INK}>SECRET REPORT</text><path d="M 190 340 L 890 340" {...st(6)} />
-        {['MY CONTACT IN GLASGOW', 'WOULD DO ANYTHING'].map((t, i) => <text key={t} x={180} y={450 + i * 96} fontFamily="'Courier New', monospace" fontWeight={700} fontSize={58} fill={INK}>{t.slice(0, Math.floor(clamp(f - (i ? l2 : l1) + 2, 0, 40) * 1.6))}</text>)}
+        {['MY CONTACT IN GLASGOW', 'WOULD DO ANYTHING'].map((t, i) => <text key={t} x={180} y={450 + i * 96} fontFamily="'Courier New', monospace" fontWeight={700} fontSize={58} fill={INK}>{t.slice(0, Math.floor(clamp(f - (i ? l2 : 1) + 2, 0, 40) * 1.6))}</text>)}
         <text x={180} y={642} fontFamily="'Courier New', monospace" fontWeight={700} fontSize={58} fill="#C7301F">{'FOR A LITRE OF WINE'.slice(0, Math.floor(clamp(f - rep + 2, 0, 40) * 1.6))}</text></g></g>
   );
 }
