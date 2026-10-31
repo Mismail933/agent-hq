@@ -19,8 +19,8 @@ const FITS = {
 // the Iron Cross and the MBE: small, but each one recognisable
 const IronCross = ({s = 1}) => (<g transform={`scale(${s})`}><path d="M -9 -46 L 9 -46 L 7 -24 L -7 -24 Z" fill="#C4312A" {...st(3)} /><path d="M -3 -46 L 3 -46 L 2 -24 L -2 -24 Z" fill="#fff" />
   <path d="M -12 -26 L 12 -26 L 5 -5 L 26 -12 L 26 12 L 5 5 L 12 26 L -12 26 L -5 5 L -26 12 L -26 -12 L -5 -5 Z" fill="#1B1B1F" stroke="#E7E7EA" strokeWidth={3.5} strokeLinejoin="round" /></g>);
-const MBE = ({s = 1}) => (<g transform={`scale(${s})`}><path d="M -11 -48 L 11 -48 L 9 -22 L -9 -22 Z" fill="#B7283A" {...st(3)} /><path d="M -3 -48 L 3 -48 L 2 -22 L -2 -22 Z" fill="#8A8F96" />
-  <path d="M 0 -24 C 8 -14 14 -8 24 0 C 14 8 8 14 0 24 C -8 14 -14 8 -24 0 C -14 -8 -8 -14 0 -24 Z" fill="#E7C766" {...st(3.5)} /><circle r={8} fill="#B7283A" stroke={INK} strokeWidth={2.5} /></g>);
+const MBE = ({s = 1}) => (<g transform={`scale(${s})`}><path d="M -11 -48 L 11 -48 L 9 -22 L -9 -22 Z" fill="#D98A9C" {...st(3)} /><path d="M -10 -47 L -7 -47 L -6 -23 L -8 -23 Z M 7 -47 L 10 -47 L 8 -23 L 6 -23 Z" fill="#A4A9AE" />
+  <path d="M -7 -24 L 7 -24 L 4 -5 L 24 -7 L 24 7 L 4 5 L 7 24 L -7 24 L -4 5 L -24 7 L -24 -7 L -4 -5 Z" fill="#E7C766" {...st(3.5)} /><circle r={7} fill="#B7283A" stroke={INK} strokeWidth={2.5} /></g>);
 
 /** A person, feet at y 0, about 700 units tall. Same build as the Roman test's soldier, dressed by `fit`. sq = squash/stretch on an entrance. */
 export const Person = ({x = 0, y = 0, s = 1, flip = false, fit = 'garbo', expr = 'calm', look = 0, lookY = 0, armR = [12, -4], armL = [-12, 4], T = 0, seed = 1, tilt = 0, lean = 0, sq = 1, shadow = true, medals = [0, 0], held = null, walk = 0}) => {
@@ -100,22 +100,22 @@ function ShotMedals({f, line, T}) {
   const close = f >= same - 5, chest = !close && f >= m - 2, reach = eas(f, m - 16, m - 5, 0, 1);
   const gIn = spr((f - g + 8) / 30, 13, 0.75), bIn = spr((f - b + 6) / 30, 13, 0.75);
   const pin = (a) => clamp(pop(f, a, 22, 0.5), 0, 1.25);
-  const z = close ? eas(f, same - 5, same + 26, 2.25, 2.5) : chest ? eas(f, m - 2, same, 3.1, 3.3) : eas(f, 0, m, 1.0, 1.1);
+  const z = close ? eas(f, same - 5, same + 26, 2.25, 2.5) : chest ? eas(f, m - 2, same, 2.6, 2.75) : eas(f, 0, m, 1.0, 1.1);
   return (
-    <g><Cam x={close || chest ? 495 : 540} y={close || chest ? 1040 : 900} z={z}>
+    <g><Cam x={close || chest ? 495 : 540} y={chest ? 1000 : close ? 1040 : 900} z={z}>
       <Room wall="#27477F" wallD="#1E3966" floor="#8A5A34" floorD="#6F4728">
         {/* a great hall: two banners, gold columns; each side's own colours, no party emblems */}
         <clipPath id="spyflag"><rect x={780} y={150} width={220} height={560} /></clipPath>
         {!close && !chest && [190, 890].map((cx, i) => <g key={cx}><rect x={cx - 110} y={150} width={220} height={560} fill={i ? '#1F3F8F' : '#F2EFE6'} {...st(7)} />{i === 0 ? <g transform={`translate(${cx} 430) scale(3.6)`}><path d="M -12 -26 L 12 -26 L 5 -5 L 26 -12 L 26 12 L 5 5 L 12 26 L -12 26 L -5 5 L -26 12 L -26 -12 L -5 -5 Z" fill="#1B1B1F" stroke="#fff" strokeWidth={2} /></g>
           : <g clipPath="url(#spyflag)"><g transform={`translate(${cx} 430)`}><path d="M -110 -280 L 110 280 M 110 -280 L -110 280" stroke="#fff" strokeWidth={34} /><path d="M -110 -280 L 110 280 M 110 -280 L -110 280" stroke="#C8102E" strokeWidth={13} /><path d="M 0 -280 L 0 280 M -110 0 L 110 0" stroke="#fff" strokeWidth={62} /><path d="M 0 -280 L 0 280 M -110 0 L 110 0" stroke="#C8102E" strokeWidth={36} /></g></g>}<rect x={cx - 110} y={150} width={220} height={560} fill="none" {...st(7)} /></g>)}
       </Room>
-      {!close && <Person x={208 - (1 - gIn) * 560} y={1320} s={0.88} fit="german" T={T} seed={4} expr="stare" look={1} walk={1 - gIn} armR={[14 + 56 * reach, -4 + 44 * reach]} />}
-      {!close && <Person x={781 + (1 - bIn) * 560} y={1320} s={0.88} flip fit="british" T={T} seed={7} expr="calm" look={1} walk={1 - bIn} armR={[14 + 56 * reach, -4 + 44 * reach]} />}
+      {!close && !chest && <Person x={208 - (1 - gIn) * 560} y={1320} s={0.88} fit="german" T={T} seed={4} expr="stare" look={1} walk={1 - gIn} armR={[14 + 56 * reach, -4 + 44 * reach]} />}
+      {!close && !chest && <Person x={781 + (1 - bIn) * 560} y={1320} s={0.88} flip fit="british" T={T} seed={7} expr="calm" look={1} walk={1 - bIn} armR={[14 + 56 * reach, -4 + 44 * reach]} />}
       <Person x={495} y={1340} s={1.0} T={T} seed={3} expr={close ? 'wink' : f >= m ? 'smug' : 'calm'} look={close ? 0.6 : f < b ? -0.8 : 0.8} medals={[f >= m ? pin(m) : 0, f >= m + 5 ? pin(m + 5) : 0]} />
     </Cam>
       {!close && !chest && f >= g && <Tag x={190} y={170} text="GERMANY" size={54} k={clamp(pop(f, g, 20, 0.6), 0, 1.15)} />}
       {!close && !chest && f >= b && <Tag x={850} y={170} text="BRITAIN" size={54} k={clamp(pop(f, b, 20, 0.6), 0, 1.15)} />}
-      {close && <Tag x={540} y={1262} text="JUAN PUJOL GARCÍA" size={62} k={clamp(pop(f, same - 8, 20, 0.6), 0.7, 1.15)} />}</g>
+      {close && <Tag x={520} y={1200} text="JUAN PUJOL GARCÍA" size={62} k={clamp(pop(f, same - 8, 20, 0.6), 0.7, 1.15)} />}</g>
   );
 }
 // ───────────── 2. turned down: the embassy door, the three stamps; then the Germans ─────────────
@@ -162,7 +162,7 @@ function ShotRejected({f, line, T}) {
         <g transform={`translate(540 250) scale(${0.28 + doorK * 0.72} 1)`}><rect width={420} height={890} fill="#27553F" {...st(7)} /><rect x={50} y={70} width={320} height={300} fill="#2F6A4F" {...st(5)} /><rect x={50} y={430} width={320} height={380} fill="#2F6A4F" {...st(5)} /><circle cx={50} cy={420} r={17} fill="#E7C766" {...st(4)} /></g>
         <rect x={570} y={130} width={360} height={84} rx={8} fill="#E7C766" {...st(6)} /><text x={750} y={190} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={46} fill={INK}>BRITISH EMBASSY</text>
       </g>
-      <Person x={290} y={1340} s={1.14} T={T} seed={3} expr={f >= shut + 2 ? 'stunned' : 'hopeful'} look={1} lean={f >= shut + 2 ? -3 : 1} armR={[62, 44]} held={<g transform="rotate(-8) translate(-50 -66)"><rect width={100} height={124} fill="#F3EBD6" {...st(5)} /><path d="M 16 28 L 84 28 M 16 56 L 84 56 M 16 84 L 66 84" stroke="#A9A087" strokeWidth={5} /></g>} />
+      <Person x={290} y={1270} s={1.14} T={T} seed={3} expr={f >= shut + 2 ? 'stunned' : 'hopeful'} look={1} lean={f >= shut + 2 ? -3 : 1} armR={[62, 44]} held={<g transform="rotate(-8) translate(-50 -66)"><rect width={100} height={124} fill="#F3EBD6" {...st(5)} /><path d="M 16 28 L 84 28 M 16 56 L 84 56 M 16 84 L 66 84" stroke="#A9A087" strokeWidth={5} /></g>} />
     </Cam>
   );
 }
@@ -203,11 +203,11 @@ function ShotAgents({f, line, T}) {
   const n27 = at(line, '27', 0.6), ex = at(line, 'who', 0.7), R = (i) => (i * 37 + 11) % 100 / 100;
   return (
     <g>
-      <Cam x={540} y={760} z={eas(f, 0, ex + 20, 1.0, 1.08)}>
+      <Cam x={540} y={900} z={eas(f, 0, ex + 20, 1.0, 1.08)}>
         <rect x={-300} y={-300} width={SW + 600} height={SH + 600} fill="#1F4E58" />
         {[...Array(6)].map((_, i) => <rect key={i} x={-200 + i * 280} y={-300} width={140} height={SH + 600} fill="#1A434C" />)}
-        <rect x={50} y={170} width={920} height={930} rx={12} fill="#B98E5C" {...st(9)} />
-        {[...Array(27)].map((_, i) => { const row = Math.floor(i / 6), c = i % 6, a = 2 + i * Math.max(0, n27 - 4) / 26, x = 128 + c * 148, y = 270 + row * 175;
+        <rect x={50} y={240} width={920} height={890} rx={12} fill="#B98E5C" {...st(9)} />
+        {[...Array(27)].map((_, i) => { const row = Math.floor(i / 6), c = i % 6, a = 2 + i * Math.max(0, n27 - 4) / 26, x = 128 + c * 148, y = 340 + row * 175;
           if (f < a) return null; const k = 0.55 + 0.45 * clamp(pop(f, a, 22, 0.55), 0, 1.2), gone = f >= ex + i * 0.45 - 3;
           return (<g key={i} transform={`translate(${x} ${y}) rotate(${(R(i) - 0.5) * 9}) scale(${k * 0.85})`}>
             <rect x={-74} y={-80} width={148} height={166} fill={gone ? 'none' : '#F3EBD6'} stroke={gone ? '#F7F1DF' : INK} strokeWidth={6} strokeDasharray={gone ? '14 12' : 'none'} />
@@ -217,8 +217,8 @@ function ShotAgents({f, line, T}) {
                 {i % 3 === 1 && <path d="M -22 40 C -8 28 8 32 14 40 C 22 32 38 28 52 40 C 40 50 26 50 14 46 C 2 50 -12 50 -22 40 Z" fill="#3A2A20" {...st(5)} />}</g>}
             <circle cy={-82} r={9} fill="#C7301F" {...st(3)} /></g>); })}
       </Cam>
-      {f >= n27 - 3 && <Tag x={760} y={140} text="27 AGENTS" size={68} fill="#FDE047" k={clamp(pop(f, n27 - 3, 18, 0.55), 0, 1.15)} />}
-      {f >= ex - 3 && <g transform={`translate(${eas(f, ex - 8, ex + 6, -180, 170)} 1990)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} shadow={false} /></g>}
+      {f >= n27 - 3 && <Tag x={500} y={190} text="27 AGENTS" size={68} fill="#FDE047" k={clamp(pop(f, n27 - 3, 18, 0.55), 0, 1.15)} />}
+      {f >= ex - 3 && <g transform={`translate(${eas(f, ex - 8, ex + 6, -180, 200)} 1860)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} shadow={false} /></g>}
     </g>
   );
 }
@@ -246,8 +246,8 @@ function ShotMap({f, line, T}) {
       <Stamp text="A TRICK" f={f} a={trick - 1} x={nx + 20} y={ny - 150} rot={-11} size={80} k0={0.35} plate />
       {f >= trick + 6 && <Tag x={cx - 130} y={cy - 116} text="THE REAL ONE?" size={40} fill="#FDE047" k={clamp(pop(f, trick + 6, 18, 0.6), 0, 1.15)} />}
       {f >= trick && [0, 14].map((d) => { const q = clamp((f - trick - d) / 24, 0, 1); return <circle key={d} cx={cx} cy={cy} r={18 + q * 90} fill="none" stroke="#C7301F" strokeWidth={9} opacity={1 - q} />; })}
-      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, 1230, 770)} 1780)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={1} armR={[62, 118]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
-      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, -200, 230)} 1780)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={1} armR={[60, 140]} shadow={false} /></g>
+      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, 1230, 700)} 1780)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr={f >= trick ? 'hopeful' : 'stare'} look={f >= told + 14 ? 0.3 : 1} lookY={f >= told + 14 ? -1 : 0} armR={[62, 118]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
+      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, -200, 280)} 1780)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={1} armR={[60, 140]} shadow={false} /></g>
     </g>
   );
 }
