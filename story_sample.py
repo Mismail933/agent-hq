@@ -1207,7 +1207,7 @@ def scene_sound(lines, total, music, sfx):
                 ACCENTS.append(round(acc[0], 2))
         if p.get("day") not in (None,):
             day = p.get("day")
-    for x in SOUND.get("add_accents") or []:   # accents the sound agent adds: {line (1-based), word, for, gain, offset}
+    for x in SOUND.get("add_accents") or []:   # accents the sound agent adds: {line (1-based), word, for, gain, offset, file}
         try:
             l = lines[int(x["line"]) - 1]
         except (KeyError, ValueError, IndexError):
@@ -1220,6 +1220,15 @@ def scene_sound(lines, total, music, sfx):
             continue
         NEED[0] = x.get("need") or NEEDS.get(l["shot"])
         at_ += float(x.get("offset", 0))   # seconds after the word: three stamps on one word
+        if x.get("file"):   # a sound made for this picture (not from the library), whole, at peak 1 x gain
+            import soundfile as _sf
+            seg, _ = _sf.read(str(x["file"]), dtype="float32", always_2d=True)
+            seg = seg.mean(axis=1)
+            seg = seg / (np.max(np.abs(seg)) + 1e-9)
+            put(sfx, at_ - 0.01, seg * env(len(seg), int(0.002 * SR), int(0.03 * SR)), float(x.get("gain", 0.7)))
+            PLACED.append({"t": round(at_, 2), "dur": round(len(seg) / SR, 2), "role": "accent", "for": x.get("for") or "made", "file": str(x["file"]), "need": x.get("need") or "made for this picture"})
+            ACCENTS.append(round(at_, 2))
+            continue
         if real(sfx, at_ - 0.03, [x.get("for") or "impact"], float(x.get("dur", 2.0)), float(x.get("gain", 0.7)), hit=True):
             ACCENTS.append(round(at_, 2))
 

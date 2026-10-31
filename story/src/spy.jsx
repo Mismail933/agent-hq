@@ -78,8 +78,8 @@ const Stamp = ({text, f, a, x, y, rot = -12, size = 92, color = '#C7301F', k0 = 
     <text textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={size} letterSpacing={4} fill={color}>{text}</text></g>); };
 // a hand on a rubber stamp: eased down, a short hold on the paper, eased up; a beat between hits, then away to the right. The arm comes from the right: the form's header stays clear
 const StampHand = ({f, hits}) => {
-  const i = hits.findIndex((h) => f < h + 8), n = i < 0 ? hits.length - 1 : i, h = hits[n];
-  const away = i < 0 ? eas(f, h + 3, h + 13, 0, 1000) : 0, lift = i < 0 ? 0 : (f < h - 1 ? eas(f, h - 5, h - 1, 110, 0) : eas(f, h + 2, h + 8, 0, 110));
+  const i = hits.findIndex((h) => f < h + 6), n = i < 0 ? hits.length - 1 : i, h = hits[n];
+  const away = i < 0 ? eas(f, h + 3, h + 13, 0, 1000) : 0, lift = i < 0 ? 0 : (f < h - 1 ? eas(f, h - 3, h, 110, 0) : eas(f, h + 1, h + 6, 0, 110));
   const at = StampHand.at[n];
   return (
     <g transform={`translate(${at[0] + away} ${at[1] - lift})`}>
@@ -134,7 +134,7 @@ function ShotRejected({f, line, T}) {
     );
   }
   if (f >= three - 3) {   // the form on the desk, stamped three times, on the beat
-    const shake = f >= three && f < three + 36 ? -5 * Math.exp(-(((f - three) % 12)) * 0.55) : 0;
+    const shake = f >= three && f < three + 36 ? -5 * Math.exp(-(((f - three) % 9)) * 0.6) : 0;
     return (
       <g transform={`translate(0 ${shake})`}>
         <rect x={-60} y={-60} width={SW + 120} height={SH + 120} fill="#6B4227" />
@@ -144,9 +144,9 @@ function ShotRejected({f, line, T}) {
           <text x={540} y={420} textAnchor="middle" fontFamily={OSW} fontWeight={500} fontSize={44} fill="#5B5145">APPLICATION TO SPY FOR BRITAIN</text>
           {[0, 1, 2, 3, 4].map((i) => <path key={i} d={`M 210 ${500 + i * 70} L 870 ${500 + i * 70}`} stroke="#B9AE93" strokeWidth={6} />)}</g>
         <Stamp text="REJECTED" f={f} a={three} x={420} y={720} rot={-14} k0={0.12} />
-        <Stamp text="REJECTED" f={f} a={three + 12} x={640} y={900} rot={7} k0={0.12} />
-        <Stamp text="REJECTED" f={f} a={three + 24} x={450} y={1080} rot={-7} k0={0.12} />
-        <StampHand f={f} hits={[three, three + 12, three + 24]} />
+        <Stamp text="REJECTED" f={f} a={three + 9} x={640} y={900} rot={7} k0={0.12} />
+        <Stamp text="REJECTED" f={f} a={three + 18} x={450} y={1080} rot={-7} k0={0.12} />
+        <StampHand f={f} hits={[three, three + 9, three + 18]} />
       </g>
     );
   }
@@ -170,7 +170,7 @@ function ShotRejected({f, line, T}) {
 function ShotGuide({f, line, T}) {
   const g = at(line, 'tourist', 0.5), close = f >= g - 3;
   if (close) {
-    const k = clamp(pop(f, g - 3, 16, 0.65), 0, 1.15);
+    const k = clamp(pop(f, g - 3, 16, 0.65), 0.7, 1.15);
     return (
       <Cam x={540} y={760} z={eas(f, g, g + 60, 1.0, 1.08)}>
         <rect x={-300} y={-300} width={SW + 600} height={SH + 600} fill="#C97B3A" />
@@ -217,8 +217,9 @@ function ShotAgents({f, line, T}) {
                 {i % 3 === 1 && <path d="M -22 40 C -8 28 8 32 14 40 C 22 32 38 28 52 40 C 40 50 26 50 14 46 C 2 50 -12 50 -22 40 Z" fill="#3A2A20" {...st(5)} />}</g>}
             <circle cy={-82} r={9} fill="#C7301F" {...st(3)} /></g>); })}
       </Cam>
-      {f >= n27 - 3 && <Tag x={500} y={190} text="27 AGENTS" size={68} fill="#FDE047" k={clamp(pop(f, n27 - 3, 18, 0.55), 0, 1.15)} />}
-      {f >= ex - 3 && <g transform={`translate(${eas(f, ex - 8, ex + 6, -180, 200)} 1860)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} shadow={false} /></g>}
+      {f >= n27 - 3 && <Tag x={500} y={190} text="27 PAID AGENTS" size={64} fill="#FDE047" k={clamp(pop(f, n27 - 3, 18, 0.55), 0, 1.15)} />}
+      <rect y={1690} width={SW} height={SH - 1690} fill="#123038" />
+      {f >= ex - 8 && <g transform={`translate(${eas(f, ex - 8, ex + 6, -180, 200)} 1860)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} /></g>}
     </g>
   );
 }
