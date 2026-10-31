@@ -34,8 +34,10 @@ MUSIC = Path.home() / ".agent-hq-anim" / "music" / "scott-buckley" / "convergenc
 
 def voice(spec, folder):
     """Every line in Kokoro am_michael (cached per line), assembled with pauses; word times spread over each line's voiced span."""
-    from kokoro import KPipeline
-    pipe = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
+    eleven = spec["voice"][7:] if str(spec.get("voice", "")).startswith("eleven:") else None
+    if not eleven:
+        from kokoro import KPipeline
+        pipe = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
     cache = folder / "_lines"
     cache.mkdir(exist_ok=True)
     texts = list(spec.get("short") or []) + [s["text"] for s in spec["story"]]
@@ -50,10 +52,22 @@ def voice(spec, folder):
         if i >= n_short:   # the story (not the approved short): Bassel asked for a slightly faster pace
             speed = 0.96 if i == len(texts) - 1 else float(spec.get("story_speed") or STORY_SPEED)
             speed = float(spec["story"][i - n_short].get("speed") or speed)   # a line's own pace (Tarek: short key lines read too fast)
-        f = cache / (hashlib.sha1(f"am_michael|{speed}|{says[i]}".encode()).hexdigest()[:16] + ".wav")
-        if not f.exists():
-            a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(says[i], voice="am_michael", speed=speed)])
-            sf.write(f, a, SR)
+        told = None
+        if eleven:   # a paid voice, line by line with its neighbours as context: its own pace and its real word times
+            f = cache / (hashlib.sha1(f"{eleven}|{texts[i]}".encode()).hexdigest()[:16] + ".wav")
+            fj = f.with_suffix(".json")
+            if not f.exists():
+                import elevenlabs
+                a, told, chars = elevenlabs.speak(eleven, texts[i], previous=texts[i - 1] if i else "", following=texts[i + 1] if i + 1 < len(texts) else "", model_id="eleven_multilingual_v2")
+                sf.write(f, a, SR)
+                fj.write_text(json.dumps(told or []), encoding="utf-8")
+                print("VOICED", i, chars, flush=True)
+            told = json.loads(fj.read_text(encoding="utf-8")) or None
+        else:
+            f = cache / (hashlib.sha1(f"am_michael|{speed}|{says[i]}".encode()).hexdigest()[:16] + ".wav")
+            if not f.exists():
+                a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(says[i], voice="am_michael", speed=speed)])
+                sf.write(f, a, SR)
         a, _ = sf.read(f, dtype="float32")
         env = np.convolve(np.abs(a), np.ones(240) / 240, mode="same")
         on = np.where(env > 0.01 * env.max())[0]
@@ -66,6 +80,8 @@ def voice(spec, folder):
         w = np.array([len(x) + 2 for x in toks], float)
         edges = np.concatenate([[0], np.cumsum(w) / w.sum()]) * (dur - lead - tail) + t + lead
         words = [[x, round(float(edges[k]), 3), round(float(edges[k + 1]), 3)] for k, x in enumerate(toks)]
+        if told:
+            words = [[w[0], round(t + max(0.0, float(w[1]) - a0 / SR), 3), round(t + max(0.0, float(w[2]) - a0 / SR), 3)] for w in told]
         pause = 0.2 + (GAP_SHORT.get(i, 0) * SHORT_GAP_SCALE if i < n_short else float(spec.get("story_gap", GAP_STORY))) + holds[i]
         if i == n_short - 1:
             pause = 0.7   # the short's last question, then the history begins
