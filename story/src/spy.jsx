@@ -228,7 +228,8 @@ function ShotAgents({f, line, T}) {
       {name !== null && f >= name - 2 && f < n27 - 3 && <Tag x={500} y={190} text="CODENAME: GARBO" size={64} k={clamp(pop(f, name - 2, 18, 0.55), 0.7, 1.15)} />}
       {f >= n27 - 3 && <Tag x={500} y={190} text="27 PAID AGENTS" size={64} fill="#FDE047" k={clamp(pop(f, n27 - 3, 18, 0.55), 0, 1.15)} />}
       <rect y={1690} width={SW} height={SH - 1690} fill="#123038" />
-      {f >= ex - 8 && <g transform={`translate(${eas(f, ex - 8, ex + 6, -180, 200)} 1860)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} /></g>}
+      {line.p && line.p.cue && line.p.cue.handler && <g transform="translate(830 1860)"><Person s={0.9} flip fit="british" T={T} seed={7} expr={f >= ex ? 'smug' : 'calm'} look={1} lookY={-0.8} armR={[150, 24]} /></g>}
+      {(f >= ex - 8 || (line.p && line.p.cue && line.p.cue.handler)) && <g transform={`translate(${line.p && line.p.cue && line.p.cue.handler ? 220 : eas(f, ex - 8, ex + 6, -180, 200)} 1860)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} /></g>}
     </g>
   );
 }
@@ -260,8 +261,8 @@ function ShotMap({f, line, T}) {
       <Stamp text={(line.p && line.p.stamp) || 'A TRICK'} f={f} a={trick - 1} x={nx + 20} y={ny - 170} rot={-11} size={68} k0={0.35} plate />
       {f >= trick + 6 && <Tag x={cx - 165} y={cy - 40} text="REAL ONE: CALAIS" size={44} fill="#FDE047" k={clamp(pop(f, trick + 6, 18, 0.6), 0.7, 1.15)} />}
       {f >= trick && [0, 14].map((d) => { const q = clamp((f - trick - d) / 24, 0, 1); return <circle key={d} cx={cx} cy={cy} r={18 + q * 90} fill="none" stroke="#C7301F" strokeWidth={9} opacity={1 - q} />; })}
-      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, 1230, 700)} 1780)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr={f >= trick ? 'hopeful' : 'stare'} look={f >= told + 14 ? 0.3 : 1} lookY={f >= told + 14 ? -1 : 0} armR={[62, 118]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
-      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, -200, 280)} 1780)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={1} armR={[60, 140]} shadow={false} /></g>
+      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, 1230, 790)} 1780)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr={f >= trick ? 'hopeful' : 'stare'} look={f >= told + 14 ? 0.3 : 1} lookY={-1} armR={[14, -4]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
+      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, -200, 190)} 1780)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={0.4} lookY={-1} armR={[14, -4]} shadow={false} /></g>
     </g>
   );
 }
@@ -269,7 +270,7 @@ function ShotMap({f, line, T}) {
 
 // he taps out the lie: the key, the dots and dashes crossing to a BERLIN tag
 const Radio = ({f, T}) => (
-  <g><Room wall="#3A4250" wallD="#2F3642" floor="#3C2A22" floorD="#2B1E18" fy={1060}><circle cx={880} cy={260} r={92} fill="#F3EBD6" {...st(8)} /><path d="M 880 260 L 880 196 M 880 260 L 924 288" {...st(8)} /></Room>
+  <g><Room wall="#7D8796" wallD="#6F7988" floor="#3C2A22" floorD="#2B1E18" fy={1060}><circle cx={880} cy={260} r={92} fill="#F3EBD6" {...st(8)} /><path d="M 880 260 L 880 196 M 880 260 L 924 288" {...st(8)} /></Room>
     <Person x={350} y={1370} s={1.18} T={T} seed={3} expr="smug" look={1} lookY={0.7} armR={[66, 62 + (Math.floor(T / 3) % 2) * 12]} />
     <path d="M 40 1040 L 1040 1040 L 1080 1160 L 0 1160 Z" fill="#7A4A2A" {...st(8)} />
     <g transform="translate(610 1020)"><rect x={-90} y={-14} width={180} height={34} fill="#2B241D" {...st(5)} /><rect x={-70} y={-34 + (Math.floor(T / 3) % 2) * 8} width={120} height={14} fill="#B5B9BC" {...st(4)} /><circle cx={56} cy={-46 + (Math.floor(T / 3) % 2) * 8} r={17} fill="#2B241D" {...st(4)} /></g>
@@ -277,7 +278,7 @@ const Radio = ({f, T}) => (
     <Tag x={850} y={430} text="TO BERLIN" size={58} k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} /></g>
 );
 // the payoff of the lie: rows of tanks on the French shore, looking at nothing
-const Beach = ({f, T, watch, instead = 1e9}) => (
+const Beach = ({f, T, watch, instead = 1e9, calais = 1e9}) => (
   <g>
     <rect x={-100} y={-100} width={SW + 200} height={760} fill="#A9CDE0" /><circle cx={820} cy={230} r={70} fill="#F7E7A8" />
     <rect x={-100} y={560} width={SW + 200} height={260} fill="#3D7FA3" />{[0, 1, 2, 3].map((i) => <path key={i} d={`M ${-120 + ((f * (1 + i * 0.3)) % 180)} ${600 + i * 54} q 90 -16 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0`} fill="none" stroke="#fff" strokeOpacity={0.3} strokeWidth={5} />)}
@@ -286,6 +287,7 @@ const Beach = ({f, T, watch, instead = 1e9}) => (
     {f >= 8 && <Tag x={540} y={170} text="21 GERMAN DIVISIONS" size={64} fill="#FDE047" k={clamp(pop(f, 8, 18, 0.6), 0.7, 1.15)} />}
     {f >= watch && <g transform={`translate(${eas(f, watch - 2, watch + 12, 1240, 610)} 1810)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={0.2} lookY={-1} armR={[150, 30]} armL={[-150, -30]} shadow={false} /></g>}
     {f >= watch + 10 && f < instead && <Tag x={380} y={680} text="NOTHING" size={56} k={clamp(pop(f, watch + 10, 18, 0.6), 0.7, 1.15)} />}
+    {f >= calais && f < instead && <Tag x={540} y={320} text="CALAIS" size={72} k={clamp(pop(f, calais, 18, 0.6), 0.7, 1.15)} />}
     {f >= instead && <Tag x={540} y={320} text="NOT IN NORMANDY" size={72} fill="#fff" k={clamp(pop(f, instead, 18, 0.6), 0.7, 1.15)} />}
   </g>
 );
@@ -309,7 +311,7 @@ function ShotFarm({f, line, T}) {
       <g transform="translate(790 900)"><path d="M -150 0 L -150 -180 L 150 -180 L 150 0 Z" fill="#D9C7A0" {...st(7)} /><path d="M -190 -180 L 0 -300 L 190 -180 Z" fill="#B5412F" {...st(7)} /><rect x={-40} y={-100} width={80} height={100} fill="#5E3820" {...st(6)} /></g>
       {[...Array(7)].map((_, i) => <rect key={i} x={40 + i * 150} y={860} width={18} height={100} fill="#8C5A34" {...st(4)} />)}<path d="M 0 884 L 1080 884 M 0 930 L 1080 930" stroke="#8C5A34" strokeWidth={9} />
       <Person x={330} y={1320} s={1.08} T={T} seed={3} expr={f >= want ? 'hopeful' : 'calm'} look={1} lookY={f >= want ? -0.7 : 0} />
-      {f >= hen - 8 && [[640, 1180, 0], [800, 1260, 1], [120, 1210, 2]].map(([x, y, i]) => <Hen key={i} x={x} y={y} s={1.15 * clamp(pop(f, hen - 8 + i * 3, 16, 0.6), 0, 1.1)} flip={i === 2} T={T} seed={i} />)}
+      {f >= hen - 8 && [[650, 1080, 0], [830, 1130, 1], [110, 1100, 2]].map(([x, y, i]) => <Hen key={i} x={x} y={y} s={1.15 * clamp(pop(f, hen - 8 + i * 3, 16, 0.6), 0, 1.1)} flip={i === 2} T={T} seed={i} />)}
       {f >= want - 2 && <g transform={`translate(670 470) scale(${clamp(pop(f, want - 2, 18, 0.6), 0, 1.1)})`}><path d="M -210 -130 C -250 -180 250 -180 210 -130 C 280 -60 240 120 120 120 L -120 120 C -240 120 -280 -60 -210 -130 Z" fill="#fff" {...st(7)} /><g transform="translate(0 -8)"><rect x={-130} y={-80} width={260} height={160} fill="#1F3F8F" {...st(4)} /><path d="M -130 -80 L 130 80 M 130 -80 L -130 80" stroke="#fff" strokeWidth={30} /><path d="M -130 -80 L 130 80 M 130 -80 L -130 80" stroke="#C8102E" strokeWidth={12} /><path d="M 0 -80 L 0 80 M -130 0 L 130 0" stroke="#fff" strokeWidth={46} /><path d="M 0 -80 L 0 80 M -130 0 L 130 0" stroke="#C8102E" strokeWidth={26} /></g><circle cx={-90} cy={150} r={18} fill="#fff" {...st(5)} /><circle cx={-120} cy={190} r={11} fill="#fff" {...st(4)} /></g>}
     </Cam>
     {f >= hen - 2 && f < want - 2 && <Tag x={540} y={200} text="HE ONCE RAN A CHICKEN FARM" size={52} k={clamp(pop(f, hen - 2, 18, 0.6), 0.7, 1.15)} />}</g>
@@ -323,7 +325,7 @@ function ShotPlan({f, line, T}) {
     <Cam x={540} y={850} z={eas(f, 0, two + 40, 1.0, 1.06)}><Room wall="#3C2F27" wallD="#32271F" floor="#6F4728" floorD="#5A3920" fy={1090}><g /></Room>
       <rect x={70} y={150} width={940} height={760} rx={10} fill="#2D4A3C" stroke="#8C5A34" strokeWidth={22} />
       <text x={540} y={270} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={84} letterSpacing={8} fill="#F7F1DF">THE PLAN</text><path d="M 170 300 L 910 300" stroke="#F7F1DF" strokeWidth={6} />
-      <text x={130} y={420} fontFamily={NUN} fontWeight={900} fontSize={60} fill="#FDE047">1</text><text x={190} y={420} fontFamily={NUN} fontWeight={800} fontSize={58} fill="#F7F1DF">{f >= one - 2 ? typ('BECOME A GERMAN SPY', one) : ''}</text>
+      {f >= one - 2 && <text x={130} y={420} fontFamily={NUN} fontWeight={900} fontSize={60} fill="#FDE047">1</text>}<text x={190} y={420} fontFamily={NUN} fontWeight={800} fontSize={58} fill="#F7F1DF">{f >= one - 2 ? typ('BECOME A GERMAN SPY', one) : ''}</text>
       {f >= two - 2 && <g><text x={130} y={560} fontFamily={NUN} fontWeight={900} fontSize={60} fill="#FDE047">2</text><text x={190} y={560} fontFamily={NUN} fontWeight={800} fontSize={58} fill="#F7F1DF">{typ('OFFER BRITAIN A SPY', two)}</text><text x={190} y={640} fontFamily={NUN} fontWeight={800} fontSize={58} fill="#F7F1DF">{f >= two + 12 ? typ('ALREADY INSIDE', two + 12) : ''}</text></g>}
       <Person x={230} y={1330} s={0.86} T={T} seed={3} expr="smug" look={1} lookY={-0.8} armR={[150, 24]} />
     </Cam>
@@ -344,8 +346,8 @@ function ShotDouble({f, line, T}) {
       <Person x={830} y={1330} s={0.76} flip fit="german" T={T} seed={4} expr={f >= th ? 'hopeful' : 'stare'} look={1} />
       <Person x={495} y={1330} s={0.96} T={T} seed={3} expr={f >= th ? 'wink' : 'smug'} look={f >= th ? 1 : -1} />
       <Tag x={500} y={170} text={f >= nm - 2 ? 'CODENAME: GARBO' : 'DOUBLE AGENT'} size={70} fill="#FDE047" k={clamp(pop(f, f >= nm - 2 ? nm - 2 : dbl - 2, 18, 0.6), 0.7, 1.15)} />
-      {f >= wrk - 2 && <Tag x={235} y={480} text="HIS REAL BOSS" size={46} k={clamp(pop(f, wrk - 2, 18, 0.6), 0.7, 1.15)} />}
-      {f >= th - 2 && <Tag x={740} y={480} text="THINKS HE'S THEIRS" size={42} k={clamp(pop(f, th - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= wrk - 2 && <Tag x={290} y={430} text="HIS REAL BOSS" size={56} k={clamp(pop(f, wrk - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= th - 2 && <Tag x={640} y={560} text="THINKS HE'S THEIRS" size={56} k={clamp(pop(f, th - 2, 18, 0.6), 0.7, 1.15)} />}
     </g>
   );
 }
@@ -356,7 +358,7 @@ function ShotTurn({f, line}) {
     <text y={-70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={104} letterSpacing={4} fill="#F7F1DF">THE LIE THAT</text><text y={70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={138} letterSpacing={4} fill="#FDE047">MATTERED</text>
     <text y={170} textAnchor="middle" fontFamily={OSW} fontWeight={500} fontSize={54} letterSpacing={10} fill="#A9B0BC">JUNE 1944</text></g></g>);
 }
-const ShotBeach = ({f, line, T}) => <Beach f={f} T={T} watch={cue(line, 'watch', 'waiting', 0.5)} instead={cue(line, 'instead', 'instead', 0.8)} />;
+const ShotBeach = ({f, line, T}) => <Beach f={f} T={T} watch={cue(line, 'watch', 'waiting', 0.5)} instead={cue(line, 'instead', 'instead', 0.8)} calais={cue(line, 'calais', 'Calais', 0.4)} />;
 const Sea = ({children, tone = '#2F6F8F'}) => (<g><rect x={-200} y={-200} width={SW + 400} height={SH + 400} fill={tone} />{[...Array(11)].map((_, i) => <path key={i} d={`M -100 ${80 + i * 130} q 90 -22 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0`} fill="none" stroke="#FFFFFF" strokeOpacity={0.14} strokeWidth={6} />)}{children}</g>);
 const Ship = ({x, y, s = 1, flip, hull = '#4A5560', ghost, k = 1}) => (<g transform={`translate(${x} ${y}) scale(${(flip ? -s : s) * k} ${s * k})`} opacity={ghost ? 0.9 : 1}><path d="M -130 0 L 130 0 L 100 44 L -100 44 Z" fill={ghost ? 'none' : hull} stroke={ghost ? '#F7F1DF' : INK} strokeWidth={7} strokeDasharray={ghost ? '16 12' : 'none'} /><rect x={-54} y={-40} width={88} height={40} fill={ghost ? 'none' : '#8995A0'} stroke={ghost ? '#F7F1DF' : INK} strokeWidth={6} strokeDasharray={ghost ? '12 10' : 'none'} /><rect x={-14} y={-76} width={26} height={36} fill={ghost ? 'none' : '#2B241D'} stroke={ghost ? '#F7F1DF' : INK} strokeWidth={5} strokeDasharray={ghost ? '10 8' : 'none'} /></g>);
 
@@ -380,8 +382,8 @@ function ShotLisbon({f, line, T}) {
   if (f < mapAt - 2) {
     const k = spr((f + 6) / 30, 15, 0.7);
     return (<Cam x={540} y={880} z={eas(f, 0, mapAt, 1.02, 1.1)}><Room wall="#6E2620" wallD="#57201C" floor="#3C2A22" floorD="#2B1E18" fy={1120}><g /></Room>
-      <Person x={200} y={1340} s={1.1} T={T} seed={3} expr="smug" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} />
-      <Person x={800} y={1340} s={1.1} flip fit="german" T={T} seed={4} expr="stare" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} /></Cam>);
+      <Person x={200} y={1190} s={1.1} T={T} seed={3} expr="smug" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} />
+      <Person x={800} y={1190} s={1.1} flip fit="german" T={T} seed={4} expr="stare" look={1} armR={[lin(k, 0, 1, 12, 74), lin(k, 0, 1, -4, 74)]} /></Cam>);
   }
   const M = [sx(-3.7), sy(40.4)], B = [sx(-1), sy(52)], L = [sx(-9.14), sy(38.72)], k1 = eas(f, Math.max(0, brit - 10), brit + 6, 0, 1), k2 = eas(f, lis - 8, lis + 8, 0, 1);
   return (
@@ -441,8 +443,8 @@ function ShotConvoy({f, line, T}) {
     const k = spr((f - brit + 3) / 30, 13, 0.75);
     return (
       <Cam x={540} y={880} z={eas(f, brit, brit + 50, 1.02, 1.1)}><Room wall="#27477F" wallD="#1E3966" floor="#8A5A34" floorD="#6F4728" fy={1120}><g transform="translate(540 430)"><path d="M -220 -170 L 220 170 M 220 -170 L -220 170" stroke="#fff" strokeWidth={60} /><path d="M -220 -170 L 220 170 M 220 -170 L -220 170" stroke="#C8102E" strokeWidth={26} /><path d="M 0 -170 L 0 170 M -220 0 L 220 0" stroke="#fff" strokeWidth={100} /><path d="M 0 -170 L 0 170 M -220 0 L 220 0" stroke="#C8102E" strokeWidth={60} /></g></Room>
-        <Person x={230} y={1340} s={1.05} T={T} seed={3} expr="smug" look={1} armR={[lin(k, 0, 1, 12, 70), lin(k, 0, 1, -4, 76)]} />
-        <Person x={800 + (1 - k) * 500} y={1340} s={1.05} flip fit="british" T={T} seed={7} expr="hopeful" look={1} walk={1 - k} armR={[lin(k, 0, 1, 12, 70), lin(k, 0, 1, -4, 76)]} /></Cam>
+        <Person x={230} y={1190} s={1.05} T={T} seed={3} expr="smug" look={1} armR={[lin(k, 0, 1, 12, 70), lin(k, 0, 1, -4, 76)]} />
+        <Person x={800 + (1 - k) * 500} y={1190} s={1.05} flip fit="british" T={T} seed={7} expr="hopeful" look={1} walk={1 - k} armR={[lin(k, 0, 1, 12, 70), lin(k, 0, 1, -4, 76)]} /></Cam>
     );
   }
   const go = eas(f, navy - 8, ghost + 30, 0, 1);
