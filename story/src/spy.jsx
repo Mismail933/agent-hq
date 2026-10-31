@@ -18,7 +18,7 @@ const FITS = {
 };
 // the Iron Cross and the MBE: small, but each one recognisable
 const IronCross = ({s = 1}) => (<g transform={`scale(${s})`}><path d="M -9 -46 L 9 -46 L 7 -24 L -7 -24 Z" fill="#C4312A" {...st(3)} /><path d="M -3 -46 L 3 -46 L 2 -24 L -2 -24 Z" fill="#fff" />
-  <path d="M -9 -24 L 9 -24 L 7 -7 L 24 -9 L 24 9 L 7 7 L 9 24 L -9 24 L -7 7 L -24 9 L -24 -9 L -7 -7 Z" fill="#1B1B1F" stroke="#E7E7EA" strokeWidth={3.5} strokeLinejoin="round" /></g>);
+  <path d="M -12 -26 L 12 -26 L 5 -5 L 26 -12 L 26 12 L 5 5 L 12 26 L -12 26 L -5 5 L -26 12 L -26 -12 L -5 -5 Z" fill="#1B1B1F" stroke="#E7E7EA" strokeWidth={3.5} strokeLinejoin="round" /></g>);
 const MBE = ({s = 1}) => (<g transform={`scale(${s})`}><path d="M -11 -48 L 11 -48 L 9 -22 L -9 -22 Z" fill="#B7283A" {...st(3)} /><path d="M -3 -48 L 3 -48 L 2 -22 L -2 -22 Z" fill="#8A8F96" />
   <path d="M 0 -24 C 8 -14 14 -8 24 0 C 14 8 8 14 0 24 C -8 14 -14 8 -24 0 C -14 -8 -8 -14 0 -24 Z" fill="#E7C766" {...st(3.5)} /><circle r={8} fill="#B7283A" stroke={INK} strokeWidth={2.5} /></g>);
 
@@ -73,20 +73,20 @@ const Room = ({wall, wallD, floor, floorD, fy = 1140, children}) => (
   </g>
 );
 const Cam = ({x = SW / 2, y = SH / 2, z = 1, children}) => <g transform={`translate(${SW / 2} ${SH / 2}) scale(${z}) translate(${-x} ${-y})`}>{children}</g>;
-const Stamp = ({text, f, a, x, y, rot = -12, size = 92, color = '#C7301F', k0 = 1.3}) => { if (f < a) return null; const k = 1 + k0 * Math.exp(-(f - a) * 0.75);
-  return (<g transform={`translate(${x} ${y}) rotate(${rot}) scale(${k})`} opacity={clamp((f - a + 1) / 2, 0, 1)}><rect x={-text.length * size * 0.36 - 22} y={-size * 0.82} width={text.length * size * 0.72 + 44} height={size * 1.2} rx={10} fill="none" stroke={color} strokeWidth={10} />
+const Stamp = ({text, f, a, x, y, rot = -12, size = 92, color = '#C7301F', k0 = 1.3, plate = false}) => { if (f < a) return null; const k = 1 + k0 * Math.exp(-(f - a) * 0.75);
+  return (<g transform={`translate(${x} ${y}) rotate(${rot}) scale(${k})`} opacity={clamp((f - a + 1) / 2, 0, 1)}><rect x={-text.length * size * 0.36 - 22} y={-size * 0.82} width={text.length * size * 0.72 + 44} height={size * 1.2} rx={10} fill={plate ? '#F7F1DF' : 'none'} stroke={color} strokeWidth={10} />
     <text textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={size} letterSpacing={4} fill={color}>{text}</text></g>); };
-// a hand on a rubber stamp: eased down, a short hold on the paper, eased up; a beat between hits, then away. The sleeve comes from below: the form's header stays clear
+// a hand on a rubber stamp: eased down, a short hold on the paper, eased up; a beat between hits, then away to the right. The arm comes from the right: the form's header stays clear
 const StampHand = ({f, hits}) => {
   const i = hits.findIndex((h) => f < h + 8), n = i < 0 ? hits.length - 1 : i, h = hits[n];
-  const lift = i < 0 ? eas(f, h + 3, h + 13, 0, 1100) : (f < h - 1 ? eas(f, h - 5, h - 1, 110, 0) : eas(f, h + 2, h + 8, 0, 110));
+  const away = i < 0 ? eas(f, h + 3, h + 13, 0, 1000) : 0, lift = i < 0 ? 0 : (f < h - 1 ? eas(f, h - 5, h - 1, 110, 0) : eas(f, h + 2, h + 8, 0, 110));
   const at = StampHand.at[n];
   return (
-    <g transform={`translate(${at[0]} ${at[1] - lift})`}>
+    <g transform={`translate(${at[0] + away} ${at[1] - lift})`}>
       <rect x={-84} y={-42} width={168} height={42} rx={6} fill="#7A4A2A" {...st(7)} />
       <rect x={-24} y={-124} width={48} height={86} fill="#8C5A34" {...st(7)} />
-      <path d="M 44 -152 L 760 500 L 620 660 L -44 -78 Z" fill="#3C4250" {...st(8)} />
-      <path d="M 44 -152 L 92 -108 L 2 -24 L -44 -78 Z" fill="#fff" {...st(7)} />
+      <path d="M 50 -172 C 300 -210 600 -250 1000 -300 L 1000 -180 C 600 -140 300 -100 50 -88 Z" fill="#3C4250" {...st(8)} />
+      <path d="M 50 -178 L 112 -186 L 112 -92 L 50 -84 Z" fill="#fff" {...st(7)} />
       <g><rect x={-62} y={-176} width={124} height={92} rx={36} fill={SKIN} {...st(7)} />{[-30, 0, 30].map((x) => <path key={x} d={`M ${x} -170 L ${x} -128`} {...st(5)} />)}<path d="M 42 -148 C 70 -142 76 -112 48 -100" fill={SKIN} {...st(6)} /></g>
     </g>
   );
@@ -106,7 +106,7 @@ function ShotMedals({f, line, T}) {
       <Room wall="#27477F" wallD="#1E3966" floor="#8A5A34" floorD="#6F4728">
         {/* a great hall: two banners, gold columns; each side's own colours, no party emblems */}
         <clipPath id="spyflag"><rect x={780} y={150} width={220} height={560} /></clipPath>
-        {[190, 890].map((cx, i) => <g key={cx}><rect x={cx - 110} y={150} width={220} height={560} fill={i ? '#1F3F8F' : '#F2EFE6'} {...st(7)} />{i === 0 ? <g transform={`translate(${cx} 430) scale(3.6)`}><path d="M -9 -24 L 9 -24 L 7 -7 L 24 -9 L 24 9 L 7 7 L 9 24 L -9 24 L -7 7 L -24 9 L -24 -9 L -7 -7 Z" fill="#1B1B1F" stroke="#fff" strokeWidth={2} /></g>
+        {!close && !chest && [190, 890].map((cx, i) => <g key={cx}><rect x={cx - 110} y={150} width={220} height={560} fill={i ? '#1F3F8F' : '#F2EFE6'} {...st(7)} />{i === 0 ? <g transform={`translate(${cx} 430) scale(3.6)`}><path d="M -12 -26 L 12 -26 L 5 -5 L 26 -12 L 26 12 L 5 5 L 12 26 L -12 26 L -5 5 L -26 12 L -26 -12 L -5 -5 Z" fill="#1B1B1F" stroke="#fff" strokeWidth={2} /></g>
           : <g clipPath="url(#spyflag)"><g transform={`translate(${cx} 430)`}><path d="M -110 -280 L 110 280 M 110 -280 L -110 280" stroke="#fff" strokeWidth={34} /><path d="M -110 -280 L 110 280 M 110 -280 L -110 280" stroke="#C8102E" strokeWidth={13} /><path d="M 0 -280 L 0 280 M -110 0 L 110 0" stroke="#fff" strokeWidth={62} /><path d="M 0 -280 L 0 280 M -110 0 L 110 0" stroke="#C8102E" strokeWidth={36} /></g></g>}<rect x={cx - 110} y={150} width={220} height={560} fill="none" {...st(7)} /></g>)}
       </Room>
       {!close && <Person x={208 - (1 - gIn) * 560} y={1320} s={0.88} fit="german" T={T} seed={4} expr="stare" look={1} walk={1 - gIn} armR={[14 + 56 * reach, -4 + 44 * reach]} />}
@@ -115,7 +115,7 @@ function ShotMedals({f, line, T}) {
     </Cam>
       {!close && !chest && f >= g && <Tag x={190} y={110} text="GERMANY" size={54} k={clamp(pop(f, g, 20, 0.6), 0, 1.15)} />}
       {!close && !chest && f >= b && <Tag x={850} y={110} text="BRITAIN" size={54} k={clamp(pop(f, b, 20, 0.6), 0, 1.15)} />}
-      {close && <Tag x={540} y={1262} text="JUAN PUJOL GARCÍA" size={62} k={clamp(pop(f, same - 2, 20, 0.6), 0, 1.15)} />}</g>
+      {close && <Tag x={540} y={1262} text="JUAN PUJOL GARCÍA" size={62} k={clamp(pop(f, same - 8, 20, 0.6), 0.7, 1.15)} />}</g>
   );
 }
 // ───────────── 2. turned down: the embassy door, the three stamps; then the Germans ─────────────
@@ -200,16 +200,16 @@ function ShotGuide({f, line, T}) {
 }
 // ───────────── 4. 27 agents who didn't exist: a wall of faces, then blanks, and one man behind them ─────────────
 function ShotAgents({f, line, T}) {
-  const n27 = at(line, '27', 0.6), ex = at(line, 'exist', 0.8), R = (i) => (i * 37 + 11) % 100 / 100;
+  const n27 = at(line, '27', 0.6), ex = at(line, 'who', 0.7), R = (i) => (i * 37 + 11) % 100 / 100;
   return (
     <g>
       <Cam x={540} y={760} z={eas(f, 0, ex + 20, 1.0, 1.08)}>
         <rect x={-300} y={-300} width={SW + 600} height={SH + 600} fill="#1F4E58" />
         {[...Array(6)].map((_, i) => <rect key={i} x={-200 + i * 280} y={-300} width={140} height={SH + 600} fill="#1A434C" />)}
-        <rect x={60} y={170} width={960} height={930} rx={12} fill="#B98E5C" {...st(9)} />
-        {[...Array(27)].map((_, i) => { const row = Math.floor(i / 6), c = i % 6, a = 2 + i * Math.max(0, n27 - 4) / 26, x = 152 + c * 155, y = 270 + row * 175;
-          if (f < a) return null; const k = clamp(pop(f, a, 22, 0.55), 0, 1.2), gone = f >= ex + i * 0.45 - 3;
-          return (<g key={i} transform={`translate(${x} ${y}) rotate(${(R(i) - 0.5) * 9}) scale(${k * 0.9})`}>
+        <rect x={50} y={170} width={920} height={930} rx={12} fill="#B98E5C" {...st(9)} />
+        {[...Array(27)].map((_, i) => { const row = Math.floor(i / 6), c = i % 6, a = 2 + i * Math.max(0, n27 - 4) / 26, x = 128 + c * 148, y = 270 + row * 175;
+          if (f < a) return null; const k = 0.55 + 0.45 * clamp(pop(f, a, 22, 0.55), 0, 1.2), gone = f >= ex + i * 0.45 - 3;
+          return (<g key={i} transform={`translate(${x} ${y}) rotate(${(R(i) - 0.5) * 9}) scale(${k * 0.85})`}>
             <rect x={-74} y={-80} width={148} height={166} fill={gone ? 'none' : '#F3EBD6'} stroke={gone ? '#F7F1DF' : INK} strokeWidth={6} strokeDasharray={gone ? '14 12' : 'none'} />
             {gone ? <text y={32} textAnchor="middle" fontFamily={NUN} fontWeight={900} fontSize={92} fill="#F7F1DF">?</text>
               : <g transform="translate(0 6) scale(0.42)"><ellipse rx={126} ry={119} fill={SKIN} {...st(13)} /><Face expr={['stare', 'calm', 'deadpan', 'smug'][i % 4]} dx={8} />
@@ -217,8 +217,8 @@ function ShotAgents({f, line, T}) {
                 {i % 3 === 1 && <path d="M -22 40 C -8 28 8 32 14 40 C 22 32 38 28 52 40 C 40 50 26 50 14 46 C 2 50 -12 50 -22 40 Z" fill="#3A2A20" {...st(5)} />}</g>}
             <circle cy={-82} r={9} fill="#C7301F" {...st(3)} /></g>); })}
       </Cam>
-      {f >= n27 && <Tag x={760} y={140} text="27 AGENTS" size={68} fill="#FDE047" k={clamp(pop(f, n27, 18, 0.55), 0, 1.15)} />}
-      {f >= ex - 3 && <g transform={`translate(${lin(f, ex - 3, ex + 8, -180, 170)} 1900)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} shadow={false} /></g>}
+      {f >= n27 - 3 && <Tag x={760} y={140} text="27 AGENTS" size={68} fill="#FDE047" k={clamp(pop(f, n27 - 3, 18, 0.55), 0, 1.15)} />}
+      {f >= ex - 3 && <g transform={`translate(${eas(f, ex - 8, ex + 6, -180, 170)} 1990)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} shadow={false} /></g>}
     </g>
   );
 }
@@ -232,19 +232,22 @@ function ShotMap({f, line, T}) {
   return (
     <g>
       <rect width={SW} height={SH} fill="#1B2A3A" />
-      <clipPath id="spymap"><rect x={70} y={170} width={940} height={1040} /></clipPath>
-      <g clipPath="url(#spymap)"><rect x={70} y={170} width={940} height={1040} fill="#7FB4C4" />
+      <rect y={1190} width={SW} height={SH - 1190} fill="#C9A46B" />
+      <clipPath id="spymap"><rect x={70} y={150} width={880} height={900} /></clipPath>
+      <g clipPath="url(#spymap)"><rect x={70} y={150} width={880} height={900} fill="#7FB4C4" />
         <g transform={`translate(${sx(-180)} ${sy(90)}) scale(${ppd / K} ${ppd * 1.45 / K})`}><path d={LAND} fill="#E2CF9C" stroke="#3B2B1E" strokeWidth={0.18} /></g></g>
-      <rect x={70} y={170} width={940} height={1040} fill="none" stroke="#F2E6C8" strokeWidth={9} />
+      <rect x={70} y={150} width={880} height={900} fill="none" stroke="#F2E6C8" strokeWidth={9} />
       <text x={sx(-1.8)} y={sy(51.8)} fontFamily={OSW} fontWeight={700} fontSize={56} letterSpacing={6} fill={INK}>BRITAIN</text>
-      <text x={sx(0.15)} y={sy(48.2)} fontFamily={OSW} fontWeight={700} fontSize={56} letterSpacing={6} fill={INK}>FRANCE</text>
+      <text x={sx(0.1)} y={sy(48.9)} fontFamily={OSW} fontWeight={700} fontSize={56} letterSpacing={6} fill={INK}>FRANCE</text>
       {/* the real landing, Normandy, and the place he pointed them at instead, Calais */}
       <path d={`M ${fx} ${fy} Q ${(fx + nx) / 2 - 70} ${(fy + ny) / 2} ${fx + (nx - fx) * kk} ${fy + (ny - fy) * kk}`} fill="none" stroke="#C7301F" strokeWidth={15} strokeDasharray="30 20" />
       <circle cx={nx} cy={ny} r={18} fill="#C7301F" {...st(5)} /><Tag x={nx - 220} y={ny + 96} text="NORMANDY" size={50} />
       <circle cx={cx} cy={cy} r={18} fill={INK} /><Tag x={cx + 10} y={cy - 40} text="CALAIS" size={44} />
-      <Stamp text="A TRICK" f={f} a={trick - 1} x={nx + 240} y={ny + 118} rot={-11} size={80} />
-      <g transform={`translate(${lin(clamp(pop(f, told - 8, 13, 0.8), 0, 1), 0, 1, 1230, 770)} 1935)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={1} armR={[62, 118]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
-      <g transform={`translate(${lin(clamp(pop(f, told - 8, 13, 0.8), 0, 1), 0, 1, -200, 230)} 1935)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={1} armR={[60, 140]} shadow={false} /></g>
+      <Stamp text="A TRICK" f={f} a={trick - 1} x={nx + 20} y={ny - 150} rot={-11} size={80} k0={0.35} plate />
+      {f >= trick + 6 && <Tag x={cx - 130} y={cy - 116} text="THE REAL ONE?" size={40} fill="#FDE047" k={clamp(pop(f, trick + 6, 18, 0.6), 0, 1.15)} />}
+      {f >= trick && [0, 14].map((d) => { const q = clamp((f - trick - d) / 24, 0, 1); return <circle key={d} cx={cx} cy={cy} r={18 + q * 90} fill="none" stroke="#C7301F" strokeWidth={9} opacity={1 - q} />; })}
+      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, 1230, 770)} 1780)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={1} armR={[62, 118]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
+      <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, -200, 230)} 1780)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={1} armR={[60, 140]} shadow={false} /></g>
     </g>
   );
 }
@@ -255,16 +258,16 @@ const Caps = ({lines}) => {
   const f = useCurrentFrame();
   const l = lines.find((x, i) => f >= x.cut && (i + 1 >= lines.length || f < lines[i + 1].cut));
   if (!l || !(l.words || []).length) return null;
-  if (f < l.words[0][1] - 1) return null;
+  if (l === lines[0] && f < l.words[0][1] - 1) return null;
   let at0 = 0;
   const groups = (l.p && l.p.caps || []).map((n) => { const x = l.words.slice(at0, at0 + n); at0 += n; return x; });
   if (at0 < l.words.length) groups.push(l.words.slice(at0));
-  const g = groups.filter((x) => x.length).reduce((cur, x) => (x[0][1] <= f + 1 ? x : cur));
+  const g = groups.filter((x) => x.length).reduce((cur, x) => (x[0][1] <= f + 1 ? x : cur), groups[0]);
   const now = g.reduce((a, w, i) => (w[1] <= f ? i : a), 0), bump = 1 + 0.06 * Math.exp(-Math.max(0, f - g[0][1]) * 0.35);
   return (
-    <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: 1350, paddingRight: 110}}>
+    <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: (l.p && l.p.capy) || 1350, paddingRight: 110}}>
       <div style={{transform: `scale(${bump})`, maxWidth: 860, textAlign: 'center', fontFamily: NUN, fontWeight: 900, fontSize: 84, lineHeight: 1.08, textTransform: 'uppercase', WebkitTextStroke: '16px #17110C', paintOrder: 'stroke fill'}}>
-        {g.map((w, i) => <span key={i} style={{color: i === now ? '#FDE047' : '#FFFFFF', marginRight: i + 1 < g.length ? 22 : 0}}>{w[0].replace(/[.,:;]$/, '')}</span>)}
+        {g.map((w, i) => <span key={i} style={{display: 'inline-block', whiteSpace: 'nowrap', color: i === now ? '#FDE047' : '#FFFFFF', marginRight: i + 1 < g.length ? 22 : 0}}>{w[0].replace(/[.,:;]$/, '')}</span>)}
       </div>
     </AbsoluteFill>
   );
