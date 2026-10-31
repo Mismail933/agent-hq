@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.314 (permissions.blockWritesOutsideWorkingDirectories; claude -p exits 1 on startup failure)",
-   "checked": "2026-10-30"
+   "last_seen": "2.1.316 (small -p/SDK compaction and routine fixes; 2.1.314 idle compaction)",
+   "checked": "2026-10-31"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-29 Usage and Cost Analytics API beta; 10-28 request limit 128 MB",
-   "checked": "2026-10-30"
+   "last_seen": "2026-10-30 Opus 4.8 fast mode deprecated (removed 2026-11-30); 10-29 Usage and Cost Analytics API beta",
+   "checked": "2026-10-31"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-28 AI for Science; 10-22 Agent Skills donated to AAIF; no new models",
-   "checked": "2026-10-30"
+   "last_seen": "2026-10-28 AI for Science; 10-26 S-1 filing; no new models since Haiku 5.5 (Oct 7)",
+   "checked": "2026-10-31"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -41,9 +41,9 @@
    "checked": "2026-10-11"
   },
   "youtube-shorts-original-content": {
-   "url": "https://www.mediapost.com/publications/article/418466/",
-   "last_seen": "2026-10-01/02 TeamYouTube: less Shorts reach for re-uploaders; no dashboard flag, no start date",
-   "checked": "2026-10-23"
+   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
+   "last_seen": "2026-10-01 Creator Insider (Rene Ritchie): voice-over only, minor edits, template changes not enough for reused clips; recommendations only, no start date",
+   "checked": "2026-10-31"
   },
   "youtube-reach-help": {
    "url": "https://support.google.com/youtube/answer/9314355?hl=en",
@@ -104,6 +104,11 @@
    "url": "https://platform.claude.com/docs/en/api/migration-2026-10-21",
    "last_seen": "temperature/top_p/top_k 400; llm.py unaffected; requirements anthropic>=0.70 unpinned",
    "checked": "2026-10-29"
+  },
+  "youtube-analytics-metrics": {
+   "url": "https://developers.google.com/youtube/analytics/metrics",
+   "last_seen": "engagedViews is a core metric; no stayedToWatch metric",
+   "checked": "2026-10-31"
   }
  },
  "repos": {
@@ -204,6 +209,13 @@
    "verdict": "watch",
    "checked": "2026-10-30",
    "note": "rubric/judge-prompt skills, MIT, young"
+  },
+  "MikkoParkkola/glyphdown": {
+   "stars": 2,
+   "last_commit": "2026-10-12",
+   "verdict": "skip",
+   "checked": "2026-10-31",
+   "note": "PolyForm Noncommercial"
   }
  },
  "issues": {

@@ -1,148 +1,171 @@
 {
- "date": "2026-10-30",
- "focus": "agents",
- "note": "One idea today: we never check whether Israa's scores match what you decide. The rest of the sweep had nothing that needs you (no new models; Claude Code 2.1.312-314 are small fixes).",
+ "date": "2026-10-31",
+ "focus": "results",
+ "note": "One idea today: Omar can't see how many views were real. Since YouTube counts a fast swipe as a view, our 'views' number is inflated; engagedViews is the honest hook number and is one word to add. Nothing else in the sweep needs you: no new models, Claude Code 2.1.316 is small fixes.",
  "research": {
-  "searches": 6,
-  "pages_read": 10,
-  "minutes": 12,
+  "searches": 16,
+  "pages_read": 9,
+  "minutes": 25,
   "questions": [
-   "Does the evidence on LLM judges say a second judge (Israa + Builder) gives independent checking?",
-   "Do we have any measure of how well Israa's verdicts match the owner's approve/reject?",
-   "Did Claude Code, the API or YouTube change anything this week that touches our workers or policy?"
+   "Did YouTube change Shorts rules or recommendations in October 2026 that touch a faceless, original history channel?",
+   "Can Omar measure whether the first seconds of a Short work, using the official Analytics API?",
+   "Does anything in the Claude Code / API changelogs from 2.1.309-316 or the API notes of Oct 15-30 affect our claude -p workers or llm.py?",
+   "Is there a repo worth adopting for orchestration or Shorts automation?"
   ],
   "gaps": [
-   "Only 6 searches (3 web, 3 GitHub queries), not 15: a short run, so the sweep is thinner than RICHARD.md asks.",
-   "Did not open the full PDFs of the judge papers, only their abstracts.",
-   "No official YouTube announcement for Oct 2026 found; only third-party roundups (grade C, not used)."
+   "YouTube's own Oct 1 Creator Insider / TeamYouTube posts could not be opened directly; the reach change is known only through trade press quoting them.",
+   "No official source for 'viewed vs swiped away' benchmarks (the 75-80% numbers are blogs).",
+   "Could not confirm from the API docs which reports and dimensions support engagedViews, or whether it works per video.",
+   "The Opus 4.8 fast-mode deprecation date (Nov 30) is on the API release notes (A) but a web search could not confirm it elsewhere; we do not use fast mode."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.314: new setting permissions.blockWritesOutsideWorkingDirectories; claude -p now exits 1 with an error if startup fails (was exit 0, no output)",
-  "Claude Code 2.1.312: cloud routines can pick an effort level; 2.1.311: non-retryable API errors are no longer retried in -p",
-  "API 2026-10-28: Messages API request limit raised 32 MB to 128 MB; 2026-10-29: Usage and Cost Analytics API (beta)",
-  "Anthropic 2026-10-22: Agent Skills standard donated to the Agentic AI Foundation (Linux Foundation); no change for claude -p",
-  "No new Claude models"
+  "Claude Code 2.1.316 (after 2.1.314): -p and SDK compaction memory fix; idle compaction for subscribers; nothing that changes our flags",
+  "API 2026-10-30: fast mode for Opus 4.8 deprecated, removed 2026-11-30 (we never send speed: fast)",
+  "API 2026-10-29: Usage and Cost Analytics API beta; 10-28 request size limit 128 MB",
+  "Anthropic news: no new model since Haiku 5.5 (Oct 7); Oct 26 IPO filing, Oct 22 Agent Skills donated to AAIF",
+  "YouTube 2026-10-01: Shorts recommendations favour original content; reused clips with only voice-over, minor edits or template changes get less reach (reported quote from Creator Insider)"
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "used",
-   "why": "2.1.314 is newest; the claude -p exit-code fix helps workers.py's failure handling, nothing to change"
+   "result": "nothing new",
+   "why": "2.1.309-316 small fixes; no --json-schema change"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "request size and analytics API do not touch us"
+   "why": "Opus 4.8 fast mode retiring; we don't use it"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "IPO filing, science partnerships, skills donation"
+   "why": "no models"
   },
   {
-   "title": "Simon Willison on skills donation",
-   "url": "https://simonwillison.net/2026/Oct/22/donating-agent-skills/",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "confirms the donation, no CLI change"
-  },
-  {
-   "title": "YouTube inauthentic content policy",
+   "title": "YouTube inauthentic / reused content policy",
    "url": "https://support.google.com/youtube/answer/1311392",
    "tier": "A",
    "result": "nothing new",
-   "why": "last change July 2025; already covered by the 10-18 idea"
+   "why": "last dated change still July 15, 2025"
   },
   {
-   "title": "Judge reliability study, 21 judges (arXiv 2606.19544)",
-   "url": "https://arxiv.org/abs/2606.19544",
-   "tier": "A",
-   "result": "used",
-   "why": "abstract: raw agreement overstates quality, kappa is 33-41 points lower; stable scores can hide bias"
-  },
-  {
-   "title": "A Second Judge is Not a Second Opinion (NeurIPS 2026)",
-   "url": "https://neurips.cc/virtual/2026/172889",
-   "tier": "A",
-   "result": "used",
-   "why": "two judges agreed with each other (kappa 0.88) but with humans at 0.19; open-weight judges, so only partly relevant"
-  },
-  {
-   "title": "GitHub search: claude code subagents skills",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:%3E2026-09-30&sort=stars",
+   "title": "YouTube creator updates",
+   "url": "https://support.google.com/youtube/answer/9072033",
    "tier": "A",
    "result": "nothing new",
-   "why": "general skill hubs, nothing that fits our workers"
+   "why": "newest entry May 2026, nothing on Shorts policy"
+  },
+  {
+   "title": "Understand three-minute YouTube Shorts",
+   "url": "https://support.google.com/youtube/answer/15424877?hl=en",
+   "tier": "A",
+   "result": "rejected",
+   "why": "the 'Oct 15' 3-minute change is from 2024, mislabeled in some 2026 blogs"
+  },
+  {
+   "title": "YouTube Analytics API metrics",
+   "url": "https://developers.google.com/youtube/analytics/metrics",
+   "tier": "A",
+   "result": "used",
+   "why": "engagedViews is a core metric; no stayedToWatch metric"
+  },
+  {
+   "title": "Relevant Audience: Shorts favour original clips",
+   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
+   "tier": "B",
+   "result": "used",
+   "why": "quotes Rene Ritchie; targets reuse of others' clips, not our own original work"
+  },
+  {
+   "title": "Creator Essentials: Stayed to Watch",
+   "url": "https://www.creatoressentials.com/glossary/stayed-to-watch/",
+   "tier": "C",
+   "result": "rejected",
+   "why": "glossary; Studio-only, API access unstated"
+  },
+  {
+   "title": "YouTube blog: improving AI labels",
+   "url": "https://blog.youtube/news-and-events/improving-ai-labels-for-viewers-and-creators/",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "seen only via search snippets, not opened; animated content stays in the expanded description per secondary outlets; already handled by server.py's reminder"
+  },
+  {
+   "title": "Faceless Shorts retention blogs (fluxnote, easyviral etc.)",
+   "url": "https://easyviral.ai/blog/we-analyzed-500-viral-faceless-shorts",
+   "tier": "C",
+   "result": "rejected",
+   "why": "vendor self-reported numbers, no method"
+  },
+  {
+   "title": "GitHub search: claude code subagents/skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "hubs and coding tools, nothing for our pipeline"
   },
   {
    "title": "GitHub search: faceless Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "url": "https://api.github.com/search/repositories?q=faceless+youtube+shorts+automation",
    "tier": "A",
    "result": "rejected",
-   "why": "all 0-1 star repos, mostly no licence"
+   "why": "all 0-1 star, mostly no licence"
   },
   {
-   "title": "GitHub search: LLM judge evaluation",
-   "url": "https://api.github.com/search/repositories?q=llm+agent+evaluation+rubric+judge",
+   "title": "GitHub search: multi-agent orchestration",
+   "url": "https://api.github.com/search/repositories?q=multi-agent+orchestration+claude",
    "tier": "A",
-   "result": "used",
-   "why": "found small kappa/rubric tools; we do not need a library, the check is ~30 lines"
+   "result": "nothing new",
+   "why": "coding-agent orchestrators; we have our own control plane"
   },
   {
-   "title": "Web search: judge reliability 2026",
-   "url": "https://www.google.com/search?q=LLM-as-judge+reliability",
-   "tier": "C",
-   "result": "used",
-   "why": "pointed to the two papers above"
-  },
-  {
-   "title": "Web search: YouTube Shorts Oct 2026 policy",
-   "url": "https://www.google.com/search?q=YouTube+Shorts+October+2026",
-   "tier": "C",
+   "title": "GitHub search: token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching",
+   "tier": "A",
    "result": "rejected",
-   "why": "third-party blogs only"
+   "why": "glyphdown is PolyForm Noncommercial"
   }
  ],
  "repo_watch": [
   {
-   "name": "Calibre-Labs/reforge-ai-evals",
-   "url": "https://github.com/Calibre-Labs/reforge-ai-evals",
-   "licence": "MIT",
-   "stars": 94,
-   "last_commit": "2026-10-28",
-   "verdict": "watch",
-   "fit": "skills that help write rubrics and judge prompts",
-   "why": "young, 94 stars; we do not need it for the idea below"
+   "name": "MikkoParkkola/glyphdown",
+   "url": "https://github.com/MikkoParkkola/glyphdown",
+   "licence": "PolyForm Noncommercial",
+   "stars": 2,
+   "last_commit": "2026-10-12",
+   "verdict": "skip",
+   "fit": "token compression for coding agents",
+   "why": "noncommercial licence, 2 stars"
   }
  ],
  "ideas": [
   {
-   "id": "2026-10-30-1",
-   "title": "Measure how often Israa's verdict matches the owner's decision",
-   "area": "agents",
-   "problem": "Scripts now pass a gate of Israa (score >= 8) plus the Builder chat (script.min_score, script.builder_review). Both are Claude. Nothing records whether Israa's pass/rework agrees with what the owner then does. New research says judges can agree with each other and still disagree with humans (kappa 0.88 between two judges, 0.19 with humans; abstract at neurips.cc/virtual/2026/172889), and that raw percent agreement overstates quality by 33-41 points (arXiv 2606.19544). That was open-weight judges; the Claude judge in the same paper did better, so our gap may be small. We simply do not know.",
-   "proposal": "Add a small read-only function in quality.py, e.g. judge_agreement(): for every episode that has data.review (Israa's verdict/score) and an owner decision (status approved/rejected after awaiting_approval, from decide_episode in agents.py, by='Owner'), build the 2x2 table Israa pass/rework vs owner approve/reject, and report percent agreement, Cohen's kappa, and the list of disagreements with the owner's note. Show it as one line in Atlas's `hq status` and in the Learning tab. No prompt change, no extra model call, no cost. If kappa is low after ~15 decided scripts, the next step (a separate idea) is to feed the owner's rejection notes into Israa's criteria.",
-   "gain": "Turns 'Israa said 8' into a known quantity. Tells the owner whether the gate saves his 3 hours a week or only adds delay. Measured by: the number exists and updates after each owner decision.",
-   "test": "Normal: 10 episodes with both fields give a table whose cells add to 10. Edge: an episode rejected by the owner after Israa's rework verdict, and an episode with no Israa review, must be skipped or counted separately, not crash. Failure case: all decisions the same (kappa undefined) must print 'not enough variety yet', not divide by zero. Pass = Atlas reports the agreement line and the three cases behave as described.",
+   "id": "2026-10-31-1",
+   "title": "Give Omar the honest hook number: engagedViews next to views",
+   "area": "results",
+   "problem": "youtube.py METRICS (line 37) asks for views, watch time, average view duration/percentage, subs, likes, comments, shares. YouTube's own blog (Aug 24, in watch.json) says Shorts views now count from the first frame, so a Short that most people swipe past still shows a big 'views'. Omar's daily line and weekly note therefore cannot tell 'many saw it' from 'many stayed', and Calina's learning note inherits the blur. The owner's goal is views first, and the hook is the part we can change.",
+   "proposal": "In youtube.py add engagedViews to METRICS (a core Analytics API metric: 'viewed past the first frame, or the user clicks/taps to play'; same yt-analytics.readonly scope, no reconnect). In snapshot() keep it per video, and in omar.py add engaged_share = engagedViews / views to the per-video rows, the daily line and the weekly brief (a 'hook' section: lowest and highest engaged_share Shorts with their first line from the episode's script). Add one sentence to OMAR_SYSTEM: 'engaged_share under the channel median means the opening failed; above it with low averageViewPercentage means the middle failed.' If the API refuses engagedViews with dimension=video, fall back to the channel total and say so (the existing code already turns a refusal into an error row for countries, the same pattern works).",
+   "gain": "Omar and Calina get a number tied to the opening seconds, with no manual Studio copying. Measure: after 2 weeks, the weekly note names the best and worst opening per Short, and the owner can compare it with Calina's hook styles.",
+   "test": "1) Normal: practice mode (youtube._fake) returns engagedViews; daily line shows 'engaged 62% of views'. 2) Edge: a video with 0 views must not divide by zero and shows '-'. 3) Failure: API returns 400 for engagedViews by video; snapshot still completes and the note says 'hook number unavailable'. Pass = no crash, all three lines read correctly. Then one real snapshot on the live channel.",
    "effort": "S",
    "confidence": "moderate",
-   "confidence_why": "The method (chance-corrected agreement against human decisions) rests on two A-grade abstracts; I did not read the full papers and neither tests Claude as judge on stories, so the size of any gap for us is unknown.",
-   "risks": "Few decided scripts so far, so early numbers are noisy: label it 'n = N'. Owner decisions also reflect taste, not only quality. No outside code, no licence issue.",
+   "confidence_why": "The metric's existence and definition are in Google's own metrics page (A). Not verified: whether it can be grouped by video, and whether the Aug 24 views change (YouTube blog, A) makes views and engagedViews diverge enough on our channel to matter.",
+   "risks": "Read-only, same scope, no new dependency. Risk: the per-video report may reject the metric, then only the channel total works. Numbers lag 1-2 days like the others.",
    "links": [
     {
-     "title": "A Second Judge is Not a Second Opinion",
-     "url": "https://neurips.cc/virtual/2026/172889"
+     "title": "YouTube Analytics API metrics",
+     "url": "https://developers.google.com/youtube/analytics/metrics"
     },
     {
-     "title": "Large-scale LLM-as-a-Judge study (arXiv 2606.19544)",
-     "url": "https://arxiv.org/abs/2606.19544"
+     "title": "YouTube: engaged views explained",
+     "url": "https://blog.youtube/inside-youtube/engaged-views-youtube-explained/"
     }
    ],
    "builds_on": ""
