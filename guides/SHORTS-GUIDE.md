@@ -73,3 +73,13 @@ Read in the browser: titles, views, captions and picture sheets, nothing downloa
 - **Check the silhouette:** a dark fringe, a small moustache and German banners read as Hitler (our first spy, caught on stills). Look at
   every historical character at thumbnail size before rendering.
 
+## Sound effects on a Short (the owner 10-31: "put sound effects that make sense")
+
+- One sound for each thing you can see happen: a door shutting, a stamp landing, typing. No sound with nothing on screen to explain it.
+- Library clips cut to their loudest moment often stop sounding like the thing: Earshot heard our medal as a camera shutter and our stamps as hi-hats. Make the
+  sound for the picture instead: ElevenLabs sound generation (11 credits a second), then check it with Earshot before placing it (scratchpad make_spy_sfx.py;
+  spec add_accents `file`, `offset`). Earshot's best guess still needs reading: "a heavy thud" is right for a stamp.
+- Effects 14-18 dB under the voice. Never two on one word. Tarek's rule is one a line; break it only when each sound has its own visible action.
+- Not measured yet: how often the big channels place effects. In-page level readings show their sound never drops to silence for over 0.25 s, but they can't
+  tell an effect from a word. To measure it, the owner plays one of their Shorts on the PC, `voice_match.py record` takes it from the speakers, and Earshot reads it.
+
