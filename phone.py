@@ -36,6 +36,7 @@ STORE = Path(os.environ.get("HQ_PHONE_STORE") or (Path.home() / ".agent-hq" / "t
 SKIP = ROOT / ".telegram-skip"
 API = os.environ.get("HQ_TELEGRAM_API", "https://api.telegram.org").rstrip("/")
 MAX_VIDEO = 49 * 1024 * 1024    # bots may send files up to 50 MB
+FIT_LADDER_SECONDS = 150
 MAX_TRIES = 5                   # wrong pairing codes before the code stops working until the next start
 POLL_WAITS = 30                 # seconds between looks for new things that wait for the owner
 
@@ -392,47 +393,57 @@ def _fit_audio(path):
     return out
 
 
+_FIT_LOCK = threading.Lock()   # one compression at a time: two sends of one video both wrote its .phone.mp4, and one could go out half made (11-01)
+
+
 def _fit_video(path):
     """A video small enough for a bot (50 MB): the file itself, or a copy made once next to it (<name>.phone.mp4): 1080p at the
-    best quality that fits, then the old 720p steps for long videos (the owner 10-31: a 4K Short reached him at 406x720, 134 kb/s)."""
+    best quality that fits, then the old 720p steps for long videos (the owner 10-31: a 4K Short reached him at 406x720, 134 kb/s).
+    Over FIT_LADDER_SECONDS it goes straight to a bitrate sized from the length: the steps cost 40 minutes and could never fit (11-01).
+    Each try is written to a temporary name, so the copy is whole or absent."""
     path = Path(path)
     if path.stat().st_size <= MAX_VIDEO:
         return path
     small = path.with_name(path.stem + ".phone.mp4")
-    if small.exists() and small.stat().st_mtime >= path.stat().st_mtime and small.stat().st_size <= MAX_VIDEO:
-        return small
-    try:
-        import shorts
-        ffmpeg = shorts.find_ffmpeg()
-    except Exception:
-        ffmpeg = "ffmpeg"
-    import subprocess
-    quiet = {"capture_output": True, "timeout": 1800, "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
-    sharp = "scale='if(gt(iw,ih),-2,min(1080,iw))':'if(gt(iw,ih),min(1080,ih),-2)':flags=lanczos:out_range=tv,format=yuv420p"
-    for crf in (18, 21, 24, 27):   # the shortest side at most 1080; stop at the first that fits
-        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", sharp, "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
-                        "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(small)], **quiet)
-        if small.exists() and small.stat().st_size <= MAX_VIDEO:
+    with _FIT_LOCK:
+        if small.exists() and small.stat().st_mtime >= path.stat().st_mtime and small.stat().st_size <= MAX_VIDEO:
             return small
-    for crf in (28, 33):   # 720p (it said 720p but kept 1080: the height was capped at 1280)
-        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", "scale=-2:'min(720,ih)'", "-c:v", "libx264",
-                        "-preset", "veryfast", "-crf", str(crf), "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(small)], **quiet)
-        if small.exists() and small.stat().st_size <= MAX_VIDEO:
-            return small
-    # a long video: a bitrate sized from its length (2.73.4: a 21-minute video came out at 54 MB at crf 33 and never reached the phone)
-    probe = str(Path(ffmpeg).with_name("ffprobe" + Path(ffmpeg).suffix)) if os.sep in str(ffmpeg) or "/" in str(ffmpeg) else "ffprobe"
-    try:
-        secs = float(subprocess.run([probe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)], text=True, **quiet).stdout.strip())
-    except (ValueError, OSError, subprocess.SubprocessError):
-        secs = 0
-    if secs > 0:
-        vk = max(120, int(MAX_VIDEO * 0.88 * 8 / secs / 1000) - 48)   # kbit/s for the picture; 48k mono for the voice
-        h = 720 if vk >= 900 else 480
-        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), "-vf", f"scale=-2:'min({h},ih)'", "-c:v", "libx264", "-preset", "veryfast",
-                        "-b:v", f"{vk}k", "-maxrate", f"{int(vk * 1.3)}k", "-bufsize", f"{vk * 2}k", "-c:a", "aac", "-b:a", "48k", "-ac", "1",
-                        "-movflags", "+faststart", str(small)], **quiet)
-        if small.exists() and small.stat().st_size <= MAX_VIDEO:
-            return small
+        try:
+            import shorts
+            ffmpeg = shorts.find_ffmpeg()
+        except Exception:
+            ffmpeg = "ffmpeg"
+        import subprocess
+        quiet = {"capture_output": True, "timeout": 1800, "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
+        tmp = path.with_name(path.stem + ".phone.part.mp4")
+
+        def attempt(args):
+            subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(path), *args, "-movflags", "+faststart", str(tmp)], **quiet)
+            if tmp.exists() and tmp.stat().st_size <= MAX_VIDEO:
+                tmp.replace(small)
+                return True
+            return False
+
+        probe = str(Path(ffmpeg).with_name("ffprobe" + Path(ffmpeg).suffix)) if os.sep in str(ffmpeg) or "/" in str(ffmpeg) else "ffprobe"
+        try:
+            secs = float(subprocess.run([probe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)], text=True, **quiet).stdout.strip())
+        except (ValueError, OSError, subprocess.SubprocessError):
+            secs = 0
+        if not secs or secs <= FIT_LADDER_SECONDS:
+            sharp = "scale='if(gt(iw,ih),-2,min(1080,iw))':'if(gt(iw,ih),min(1080,ih),-2)':flags=lanczos:out_range=tv,format=yuv420p"
+            for crf in (18, 21, 24, 27):   # the shortest side at most 1080; stop at the first that fits
+                if attempt(["-vf", sharp, "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-c:a", "aac", "-b:a", "128k"]):
+                    return small
+            for crf in (28, 33):   # 720p (it said 720p but kept 1080: the height was capped at 1280)
+                if attempt(["-vf", "scale=-2:'min(720,ih)'", "-c:v", "libx264", "-preset", "veryfast", "-crf", str(crf), "-c:a", "aac", "-b:a", "96k"]):
+                    return small
+        # a long video: a bitrate sized from its length (2.73.4: a 21-minute video came out at 54 MB at crf 33 and never reached the phone)
+        if secs > 0:
+            vk = max(120, int(MAX_VIDEO * 0.88 * 8 / secs / 1000) - 48)   # kbit/s for the picture; 48k mono for the voice
+            h = 720 if vk >= 900 else 480
+            if attempt(["-vf", f"scale=-2:'min({h},ih)'", "-c:v", "libx264", "-preset", "veryfast", "-b:v", f"{vk}k", "-maxrate", f"{int(vk * 1.3)}k",
+                        "-bufsize", f"{vk * 2}k", "-c:a", "aac", "-b:a", "48k", "-ac", "1"]):
+                return small
     raise TelegramError("too big for the phone even after compressing")
 
 
