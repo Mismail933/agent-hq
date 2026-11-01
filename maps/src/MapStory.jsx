@@ -47,7 +47,7 @@ function camera(f, lines, fps) {
     const a = Math.round((l.t0 - 0.15) * fps);
     if (i > 0 && f < a) break;
     const dur = l.follow ? 30 : l.move_s ? Math.round(l.move_s * fps) : Math.max(40, Math.min(90, Math.round((l.t1 - l.t0) * fps * 0.6)));
-    if (i > 0) {
+    if (i > 0 && !l.keep) {
       const prev = cur, next = l.follow && l.ship ? followView(l, 0) : l.spin ? [l.spin.from, l.spin.lat, l.spin.scale] : l.view;
       cur = move(prev, next, interpolate(f, [a, a + dur], [0, 1], {...clamp, easing: ease}));
     }
@@ -62,6 +62,12 @@ function camera(f, lines, fps) {
     if (l.spin && f >= sa) {
       const end = Math.round((l.t1 + (l.spin.extra != null ? l.spin.extra : 0.4)) * fps);   // extra: the turn runs on into the line's silence
       cur = [interpolate(f, [sa, end], [l.spin.from, l.spin.to], l.spin.even ? clamp : {...clamp, easing: Easing.inOut(Easing.sin)}), l.spin.lat, l.spin.scale];
+      // tail {s, v}: past its end the turn slows over s seconds to v degrees a second and keeps drifting (Bassel: a dead stop read as a lag); later lines with `keep` leave it running
+      if (l.spin.tail && f > end) {
+        const v0 = ((l.spin.to - l.spin.from) / (end - sa)) * fps, dt = (f - end) / fps, S = l.spin.tail.s, v1 = l.spin.tail.v;
+        const lon = dt < S ? v0 * dt - ((v0 - v1) * dt * dt) / (2 * S) : ((v0 + v1) * S) / 2 + v1 * (dt - S);
+        cur = [l.spin.to + lon, l.spin.lat, l.spin.scale];
+      }
     }
     // views [{at, view}]: the camera moves on mid-line (e.g. from Pondicherry to Saint-Louis on 'the island of Saint Louis')
     let base = l.view;
