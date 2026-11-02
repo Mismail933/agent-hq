@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.316 (unchanged since 10-31)",
-   "checked": "2026-11-01"
+   "checked": "2026-11-02"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-10-30 Opus 4.8 fast mode deprecated (removed 2026-11-30); 10-29 Usage and Cost Analytics API beta",
-   "checked": "2026-11-01"
+   "checked": "2026-11-02"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-28 AI for Science; 10-26 S-1 filing; no new models since Haiku 5.5 (Oct 7)",
-   "checked": "2026-11-01"
+   "checked": "2026-11-02"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
