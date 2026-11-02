@@ -11,6 +11,7 @@ import {MEG2_SHOTS} from './meg2';
 import {MEG3_SHOTS} from './meg3';
 import {MEG4_SHOTS} from './meg4';
 import {YAM_SHOTS} from './yam';
+import {ClipLayer} from './a12';
 import {YAM2_SHOTS} from './yam2';
 import {YAM3_SHOTS} from './yam3';
 import {YAM4_SHOTS} from './yam4';
@@ -292,7 +293,7 @@ function Title({f, len, line}) {
   );
 }
 
-export const SHOTS = {aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
+export const SHOTS = {a_cut: () => null, aerial: Aerial, cabin: Cabin, father: Father, storm_window: StormWindow, shaking: Shaking, lightning: Lightning, mother: Mother,
   breakup: Breakup, falling: Falling, wake: Wake, title: Title, ...STORY_SHOTS, ...OCEAN_SHOTS, ...MEG_SHOTS, ...MEG2_SHOTS, ...MEG3_SHOTS, ...MEG4_SHOTS, ...YAM_SHOTS, ...YAM2_SHOTS, ...YAM3_SHOTS, ...YAM4_SHOTS, ...TRENCH_SHOTS, ...DEEP_SHOTS};
 
 // fast shots get a film camera's motion blur (2.55.0, @remotion/motion-blur: each frame is the average of a few moments within the
@@ -419,6 +420,7 @@ const ShotLayer = ({line, len}) => {
   return (
     <AbsoluteFill>
       <FootageLayer line={line} len={len} />
+      <ClipLayer line={line} len={len} />
       <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}><S f={f} len={len} line={line} /></svg>
       {/* 2.75.8: the deep look's vignette over the older trench scenes too (one sea for the whole video) */}
       {String(line.shot).startsWith('tw_') && <AbsoluteFill style={{background: 'radial-gradient(ellipse 75% 75% at 50% 48%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.72) 100%)', pointerEvents: 'none'}} />}
@@ -553,7 +555,7 @@ export const Opening = ({lines = [], audio, captions = true}) => (
       const from = i === 0 ? 0 : Math.max(0, l.cut - XF), to = i + 1 < lines.length ? lines[i + 1].cut : l.until;
       const prev = i > 0 ? lines[i - 1] : null;
       const cont = !!prev && prev.shot === l.shot && l.shot === 'item' && ((prev.p || {}).thing === (l.p || {}).thing);
-      const shifted = {...l, idx: i, cont, start: from, end: l.end, words: (l.words || []).map(([w, fr]) => [w, fr])};
+      const shifted = {...l, idx: i, cont, start: from, end: l.end, all: lines, words: (l.words || []).map(([w, fr]) => [w, fr])};
       return (
         <Sequence key={i} from={from} durationInFrames={Math.max(1, to - from)} layout="none">
           <FadeIn on={i > 0 && !(l.p || {}).cut}>{blurOf(l) ? <CameraMotionBlur shutterAngle={200} samples={6}><ShotLayer line={shifted} len={to - from} /></CameraMotionBlur>

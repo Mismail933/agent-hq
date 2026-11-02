@@ -85,6 +85,12 @@ export const makePanel = (e) => {
     scene.add(g);
   });
 
+  ['SPS PC', 'SM RCS', 'CM RCS', 'CRYO O2', 'CRYO H2', 'ECS', 'S BAND', 'PWR'].forEach((l, i) => {
+    const x = px(2010 + (i % 2) * 300), y = py(230 + Math.floor(i / 2) * 200), g = new THREE.Group(); g.position.set(x, y, 0.012);
+    const d = new THREE.Mesh(new THREE.CircleGeometry(0.17, 36), new THREE.MeshStandardMaterial({map: dial(l, i + 31), roughness: 0.5})); g.add(d);
+    const bz = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.02, 10, 36), base); g.add(bz);
+    const n = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.13, 0.004), new THREE.MeshBasicMaterial({color: 0xffffff})); n.position.set(0, 0.065, 0.012); const pv = new THREE.Group(); pv.add(n); pv.position.z = 0.012; pv.rotation.z = 0.2 - i * 0.26; g.add(pv); scene.add(g);
+  });
   // the lights: dark glass with its label, burning amber when lit
   const lamps = {}, cellW = 0.232, cellH = 0.128, ox = px(1330), oy = py(120);
   CW.forEach((col, ci) => col.forEach((label, ri) => {

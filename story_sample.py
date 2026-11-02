@@ -91,6 +91,11 @@ def passages(spec):
     for i, ln in enumerate(L):
         p = ln.get("p") or {}
         text = ln.get("eleven_say") or ln["text"]
+        if ln.get("voice_file"):
+            if cur:
+                groups.append(cur)
+            cur, n = [], 0
+            continue
         if cur and (n + len(text) > limit or p.get("day") not in (None, "") or ln["shot"] == "title" or L[cur[-1]]["shot"] == "title"
                     or float(p.get("pause_before", 0)) > 0):
             groups.append(cur)
@@ -611,6 +616,9 @@ def voice_lines(spec, folder):
             spec["_tone"] = tone
             say(f"  tone: {json.dumps(tone)}")
             for i, ln in enumerate(spec["lines"]):
+                if ln.get("voice_file"):
+                    out[i].setdefault("after", 0.0)
+                    continue
                 v, own, f = _tone_line(ln, out[i]["audio"], out[i]["words"], tone)
                 out[i] = v
                 say(f"  line {i + 1}: {v['secs']:.1f} s, {own:.0f} -> {own * f:.0f} wpm" + (f", beat +{v['after']:.2f} s" if v["after"] else ""))
@@ -1076,7 +1084,7 @@ def install_photos(spec, folder):
     for ln in spec["lines"]:
         p = ln.get("p") or {}
         # the line's print and (2.78.4) its real faces: p.faces = {who: "photos/face-<who>.jpg"}
-        for src in [(p.get("photo") or {}).get("src", "")] + list((p.get("faces") or {}).values()):
+        for src in [(p.get("photo") or {}).get("src", "")] + list((p.get("faces") or {}).values()) + [c["src"] for c in p.get("clips") or [] if c.get("img")] + [w["src"] for w in p.get("who") or []]:
             name = Path(str(src)).name
             if not name:
                 continue
@@ -1092,18 +1100,21 @@ def install_photos(spec, folder):
     fdir = folder.parent.parent / "footage"
     fcred = json.loads((fdir / "credits.json").read_text(encoding="utf-8")) if (fdir / "credits.json").exists() else {}
     for ln in spec["lines"]:
-        name = Path(str(((ln.get("p") or {}).get("footage") or {}).get("src", ""))).name
-        if not name:
-            continue
-        if not (fdir / name).exists():
-            raise SystemExit(f"footage {name} not found in {fdir}")
-        (story.APP / "public" / "footage").mkdir(parents=True, exist_ok=True)
-        dst = story.APP / "public" / "footage" / name
-        if not dst.exists() or dst.stat().st_size != (fdir / name).stat().st_size:
-            shutil.copy(fdir / name, dst)
-        c = (fcred.get(name) or {}).get("credit")
-        if c and c not in PHOTO_CREDITS:
-            PHOTO_CREDITS.append(c)
+        p = ln.get("p") or {}
+        for src in [(p.get("footage") or {}).get("src", "")] + [c["src"] for c in p.get("clips") or [] if not c.get("img")]:
+            rel = Path(str(src))     # footage/<file> or footage/<folder>/<file>
+            if not rel.name:
+                continue
+            sub = Path(*rel.parts[1:]) if rel.parts and rel.parts[0] == "footage" else Path(rel.name)
+            if not (fdir / sub).exists():
+                raise SystemExit(f"footage {sub} not found in {fdir}")
+            dst = story.APP / "public" / "footage" / sub
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if not dst.exists() or dst.stat().st_size != (fdir / sub).stat().st_size:
+                shutil.copy(fdir / sub, dst)
+            c = (fcred.get(rel.name) or {}).get("credit")
+            if c and c not in PHOTO_CREDITS:
+                PHOTO_CREDITS.append(c)
 
 
 def credits(folder):

@@ -120,7 +120,7 @@ export const Strike2 = () => useScene((e) => {
     cloud.flash.value = fl * 0.62; e.common.flash.value = fl * 0.5;
     cloud.boltA.value.set(-1500, y + 600, -500); cloud.boltB.value.set(1200, y - 600, 500);
     cloud.wind.value.set(f * 0.0005, -f * 0.0006 + 0.9, 0.2);
-    R.strike.intensity = fl * 10; R.strike.position.set(-300, y + 300, 400);
+    R.strike.intensity = fl * 1.2; R.strike.position.set(-300, y + 300, 400);
     e.final.white.value = f === F0 ? 0.3 : 0;
   }};
 });
