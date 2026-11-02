@@ -47,7 +47,8 @@ const Big = ({rows, line, f, y}) => {
   return (
     <AbsoluteFill style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: y || 90}}>
       {items.map((r, i) => {
-        const k = clamp((f - r.a) / 7), e = 1 - Math.pow(1 - k, 3);
+        const k = clamp((f - r.a) / 7), e = 1 - Math.pow(1 - k, 3), gone = r.until != null && f >= wordAt(line, r.until);
+        if (gone) return null;
         return <div key={i} style={{opacity: k, transform: `translateY(${(1 - e) * 26}px) scale(${1.05 - 0.05 * e})`, fontFamily: OSW, fontWeight: 700, fontSize: r.size || 124, lineHeight: 1.12, letterSpacing: 2,
           color: r.color || '#F7F4EA', textTransform: 'uppercase', textShadow: '0 4px 26px rgba(0,0,0,0.85)', whiteSpace: 'nowrap'}}>{r.t}</div>;
       })}

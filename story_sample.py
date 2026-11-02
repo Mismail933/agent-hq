@@ -1148,6 +1148,8 @@ def scene_sound(lines, total, music, sfx):
         else:
             runs.append([t0, t1, m])
     for r0, r1, m in runs:
+        if m == "none":     # a stretch with no music at all (the real rocket and the real tape carry it)
+            continue
         if not real_music(music, r0, r1, m):
             bed(music, max(0.0, r0 - 1.0), min(total, r1 + 1.0), MOODS[m], 6.4, 0.075 if m != "hope" else 0.085, fade=2.4)
     # ── the background (2.55.2). The owner on the first real-sound opening: the music is better, but "the sound of the stuff is

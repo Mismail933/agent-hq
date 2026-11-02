@@ -106,7 +106,7 @@ export const Current = () => useScene((e) => {
 
 // the second strike, seen from far off: cloud to cloud across the sky, the rocket small against it
 export const Strike2 = () => useScene((e) => {
-  const {camera, cloud} = e, R = stormRocket(e), F0 = 26;
+  const {camera, cloud} = e, R = stormRocket(e), F0 = 70;
   cloud.far_.value = 3200; cloud.cover.value = 0.5; cloud.near_.value = 480;
   const a = new THREE.Vector3(-1500, 4900, -500), b = new THREE.Vector3(0, 4400, 0), c = new THREE.Vector3(1200, 3700, 500);
   const bolt = makeBolt([a, new THREE.Vector3(-650, 4620, -200), b, new THREE.Vector3(620, 4050, 240), c], 41, 0.3); e.glow.add(bolt);

@@ -109,7 +109,7 @@ export const makePanel = (e) => {
   return {draw: (f) => {
     const fl = flashOf(f), shake = 0.006 + (f >= F0 ? 0.016 * Math.exp(-(f - F0) * 0.03) : 0);
     const sx = Math.sin(f * 2.13) * Math.cos(f * 0.77) * shake, sy = Math.cos(f * 1.71) * Math.sin(f * 1.17) * shake;
-    const k = ease((f - 42) / 150);
+    const k = ease((f - 42) / 300);
     camera.position.set(lerp(-2.1, -0.45, k) + sx, lerp(0.55, 0.85, k) + sy, lerp(3.2, 1.95, k));
     camera.lookAt(lerp(-1.35, -0.98, k) + sx * 0.5, lerp(0.6, 0.98, k) + sy * 0.5, 0);
     camera.fov = 44; camera.up.set(lerp(0.05, -0.06, k), 1, 0);
@@ -154,7 +154,7 @@ export const makeBall = (e) => {
   const key = new THREE.SpotLight(0xffe6c8, 16, 12, 0.6, 0.6, 1.4); key.position.set(-1.6, 2.2, 4.2); key.target.position.set(0, 0, 0.8); scene.add(key, key.target);
   const alarm = new THREE.PointLight(0xff8a20, 0, 6, 1.5); alarm.position.set(1.8, -1.4, 2.2); scene.add(alarm);
   const white = new THREE.DirectionalLight(0xe6eeff, 0); white.position.set(-4, 2, 5); scene.add(white);
-  const F0 = 30, base = new THREE.Euler(0.16, -0.35, 0.05);
+  const F0 = 120, base = new THREE.Euler(0.16, -0.35, 0.05);
   const q = new THREE.Quaternion(), qb = new THREE.Quaternion(), ax1 = new THREE.Vector3(0.4, 1, 0.2).normalize(), ax2 = new THREE.Vector3(1, -0.25, 0.5).normalize(), q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion();
   return {draw: (f) => {
     const d = Math.max(0, f - F0);
@@ -166,7 +166,7 @@ export const makeBall = (e) => {
     const fl = d === 0 && f < F0 ? 0 : f >= F0 ? (d <= 2 ? 1 : 0.5 * Math.exp(-(d - 2) * 0.5)) : 0;
     white.intensity = fl * 6; alarm.intensity = f >= F0 ? (Math.floor(d / 9) % 2 === 0 ? 7 : 2) : 0;
     const sh = f >= F0 ? 0.03 * Math.exp(-d * 0.05) + 0.005 : 0.003;
-    const push = ease(f / 165);
+    const push = ease(f / 720);
     camera.position.set(Math.sin(f * 2.1) * sh + lerp(0.22, 0.06, push), Math.cos(f * 1.6) * sh + 0.05, lerp(4.6, 3.5, push));
     camera.lookAt(0.02, 0.02, 0.9); camera.fov = 34; camera.up.set(0, 1, 0);
     pitchN.position.y = f >= F0 ? Math.sin(d * 0.21) * 0.5 : 0; yawN.position.x = f >= F0 ? Math.cos(d * 0.17) * 0.5 : 0;
@@ -180,29 +180,29 @@ const GOOD = [24.6, 25.1, 24.8, 28.4, 28.3, 115.2, 115.0, 0.0, 0.0, 901, 239, 15
 const SQUIRRELLY = [6.7, 12.3, 3.1, 19.4, 0.9, 7.7, 14.2, 2.6, 11.8, 31.5, 4.4, 8.2, 16.9, 1.3, 22.1, 9.6];
 
 export const makeScreen = (e) => {
-  const {scene, camera} = e, [c, g] = canvas(1536, 1152), map = tex(c), F0 = 42;
+  const {scene, camera} = e, [c, g] = canvas(1536, 1152), map = tex(c), F0 = 150;
   e.final.bloom.value = 0.9; e.final.exposure.value = 1.0; e.final.vign.value = 0.9;
   const paint = (f) => {
     g.fillStyle = '#000'; g.fillRect(0, 0, 1536, 1152);
-    const r = rng(1 + (f - (f % 3)) * 37), bad = f >= F0, hit = f >= F0 && f < F0 + 8;
+    const r = rng(1 + (f - (f % 2)) * 37), bad = f >= F0, hit = f >= F0 && f < F0 + 10;
     g.fillStyle = '#fff'; g.textBaseline = 'top'; g.font = '700 54px "Courier New", monospace';
     g.fillText('CSM  EPS / ECS', 80, 56); g.font = '700 42px "Courier New", monospace';
     g.fillText('GET  ' + (bad ? '??:??:??' : '00:00:' + String(Math.floor(30 + f / 30)).padStart(2, '0')), 960, 62);
     g.fillRect(70, 130, 1396, 5);
     g.font = '700 50px "Courier New", monospace';
     NAMES.forEach((n, i) => {
-      const y = 158 + i * 58, jit = bad ? (r() - 0.5) * 2 : 0;
+      const y = 158 + i * 58 + (bad && r() < 0.12 ? (r() - 0.5) * 26 : 0), jit = bad ? (r() - 0.5) * 2 : 0;
       g.globalAlpha = bad && r() < 0.05 ? 0.25 : 1;
-      g.fillText(n, 86, y);
+      g.fillText(bad && r() < 0.28 ? n.replace(/[A-Z0-9]/g, (c) => (r() < 0.5 ? '#%*/=?'[Math.floor(r() * 6)] : c)) : n, 86 + (bad ? (r() - 0.5) * 8 : 0), y);
       let v;
       if (!bad) v = (GOOD[i] + Math.sin(f * 0.3 + i) * 0.04).toFixed(i >= 9 && i <= 12 ? 0 : 1);
       else if (i === 0) v = '6.7'; else if (i === 1) v = '12.3';
-      else { const base = SQUIRRELLY[i] * (1 + Math.floor(f / 11 + i) % 3 * 0.37 * (i % 2 ? 1 : -0.5)); v = base.toFixed(1); }
+      else { const base = SQUIRRELLY[i] * (0.4 + r() * 1.9); v = r() < 0.12 ? '??.?' : base.toFixed(1); }
       g.fillText(String(v).padStart(7, ' '), 760 + jit * 3, y);
       if (bad) g.fillText((r() > 0.5 ? 'M' : 'S') + (r() > 0.6 ? '*' : ' '), 1240, y);
       g.globalAlpha = 1;
     });
-    if (hit) for (let i = 0; i < 16; i++) { g.fillStyle = '#fff'; g.fillRect(0, r() * 1152, 1536, 2 + r() * 6); }
+    if (hit) for (let i = 0; i < 26; i++) { g.fillStyle = '#fff'; g.fillRect(0, r() * 1152, 1536, 2 + r() * 12); }
     map.needsUpdate = true;
   };
   const tube = new THREE.PlaneGeometry(3.24, 2.4, 48, 36); { const ps = tube.attributes.position; for (let i = 0; i < ps.count; i++) { const x = ps.getX(i), y = ps.getY(i); ps.setZ(i, 0.2 - (x * x + y * y) * 0.05); } tube.computeVertexNormals(); }
@@ -228,7 +228,7 @@ export const makeScreen = (e) => {
   return {draw: (f) => {
     paint(f); mat.uniforms.frame.value = f;
     mat.uniforms.gain.value = f >= F0 && f < F0 + 6 ? 1.8 : f >= F0 ? 0.92 + 0.08 * Math.sin(f * 1.7) : 1;
-    const k = ease(f / 165);
-    camera.position.set(lerp(-0.42, 0.28, k), lerp(0.1, -0.05, k), lerp(4.6, 3.1, k)); camera.lookAt(lerp(-0.15, 0.2, k), 0, 0); camera.fov = 36; camera.up.set(0, 1, 0);
+    const k = ease(f / 330);
+    camera.position.set(lerp(-0.42, 0.2, k), lerp(0.1, -0.03, k), lerp(4.6, 3.75, k)); camera.lookAt(lerp(-0.15, 0.2, k), 0, 0); camera.fov = 36; camera.up.set(0, 1, 0);
   }};
 };
