@@ -490,7 +490,8 @@ def voice_chatterbox(spec, folder):
             return False
         secs = sf.info(str(cache / f"c-{keys[i]}.wav")).duration
         return too_fast(i, secs)
-    todo = [i for i in range(len(L)) if not have(i) or stale(i)]
+    own_take = {i for i, ln in enumerate(L) if ln.get("voice_file")}
+    todo = [i for i in range(len(L)) if i not in own_take and (not have(i) or stale(i))]
     if todo:
         say(f"  Chatterbox: {len(todo)} of {len(L)} lines to voice (~{sum(len(spoken[i].split()) for i in todo) / 150 * 5:.0f} min on this PC)")
         raw = cache / "_chatter-raw"
@@ -541,6 +542,9 @@ def voice_chatterbox(spec, folder):
         shutil.rmtree(raw, ignore_errors=True)
     out = []
     for i, ln in enumerate(L):
+        if i in own_take:
+            out.append(None)
+            continue
         a48, _ = sf.read(str(cache / f"c-{keys[i]}.wav"), dtype="float32")
         meta = json.loads((cache / f"c-{keys[i]}.json").read_text(encoding="utf-8"))
         v, own, f = _tone_line(ln, a48, meta["words"], tone)
@@ -602,7 +606,7 @@ def _line_files(spec, folder, out):
         a48 = np.interp(np.arange(int(len(a) * SR / sr)) / SR, np.arange(len(a)) / sr, a).astype("float32") if sr != SR else a
         words = json.loads(f.with_suffix(".json").read_text(encoding="utf-8"))
         out[i] = {"audio": a48, "words": words, "secs": len(a48) / SR, "joined": False}
-        if i:
+        if i and out[i - 1]:
             out[i - 1]["joined"] = False
         say(f"  line {i + 1}: its own take {f.name} ({len(a48) / SR:.1f} s)")
     return out
@@ -624,7 +628,10 @@ def voice_lines(spec, folder):
                 say(f"  line {i + 1}: {v['secs']:.1f} s, {own:.0f} -> {own * f:.0f} wpm" + (f", beat +{v['after']:.2f} s" if v["after"] else ""))
         return out
     if str(spec.get("voice", "")).startswith("chatterbox:"):
-        return voice_chatterbox(spec, folder)
+        out = _line_files(spec, folder, voice_chatterbox(spec, folder))
+        for v in out:
+            v.setdefault("after", 0.0)
+        return out
     from kokoro import KPipeline
     voice, speed = spec.get("voice", "am_michael"), float(spec.get("speed", 0.92))
     pipe = KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M")
