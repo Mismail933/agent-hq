@@ -6,9 +6,9 @@ import {makeEngine, glInfo} from './engine';
 import {makeSaturn, makeFlame, makeBolt, makeXray} from './saturn';
 import {makePanel, makeBall, makeScreen} from './cabin';
 
-const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
-const ease = (x) => { const t = clamp(x); return t * t * (3 - 2 * t); };
-const lerp = (a, b, t) => a + (b - a) * t;
+export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+export const ease = (x) => { const t = clamp(x); return t * t * (3 - 2 * t); };
+export const lerp = (a, b, t) => a + (b - a) * t;
 
 // the flash over time: a first stroke and its return strokes, then the afterglow
 export const flashAt = (f, f0) => {
@@ -16,7 +16,7 @@ export const flashAt = (f, f0) => {
   return Math.max(d <= 2 ? 1 : 0, d >= 3 && d <= 4 ? 0.45 : 0, d >= 5 && d <= 7 ? 0.8 : 0, d >= 8 ? 0.8 * Math.exp(-(d - 7) * 0.45) : 0);
 };
 
-const useScene = (build) => {
+export const useScene = (build) => {
   const ref = useRef(null), st = useRef(null), frame = useCurrentFrame(), {width, height} = useVideoConfig();
   useLayoutEffect(() => {
     if (!st.current) {
@@ -70,7 +70,7 @@ export const StrikeSpike = () => useScene((e) => {
 });
 
 // one rocket in its storm, used by the outside plates
-const stormRocket = (e) => {
+export const stormRocket = (e) => {
   const {scene} = e, rocket = new THREE.Group(), saturn = makeSaturn(), flame = makeFlame();
   rocket.add(saturn); scene.add(rocket); e.glow.add(flame);
   scene.add(new THREE.HemisphereLight(0x8fa0b4, 0x201a16, 0.28));
@@ -125,7 +125,7 @@ export const Strike2 = () => useScene((e) => {
   }};
 });
 
-const indoors = (e) => { e.cloud.far_.value = 0; e.skyHi.set(0, 0, 0); e.skyLo.set(0, 0, 0); e.final.grain.value = 0.014; };
+export const indoors = (e) => { e.cloud.far_.value = 0; e.skyHi.set(0, 0, 0); e.skyLo.set(0, 0, 0); e.final.grain.value = 0.014; };
 
 // your seat: the panel in the dark, the white light through the window, then the lights come on across it
 export const Panel = () => useScene((e) => { indoors(e); const P = makePanel(e); return {draw: (f) => P.draw(f)}; });
