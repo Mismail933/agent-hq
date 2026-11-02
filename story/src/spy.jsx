@@ -357,7 +357,7 @@ function ShotDouble({f, line, T}) {
 // the turn: the words alone, in the dark
 function ShotTurn({f, line}) {
   const k = eas(f, 0, 12, 0.9, 1);
-  return (<g><rect x={-100} y={-100} width={SW + 200} height={SH + 200} fill="#141821" /><g transform={`translate(540 720) scale(${k * eas(f, 0, 80, 1, 1.06)})`}>
+  return (<g><rect x={-100} y={-100} width={SW + 200} height={SH + 200} fill="#141821" /><g transform={`translate(540 880) scale(${k * eas(f, 0, 80, 1, 1.06)})`}>
     <text y={-70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={104} letterSpacing={4} fill="#F7F1DF">THE LIE THAT</text><text y={70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={138} letterSpacing={4} fill="#FDE047">MATTERED</text>
     <text y={170} textAnchor="middle" fontFamily={OSW} fontWeight={500} fontSize={54} letterSpacing={10} fill="#A9B0BC">JUNE 1944</text></g></g>);
 }
@@ -447,7 +447,7 @@ function ShotWine({f, line, T}) {
         <Person x={540} y={1120} s={0.98} fit="german" T={T} seed={4} expr="smug" lookY={0.8} armR={[60, 74]} armL={[-60, -74]} />
         <path d="M 60 1030 L 1020 1030 L 1060 1140 L 20 1140 Z" fill="#7A4A2A" {...st(8)} />
         <g transform="rotate(-3 540 1000)"><rect x={280} y={890} width={520} height={190} fill="#F3EBD6" {...st(7)} /><text x={540} y={960} textAnchor="middle" fontFamily={OSW} fontWeight={600} fontSize={44} fill={INK}>GLASGOW REPORT</text></g>
-        <Stamp text="EXCELLENT" f={f} a={ok + 4} x={540} y={1050} rot={-6} size={60} color="#2E7D32" k0={0.2} plate /></g>
+        <Stamp text="EXCELLENT" f={f} a={line.p && line.p.cue && line.p.cue.stamp ? at(line, line.p.cue.stamp, 0.5) : ok + 4} x={540} y={1050} rot={-6} size={60} color="#2E7D32" k0={0.2} plate /></g>
     );
   }
   if (f >= pint - 3) {
