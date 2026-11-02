@@ -83,3 +83,11 @@ Read in the browser: titles, views, captions and picture sheets, nothing downloa
 - Not measured yet: how often the big channels place effects. In-page level readings show their sound never drops to silence for over 0.25 s, but they can't
   tell an effect from a word. To measure it, the owner plays one of their Shorts on the PC, `voice_match.py record` takes it from the speakers, and Earshot reads it.
 
+## Centring: keep the middle at x 540 (the owner 10-31: "it still feels cropped to the left and the text not centered")
+
+We shifted captions, people, boards and maps about 40 px left to dodge the Shorts buttons, and the whole frame read as cropped. Never shift the composition to
+avoid the buttons. Keep it symmetrical around x 540 and make things narrower instead: captions at most 860 wide, centred with no one-sided padding; boards and map
+frames with equal side margins; three people placed symmetrically. A caption that wraps must be laid out with `display: flex; justify-content: center; column-gap`,
+because a right margin on each word pushes wrapped rows about 12 px left. A person or prop placed to one side, balanced by something on the other, is fine.
+Measure before sending: frames + `python centre_check.py <folder with props.json> <folder of f######.png>`: every caption within 12 px of the centre.
+
