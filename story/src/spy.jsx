@@ -15,6 +15,7 @@ const NUN = "'Nunito', 'Arial Rounded MT Bold', sans-serif", OSW = "'Oswald', sa
 const FITS = {
   garbo: {coat: '#3C4250', coatD: '#2C313C', legs: '#2C313C', hair: '#5A3820', bow: '#D23B2B'},
   german: {coat: '#6F7A63', coatD: '#566050', legs: '#4E5747', cap: '#5F6A55', band: '#2C3327', piping: '#C23B2E', belt: true},
+  handler: {coat: '#6B6F76', coatD: '#54585F', legs: '#3F4247', hair: '#2B241D', tie: '#7A2A2A'},
   british: {coat: '#B0935C', coatD: '#8F7648', legs: '#8F7648', cap: '#A58952', band: '#6A3024', tie: '#6E5A36', moustache: true},
 };
 // the Iron Cross and the MBE: small, but each one recognisable
@@ -225,10 +226,11 @@ function ShotAgents({f, line, T}) {
             <circle cy={-82} r={9} fill="#C7301F" {...st(3)} /></g>); })}
       </Cam>
       {paid !== null && f >= paid - 4 && [...Array(16)].map((_, i) => { const r = R(i + 3), d = paid - 4 + i * 2, y = (f - d) * (15 + r * 7) - 130; return f < d || y > 1230 ? null : <g key={i} transform={`translate(${90 + ((i * 271) % 880)} ${y}) rotate(${(r - 0.5) * 60 + (f - d) * (r > 0.5 ? 3 : -3)})`}><rect x={-62} y={-30} width={124} height={60} rx={4} fill="#7FA76C" {...st(5)} /><circle r={16} fill="#E7E2B8" {...st(3)} /></g>; })}
+      {line.p && line.p.cue && line.p.cue.handler && f < n27 - 3 && <Tag x={540} y={190} text="HIS MI5 HANDLER" size={60} k={clamp(pop(f, 4, 18, 0.6), 0.7, 1.15)} />}
       {name !== null && f >= name - 2 && f < n27 - 3 && <Tag x={540} y={190} text="CODENAME: GARBO" size={64} k={clamp(pop(f, name - 2, 18, 0.55), 0.7, 1.15)} />}
       {f >= n27 - 3 && <Tag x={540} y={190} text="27 PAID AGENTS" size={64} fill="#FDE047" k={clamp(pop(f, n27 - 3, 18, 0.55), 0, 1.15)} />}
       <rect y={1690} width={SW} height={SH - 1690} fill="#123038" />
-      {line.p && line.p.cue && line.p.cue.handler && <g transform="translate(840 1860)"><Person s={0.9} flip fit="british" T={T} seed={7} expr={f >= ex ? 'smug' : 'calm'} look={1} lookY={-0.8} armR={[150, 24]} /></g>}
+      {line.p && line.p.cue && line.p.cue.handler && <g transform="translate(840 1860)"><Person s={0.9} flip fit="handler" T={T} seed={7} expr={f >= ex ? 'smug' : 'calm'} look={1} lookY={-0.8} armR={[150, 24]} /></g>}
       {(f >= ex - 8 || (line.p && line.p.cue && line.p.cue.handler)) && <g transform={`translate(${line.p && line.p.cue && line.p.cue.handler ? 240 : eas(f, ex - 8, ex + 6, -180, 240)} 1860)`}><Person s={0.9} T={T} seed={3} expr="smug" look={1} armR={[60, 150]} /></g>}
     </g>
   );
@@ -259,7 +261,7 @@ function ShotMap({f, line, T}) {
       <circle cx={nx} cy={ny} r={18} fill="#C7301F" {...st(5)} /><Tag x={nx - 220} y={ny + 96} text="NORMANDY" size={50} />
       <circle cx={cx} cy={cy} r={18} fill={INK} />{f < trick + 6 && <Tag x={cx - 30} y={cy - 40} text="CALAIS" size={44} />}
       <Stamp text={(line.p && line.p.stamp) || 'A TRICK'} f={f} a={trick - 1} x={nx + 20} y={ny - 170} rot={-11} size={68} k0={0.35} plate />
-      {f >= trick + 6 && <Tag x={cx - 165} y={cy - 40} text="REAL ONE: CALAIS" size={44} fill="#FDE047" k={clamp(pop(f, trick + 6, 18, 0.6), 0.7, 1.15)} />}
+      {f >= trick + 6 && <Tag x={cx - 215} y={cy - 40} text="REAL ONE: CALAIS" size={42} fill="#FDE047" k={clamp(pop(f, trick + 6, 18, 0.6), 0.7, 1.15)} />}
       {f >= trick && [0, 14].map((d) => { const q = clamp((f - trick - d) / 24, 0, 1); return <circle key={d} cx={cx} cy={cy} r={18 + q * 90} fill="none" stroke="#C7301F" strokeWidth={9} opacity={1 - q} />; })}
       <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, 1230, 810)} 1780)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr={f >= trick ? 'hopeful' : 'stare'} look={f >= told + 14 ? 0.3 : 1} lookY={-1} armR={[14, -4]} shadow={false} tilt={f >= trick ? Math.sin((f - trick) * 0.3) * 4 : 0} /></g>
       <g transform={`translate(${lin(clamp(pop(f, -9, 13, 0.8), 0, 1), 0, 1, -200, 270)} 1780)`}><Person s={0.78} T={T} seed={3} expr={f >= trick ? 'wink' : 'smug'} look={0.4} lookY={-1} armR={[14, -4]} shadow={false} /></g>
@@ -278,12 +280,13 @@ const Radio = ({f, T}) => (
     <Tag x={850} y={430} text="TO BERLIN" size={58} k={clamp(pop(f, 1, 18, 0.6), 0.7, 1.15)} /></g>
 );
 // the payoff of the lie: rows of tanks on the French shore, looking at nothing
-const Beach = ({f, T, watch, instead = 1e9, calais = 1e9}) => (
+const Beach = ({f, T, watch, instead = 1e9, calais = 1e9, men = 8}) => (
   <g>
     <rect x={-100} y={-100} width={SW + 200} height={760} fill="#A9CDE0" /><circle cx={820} cy={230} r={70} fill="#F7E7A8" />
     <rect x={-100} y={560} width={SW + 200} height={260} fill="#3D7FA3" />{[0, 1, 2, 3].map((i) => <path key={i} d={`M ${-120 + ((f * (1 + i * 0.3)) % 180)} ${600 + i * 54} q 90 -16 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0 t 180 0`} fill="none" stroke="#fff" strokeOpacity={0.3} strokeWidth={5} />)}
     <rect x={-100} y={800} width={SW + 200} height={1300} fill="#D9C08C" /><rect x={-100} y={1075} width={SW + 200} height={1000} fill="#5E4E30" />
     {[...Array(21)].map((_, i) => { const row = Math.floor(i / 7), c = i % 7, a = i * 1.1, k = clamp(pop(f, a, 16, 0.6), 0, 1.1), sc = 0.68 + row * 0.14; return f < a ? null : <g key={i} transform={`translate(${70 + c * 156 + (row % 2) * 40} ${862 + row * 92}) scale(${sc * k})`}><path d="M -68 0 L 68 0 L 54 26 L -54 26 Z" fill="#2B241D" {...st(5)} /><rect x={-58} y={-30} width={116} height={32} rx={8} fill="#566050" {...st(5)} /><path d="M -22 -30 L -14 -58 L 28 -58 L 34 -30 Z" fill="#6F7A63" {...st(5)} /><rect x={2} y={-96} width={12} height={46} fill="#2B241D" stroke={INK} strokeWidth={3} /></g>; })}
+    {[...Array(33)].map((_, i) => { const row = i < 10 ? 0 : i < 21 ? 1 : 2, c = row === 0 ? i : row === 1 ? i - 10 : i - 21, a = men + i * 0.7, k = clamp(pop(f, a, 16, 0.6), 0, 1.1), n = row === 1 ? 11 : row === 0 ? 10 : 12, sc = 0.72 + row * 0.2, st_ = (Math.floor((T + i * 7) / 40) % 2) * 2; return f < a ? null : <g key={'m' + i} transform={`translate(${540 + (c - (n - 1) / 2) * (92 + row * 6)} ${1300 + row * 150 - st_}) scale(${sc * k})`}><rect x={-23} y={-16} width={46} height={72} rx={12} fill="#566050" stroke={INK} strokeWidth={5} /><rect x={-20} y={54} width={16} height={46} fill="#3F4639" stroke={INK} strokeWidth={4} /><rect x={4} y={54} width={16} height={46} fill="#3F4639" stroke={INK} strokeWidth={4} /><circle cy={-42} r={25} fill={SKIN} stroke={INK} strokeWidth={5} /><path d="M -32 -46 C -32 -86 32 -86 32 -46 Z" fill="#6F7A63" stroke={INK} strokeWidth={5} /></g>; })}
     {f >= 8 && <Tag x={540} y={170} text="21 GERMAN DIVISIONS" size={64} fill="#FDE047" k={clamp(pop(f, 8, 18, 0.6), 0.7, 1.15)} />}
     {f >= watch && <g transform={`translate(${eas(f, watch - 2, watch + 12, 1240, 540)} 1810)`}><Person s={0.78} flip fit="german" T={T} seed={4} expr="stare" look={0.2} lookY={-1} armR={[150, 30]} armL={[-150, -30]} shadow={false} /></g>}
     {f >= watch + 10 && f < instead && <Tag x={380} y={680} text="NOTHING" size={56} k={clamp(pop(f, watch + 10, 18, 0.6), 0.7, 1.15)} />}
@@ -314,7 +317,7 @@ function ShotFarm({f, line, T}) {
       {f >= hen - 8 && [[650, 1080, 0], [830, 1130, 1], [110, 1100, 2]].map(([x, y, i]) => <Hen key={i} x={x} y={y} s={1.15 * clamp(pop(f, hen - 8 + i * 3, 16, 0.6), 0, 1.1)} flip={i === 2} T={T} seed={i} />)}
       {f >= want - 2 && <g transform={`translate(670 470) scale(${clamp(pop(f, want - 2, 18, 0.6), 0, 1.1)})`}><path d="M -210 -130 C -250 -180 250 -180 210 -130 C 280 -60 240 120 120 120 L -120 120 C -240 120 -280 -60 -210 -130 Z" fill="#fff" {...st(7)} /><g transform="translate(0 -8)"><rect x={-130} y={-80} width={260} height={160} fill="#1F3F8F" {...st(4)} /><path d="M -130 -80 L 130 80 M 130 -80 L -130 80" stroke="#fff" strokeWidth={30} /><path d="M -130 -80 L 130 80 M 130 -80 L -130 80" stroke="#C8102E" strokeWidth={12} /><path d="M 0 -80 L 0 80 M -130 0 L 130 0" stroke="#fff" strokeWidth={46} /><path d="M 0 -80 L 0 80 M -130 0 L 130 0" stroke="#C8102E" strokeWidth={26} /></g><circle cx={-90} cy={150} r={18} fill="#fff" {...st(5)} /><circle cx={-120} cy={190} r={11} fill="#fff" {...st(4)} /></g>}
     </Cam>
-    {f >= hen - 2 && f < want - 2 && <Tag x={540} y={200} text="HE ONCE RAN A CHICKEN FARM" size={52} k={clamp(pop(f, hen - 2, 18, 0.6), 0.7, 1.15)} />}</g>
+    {f >= hen - 2 && f < want - 2 && <Tag x={540} y={200} text="HE ONCE RAN A CHICKEN FARM" size={48} k={clamp(pop(f, hen - 2, 18, 0.6), 0.7, 1.15)} />}</g>
   );
 }
 // the plan, on a board, line by line on its words
@@ -346,8 +349,8 @@ function ShotDouble({f, line, T}) {
       <Person x={870} y={1330} s={0.76} flip fit="german" T={T} seed={4} expr={f >= th ? 'hopeful' : 'stare'} look={1} />
       <Person x={540} y={1330} s={0.96} T={T} seed={3} expr={f >= th ? 'wink' : 'smug'} look={f >= th ? 1 : -1} />
       <Tag x={540} y={170} text={f >= nm - 2 ? 'CODENAME: GARBO' : 'DOUBLE AGENT'} size={70} fill="#FDE047" k={clamp(pop(f, f >= nm - 2 ? nm - 2 : dbl - 2, 18, 0.6), 0.7, 1.15)} />
-      {f >= wrk - 2 && <Tag x={300} y={430} text="HIS REAL BOSS" size={56} k={clamp(pop(f, wrk - 2, 18, 0.6), 0.7, 1.15)} />}
-      {f >= th - 2 && <Tag x={720} y={560} text="THINKS HE'S THEIRS" size={56} k={clamp(pop(f, th - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= wrk - 2 && <Tag x={290} y={430} text="HIS REAL BOSS" size={48} k={clamp(pop(f, wrk - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= th - 2 && <Tag x={700} y={560} text="THINKS HE'S THEIRS" size={48} k={clamp(pop(f, th - 2, 18, 0.6), 0.7, 1.15)} />}
     </g>
   );
 }
@@ -358,7 +361,7 @@ function ShotTurn({f, line}) {
     <text y={-70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={104} letterSpacing={4} fill="#F7F1DF">THE LIE THAT</text><text y={70} textAnchor="middle" fontFamily={OSW} fontWeight={700} fontSize={138} letterSpacing={4} fill="#FDE047">MATTERED</text>
     <text y={170} textAnchor="middle" fontFamily={OSW} fontWeight={500} fontSize={54} letterSpacing={10} fill="#A9B0BC">JUNE 1944</text></g></g>);
 }
-const ShotBeach = ({f, line, T}) => <Beach f={f} T={T} watch={cue(line, 'watch', 'waiting', 0.5)} instead={cue(line, 'instead', 'instead', 0.8)} calais={cue(line, 'calais', 'Calais', 0.4)} />;
+const ShotBeach = ({f, line, T}) => <Beach f={f} T={T} watch={cue(line, 'watch', 'waiting', 0.5)} instead={cue(line, 'instead', 'instead', 0.8)} calais={cue(line, 'calais', 'Calais', 0.4)} men={cue(line, 'men', 'soldiers', 0.3)} />;
 
 // who he is, said at once: he stands on the line between them
 function ShotWho({f, line, T}) {
@@ -372,8 +375,8 @@ function ShotWho({f, line, T}) {
       <Person x={540} y={1330} s={0.96} T={T} seed={3} expr={f >= ger ? 'wink' : 'smug'} look={f >= ger ? 1 : f >= brit ? -1 : 0} />
       {f >= nm - 2 && <Tag x={540} y={170} text="JUAN PUJOL GARCÍA" size={66} k={clamp(pop(f, nm - 2, 18, 0.6), 0.7, 1.15)} />}
       {f >= nm + 26 && f < brit - 2 && <Tag x={540} y={300} text="SPANISH DOUBLE AGENT" size={56} fill="#FDE047" k={clamp(pop(f, nm + 26, 18, 0.6), 0.7, 1.15)} />}
-      {f >= brit - 2 && <Tag x={300} y={430} text="REALLY WORKED FOR" size={46} k={clamp(pop(f, brit - 2, 18, 0.6), 0.7, 1.15)} />}
-      {f >= ger - 2 && <Tag x={770} y={560} text="THOUGHT HE WAS THEIRS" size={42} k={clamp(pop(f, ger - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= brit - 2 && <Tag x={290} y={430} text="HIS REAL BOSS" size={48} k={clamp(pop(f, brit - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= ger - 2 && <Tag x={700} y={560} text="THINKS HE'S THEIRS" size={48} k={clamp(pop(f, ger - 2, 18, 0.6), 0.7, 1.15)} />}
     </g>
   );
 }
@@ -503,7 +506,8 @@ function ShotMedals2({f, line, T}) {
   return (
     <g><Cam x={540} y={1000} z={eas(f, 0, sec, 2.35, 2.6)}><Room wall="#27477F" wallD="#1E3966" floor="#8A5A34" floorD="#6F4728" />
       <Person x={540} y={1340} s={1} T={T} seed={3} expr={f >= sec ? 'wink' : 'smug'} look={0.3} medals={[ic, pin(b)]} /></Cam>
-      {f >= b - 2 && f < sec && <Tag x={540} y={210} text="FROM THE KING" size={60} k={clamp(pop(f, b - 2, 18, 0.6), 0.7, 1.15)} />}
+      {f >= king - 6 && f < sec && <g transform={`translate(540 100) scale(${clamp(pop(f, king - 6, 18, 0.6), 0.7, 1.1)})`}><path d="M -70 34 L -84 -30 L -40 2 L 0 -44 L 40 2 L 84 -30 L 70 34 Z" fill="#E7C766" {...st(6)} /><rect x={-70} y={30} width={140} height={20} fill="#C8102E" {...st(5)} /></g>}
+      {f >= king - 6 && f < sec && <Tag x={540} y={230} text="FROM THE KING" size={60} k={clamp(pop(f, king - 6, 18, 0.6), 0.7, 1.15)} />}
       <Stamp text="SECRET" f={f} a={sec} x={540} y={150} rot={-6} size={84} k0={0.3} plate /></g>
   );
 }
