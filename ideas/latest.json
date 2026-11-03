@@ -1,42 +1,128 @@
 {
- "date": "2026-11-02",
- "focus": "reliability",
- "note": "No new idea today. The daily sweep found nothing new since yesterday: no Claude Code release after 2.1.316, no new API entry after 10-30, no new Anthropic news after 10-28. This was a short run: only the three daily sources were read, no extra searches or repo checks.",
+ "date": "2026-11-03",
+ "focus": "tools",
+ "note": "No idea today. New since yesterday: Claude Code 2.1.317 and the Messages API 'message threads' beta (Nov 2). Neither helps us enough to ask for your time. Short run: about 7 searches and 7 pages, below my usual bar.",
  "research": {
-  "searches": 0,
-  "pages_read": 3,
-  "minutes": 5,
+  "searches": 7,
+  "pages_read": 7,
+  "minutes": 15,
   "questions": [
-   "Did Claude Code, the API or Anthropic news change anything we rely on (claude -p, --json-schema, routines, models) since 11-01?"
+   "Does the new Messages API 'message threads' beta cut cost or time for any of our agent loops (llm.py, workers.py)?",
+   "Is the caveman token-saving skill (117k stars) worth adopting for our workers or Atlas?",
+   "Did YouTube change anything for Shorts creators since the 11-02 run?"
   ],
   "gaps": [
-   "No GitHub repo search, no deep research on a focus topic today"
+   "Below the 15 searches / 8 pages bar: no deep focus research today.",
+   "Message threads doc says nothing on price; caching works via top-level cache_control. Not verified against our llm.py loop in detail.",
+   "No official YouTube November announcement found; Oct 1 originality change known from secondary reports only.",
+   "Did not read caveman's eval files or code."
   ]
  },
- "new_today": [],
+ "new_today": [
+  "Claude Code 2.1.317: claude -p now exits 1 (not 0) when a full disk or quota loses transcript/config writes; new CLAUDE_CODE_DISABLE_NESTED_SESSION_ID; ask-before-sending-account-email check",
+  "Claude API 2026-11-02: Message threads beta (header message-threads-2026-08-12): server keeps the conversation, requests send only new messages; expires 5 min idle, deleted within 1 h; not ZDR eligible; Opus/Sonnet/Haiku 5.5 supported",
+  "Claude API 2026-10-28: max request size 32 MB -> 128 MB"
+ ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
-   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "url": "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md",
    "tier": "A",
-   "result": "nothing new",
-   "why": "Newest is still 2.1.316"
+   "result": "used",
+   "why": "2.1.317 is new; the claude -p exit-code fix helps workers.py failure detection but needs no change"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "nothing new",
-   "why": "Newest is still 10-30 (Opus 4.8 fast mode deprecated, removal 2026-11-30)"
+   "result": "used",
+   "why": "message threads beta found"
+  },
+  {
+   "title": "Message threads doc",
+   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "tier": "A",
+   "result": "rejected",
+   "why": "helps long loops on the API; our workers run through claude -p on the subscription, and the API path is only a fallback"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest is still 10-28"
+   "why": "no new models; Agent Skills donated to Agentic AI Foundation (10-22)"
+  },
+  {
+   "title": "caveman README",
+   "url": "https://github.com/JuliusBrussee/caveman",
+   "tier": "B",
+   "result": "rejected",
+   "why": "telemetry on by default, curl|bash installer, savings are output-only"
+  },
+  {
+   "title": "caveman HONEST-NUMBERS",
+   "url": "https://github.com/JuliusBrussee/caveman/blob/main/docs/HONEST-NUMBERS.md",
+   "tier": "B",
+   "result": "used",
+   "why": "its own data: 300-run test cut output 44% but total cost +0.06%; quality not proven"
+  },
+  {
+   "title": "Tubefilter on YPP changes",
+   "url": "https://www.tubefilter.com/2026/08/10/youtube-partner-program-ad-eligibility-requirements-shorts/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "already covered in the 10-08 report"
+  },
+  {
+   "title": "Shorts originality search (secondary reports)",
+   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "same Oct 1 change as before; sources disagree on who announced it"
+  },
+  {
+   "title": "GitHub search: claude code skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+skills",
+   "tier": "A",
+   "result": "used",
+   "why": "big repos listed; none fits"
+  },
+  {
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "small repos; nothing we lack"
+  },
+  {
+   "title": "GitHub search: LLM token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=LLM+token+cost+reduction+agent",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "tiny repos (1-2 stars); glyphdown is noncommercial"
   }
  ],
- "repo_watch": [],
+ "repo_watch": [
+  {
+   "name": "JuliusBrussee/caveman",
+   "url": "https://github.com/JuliusBrussee/caveman",
+   "licence": "Apache-2.0",
+   "stars": 116983,
+   "last_commit": "2026-11-02",
+   "verdict": "skip",
+   "fit": "Terse-output skill; would only shorten agent replies",
+   "why": "Its own data shows no proven net cost saving; default telemetry; curl|bash installer"
+  },
+  {
+   "name": "OpenMontage",
+   "url": "https://github.com/calesthio/OpenMontage",
+   "licence": "AGPL-3.0",
+   "stars": 75415,
+   "last_commit": "2026-10-28",
+   "verdict": "skip",
+   "fit": "Video pipeline",
+   "why": "AGPL: ideas only, never copy code"
+  }
+ ],
  "ideas": []
 }

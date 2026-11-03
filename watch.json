@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.316 (unchanged since 10-31)",
-   "checked": "2026-11-02"
+   "last_seen": "2.1.317",
+   "checked": "2026-11-03"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-10-30 Opus 4.8 fast mode deprecated (removed 2026-11-30); 10-29 Usage and Cost Analytics API beta",
-   "checked": "2026-11-02"
+   "last_seen": "2026-11-02 Message threads beta; 10-28 request size 128 MB; 10-30 Opus 4.8 fast mode deprecated",
+   "checked": "2026-11-03"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-28 AI for Science; 10-26 S-1 filing; no new models since Haiku 5.5 (Oct 7)",
-   "checked": "2026-11-02"
+   "checked": "2026-11-03"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -109,6 +109,11 @@
    "url": "https://developers.google.com/youtube/analytics/metrics",
    "last_seen": "engagedViews is a core metric; no stayedToWatch metric",
    "checked": "2026-10-31"
+  },
+  "message-threads-doc": {
+   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "last_seen": "beta, 5 min idle expiry, not ZDR, cache_control top-level",
+   "checked": "2026-11-03"
   }
  },
  "repos": {
@@ -190,11 +195,11 @@
    "note": "HarnessMD/munder-difflin, MIT; README not yet read"
   },
   "JuliusBrussee/caveman": {
-   "stars": 113500,
-   "last_commit": "2026-10-18",
+   "stars": 116983,
+   "last_commit": "2026-11-02",
    "verdict": "skip",
-   "checked": "2026-10-19",
-   "note": "Gain mostly equals 'answer concisely'; telemetry default on"
+   "checked": "2026-11-03",
+   "note": "output-only savings, telemetry default"
   },
   "affaan-m/ECC": {
    "stars": 284988,
