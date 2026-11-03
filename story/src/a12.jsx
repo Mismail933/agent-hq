@@ -59,7 +59,8 @@ const Big = ({rows, line, f, y}) => {
 // who is speaking: their real photo, their name, where the words come from
 const Who = ({w, line, f}) => {
   const a = wordAt(line, w.on);
-  const k = clamp((f - a) / 8), e = 1 - Math.pow(1 - k, 3), out = w.until != null ? clamp((f - wordAt(line, w.until)) / 6) : 0;
+  // hold: the same badge carries on from the line before, so it is already up (no blink at the line's first frame)
+  const k = w.hold ? 1 : clamp((f - a) / 8), e = 1 - Math.pow(1 - k, 3), out = w.until != null ? clamp((f - wordAt(line, w.until)) / 6) : 0;
   if (k <= 0 || out >= 1) return null;
   return (
     <div style={{position: 'absolute', left: 70, bottom: 190, display: 'flex', alignItems: 'center', gap: 22, opacity: k * (1 - out), transform: `translateY(${(1 - e) * 18}px)`}}>
