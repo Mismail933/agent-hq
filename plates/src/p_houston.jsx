@@ -322,7 +322,7 @@ export const ScreenClean = () => useScene((e) => {
     const d = f - CLEAN_F;
     tube.mat.uniforms.gain.value = f < CLEAN_F ? 0.92 + 0.08 * Math.sin(f * 1.7) : d < 2 ? 1.9 : 1 + 0.6 * Math.exp(-d * 0.35);
     const k = ease(f / 300), jolt = d >= 0 && d < 8 ? 0.0012 * Math.exp(-d * 0.5) * Math.sin(d * 3.1) : 0;
-    camOn(e.camera, W, [lerp(-0.2, 0.05, k) + jolt, lerp(-0.08, -0.01, k), lerp(0.56, 0.44, k)], [lerp(-0.03, 0.04, k), 0], 40, lerp(-0.012, 0, k));
+    camOn(e.camera, W, [lerp(-0.2, 0.05, k) + jolt, lerp(-0.08, -0.01, k), lerp(0.7, 0.58, k)], [lerp(-0.02, 0.02, k), 0.005], 40, lerp(-0.012, 0, k));
     L.set(e.camera.position.distanceTo(W.T));
   }};
 });
@@ -378,7 +378,7 @@ export const EngineDials = () => useScene((e) => {
   // five dials: four round one, the way the five F-1s sit under the first stage; number 5 is the centre engine
   const D = 0.205, spots = [[1, D, D], [2, -D, D], [3, -D, -D], [4, D, -D], [5, 0, 0]], gs = spots.map(([n, x, y]) => { const g = makeGauge(n); g.position.set(x, y, 0); pn.add(g); return {g, n, x, y}; });
   // screws, and buttons down the sides
-  const sc = M(0x98989a, 0.3, 0.9);
+  const sc = M(0x4c4c50, 0.5, 0.7);
   spots.forEach(([, x, y]) => { for (const [a, b] of [[-0.082, 0.082], [0.082, 0.082], [-0.082, -0.082], [0.082, -0.082]]) { const q = C(0.0045, 0.0045, 0.003, sc, x + a, y + b, 0.001, 10); q.rotation.x = Math.PI / 2; pn.add(q); } });
   for (let i = 0; i < 44; i++) { const x = -0.44 + (i % 22) * 0.042, y = i < 22 ? 0.35 : -0.35, q = C(0.004, 0.004, 0.003, sc, x, y, 0.001, 8); q.rotation.x = Math.PI / 2; pn.add(q); }
   [[-0.38, 0.05], [0.38, 0.05]].forEach(([x, y], i) => { const m = pbi(9, 2, 0.028, 0.022, 90 + i * 7, 0.14, [0xffa030, 0x47ff8a]); m.position.set(x, y, 0.004); pn.add(m); });
@@ -411,7 +411,15 @@ export const EngineDials = () => useScene((e) => {
 // ---------- PlotBoard: the big screen. Altitude against range, the planned line and the real line right on it. ----------
 // a first-stage ascent profile, nautical miles (rough fit to a Saturn V ascent; the shape is the point, the editor tags it a reconstruction)
 const KNOTS = [[0, 0, 0], [30, 0, 1.1], [60, 0.8, 3.9], [78, 2.7, 7.2], [100, 8.6, 13], [120, 18.9, 20], [135, 30.2, 25.2], [162, 50.2, 36.2], [190, 75, 47.5]];
-const profile = (t) => { for (let i = 1; i < KNOTS.length; i++) { const [a, r0, h0] = KNOTS[i - 1], [b, r1, h1] = KNOTS[i]; if (t <= b) { const s = (t - a) / (b - a); return [lerp(r0, r1, s), lerp(h0, h1, s)]; } } return [KNOTS[8][1], KNOTS[8][2]]; };
+// a smooth curve through the knots (Catmull-Rom on time), so the plotted line has no corners
+const profile = (t) => {
+  const K = KNOTS, n = K.length; if (t >= K[n - 1][0]) return [K[n - 1][1], K[n - 1][2]];
+  let i = 1; while (t > K[i][0]) i++;
+  const p = (j) => K[Math.max(0, Math.min(n - 1, j))], a = p(i - 1), b = p(i), s = (t - a[0]) / (b[0] - a[0]), dt = b[0] - a[0];
+  const tan = (j, c) => { const u = p(j - 1), v = p(j + 1); return ((v[c] - u[c]) / Math.max(1, v[0] - u[0])) * dt; };
+  const H = (c) => { const m0 = tan(i - 1, c), m1 = tan(i, c), s2 = s * s, s3 = s2 * s; return (2 * s3 - 3 * s2 + 1) * a[c] + (s3 - 2 * s2 + s) * m0 + (-2 * s3 + 3 * s2) * b[c] + (s3 - s2) * m1; };
+  return [Math.max(0, H(1)), Math.max(0, H(2))];
+};
 export const PlotBoard = () => useScene((e) => {
   room(e, 0.05, 200);
   e.final.bloom.value = 0.85; e.final.exposure.value = 1.05; e.final.vign.value = 1.0;
@@ -452,33 +460,37 @@ export const PlotBoard = () => useScene((e) => {
     g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill();
     g.restore(); map.needsUpdate = true;
   };
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({map, color: new THREE.Color(1.5, 1.5, 1.5)})); scr.position.set(0, 3.75, -16); e.scene.add(scr);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({map, color: new THREE.Color(1.5, 1.5, 1.5)})); scr.position.set(0, 3.75, -15.84); e.scene.add(scr);
   // the frame and the wall round the big screen, the two dim side screens
   const wallM = worn(0x1a1e20, 0.72, 0.15);
   [[0, 3.75 + SH / 2 + 0.12, SW + 0.5, 0.24], [0, 3.75 - SH / 2 - 0.12, SW + 0.5, 0.24]].forEach(([x, y, w, h]) => e.scene.add(B(w, h, 0.2, wallM, x, y, -15.95, 0.02)));
   [-SW / 2 - 0.12, SW / 2 + 0.12].forEach((x) => e.scene.add(B(0.24, SH + 0.5, 0.2, wallM, x, 3.75, -15.95, 0.02)));
-  const side = (() => { const [b, q] = canvas(512, 512); q.fillStyle = '#02060a'; q.fillRect(0, 0, 512, 512); q.strokeStyle = 'rgba(130,180,165,0.3)'; q.lineWidth = 2; for (let i = 1; i < 10; i++) { q.beginPath(); q.moveTo(i * 51, 10); q.lineTo(i * 51, 502); q.stroke(); q.beginPath(); q.moveTo(10, i * 51); q.lineTo(502, i * 51); q.stroke(); } q.strokeStyle = 'rgba(180,235,205,0.75)'; q.lineWidth = 4; q.beginPath(); for (let x = 0; x <= 512; x += 8) { const y = 260 + Math.sin(x * 0.014) * 120; if (x === 0) q.moveTo(x, y); else q.lineTo(x, y); } q.stroke(); return tex(b); })();
-  [-7.2, 7.2].forEach((x) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 3.8), new THREE.MeshBasicMaterial({map: side, color: new THREE.Color(0.4, 0.4, 0.4)})); m.position.set(x, 3.75, -15.9); m.rotation.y = x < 0 ? 0.16 : -0.16; e.scene.add(m); });
+  const sideA = (() => { const [b, q] = canvas(1024, 1024); q.fillStyle = '#02060a'; q.fillRect(0, 0, 1024, 1024); q.strokeStyle = 'rgba(130,180,165,0.32)'; q.lineWidth = 2; for (let i = 1; i < 10; i++) { q.beginPath(); q.moveTo(i * 92 + 50, 80); q.lineTo(i * 92 + 50, 920); q.stroke(); q.beginPath(); q.moveTo(142, i * 84 + 80); q.lineTo(970, i * 84 + 80); q.stroke(); } q.strokeStyle = 'rgba(190,235,212,0.8)'; q.lineWidth = 5; q.strokeRect(142, 80, 828, 840); q.lineWidth = 7; q.beginPath(); for (let x = 0; x <= 828; x += 6) { const u = x / 828, y = 920 - Math.pow(u, 2.4) * 720 - u * 60; if (x === 0) q.moveTo(142 + x, y); else q.lineTo(142 + x, y); } q.stroke(); q.fillStyle = 'rgba(190,235,212,0.8)'; q.font = '700 44px "Courier New", monospace'; q.textAlign = 'right'; q.textBaseline = 'middle'; for (let i = 0; i <= 5; i++) q.fillText(String(i * 4), 124, 920 - i * 168); return tex(b); })();
+  const sideB = (() => { const [b, q] = canvas(1024, 1024), r = rng(515); q.fillStyle = '#02060a'; q.fillRect(0, 0, 1024, 1024); q.fillStyle = 'rgba(200,240,216,0.85)'; q.font = '700 50px "Courier New", monospace'; q.textBaseline = 'top'; q.fillRect(70, 118, 884, 5); q.fillText('TRAJECTORY', 70, 54); for (let i = 0; i < 13; i++) { const y = 150 + i * 62; q.fillText(['HP', 'HA', 'VI', 'GI', 'AZ', 'RNG', 'ALT', 'HDOT', 'WT', 'TGO', 'TFF', 'DV', 'Q'][i], 90, y); q.fillText((r() * 900).toFixed(1).padStart(7, ' '), 400, y); q.fillText((r() * 90).toFixed(2).padStart(7, ' '), 700, y); } return tex(b); })();
+  [[-7.2, sideA], [7.2, sideB]].forEach(([x, t]) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 3.8), new THREE.MeshBasicMaterial({map: t, color: new THREE.Color(0.55, 0.55, 0.55)})); m.position.set(x, 3.75, -15.9); m.rotation.y = x < 0 ? 0.16 : -0.16; e.scene.add(m); });
   // light off the screen onto the room: soft from the area light, and a spot for the long shadows of the console rows
   const rect = new THREE.RectAreaLight(0xc8f0e0, 7, SW, SH); rect.position.set(0, 3.75, -15.8); rect.lookAt(0, 1, 0); e.scene.add(rect);
-  spot(e, 0xc8f0e0, 90, [0, 4.2, -15.5], [0, 0.6, 2], 0.55, 0.9, 1.7, 2048, 2, 30);
+  spot(e, 0xc8f0e0, 34, [0, 4.6, -15.0], [0, 0.6, 2], 0.55, 0.9, 1.6, 2048, 2, 30);
+  // the wall is really there: low tungsten washes down it, either side of the screen and over the top
+  [[-11.2, -16.9], [-3.2, -16.9], [3.2, -16.9], [11.2, -16.9]].forEach(([x, z]) => spot(e, 0xe8a53a, 30, [x, 7.6, z + 3], [x, 2.2, z], 0.42, 0.95, 1.5, 0));
   e.scene.add(new THREE.AmbientLight(0x263036, 0.2));
   // rows of consoles, stepping up towards the camera; their tubes on, dim
   const dimT = makeTube(0.54, 0.405, (q) => { const r = rng(101); q.fillStyle = '#000'; q.fillRect(0, 0, 1536, 1152); q.fillStyle = '#fff'; q.font = '700 52px "Courier New", monospace'; q.textBaseline = 'top'; for (let i = 0; i < 16; i++) { q.fillText(NAMES[Math.floor(r() * 16)], 80, 120 + i * 60); q.fillText((r() * 200).toFixed(1).padStart(7, ' '), 800, 120 + i * 60); } });
   dimT.draw(0); dimT.mat.uniforms.gain.value = 0.28;
   [[-9.5, 0], [-5.8, 0.34], [-2.1, 0.68]].forEach(([z, y], ri) => {
     const floor = shade(new THREE.Mesh(new THREE.BoxGeometry(22, y + 0.001, 3.7), M(0x2a2e30, 0.9, 0)), false); floor.position.set(0, y / 2, z + 1.1); e.scene.add(floor);
-    for (let i = -4; i <= 4; i++) { const u = consoleUnit({tube: {grp: dimT.grp.clone(true)}, seed: 30 + i + ri * 9, chance: 0.22}); u.position.set(i * 1.08 + (ri % 2) * 0.3, y, z); e.scene.add(u); }
+    for (let i = -8; i <= 8; i++) { const u = consoleUnit({tube: {grp: dimT.grp.clone(true)}, seed: 30 + i + ri * 9, chance: 0.22}); u.position.set(i * 1.08 + (ri % 2) * 0.3, y, z); u.traverse((m) => { if (m.material && m.material.isMeshStandardMaterial && m.material.roughness < 0.6) { m.material.roughness = 0.82; m.material.metalness = 0; } }); e.scene.add(u); }
   });
   const L = lens(e, {focus: 14, ap: 1.6, maxB: 22, grain: 0.016});
   const fd = {value: 0};
   return {draw: (f) => {
     paint(f); fd.value = f;
     const k = ease(f / 330);
-    e.camera.up.set(0, 1, 0);
-    e.camera.position.set(lerp(-1.3, -0.5, k), lerp(2.95, 2.62, k), lerp(0.4, -0.9, k));
-    e.camera.lookAt(lerp(-0.2, -0.75, k), lerp(2.92, 3.42, k), -16);
-    e.camera.fov = lerp(46, 31, k);
+    // from high at the back of the room, off to one side, slowly up the rows and in on the two lines
+    e.camera.up.set(lerp(0.012, 0, k), 1, 0);
+    e.camera.position.set(lerp(-4.2, -1.9, k), lerp(3.15, 2.72, k), lerp(1.6, -1.5, k));
+    e.camera.lookAt(lerp(-1.3, -1.35, k), lerp(2.75, 3.06, k), -16);
+    e.camera.fov = lerp(47, 27, k);
     L.set(e.camera.position.distanceTo(scr.position));
   }};
 });
@@ -495,7 +507,8 @@ export const NightConsole = () => useScene((e) => {
   // the row in front, its back to us, and a shape of the dark wall screens beyond
   for (let i = -4; i <= 4; i++) { const u = consoleUnit({seed: 90 + i * 3, chance: 0}); u.position.set(i * 1.08 + 0.4, 0, -3.6); e.scene.add(u); }
   const W = tubeWorld(units[3], tube);
-  const ch = chair(); ch.position.set(0.62, 0, 1.55); ch.rotation.y = 0.32; e.scene.add(ch);
+  const ch = chair(); ch.position.set(0.5, 0, 1.3); ch.rotation.y = 0.5; e.scene.add(ch);
+  const ch2 = chair(); ch2.position.set(-1.42, 0, 0.95); ch2.rotation.y = -0.4; e.scene.add(ch2);
   const m = mug(); m.position.set(0.4, 0.757, 0.3); e.scene.add(m);
   const b = binder(); b.position.set(-0.3, 0.757, 0.28); b.rotation.y = 0.12; e.scene.add(b);
   spot(e, 0xc4ecd0, 3.2, [W.T.x, W.T.y, W.T.z + 0.12], [0.05, 0.3, 3], 1.15, 0.9, 1.5, 2048, 0.05, 12);
@@ -503,19 +516,20 @@ export const NightConsole = () => useScene((e) => {
   // the only other light: a low tungsten wash far off down the room, for the row's edge
   spot(e, 0xe8a53a, 7, [-9, 4, 1], [-2.6, 0.9, -0.3], 0.34, 0.9, 1.4, 0);
   spot(e, 0xe8a53a, 9, [-9, 4.2, -4], [-1.5, 1.2, -3.8], 0.36, 0.9, 1.4, 0);
-  spot(e, 0xc89860, 2.2, [2.6, 3.4, 5.4], [0.62, 0.85, 1.75], 0.3, 0.9, 1.5, 0);
+  spot(e, 0xc89860, 7.5, [3.0, 3.2, 5.0], [0.5, 0.9, 1.5], 0.24, 0.9, 1.5, 0);
   e.scene.add(new THREE.AmbientLight(0x2a3438, 0.1));
   // far wall screens, off but catching a little
-  [-5.4, 0, 5.4].forEach((x) => { const s = new THREE.Mesh(new THREE.PlaneGeometry(x === 0 ? 7 : 3.4, 3), new THREE.MeshBasicMaterial({color: new THREE.Color(0.018, 0.024, 0.026)})); s.position.set(x, 2.8, -16.9); e.scene.add(s); });
-  const L = lens(e, {focus: 2, ap: 22, maxB: 24, grain: 0.022});
+  [-5.4, 0, 5.4].forEach((x) => { const s = new THREE.Mesh(new THREE.PlaneGeometry(x === 0 ? 7 : 3.4, 3), new THREE.MeshBasicMaterial({color: new THREE.Color(0.0055, 0.0075, 0.008)})); s.position.set(x, 2.8, -16.9); e.scene.add(s); });
+  const L = lens(e, {focus: 2, ap: 10, maxB: 15, grain: 0.022});
+  e.scene.traverse((m) => { if (m.material && m.material.isMeshStandardMaterial && m.material.roughness < 0.62 && m.material.metalness < 0.7) m.material.roughness = 0.74; });
   const fd = dust(e, 30, [-1.2, 1.2], [0.8, 1.7], [0.3, 1.6], 0xd0e8d8, 0.0035, 44, 0.1);
   return {draw: (f) => {
     tube.draw(f); fd.value = f;
     const k = ease(f / 300);
     e.camera.up.set(lerp(0.01, -0.006, k), 1, 0);
-    e.camera.position.set(lerp(1.18, 0.62, k), lerp(1.68, 1.5, k), lerp(3.6, 2.85, k));
-    e.camera.lookAt(lerp(-0.1, 0.0, k), lerp(1.02, 1.12, k), 0);
-    e.camera.fov = lerp(40, 33, k);
+    e.camera.position.set(lerp(1.0, 0.72, k), lerp(1.3, 1.26, k), lerp(3.15, 2.45, k));
+    e.camera.lookAt(lerp(-0.06, 0.02, k), lerp(0.98, 1.0, k), 0);
+    e.camera.fov = lerp(40, 35, k);
     L.set(e.camera.position.distanceTo(W.T));
   }};
 });
@@ -524,14 +538,14 @@ export const NightConsole = () => useScene((e) => {
 export const DriveHome = () => useScene((e) => {
   const {renderer, scene, camera} = e;
   indoors(e); camera.near = 0.05; camera.far = 4200; renderer.shadowMap.enabled = false;
-  e.skyHi.set(0.0035, 0.0055, 0.012); e.skyLo.set(0.03, 0.021, 0.018);
+  e.skyHi.set(0.0028, 0.0042, 0.0095); e.skyLo.set(0.017, 0.015, 0.018);
   e.final.bloom.value = 0.85; e.final.exposure.value = 1.15; e.final.vign.value = 1.1;
   envOf(e, [[0, 9, -2, 18, 10, 0x1a2436, 0.5], [0, 1.2, -12, 24, 2.0, 0x8a8078, 0.42], [0, 2, 8, 4, 2, 0x0a0a0a, 0.2]], 0x000000, 1);
   const V = 0.62; // metres a frame: about 42 mph
   // the road: tar, seams, patches; scrolled by moving the texture
   const roadT = (() => { const [c, g] = canvas(1024, 1024), r = rng(1234); g.fillStyle = '#4c4b49'; g.fillRect(0, 0, 1024, 1024);
     for (let i = 0; i < 26000; i++) { const v = 40 + r() * 60; g.fillStyle = `rgba(${v},${v},${v * 0.97},${0.2 + r() * 0.3})`; g.fillRect(r() * 1024, r() * 1024, 1 + r() * 2.5, 1 + r() * 2.5); }
-    for (let i = 0; i < 16; i++) { g.fillStyle = `rgba(14,14,14,${0.12 + r() * 0.2})`; g.fillRect(r() * 1024, r() * 1024, 60 + r() * 200, 60 + r() * 300); }
+    g.filter = 'blur(5px)'; for (let i = 0; i < 12; i++) { g.fillStyle = `rgba(14,14,14,${0.06 + r() * 0.1})`; const x = r() * 1024, y = r() * 1024, w = 80 + r() * 240, h = 80 + r() * 320; g.beginPath(); g.moveTo(x, y); for (let k = 1; k <= 9; k++) { const a = (k / 9) * 6.283; g.lineTo(x + Math.cos(a) * w * (0.4 + r() * 0.2), y + Math.sin(a) * h * (0.4 + r() * 0.2)); } g.closePath(); g.fill(); } g.filter = 'none';
     g.strokeStyle = 'rgba(8,8,8,0.34)'; for (let i = 0; i < 7; i++) { g.lineWidth = 0.8 + r() * 1.2; let x = r() * 1024, y = r() * 1024; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 16; k++) { x += (r() - 0.5) * 40; y += 12 + r() * 40; g.lineTo(x, y); } g.stroke(); }
     return tex(c, true, [1, 3]); })();
   const RW = 7.4, RC = -1.75, RL = 900;
@@ -548,9 +562,9 @@ export const DriveHome = () => useScene((e) => {
   const dashT = (() => { const [c, g] = canvas(64, 256), r = rng(9); g.fillStyle = '#c9c6ba'; g.fillRect(0, 0, 64, 256); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(40,40,40,${r() * 0.6})`; g.fillRect(r() * 64, r() * 256, 1 + r() * 4, 1 + r() * 6); } return tex(c); })();
   const dashes = new THREE.InstancedMesh(dashG, new THREE.MeshStandardMaterial({map: dashT, roughness: 0.7}), dashN); dashes.frustumCulled = false; scene.add(dashes);
   // tufts by the road, for the speed; and fence posts, telephone poles and their wires
-  const tuftG = (() => { const r = rng(3131), pos = [], nor = []; for (let i = 0; i < 26; i++) { const a = r() * 6.283, d = r() * 0.28, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 0.012 + r() * 0.012, h = 0.3 + r() * 0.42, lx = (r() - 0.5) * 0.3, lz = (r() - 0.5) * 0.3, sx = Math.cos(a * 3) * w, sz = Math.sin(a * 3) * w; pos.push(x - sx, 0, z - sz, x + sx, 0, z + sz, x + lx, h, z + lz); nor.push(0, 0.7, 0.7, 0, 0.7, 0.7, 0, 0.7, 0.7); } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); return g; })();
-  const TN = 900, tufts = new THREE.InstancedMesh(tuftG, new THREE.MeshStandardMaterial({color: 0x6a6840, roughness: 1, side: THREE.DoubleSide}), TN); tufts.frustumCulled = false; scene.add(tufts);
-  const tr = rng(555), tuftP = []; for (let i = 0; i < TN; i++) { const s = tr() < 0.5 ? -1 : 1; tuftP.push([s < 0 ? RC - RW / 2 - 0.2 - tr() * tr() * 11 : RC + RW / 2 + 0.2 + tr() * tr() * 11, tr() * 240, 0.6 + tr() * 1.1, tr() * 6]); }
+  const tuftG = (() => { const r = rng(3131), pos = [], nor = [], col = []; for (let i = 0; i < 70; i++) { const a = r() * 6.283, d = r() * r() * 0.34, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 0.004 + r() * 0.007, h = 0.2 + r() * r() * 0.5, lx = (r() - 0.5) * 0.34, lz = (r() - 0.5) * 0.34, sx = Math.cos(a * 3) * w, sz = Math.sin(a * 3) * w, b0 = 0.1 + r() * 0.1, b1 = 0.55 + r() * 0.45, mx = x + lx * 0.35, mz = z + lz * 0.35, my = h * 0.55; pos.push(x - sx, 0, z - sz, x + sx, 0, z + sz, mx + sx * 0.7, my, mz + sz * 0.7, x - sx, 0, z - sz, mx + sx * 0.7, my, mz + sz * 0.7, mx - sx * 0.7, my, mz - sz * 0.7, mx - sx * 0.7, my, mz - sz * 0.7, mx + sx * 0.7, my, mz + sz * 0.7, x + lx, h, z + lz); for (let k = 0; k < 9; k++) nor.push(0, 0.8, 0.6); const bm = lerp(b0, b1, 0.55); [b0, b0, bm, b0, bm, bm, bm, bm, b1].forEach((v) => col.push(v, v * 0.98, v * 0.8)); } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); return g; })();
+  const TN = 2600, tufts = new THREE.InstancedMesh(tuftG, new THREE.MeshStandardMaterial({color: 0x5a5438, roughness: 1, side: THREE.DoubleSide, vertexColors: true}), TN); tufts.frustumCulled = false; scene.add(tufts);
+  const tr = rng(555), tuftP = []; for (let i = 0; i < TN; i++) { const s = tr() < 0.5 ? -1 : 1; tuftP.push([s < 0 ? RC - RW / 2 - 0.15 - tr() * tr() * 14 : RC + RW / 2 + 0.15 + tr() * tr() * 14, tr() * 240, 0.5 + tr() * 0.9, tr() * 6]); }
   const postG = new THREE.CylinderGeometry(0.05, 0.06, 1.25, 6), PN = 56, posts = new THREE.InstancedMesh(postG, new THREE.MeshStandardMaterial({color: 0x5a5242, roughness: 0.95}), PN); posts.frustumCulled = false; scene.add(posts);
   const woodM = new THREE.MeshStandardMaterial({color: 0x3a3028, roughness: 0.95}), wireM = new THREE.MeshStandardMaterial({color: 0x121212, roughness: 0.6});
   const SPAN = 58, spans = [];
@@ -566,9 +580,9 @@ export const DriveHome = () => useScene((e) => {
   const stars = new THREE.Points(sg, new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexShader: `in float mag; out float m; void main(){ m = mag; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = 1.6 + mag * 1.8; }`, fragmentShader: `precision highp float; in float m; out vec4 o; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; o = vec4(vec3(0.85, 0.9, 1.0) * (0.05 + m * 1.0), 1.0 - smoothstep(0.3, 1.0, d)); }`})); stars.frustumCulled = false; scene.add(stars);
 
   // headlights
-  [-0.64, 0.64].forEach((x) => { const l = new THREE.SpotLight(0xffdca6, 620, 0, 0.3, 0.75, 1.5); l.position.set(x, 0.72, -2.9); l.target.position.set(x * 0.6 - 0.1, 0, -40); scene.add(l, l.target); const w = new THREE.SpotLight(0xffd8a0, 26, 0, 0.75, 0.9, 1.6); w.position.set(x, 0.72, -2.9); w.target.position.set(x * 1.8, 0, -14); scene.add(w, w.target); });
+  [-0.64, 0.64].forEach((x) => { const l = new THREE.SpotLight(0xffdca6, 520, 0, 0.34, 1.0, 1.5); l.position.set(x, 0.72, -2.9); l.target.position.set(x * 0.6 - 0.1, 0, -40); scene.add(l, l.target); const w = new THREE.SpotLight(0xffd8a0, 44, 0, 0.95, 1.0, 1.55); w.position.set(x, 0.72, -2.9); w.target.position.set(x * 1.8, 0, -14); scene.add(w, w.target); });
   // the car, seen from the driver's eye: a long hood falling away, its crease lines, the ornament; the dash low
-  const paint = new THREE.MeshStandardMaterial({color: 0x101820, roughness: 0.17, metalness: 0.7});
+  const paint = new THREE.MeshStandardMaterial({color: 0x121922, roughness: 0.36, metalness: 0.45});
   const hoodG = new THREE.PlaneGeometry(1.74, 1.72, 48, 36); hoodG.rotateX(-Math.PI / 2);
   { const ps = hoodG.attributes.position; for (let i = 0; i < ps.count; i++) { const x = ps.getX(i), z = ps.getZ(i), s0 = (z + 0.86) / 1.72; /* s0: 0 far, 1 near */ const ax = Math.abs(x); const crown = -Math.pow(ax / 0.87, 2.6) * 0.1 - Math.pow(1 - s0, 2.0) * 0.17 + (0.018 * Math.exp(-Math.pow((ax - 0.43) * 22, 2))) - (0.008 * Math.exp(-Math.pow((ax - 0.47) * 40, 2))); ps.setY(i, crown); } hoodG.computeVertexNormals(); }
   const hood = new THREE.Mesh(hoodG, paint); hood.position.set(0, 0.885, -1.68); scene.add(hood);
@@ -587,12 +601,13 @@ export const DriveHome = () => useScene((e) => {
   const trim = M(0x09090a, 0.5, 0.2);
   bar([-0.92, 0.9, -0.76], [-0.75, 1.5, -0.02], 0.075, 0.05, trim); bar([0.92, 0.9, -0.76], [0.75, 1.5, -0.02], 0.075, 0.05, trim);
   scene.add(B(1.7, 0.06, 0.12, trim, 0, 1.51, -0.02, 0.02));
-  const mir = B(0.24, 0.065, 0.012, M(0x0a0b0c, 0.12, 0.95), -0.12, 1.42, -0.1, 0.012); mir.rotation.x = 0.08; scene.add(mir);
+  const mirT = (() => { const [c, g] = canvas(256, 80); const gr = g.createLinearGradient(0, 0, 0, 80); gr.addColorStop(0, '#07090f'); gr.addColorStop(0.62, '#0c0e13'); gr.addColorStop(0.66, '#040404'); gr.addColorStop(1, '#090807'); g.fillStyle = gr; g.fillRect(0, 0, 256, 80); return tex(c); })();
+  const mirG = new THREE.Group(); mirG.position.set(-0.02, 1.47, -0.2); mirG.rotation.set(0.12, 0.3, 0); scene.add(mirG); mirG.add(B(0.2, 0.056, 0.016, M(0x050506, 0.5, 0.2), 0, 0, -0.008, 0.012)); const mirF = new THREE.Mesh(new THREE.PlaneGeometry(0.186, 0.044), new THREE.MeshBasicMaterial({map: mirT, color: new THREE.Color(2.2, 2.2, 2.2)})); mirF.position.z = 0.002; mirG.add(mirF);
   const ws = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.0), glassM([[[-0.25, 0.72, 0.65], 0.14, 0xffa850, 0.22], [[0, 1, 0.1], 0.5, 0x1a2436, 0.1]])); ws.position.set(0, 1.2, -0.39); ws.rotation.x = -0.68; ws.renderOrder = 4; scene.add(ws);
   // the oncoming car: two sealed beams that grow out of the dark, and go by at 10 s
   const PASS = 300, oncoming = new THREE.Group(), lampM = new THREE.MeshBasicMaterial({color: new THREE.Color(7, 6, 4.4)});
-  const glareT = (() => { const [c, g] = canvas(256, 256), r = g.createRadialGradient(128, 128, 0, 128, 128, 128); r.addColorStop(0, 'rgba(255,235,205,1)'); r.addColorStop(0.08, 'rgba(255,225,180,0.5)'); r.addColorStop(0.3, 'rgba(255,205,150,0.08)'); r.addColorStop(1, 'rgba(255,190,130,0)'); g.fillStyle = r; g.fillRect(0, 0, 256, 256); return tex(c); })();
-  const glareM = new THREE.MeshBasicMaterial({map: glareT, transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor, color: new THREE.Color(1.4, 1.3, 1.15)});
+  const glareT = (() => { const [c, g] = canvas(256, 256), r = g.createRadialGradient(128, 128, 0, 128, 128, 128); r.addColorStop(0, 'rgba(255,235,205,1)'); r.addColorStop(0.05, 'rgba(255,228,190,0.55)'); r.addColorStop(0.14, 'rgba(255,215,165,0.13)'); r.addColorStop(0.3, 'rgba(255,205,150,0.03)'); r.addColorStop(0.6, 'rgba(255,200,140,0.004)'); r.addColorStop(0.8, 'rgba(255,190,130,0)'); r.addColorStop(1, 'rgba(255,190,130,0)'); g.fillStyle = r; g.fillRect(0, 0, 256, 256); return tex(c); })();
+  const glareM = new THREE.MeshBasicMaterial({map: glareT, transparent: true, depthWrite: false, depthTest: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor, color: new THREE.Color(1.4, 1.3, 1.15)});
   [-0.66, 0.66].forEach((x) => { const s0 = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), lampM); s0.position.x = x; oncoming.add(s0); const gl = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 4.4), glareM); gl.position.set(x, 0, 0.05); gl.renderOrder = 5; oncoming.add(gl); });
   oncoming.position.set(RC - RW / 4, 0.72, -1000); scene.add(oncoming);
   const oLight = new THREE.PointLight(0xffe2b4, 0, 0, 1.6); scene.add(oLight);
@@ -607,7 +622,7 @@ export const DriveHome = () => useScene((e) => {
     for (let i = 0; i < PN; i++) { const z = 16 - (((i * 4.6 - dist) % (PN * 4.6)) + PN * 4.6) % (PN * 4.6); p3.set(RC + RW / 2 + 7.5, 0.62, z); m4.compose(p3, q, s3); posts.setMatrixAt(i, m4); } posts.instanceMatrix.needsUpdate = true;
     spans.forEach((g, i) => { const z = 40 - (((i * SPAN - dist) % (10 * SPAN)) + 10 * SPAN) % (10 * SPAN); g.position.set(RC - RW / 2 - 8, 0, z); });
     const oz = -(PASS - f) * (V + 0.68); oncoming.position.z = oz;
-    oLight.position.set(RC - RW / 4, 0.9, oz + 2.5); oLight.intensity = oz < 2 ? clamp(1 - Math.abs(oz) / 180) ** 2 * 22 : 0;
+    oLight.position.set(RC - RW / 4, 0.9, oz + 2.5); oLight.intensity = oz < 2 ? clamp(1 - Math.abs(oz) / 180) ** 2 * 9 : 0;
     oncoming.visible = oz < 4;
     const by = noiseV(f, 0.19) * 0.004 + noiseV(f, 0.73) * 0.0016, sw = noiseV(f, 0.031) * 0.0035;
     camera.up.set(0, 1, 0);
@@ -788,13 +803,13 @@ export const SceBox = () => useScene((e) => {
   room(e, 0.03, 90, true);
   const {scene, camera} = e;
   e.final.bloom.value = 0.8; e.final.exposure.value = 1.12; e.final.vign.value = 1.05;
-  envOf(e, [[-3, 6, 3, 8, 2, 0xe8e0d0, 2.0], [7, 2, 2, 2, 4, 0x8fd8a8, 0.5], [-8, 1, -3, 2, 2, 0xe8a53a, 0.6]]);
+  envOf(e, [[-3, 6, 3, 8, 2, 0xe8e0d0, 1.5], [7, 2, 2, 2, 4, 0x8fd8a8, 0.3], [-8, 1, 3, 2, 2, 0xe8a53a, 0.25]]);
   const world = new THREE.Group(), mirror = new THREE.Group(); scene.add(world);
   // the bench: dark and polished; what stands on it shows faintly in it
-  const bench = new THREE.Mesh(new THREE.PlaneGeometry(40, 24), new THREE.MeshStandardMaterial({color: 0x0a0b0c, roughness: 0.3, metalness: 0.3, transparent: true, opacity: 0.86, map: mottle()})); bench.rotation.x = -Math.PI / 2; bench.receiveShadow = true; scene.add(bench);
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(80, 16), new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, vertexShader: `out vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`, fragmentShader: `precision highp float; in vec2 vUv; out vec4 o; void main(){ float d = length((vUv - vec2(0.5, 0.2)) * vec2(3.2, 3.0)); o = vec4(vec3(0.02, 0.024, 0.028) * (1.0 - smoothstep(0.0, 1.0, d)) * smoothstep(0.0, 0.12, vUv.y), 1.0); }`})); back.position.set(0, 8, -6); scene.add(back);
+  const bench = new THREE.Mesh(new THREE.PlaneGeometry(40, 24), new THREE.MeshStandardMaterial({color: 0x101214, roughness: 0.46, metalness: 0.05, transparent: true, opacity: 0.88, map: mottle()})); bench.rotation.x = -Math.PI / 2; bench.receiveShadow = true; scene.add(bench);
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(80, 16), new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, vertexShader: `out vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`, fragmentShader: `precision highp float; in vec2 vUv; out vec4 o; void main(){ float d = length((vUv - vec2(0.5, 0.2)) * vec2(3.2, 3.0)); o = vec4(vec3(0.05, 0.056, 0.062) * (1.0 - smoothstep(0.0, 1.0, d)) * smoothstep(0.0, 0.12, vUv.y), 1.0); }`})); back.position.set(0, 8, -6); scene.add(back);
   // sensors: small drums with terminals, wires gathering to the box
-  const steel = worn(0x9a9c9c, 0.32, 0.92), band = M(0x2a2c2e, 0.4, 0.8), wireMats = [M(0xb0301c, 0.45, 0.1), M(0x202225, 0.5, 0.1), M(0xc8bfa8, 0.5, 0.1), M(0x1e4a78, 0.5, 0.1), M(0xb08a20, 0.5, 0.1)];
+  const steel = worn(0xc0c2c0, 0.44, 0.45), band = M(0x2a2c2e, 0.4, 0.8), wireMats = [M(0xb0301c, 0.45, 0.1), M(0x202225, 0.5, 0.1), M(0xc8bfa8, 0.5, 0.1), M(0x1e4a78, 0.5, 0.1), M(0xb08a20, 0.5, 0.1)];
   const r = rng(7171), curves = [];
   for (let i = 0; i < 9; i++) {
     const row = Math.floor(i / 3), x = -4.2 + (i % 3) * 0.72 + (r() - 0.5) * 0.16 - row * 0.2, z = -1.25 + row * 1.2 + (r() - 0.5) * 0.24, s = 0.85 + r() * 0.35, g = new THREE.Group();
@@ -817,11 +832,12 @@ export const SceBox = () => useScene((e) => {
   const sc = M(0xa8a8a8, 0.3, 0.95); [[-0.62, 0.32], [0.62, 0.32], [-0.62, -0.32], [0.62, -0.32]].forEach(([x, y]) => { const q = C(0.014, 0.014, 0.006, sc, x, FY + y, FZ + 0.008, 16); q.rotation.x = Math.PI / 2; bx.add(q); });
   // the switch: a real toggle with a threaded collar and a bat that moves
   const tog = new THREE.Group(), SWX = ((1540 - 1024) / 2048) * (BW - 0.1); tog.position.set(SWX, FY, FZ + 0.008); bx.add(tog);
-  const collar = C(0.04, 0.046, 0.022, M(0xc8c8c8, 0.25, 1), 0, 0, 0.012, 24); collar.rotation.x = Math.PI / 2; tog.add(collar);
+  const collar = C(0.04, 0.046, 0.022, M(0xa0a0a0, 0.42, 0.75), 0, 0, 0.012, 24); collar.rotation.x = Math.PI / 2; tog.add(collar);
   const arm = new THREE.Group(); arm.position.z = 0.02; tog.add(arm);
-  const bt = shade(new THREE.Mesh(new THREE.CapsuleGeometry(0.0125, 0.075, 6, 16), M(0xe2e2de, 0.2, 1))); bt.position.y = 0.05; arm.add(bt);
+  const bt = shade(new THREE.Mesh(new THREE.CapsuleGeometry(0.0125, 0.075, 6, 16), M(0xc4c4c0, 0.44, 0.7))); bt.position.y = 0.05; arm.add(bt);
   // a small lamp by the switch: amber on the failing NORM supply, green on AUX
-  const lampL = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), new THREE.MeshBasicMaterial({color: 0xffffff})); lampL.position.set(SWX + 0.14, FY + 0.26, FZ + 0.012); bx.add(lampL);
+  const lampL = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), new THREE.MeshBasicMaterial({color: 0xffffff})); lampL.position.set(SWX + 0.16, FY + 0.235, FZ + 0.012); bx.add(lampL);
+  const lampA = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), new THREE.MeshBasicMaterial({color: 0xffffff})); lampA.position.set(SWX + 0.16, FY - 0.235, FZ + 0.012); bx.add(lampA);
   // connectors on the left where the wires land, one on the right where the cable leaves
   for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) { const q = C(0.022, 0.022, 0.03, M(0x9a9a9a, 0.3, 0.95), -BW / 2 - 0.01, 0.24 + a * 0.095, -0.2 + b * 0.15, 16); q.rotation.z = Math.PI / 2; bx.add(q); }
   const con = C(0.05, 0.05, 0.05, M(0x9a9a9a, 0.3, 0.95), BW / 2 + 0.01, FY - 0.1, 0.08, 24); con.rotation.z = Math.PI / 2; bx.add(con);
@@ -846,13 +862,17 @@ export const SceBox = () => useScene((e) => {
   const fs = new THREE.Shape(); rrect(fs, -0.67, -0.55, 1.34, 1.1, 0.03); fs.holes.push(rrect(new THREE.Path(), -0.55, -0.41, 1.1, 0.82, 0.05));
   const fp = shade(new THREE.Mesh(new THREE.ExtrudeGeometry(fs, {depth: 0.03, bevelEnabled: false, curveSegments: 10}), M(0x3a3f42, 0.5, 0.3))); fp.position.set(0, 0.65, 0); case_.add(fp);
   tube.grp.position.set(0, 0.66, -0.03); case_.add(tube.grp);
-  const scrLight = new THREE.PointLight(0x8fffb0, 1.3, 4, 1.5); scrLight.position.set(SX + 0.5, 0.7, 0.62); scene.add(scrLight);
+  const scrLight = new THREE.PointLight(0x8fffb0, 0.7, 4, 1.5); scrLight.position.set(SX + 0.5, 0.75, 0.62); scene.add(scrLight);
   // the show's mirror: the same objects under the bench
   scene.add(mirror); mirror.scale.y = -1; mirror.add(world.clone(true)); mirror.traverse((m) => { m.castShadow = false; });
   // light
   spot(e, 0xd8e4f0, 26, [-4.4, 3.8, 2.6], [-3.4, 0.2, -0.1], 0.55, 0.85, 1.6, 1536, 0.5, 12);
   spot(e, 0xffe2c0, 24, [-1.2, 3.8, 3.4], [0, 0.4, 0.3], 0.42, 0.8, 1.6, 2048, 0.5, 12);
-  spot(e, 0xdfe6ea, 12, [2.2, 4.4, 2.6], [DX, 0.7, -0.35], 0.4, 0.8, 1.6, 1024, 0.5, 12);
+  spot(e, 0xdfe6ea, 22, [2.2, 4.4, 2.6], [DX, 0.7, -0.35], 0.4, 0.8, 1.6, 1024, 0.5, 12);
+  spot(e, 0xa8bcd0, 22, [-3.5, 2.8, -4.6], [-3.4, 0.2, -0.2], 0.62, 0.9, 1.6, 0);
+  const wideFill = spot(e, 0xe4e0d8, 0, [8.6, 3.2, 6.4], [1.2, 0.5, -0.2], 0.4, 0.95, 1.5, 0);
+  spot(e, 0xa8bcd0, 14, [1.5, 2.8, -4.6], [0.2, 0.6, 0], 0.6, 0.9, 1.6, 0);
+  spot(e, 0xd8dee0, 16, [7.6, 3.6, 3.4], [SX, 0.5, 0], 0.42, 0.9, 1.6, 0);
   e.scene.add(new THREE.AmbientLight(0x30343a, 0.2));
   // the data: beads on the wires. Into the box they run evenly; out of it they're scrambled until the switch, then clean.
   const beadG = new THREE.SphereGeometry(0.018, 10, 8), inN = 9 * 7, outN = 40, airN = 44;
@@ -861,15 +881,15 @@ export const SceBox = () => useScene((e) => {
   const L = lens(e, {focus: 3, ap: 8, maxB: 22, grain: 0.015});
   const fd = {value: 0};
   const m4 = new THREE.Matrix4(), v = new THREE.Vector3(), q = new THREE.Quaternion(), sc3 = new THREE.Vector3(), col = new THREE.Color();
-  const CL = new THREE.Color(0.42, 1.9, 0.8), BAD = new THREE.Color(2.0, 0.8, 0.28);
-  const path = [[0, [-3.55, 1.0, 3.5], [-3.4, 0.2, -0.1]], [70, [-3.25, 0.9, 3.35], [-3.2, 0.2, -0.1]], [135, [-1.0, 0.7, 2.75], [-0.35, 0.4, 0.1]], [170, [0.12, 0.62, 2.0], [0.1, 0.46, 0.42]], [198, [0.12, 0.62, 2.0], [0.1, 0.46, 0.42]], [300, [8.6, 2.8, 7.6], [2.0, 0.5, -0.1]], [390, [8.9, 2.9, 7.9], [2.1, 0.5, -0.1]]];
+  const CL = new THREE.Color(0.34, 1.5, 0.62), BAD = new THREE.Color(2.0, 0.8, 0.28);
+  const path = [[0, [-3.7, 0.5, 2.75], [-3.4, 0.27, -0.1]], [70, [-3.3, 0.48, 2.55], [-3.1, 0.27, -0.1]], [135, [-1.0, 0.62, 2.75], [-0.35, 0.4, 0.1]], [170, [0.12, 0.62, 2.0], [0.1, 0.46, 0.42]], [198, [0.12, 0.62, 2.0], [0.1, 0.46, 0.42]], [300, [8.0, 1.3, 4.9], [2.7, 0.56, -0.1]], [390, [8.3, 1.4, 5.2], [2.85, 0.56, -0.1]]];
   const keyed = (f, idx) => { let i = 1; while (i < path.length - 1 && f > path[i][0]) i++; const [f0, a0, b0] = path[i - 1], [f1, a1, b1] = path[i], s = ease((f - f0) / (f1 - f0)), A = idx === 1 ? a0 : b0, Bb = idx === 1 ? a1 : b1; return [lerp(A[0], Bb[0], s), lerp(A[1], Bb[1], s), lerp(A[2], Bb[2], s)]; };
   const tgt = new THREE.Vector3();
   return {draw: (f) => {
     tube.draw(f); fd.value = f;
     // the toggle: over in 3 frames at 6.0 s. Up and out is NORM, down and out is AUX.
     arm.rotation.x = lerp(0.55, Math.PI - 0.55, ease(clamp((f - SW_F) / 3)));
-    const onAux = f >= SW_F; lampL.material.color.setRGB(onAux ? 0.4 : 2.4, onAux ? 3 : 1.1, onAux ? 1.2 : 0.2);
+    const onAux = f >= SW_F; lampL.material.color.setRGB(onAux ? 0.05 : 2.4, onAux ? 0.035 : 1.1, onAux ? 0.02 : 0.2); lampA.material.color.setRGB(onAux ? 0.4 : 0.02, onAux ? 3 : 0.05, onAux ? 1.2 : 0.03);
     // beads along the wires
     let k = 0; const sp = 0.0052;
     curves.forEach((c, i) => { for (let b = 0; b < 7; b++) { const u = (b / 7 + f * sp + i * 0.137) % 1; c.getPointAt(u, v); m4.compose(v, q.identity(), sc3.setScalar(0.72)); inB.setMatrixAt(k++, m4); } }); inB.instanceMatrix.needsUpdate = true;
@@ -877,7 +897,7 @@ export const SceBox = () => useScene((e) => {
     const frontP = clamp((f - SW_F) / (SCR_F - SW_F)); // 0: all scrambled, 1: all clean
     const put = (idx, u, curve, regionS, regionE, n) => {
       const pos = regionS + (regionE - regionS) * u, clean = f >= SW_F && pos < frontP;
-      if (clean) { curve.getPointAt(u, v); sc3.setScalar(1.25); col.copy(CL); }
+      if (clean) { curve.getPointAt(u, v); sc3.setScalar(curve === c1 ? 1.35 : 0.85); col.copy(CL); }
       else { const r2 = rng(1 + (Math.floor(f / 3) * 131 + idx * 977) % 1000003); r2(); const j = ((r2() - 0.5) * 0.4) / n * 2; curve.getPointAt(clamp(u + j), v); v.x += (r2() - 0.5) * 0.09; v.y += (r2() - 0.5) * 0.11; v.z += (r2() - 0.5) * 0.09; const s = r2(); sc3.setScalar(s < 0.3 ? 0.001 : 0.5 + s * 1.1); col.copy(BAD).multiplyScalar(0.3 + r2() * 1.1); }
       m4.compose(v, q.identity(), sc3); outB.setMatrixAt(idx, m4); outB.setColorAt(idx, col);
     };
@@ -885,8 +905,8 @@ export const SceBox = () => useScene((e) => {
     for (let b = 0; b < airN; b++) put(outN + b, (b / airN + f * 0.0054) % 1, airC, 0.5, 1.0, airN);
     outB.instanceMatrix.needsUpdate = true; outB.instanceColor.needsUpdate = true;
     const p = keyed(f, 1), t = keyed(f, 2);
-    camera.up.set(0, 1, 0); camera.position.set(p[0], p[1], p[2]); tgt.set(t[0], t[1], t[2]); camera.lookAt(tgt); camera.fov = 38;
-    L.set(camera.position.distanceTo(tgt), f < 198 ? 15 : lerp(15, 2.4, ease((f - 198) / 80)));
+    camera.up.set(0, 1, 0); camera.position.set(p[0], p[1], p[2]); tgt.set(t[0], t[1], t[2]); camera.lookAt(tgt); camera.fov = lerp(38, 39.5, ease((f - 198) / 102)); wideFill.intensity = 40 * ease((f - 215) / 85);
+    L.set(f < 198 ? camera.position.distanceTo(tgt) : lerp(camera.position.distanceTo(tgt), 5.8, ease((f - 198) / 102)), f < 198 ? 15 : lerp(15, 6, ease((f - 198) / 80)));
   }};
 });
 

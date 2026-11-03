@@ -79,11 +79,11 @@ export const PanelThree = () => useScene((e) => {
   [[145, 885, 1012, 1352, 22], [145, 625, 685, 880, 22], [375, 640, 515, 770, 12], [180, 660, 360, 880, 12]].forEach(([a, b, c, d, r]) => outline(a, b, c, d, r));
   const [lc, lg] = canvasOf(4080, 2460), LX0 = 380, LX1 = 720, LY0 = 1140, LY1 = 1345, LS = 12;
   const inHi = (x, y) => x > LX0 + 22 && x < LX1 - 22 && y > LY0 + 6 && y < LY1 - 6;
-  const write = (g, x, y, t, k, size = 9.4) => { g.font = `700 ${size * k}px Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.letterSpacing = `${0.35 * k}px`; g.fillStyle = 'rgba(232,231,222,0.93)'; g.fillText(t, x, y); };
+  const write = (g, x, y, t, k, size = 9.0) => { g.save(); g.translate(x, y); g.scale(0.82, 1); g.font = `700 ${size * k}px Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.letterSpacing = `${0.3 * k}px`; g.fillStyle = 'rgba(232,231,222,0.93)'; g.fillText(t, 0, 0); g.restore(); };
   for (const [x, y, t] of LABELS) { if (inHi(x, y)) write(lg, (x - LX0) * LS, (y - LY0) * LS, t, LS); else write(pg, pX(x), pY(y), t, S); }
   for (const [x0, x1, y, t] of BRACKETS) {
     const hi = inHi((x0 + x1) / 2, y) && x0 > LX0 && x1 < LX1, g = hi ? lg : pg, k = hi ? LS : S, fx = (x) => (hi ? (x - LX0) * LS : pX(x)), fy = (v) => (hi ? (v - LY0) * LS : pY(v));
-    g.font = `700 ${9.4 * k}px Arial, sans-serif`; const tw = g.measureText(t).width / k / 2 + 3, mid = (x0 + x1) / 2;
+    g.font = `700 ${9.0 * k}px Arial, sans-serif`; const tw = (g.measureText(t).width * 0.82) / k / 2 + 3, mid = (x0 + x1) / 2;
     g.strokeStyle = 'rgba(232,231,222,0.9)'; g.lineWidth = 0.8 * k; g.beginPath(); g.moveTo(fx(x0), fy(y + 5)); g.lineTo(fx(x0), fy(y)); g.lineTo(fx(mid - tw), fy(y)); g.moveTo(fx(mid + tw), fy(y)); g.lineTo(fx(x1), fy(y)); g.lineTo(fx(x1), fy(y + 5)); g.stroke();
     write(g, fx(mid), fy(y), t, k);
   }
@@ -116,7 +116,7 @@ export const PanelThree = () => useScene((e) => {
   stamp(scene, new THREE.CylinderGeometry(0.15, 0.15, 0.008, 40), black, wells, false);
   stamp(scene, new THREE.CylinderGeometry(0.098, 0.098, 0.035, 6), dull, nuts);
   stamp(scene, new THREE.CylinderGeometry(0.058, 0.076, 0.045, 28), steel, collars);
-  stamp(scene, new RoundedBoxGeometry(0.046, 0.5, 0.15, 3, 0.02), paint, guards);
+  stamp(scene, new RoundedBoxGeometry(0.044, 0.4, 0.12, 3, 0.018), paint, guards);
   const leverG = LEVER(); stamp(scene, leverG, chrome, levers);
   const sce = add(scene, leverG, chrome, sceRow.X, sceRow.Y, 0.1);
   // the panel's screws, each in its ring
@@ -181,9 +181,9 @@ export const CoverWindow = () => useScene((e) => {
   shadows(e);
   const {scene, glow, camera, cloud} = e, CUT = 175, ALT = 1900;
   camera.near = 0.03; camera.far = 9000;
-  cloud.far_.value = 2600; cloud.cover.value = 0.44; cloud.near_.value = 0;
+  cloud.far_.value = 2600; cloud.cover.value = 0.44; cloud.near_.value = 0; cloud.scale.value = 0.0016;
   e.final.bloom.value = 0.42; e.final.grain.value = 0.02; e.final.vign.value = 0.75;
-  e.skyHi.set(0.46, 0.5, 0.56); e.skyLo.set(0.2, 0.22, 0.25);
+  e.skyHi.set(0.3, 0.33, 0.38); e.skyLo.set(0.09, 0.1, 0.12);
   scene.environment = envOf(e, [[0xbcc8d6, 1.6, 0, 8, 0, 18, 18], [0x8e98a6, 0.7, -8, 3, 4, 8, 8], [0x8e98a6, 0.5, 8, 2, 5, 8, 8], [0x2a2c30, 1, 0, -8, 0, 18, 18]], 0x2a2e34); scene.environmentIntensity = 0.75;
   const root = new THREE.Group(); root.position.y = ALT - 100; scene.add(root);
   const saturn = makeSaturn(); saturn.children[0].visible = false; root.add(saturn);
@@ -204,7 +204,7 @@ export const CoverWindow = () => useScene((e) => {
     s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLoc;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLoc = position;');
     s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vLoc; uniform vec3 uC; uniform float uR;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (length(vLoc - uC) < uR) discard;'); }; return m; };
   const lathe = (rad, y0, y1, seg = 180) => { const pts = []; for (let i = 0; i <= 40; i++) { const y = lerp(y0, y1, i / 40); pts.push(new THREE.Vector2(rad(y), y)); } const g = new THREE.LatheGeometry(pts, seg, Math.PI, Math.PI * 2), uv = g.attributes.uv, p = g.attributes.position; for (let i = 0; i < uv.count; i++) uv.setY(i, (p.getY(i) - 101.1) / 3.6); return g; };
-  const bpc = cutHole(new THREE.MeshStandardMaterial({map: texOf(bc), bumpMap: texOf(hc, false), bumpScale: 1.4, roughness: 0.42, metalness: 0.03, side: THREE.DoubleSide, shadowSide: THREE.DoubleSide}), holeU);
+  const bpc = cutHole(new THREE.MeshStandardMaterial({map: texOf(bc), bumpMap: texOf(hc, false), bumpScale: 1.4, roughness: 0.3, metalness: 0.05, side: THREE.DoubleSide, shadowSide: THREE.DoubleSide}), holeU);
   const shell = new THREE.Mesh(lathe(R, 101.1, 104.72), bpc); shell.castShadow = shell.receiveShadow = true; root.add(shell);
   // running water: a film over the cover whose streaks crawl up and back in the wind of the climb
   const [wc, wg] = canvasOf(2048, 1024), r2 = rng(93); wg.fillStyle = '#000'; wg.fillRect(0, 0, 2048, 1024);
@@ -218,15 +218,15 @@ export const CoverWindow = () => useScene((e) => {
   add(root, new THREE.TorusGeometry(1.965, 0.02, 10, 160), std(0x505256, 0.5, 0.5), 0, 101.11, 0, Math.PI / 2);
   // the hole: a bolted ring in the cover, a short sleeve through it
   const hole = new THREE.Group(); hole.position.copy(C); hole.quaternion.setFromUnitVectors(V3(0, 0, 1), n); root.add(hole);
-  const ringM = std(0x6a6c70, 0.38, 0.8);
-  const flange = new THREE.Mesh(new THREE.TorusGeometry(HOLE + 0.024, 0.024, 16, 96), ringM); flange.scale.z = 0.6; flange.position.z = 0.005; flange.castShadow = true; hole.add(flange);
-  stamp(hole, new THREE.CylinderGeometry(0.008, 0.008, 0.008, 12), std(0x2a2c2e, 0.4, 0.9), Array.from({length: 18}, (_, i) => { const t = (i / 18) * Math.PI * 2; return mat4(Math.cos(t) * (HOLE + 0.025), Math.sin(t) * (HOLE + 0.025), 0.022, Math.PI / 2); }));
+  const ringM = std(0x4c4e52, 0.34, 0.9);
+  const flange = new THREE.Mesh(new THREE.LatheGeometry([[HOLE + 0.052, -0.03], [HOLE + 0.052, 0.018], [HOLE + 0.046, 0.024], [HOLE + 0.004, 0.024], [HOLE - 0.002, 0.018], [HOLE - 0.002, -0.02]].map(([a, b]) => new THREE.Vector2(a, b)), 96), ringM); flange.rotation.x = Math.PI / 2; flange.castShadow = true; flange.receiveShadow = false; hole.add(flange);
+  stamp(hole, new THREE.CylinderGeometry(0.0075, 0.0075, 0.007, 6), std(0xc4c6c6, 0.3, 1), Array.from({length: 18}, (_, i) => { const t = (i / 18) * Math.PI * 2; return mat4(Math.cos(t) * (HOLE + 0.027), Math.sin(t) * (HOLE + 0.027), 0.0275, Math.PI / 2, t); }));
   const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(HOLE, HOLE, GAP, 64, 1, true), new THREE.MeshStandardMaterial({color: 0x17181a, roughness: 0.55, metalness: 0.5, side: THREE.BackSide})); sleeve.rotation.x = Math.PI / 2; sleeve.position.z = -GAP / 2; hole.add(sleeve);
   // the capsule under the cover: foil skin, the hatch window; seen from outside the window is a dark mirror
   const skinU = {uC: {value: C.clone().addScaledVector(n, -GAP)}, uR: {value: WIN}};
   const under = new THREE.Mesh(lathe((y) => R(y) - GAP * 1.09, 101.3, 104.3), cutHole(std(0x8e9094, 0.32, 0.9, {side: THREE.DoubleSide}), skinU)); root.add(under);
   const win = new THREE.Group(); win.position.copy(C).addScaledVector(n, -GAP); win.quaternion.copy(hole.quaternion); root.add(win);
-  const paneOut = new THREE.Mesh(new THREE.CircleGeometry(HOLE + 0.02, 64), new THREE.MeshPhysicalMaterial({color: 0x050608, roughness: 0.03, metalness: 0.2, envMapIntensity: 1.4})); paneOut.position.z = -0.002; win.add(paneOut);
+  const paneOut = new THREE.Mesh(new THREE.CircleGeometry(HOLE + 0.02, 64), new THREE.MeshPhysicalMaterial({color: 0x050608, roughness: 0.03, metalness: 0.2, envMapIntensity: 3})); paneOut.position.z = -0.002; win.add(paneOut);
   // inside: the window's tapered frame in the hatch, a wall round it, a strut across the near corner
   const inside = new THREE.Group(); win.add(inside);
   const wall = std(0x34373b, 0.75, 0.25);
@@ -237,29 +237,37 @@ export const CoverWindow = () => useScene((e) => {
   stamp(inside, new THREE.CylinderGeometry(0.009, 0.011, 0.012, 16), std(0x6a6c70, 0.32, 0.9), Array.from({length: 24}, (_, i) => { const t = (i / 24) * Math.PI * 2; return mat4(Math.cos(t) * (WIN + 0.15), Math.sin(t) * (WIN + 0.15), -0.21, Math.PI / 2); }), false);
   for (const [x, y, w, h] of [[-0.62, -0.42, 0.34, 0.2], [0.58, -0.5, 0.26, 0.3], [0.64, 0.44, 0.3, 0.16]]) add(inside, new RoundedBoxGeometry(w, h, 0.05, 3, 0.012), std(0x1c1d20, 0.5, 0.5), x, y, -0.2, 0, 0, 0, false);
   add(inside, new THREE.CylinderGeometry(0.03, 0.03, 2.2, 20), std(0x101113, 0.5, 0.6), -0.52, 0.28, -0.46, 0, 0, 0.72, false);
-  const glowI = spot(inside, 0xffa050, 0.0, V3(0.35, -0.75, -0.65), V3(0, 0, -0.15), 1.1, 1, 1.5, 3);
+  const glowI = spot(inside, 0xffbe8c, 0.0, V3(0.35, -0.75, -0.65), V3(0, 0, -0.15), 1.1, 1, 1.5, 3);
   // the daylight through the hole, on the frame's bevel
   const daylight = spot(inside, 0xc4d0dc, 0, V3(0, 0, 0.14), V3(0, 0, -0.4), 0.9, 0.8, 1.2, 2.4);
+  const [gc, gg] = canvasOf(1024, 1024), rg = rng(611); gg.fillStyle = '#6d7277'; gg.fillRect(0, 0, 1024, 1024); gg.filter = 'blur(46px)';
+  for (let i = 0; i < 70; i++) { const b = 70 + rg() * 110, x = rg() * 1024, y = rg() * 1024, rad = 60 + rg() * 170; gg.fillStyle = `rgba(${b},${b + 4},${b + 9},0.42)`; for (const [ox, oy] of [[0, 0], [1024, 0], [-1024, 0], [0, 1024], [0, -1024]]) { gg.beginPath(); gg.ellipse(x + ox, y + oy, rad * 1.5, rad, 0, 0, 7); gg.fill(); } }
+  gg.filter = 'none';
+  const gt = texOf(gc); gt.wrapS = gt.wrapT = THREE.RepeatWrapping; gt.repeat.set(0.5, 0.5);
+  const greyM = new THREE.MeshBasicMaterial({map: gt, side: THREE.DoubleSide}); greyM.color.setScalar(0.72);
+  const grey = new THREE.Mesh(new THREE.CircleGeometry(HOLE + 0.03, 64), greyM); grey.position.copy(C).addScaledVector(n, 0.03); grey.quaternion.copy(hole.quaternion); root.add(grey);
+  const backS = new THREE.Shape(); backS.moveTo(-1.2, -1.2); backS.lineTo(1.2, -1.2); backS.lineTo(1.2, 1.2); backS.lineTo(-1.2, 1.2); backS.closePath(); const backH = new THREE.Path(); backH.absarc(0, 0, HOLE, 0, Math.PI * 2, true); backS.holes.push(backH);
+  const back = new THREE.Mesh(new THREE.ShapeGeometry(backS, 64), new THREE.MeshBasicMaterial({color: 0x010101, side: THREE.DoubleSide})); back.position.copy(C).addScaledVector(n, -0.02); back.quaternion.copy(hole.quaternion); root.add(back);
   // the drops on the pane: drawn in front of the sky and clouds, seen from inside only
   const [dc, dg] = canvasOf(1024, 2048), r3 = rng(301); dg.clearRect(0, 0, 1024, 2048);
-  const drop = (x, y, s) => { const g = dg.createRadialGradient(x - s * 0.22, y - s * 0.32, s * 0.08, x, y, s); g.addColorStop(0, 'rgba(245,248,252,0.55)'); g.addColorStop(0.5, 'rgba(120,128,138,0.2)'); g.addColorStop(0.84, 'rgba(10,12,15,0.85)'); g.addColorStop(1, 'rgba(10,12,14,0)'); dg.fillStyle = g; dg.beginPath(); dg.ellipse(x, y, s, s * 1.3, 0, 0, 7); dg.fill(); };
-  for (let i = 0; i < 300; i++) { const x = r3() * 1024, y = r3() * 2048, s = 4 + r3() * r3() * 30; drop(x, y, s); if (s > 13) { dg.strokeStyle = 'rgba(18,20,24,0.5)'; dg.lineWidth = s * 0.5; dg.lineCap = 'round'; dg.beginPath(); dg.moveTo(x, y - s); dg.quadraticCurveTo(x + (r3() - 0.5) * 16, y - 60, x + (r3() - 0.5) * 22, y - 100 - r3() * 240); dg.stroke(); } }
+  const drop = (x, y, s) => { const g = dg.createRadialGradient(x - s * 0.22, y - s * 0.32, s * 0.08, x, y, s); g.addColorStop(0, 'rgba(225,230,236,0.2)'); g.addColorStop(0.5, 'rgba(120,128,138,0.07)'); g.addColorStop(0.84, 'rgba(14,16,19,0.34)'); g.addColorStop(1, 'rgba(10,12,14,0)'); dg.fillStyle = g; dg.beginPath(); dg.ellipse(x, y, s, s * 1.3, 0, 0, 7); dg.fill(); };
+  for (let i = 0; i < 130; i++) { const x = r3() * 1024, y = r3() * 2048, s = 4 + r3() * r3() * 24; drop(x, y, s); if (s > 16) { dg.strokeStyle = 'rgba(30,33,38,0.16)'; dg.lineWidth = s * 0.4; dg.lineCap = 'round'; dg.beginPath(); dg.moveTo(x, y - s); dg.quadraticCurveTo(x + (r3() - 0.5) * 16, y - 60, x + (r3() - 0.5) * 22, y - 100 - r3() * 240); dg.stroke(); } }
   const dt = texOf(dc); dt.wrapS = dt.wrapT = THREE.RepeatWrapping;
-  const drops = new THREE.Mesh(new THREE.CircleGeometry(WIN, 64), new THREE.MeshBasicMaterial({map: dt, transparent: true, depthWrite: false, depthTest: false, toneMapped: false})); glow.add(drops);
+  const drops = new THREE.Mesh(new THREE.CircleGeometry(WIN, 64), new THREE.MeshBasicMaterial({map: dt, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide})); glow.add(drops);
   drops.position.copy(C).addScaledVector(n, -GAP - 0.01); drops.position.y += root.position.y; drops.quaternion.copy(hole.quaternion);
   // rain: thin bright strokes around the camera; the wind of the climb lays them over and they fall a long way each frame
-  const N = 1100, rain = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 5), new THREE.MeshBasicMaterial({color: new THREE.Color(0.1, 0.11, 0.125), transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending}), N); rain.frustumCulled = false; glow.add(rain);
+  const N = 1500, rain = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 5), new THREE.MeshBasicMaterial({color: new THREE.Color(0.042, 0.047, 0.055), transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending}), N); rain.frustumCulled = false; glow.add(rain);
   const r4 = rng(733), seeds = Array.from({length: N}, () => [r4(), r4(), r4(), 0.7 + r4() * 0.9]);
   const dummy = new THREE.Object3D(), RAINBOX = 22, fall = V3(0.12, -1, -0.24).normalize();
   // the light of a grey day from above; cold
-  scene.add(new THREE.HemisphereLight(0x9aa6b4, 0x1f1d1b, 0.5));
-  const key = new THREE.DirectionalLight(0xc2cdda, 0.85); key.position.set(-4, ALT + 12, 7); key.target.position.set(0, ALT + 2, 0); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, {left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 40}); key.shadow.bias = -0.0006; key.shadow.normalBias = 0.01; scene.add(key, key.target);
+  scene.add(new THREE.HemisphereLight(0x8c98a8, 0x141312, 0.26));
+  const key = new THREE.DirectionalLight(0xc8d3e0, 1.5); key.position.set(-9, ALT + 10, 5); key.target.position.set(0, ALT + 2, 0); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, {left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 40}); key.shadow.bias = -0.0006; key.shadow.normalBias = 0.01; scene.add(key, key.target);
   const tmp = V3(0, 0, 0), look = V3(0, 0, 0);
   return {draw: (f) => {
     const out = f < CUT;
     wt.offset.set(0.02, -f * 0.011); dt.offset.set(0.0, f * 0.0009);
     cloud.wind.value.set(f * 0.0007, -f * 0.0016 + 0.31, f * 0.0003);
-    paneOut.visible = out; rain.visible = out; inside.visible = !out; drops.visible = !out; key.visible = out; glowI.intensity = out ? 0 : 1.5 * (0.86 + 0.14 * Math.sin(f * 0.21)); daylight.intensity = out ? 0 : 0.16;
+    paneOut.visible = out; rain.visible = out; inside.visible = !out; drops.visible = !out; key.visible = out; glowI.intensity = out ? 0 : 0.62 * (0.9 + 0.1 * Math.sin(f * 0.21)); daylight.intensity = out ? 0 : 0.2;
     const wp = (v) => tmp.copy(v).add(root.position);
     if (out) {
       const k = ease(f / (CUT - 2)), kk = k * k * (3 - 2 * k), dist = lerp(5.6, 0.2, Math.pow(kk, 0.8)), side = lerp(-3.1, 0, Math.pow(kk, 0.55)), rise = lerp(-0.9, 0, Math.pow(kk, 0.6));
@@ -268,20 +276,20 @@ export const CoverWindow = () => useScene((e) => {
       camera.position.copy(p);
       look.copy(wp(C)); look.y += lerp(1.0, 0, Math.pow(kk, 0.7)); look.x += lerp(0.3, 0, Math.pow(kk, 0.7));
       camera.up.set(lerp(-0.04, 0, k), 1, 0); camera.lookAt(look); camera.fov = lerp(40, 36, k);
-      e.final.exposure.value = 0.92; e.skyHi.set(0.46, 0.5, 0.56); e.skyLo.set(0.2, 0.22, 0.25); cloud.far_.value = 2600; scene.environmentIntensity = 0.6;
+      e.final.exposure.value = 0.95; e.skyHi.set(0.3, 0.33, 0.38); e.skyLo.set(0.09, 0.1, 0.12); cloud.far_.value = 2600; scene.environmentIntensity = 0.55; grey.visible = false; back.visible = false;
       for (let i = 0; i < N; i++) {
         const [a, b, c, l] = seeds[i], t = ((c + f * 0.12 * l) % 1 + 1) % 1;
         const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z, H = RAINBOX;
         dummy.position.set(cx + (a - 0.5) * H - fall.x * (t - 0.5) * H * 1.1, cy + (0.5 - t) * H * 1.1, cz + (b - 0.5) * H - fall.z * (t - 0.5) * H * 1.1);
-        const dc = dummy.position.distanceTo(camera.position), w = Math.max(0.0035, dc * 0.00085); dummy.scale.set(dc < 2.2 ? 0 : w, 1.2 * l, dc < 2.2 ? 0 : w); dummy.quaternion.setFromUnitVectors(V3(0, 1, 0), fall); dummy.updateMatrix(); rain.setMatrixAt(i, dummy.matrix);
+        const dc = dummy.position.distanceTo(camera.position), w = Math.max(0.0028, dc * 0.00062); dummy.scale.set(dc < 2.6 ? 0 : w, 0.62 * l, dc < 2.6 ? 0 : w); dummy.quaternion.setFromUnitVectors(V3(0, 1, 0), fall); dummy.updateMatrix(); rain.setMatrixAt(i, dummy.matrix);
       }
       rain.instanceMatrix.needsUpdate = true;
     } else {
-      const k = ease((f - CUT) / 150), d = lerp(1.0, 0.56, k);
+      const k = ease((f - CUT) / 150), d = lerp(0.72, 0.42, k);
       const p = wp(C).clone().addScaledVector(n, -GAP - d).addScaledVector(right, lerp(0.14, 0.05, k)).addScaledVector(up, lerp(-0.1, -0.04, k));
       p.x += Math.sin(f * 1.3) * Math.cos(f * 0.53) * 0.0024; p.y += Math.cos(f * 1.1) * Math.sin(f * 0.71) * 0.0024;
-      camera.position.copy(p); camera.up.copy(up); look.copy(wp(C)).addScaledVector(right, lerp(0.14, 0.05, k)).addScaledVector(up, lerp(-0.02, 0, k)); camera.lookAt(look); camera.fov = 34;
-      e.final.exposure.value = 1.05; e.skyHi.set(0.56, 0.6, 0.64); e.skyLo.set(0.3, 0.32, 0.35); cloud.far_.value = 2200; scene.environmentIntensity = 0.08;
+      camera.position.copy(p); camera.up.copy(up); look.copy(wp(C)).addScaledVector(right, lerp(0.03, 0.01, k)); camera.lookAt(look); camera.fov = 34;
+      e.final.exposure.value = 1.05; e.skyHi.set(0, 0, 0); e.skyLo.set(0, 0, 0); cloud.far_.value = 0; scene.environmentIntensity = 0.08; grey.visible = true; back.visible = true; gt.offset.set(f * 0.0011, -f * 0.0021); greyM.color.setScalar(0.72 + 0.03 * Math.sin(f * 0.043));
     }
     e.final.white.value = 0;
   }};
@@ -328,22 +336,29 @@ export const AbortHandle = () => useScene((e) => {
   const [cc, cg] = noiseCanvas(1024, 1024, '#a39f93', 21, 2600, 0.04); cg.strokeStyle = 'rgba(40,38,34,0.5)'; cg.lineWidth = 4; for (const y of [200, 512, 824]) { cg.beginPath(); cg.moveTo(0, y); cg.lineTo(1024, y + 8); cg.stroke(); }
   const weave = (() => { const [c, g] = canvasOf(256, 256); for (let y = 0; y < 256; y += 4) for (let x = 0; x < 256; x += 4) { g.fillStyle = (x + y) % 8 === 0 ? '#9a9a9a' : '#5e5e5e'; g.fillRect(x, y, 4, 4); } const t = texOf(c, false); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(26, 40); return t; })();
   const pad = new THREE.PlaneGeometry(40, 40, 60, 60); { const p = pad.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i); p.setZ(i, 0.55 * Math.exp(-Math.pow((x + 0.5) / 3.4, 4)) * (0.9 + 0.1 * Math.sin(y * 0.8)) + 0.05 * Math.sin(y * 1.6)); } pad.computeVertexNormals(); }
-  add(scene, pad, std(0x77746c, 0.92, 0, {map: texOf(cc), bumpMap: weave, bumpScale: 0.25}), 0, -2.6, -6, -Math.PI / 2 + 0.06, 0, 0);
-  add(scene, new THREE.CylinderGeometry(0.16, 0.16, 16, 24), silver, 3.2, -2.6, -3, Math.PI / 2 - 0.04);
+  add(scene, pad, std(0x3a3936, 0.95, 0, {map: texOf(cc), bumpMap: weave, bumpScale: 0.25}), 0, -2.6, -6, -Math.PI / 2 + 0.06, 0, 0);
+  add(scene, new THREE.CylinderGeometry(0.16, 0.16, 16, 24), silver, 3.2, -2.6, -3, Math.PI / 2 - 0.04); add(scene, new THREE.CylinderGeometry(0.16, 0.16, 16, 24), silver, -3.4, -2.6, -3, Math.PI / 2 - 0.04); add(scene, new THREE.CylinderGeometry(0.13, 0.13, 7, 20), silver, 0, -2.5, -8.5, 0, 0, Math.PI / 2);
   add(scene, new THREE.BoxGeometry(60, 0.2, 60), std(0x08090a, 0.8, 0.2), 0, -5.4, 0, 0, 0, 0, false);
-  // the wall of lights, far above and behind: out of focus, as a lens would see them
+  // the console behind, far out of focus: rows of amber lamps and the rims of the gauges, painted blurred, as a lens would see them
+  const [hc, hg] = canvasOf(2048, 1024), rh = rng(19); hg.fillStyle = '#030304'; hg.fillRect(0, 0, 2048, 1024); hg.filter = 'blur(13px)';
+  for (let c = 0; c < 15; c++) for (let w = 0; w < 7; w++) { const lit = rh(); if (lit < 0.42) continue; hg.fillStyle = lit > 0.94 ? '#b42a18' : lit > 0.66 ? '#c47a2c' : '#3e2a16'; hg.fillRect(640 + c * 52 + rh() * 4, 150 + w * 62, 36, 30); }
+  for (let i = 0; i < 26; i++) { const x = (i % 2 ? 100 + rh() * 460 : 1490 + rh() * 460), y = 120 + rh() * 620; hg.strokeStyle = `rgba(150,146,134,${0.14 + rh() * 0.26})`; hg.lineWidth = 9; hg.beginPath(); hg.arc(x, y, 26 + rh() * 26, 0, 7); hg.stroke(); }
+  for (let i = 0; i < 90; i++) { hg.fillStyle = `rgba(190,180,160,${0.14 + rh() * 0.3})`; hg.fillRect(rh() * 2048, rh() * 860, 6, 18); }
+  hg.filter = 'none';
+  for (const [x0, x1] of [[0, 460], [2048, 1588]]) { const gr = hg.createLinearGradient(x0, 0, x1, 0); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); hg.fillStyle = gr; hg.fillRect(Math.min(x0, x1), 0, 460, 1024); }
+  add(scene, new THREE.PlaneGeometry(84, 42), new THREE.MeshBasicMaterial({map: texOf(hc), color: new THREE.Color(1.5, 1.5, 1.5)}), 0, 5, -24, 0, 0, 0, false);
   const [bc, bg] = canvasOf(256, 256), grad = bg.createRadialGradient(128, 128, 96, 128, 128, 128); grad.addColorStop(0, 'rgba(255,255,255,0.55)'); grad.addColorStop(0.6, 'rgba(255,255,255,0.7)'); grad.addColorStop(0.86, 'rgba(255,255,255,0.45)'); grad.addColorStop(1, 'rgba(255,255,255,0)'); bg.fillStyle = grad; bg.fillRect(0, 0, 256, 256);
   const bok = texOf(bc), r = rng(55), bokehs = [];
-  for (let i = 0; i < 46; i++) { const c = new THREE.Color(r() > 0.12 ? 0xffa23c : 0xff3a22).multiplyScalar(0.03 + r() * 0.13), s = new THREE.Sprite(new THREE.SpriteMaterial({map: bok, color: c, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 1})); s.position.set(-26 + r() * 52, 6.5 + r() * 12, -26 - r() * 18); const k = 0.9 + r() * 0.8; s.scale.set(k, k, 1); scene.add(s); bokehs.push({s, p: r() * 6, q: r()}); }
+  for (let i = 0; i < 24; i++) { const c = new THREE.Color(r() > 0.14 ? 0xffa23c : 0xff3a22).multiplyScalar(0.03 + r() * 0.08), s = new THREE.Sprite(new THREE.SpriteMaterial({map: bok, color: c, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 1})); s.position.set(-16 + r() * 32, 0.6 + r() * 8.5, -13 - r() * 7); const k = 0.5 + r() * 0.5; s.scale.set(k, k, 1); scene.add(s); bokehs.push({s, p: r() * 6, q: r()}); }
   // the light: a blade of cool daylight from the window, amber from the panel
   spot(scene, 0xcdd8ee, 170, V3(5.2, 7, 3.4), V3(0, 1.6, 0), 0.4, 0.75, 1.3, 26, 2048, 2, 22, -0.0005, 0.012);
-  const amber = spot(scene, 0xff9a44, 90, V3(-6.5, 6, -5), V3(0, 1.2, 0), 0.8, 1, 1.4, 26, 1024, 2, 26, -0.0006, 0.015);
+  const amber = spot(scene, 0xff9a44, 130, V3(-5.5, 7.5, -7.5), V3(0, 1.8, 0), 0.5, 1, 1.4, 28, 1024, 2, 26, -0.0006, 0.015);
   scene.add(new THREE.AmbientLight(0x5a5e66, 0.42));
   return {draw: (f) => {
     const k = ease(f / 299), t = lerp(-0.72, 0.58, k), rad = lerp(10.5, 7.2, k), sh = 0.006;
-    camera.position.set(Math.sin(t) * rad + Math.sin(f * 1.7) * Math.cos(f * 0.61) * sh, lerp(3.1, 2.75, k) + Math.cos(f * 1.3) * Math.sin(f * 0.83) * sh, Math.cos(t) * rad);
-    camera.lookAt(lerp(0.15, 0, k), lerp(1.2, 2.12, k), 0); camera.fov = lerp(30, 27, k); camera.up.set(0, 1, 0);
-    amber.intensity = 90 * (0.82 + 0.18 * Math.sin(f * 0.29));
+    camera.position.set(Math.sin(t) * rad + Math.sin(f * 1.7) * Math.cos(f * 0.61) * sh, lerp(1.25, 1.75, k) + Math.cos(f * 1.3) * Math.sin(f * 0.83) * sh, Math.cos(t) * rad);
+    camera.lookAt(lerp(0.15, 0, k), lerp(1.3, 2.15, k), 0); camera.fov = lerp(30, 27, k); camera.up.set(0, 1, 0);
+    amber.intensity = 130 * (0.82 + 0.18 * Math.sin(f * 0.29));
     bokehs.forEach(({s, p, q}) => { s.material.opacity = q > 0.8 ? (Math.floor((f + p * 9) / 15) % 2 ? 1 : 0.25) : 0.85 + 0.15 * Math.sin(f * 0.1 + p); });
   }};
 });
@@ -356,7 +371,7 @@ export const ParachuteBay = () => useScene((e) => {
   camera.near = 0.05; camera.far = 200;
   e.final.bloom.value = 0.5; e.final.exposure.value = 1.15; e.final.vign.value = 1.05; e.final.grain.value = 0.016;
   e.skyHi.set(0.024, 0.027, 0.034); e.skyLo.set(0.006, 0.0065, 0.008);
-  scene.environment = envOf(e, [[0xfff0dc, 2.2, -4, 7, 4, 7, 5], [0xb6c6e0, 1, 6, 1, 4, 3, 6], [0xffffff, 0.3, 0, -7, 3, 8, 3]]); scene.environmentIntensity = 0.6;
+  scene.environment = envOf(e, [[0xfff0dc, 3, -4, 7, 4, 7, 5], [0xb6c6e0, 2, 6, 1, 4, 3, 6], [0xc8d4e8, 1.6, -7, 0, 3, 3, 7], [0xffffff, 0.5, 0, -7, 3, 8, 3]]); scene.environmentIntensity = 0.95;
   const OUT = (y) => (y < 0.06 ? 1.96 : y > 3.08 ? 0.4 : 1.96 + ((y - 0.06) * (0.42 - 1.96)) / 3.02);
   // the outer heat shield as a shell of light, its seams and windows drawn on it
   const prof = [[0, -0.42], [0.72, -0.38], [1.32, -0.25], [1.76, -0.08], [1.92, 0], [1.96, 0.05], [1.95, 0.1], [0.44, 3.06], [0.41, 3.14], [0.28, 3.2], [0, 3.22]].map(([a, b]) => new THREE.Vector2(a, b));
@@ -365,67 +380,69 @@ export const ParachuteBay = () => useScene((e) => {
     vertexShader: 'out vec3 vN; out vec3 vV; out vec3 vP; void main(){ vec4 m = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-m.xyz); vP = position; gl_Position = projectionMatrix * m; }',
     fragmentShader: 'precision highp float; in vec3 vN; in vec3 vV; in vec3 vP; out vec4 o; uniform vec3 col; void main(){ float f = 1.0 - abs(dot(normalize(vN), normalize(vV))); float rim = 0.018 + 0.52 * pow(f, 3.2); float band = 0.5 + 0.5 * smoothstep(0.0, 3.2, vP.y); o = vec4(col * rim * band, 1.0); }'});
   const shell = new THREE.Mesh(new THREE.LatheGeometry(prof, 160), shellM); shell.renderOrder = 5; scene.add(shell);
-  const seamM = new THREE.LineBasicMaterial({color: new THREE.Color(0.42, 0.5, 0.62), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false});
+  const seamM = new THREE.LineBasicMaterial({color: new THREE.Color(0.42, 0.5, 0.62), transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false});
   const ring = (y, rad = OUT(y)) => { const pts = []; for (let i = 0; i <= 160; i++) { const t = (i / 160) * Math.PI * 2; pts.push(V3(Math.sin(t) * rad, y, Math.cos(t) * rad)); } scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), seamM)); };
   [0.34, 1.0, 1.72, 2.2, 2.62].forEach((y) => ring(y));
   const onCone = (az, y, rx, ry) => { const pts = []; for (let i = 0; i <= 56; i++) { const t = (i / 56) * Math.PI * 2, yy = y + Math.sin(t) * ry, a = az + (Math.cos(t) * rx) / OUT(yy), rd = OUT(yy) + 0.002; pts.push(V3(Math.sin(a) * rd, yy, Math.cos(a) * rd)); } scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), seamM)); };
   onCone(0, 1.42, 0.13, 0.13); onCone(1.15, 1.08, 0.14, 0.14); onCone(-1.15, 1.08, 0.14, 0.14); onCone(0.5, 1.72, 0.1, 0.09); onCone(-0.5, 1.72, 0.1, 0.09);
   // the crew compartment: the pressure vessel below the bay, dim, empty
-  const vesselM = std(0x54565a, 0.58, 0.6);
+  const vesselM = std(0x8a8c90, 0.42, 0.85);
   const vp = [[0, -0.24], [1.0, -0.18], [1.6, -0.02], [1.72, 0.14], [1.68, 0.34], [0.96, 1.72], [0.86, 1.82], [0.44, 1.92]].map(([a, b]) => new THREE.Vector2(a, b));
   add(scene, new THREE.LatheGeometry(vp, 128), vesselM);
   stamp(scene, new THREE.TorusGeometry(1, 0.006, 8, 96), std(0x4c4e50, 0.5, 0.8), [0.4, 0.62, 0.84, 1.06, 1.28, 1.5].map((y) => { const rr = 1.68 + ((y - 0.34) * (0.96 - 1.68)) / 1.38; return mat4(0, y, 0, Math.PI / 2, 0, 0, rr + 0.002, rr + 0.002, 1); }), false);
+  const ribs = []; for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2, slope = Math.atan2(0.72, 1.38); const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-slope, a, 0, 'YXZ')); ribs.push(new THREE.Matrix4().compose(V3(Math.sin(a) * 1.325, 1.03, Math.cos(a) * 1.325), q, V3(1, 1, 1))); }
+  stamp(scene, new THREE.BoxGeometry(0.022, 1.56, 0.014), std(0xa4a6a8, 0.36, 0.9), ribs);
   // the forward bulkhead and the docking tunnel up the middle
   add(scene, new THREE.CylinderGeometry(0.405, 0.42, 1.22, 64, 1), std(0x9c9d9c, 0.38, 0.85), 0, 2.5, 0);
   add(scene, new THREE.TorusGeometry(0.42, 0.02, 10, 64), std(0x5c5e60, 0.4, 0.8), 0, 1.98, 0, Math.PI / 2);
   add(scene, new THREE.TorusGeometry(0.405, 0.02, 10, 64), std(0x5c5e60, 0.4, 0.8), 0, 3.08, 0, Math.PI / 2);
   // the bag's cloth: webbing straps and their stitches, creases from the packing
-  const STRAP_T = [0.3, 0.5, 0.7], STRAP_U = [0.19, 0.31];          // polar share and longitude share of the straps; the outward face is at u = 0.25
+  const STRAP_T = [0.34, 0.66], STRAP_U = [0.21, 0.29];          // polar share and longitude share of the straps; the outward face is at u = 0.25
   const bagPaint = (seed, base, bump) => { const [c, g] = noiseCanvas(2048, 1024, base, seed, 1800, 0.04); const r = rng(seed + 3);
     if (bump) { g.fillStyle = '#808080'; g.fillRect(0, 0, 2048, 1024); }
-    for (let i = 0; i < 46; i++) { g.strokeStyle = bump ? `rgba(40,40,40,${0.1 + r() * 0.25})` : `rgba(60,52,42,${0.03 + r() * 0.07})`; g.lineWidth = 3 + r() * 16; const x = r() * 2048, y = r() * 1024; g.beginPath(); g.moveTo(x, y); g.bezierCurveTo(x + r() * 240 - 120, y + r() * 120 - 60, x + r() * 380 - 190, y + r() * 180 - 90, x + r() * 500 - 250, y + r() * 240 - 120); g.stroke(); }
-    const web = bump ? '#c8c8c8' : '#a5885a', st = bump ? '#909090' : '#ece4cf';
-    for (const t of STRAP_T) { const y = t * 1024; g.fillStyle = web; g.fillRect(0, y - 15, 2048, 30); g.fillStyle = st; for (let x = 0; x < 2048; x += 14) { g.fillRect(x, y - 11, 8, 2.5); g.fillRect(x, y + 9, 8, 2.5); } }
-    for (const u of STRAP_U) { const x = u * 2048; g.fillStyle = web; g.fillRect(x - 15, 0, 30, 1024); g.fillStyle = st; for (let y = 0; y < 1024; y += 14) { g.fillRect(x - 11, y, 2.5, 8); g.fillRect(x + 9, y, 2.5, 8); } }
+    for (let i = 0; i < 150; i++) { g.strokeStyle = bump ? `rgba(30,30,30,${0.14 + r() * 0.3})` : `rgba(58,52,44,${0.03 + r() * 0.09})`; g.lineWidth = 2 + r() * 9; const x = r() * 2048, y = r() * 1024; g.beginPath(); g.moveTo(x, y); g.bezierCurveTo(x + r() * 240 - 120, y + r() * 120 - 60, x + r() * 380 - 190, y + r() * 180 - 90, x + r() * 500 - 250, y + r() * 240 - 120); g.stroke(); }
+    const web = bump ? '#c8c8c8' : '#8a8570', st = bump ? '#a0a0a0' : '#a8a28c';
+    for (const t of STRAP_T) { const y = t * 1024; g.fillStyle = web; g.fillRect(0, y - 9, 2048, 18); g.fillStyle = st; for (let x = 0; x < 2048; x += 9) { g.fillRect(x, y - 7, 5, 1.2); g.fillRect(x, y + 6, 5, 1.2); } }
+    for (const u of STRAP_U) { const x = u * 2048; g.fillStyle = web; g.fillRect(x - 9, 0, 18, 1024); g.fillStyle = st; for (let y = 0; y < 1024; y += 9) { g.fillRect(x - 7, y, 1.2, 5); g.fillRect(x + 6, y, 1.2, 5); } }
     return texOf(c, !bump); };
   // a packed parachute: a bag pressed into its wedge between the tunnel, the bulkhead and the cone. Built in the wedge's own coordinates so it fills it, and it bulges between its straps.
-  const BAGW = 0.88, Y0 = 1.965, Y1 = 2.72;
+  const BAGW = 0.94, Y0 = 1.965, Y1 = 2.8;
   const wedge = (az, seed) => {
-    const geo = new THREE.SphereGeometry(1, 128, 96), p = geo.attributes.position, uv = geo.attributes.uv, r = rng(seed), bumps = Array.from({length: 22}, () => [r(), r(), 0.05 + r() * 0.1, (r() - 0.5) * 0.09]);
+    const geo = new THREE.SphereGeometry(1, 128, 96), p = geo.attributes.position, uv = geo.attributes.uv, r = rng(seed), bumps = Array.from({length: 40}, () => [r(), r(), 0.03 + r() * 0.06, (r() - 0.5) * 0.06]);
     const sup = (x, e) => Math.sign(x) * Math.pow(Math.abs(x), e);
     for (let i = 0; i < p.count; i++) {
       const qx = p.getX(i), qy = p.getY(i), qz = p.getZ(i), u = uv.getX(i), t = 1 - uv.getY(i);
-      let pil = 1; for (const k of STRAP_T) pil -= 0.05 * Math.exp(-Math.pow((t - k) / 0.03, 2)); for (const k of STRAP_U) pil -= 0.05 * Math.exp(-Math.pow((u - k) / 0.016, 2));
+      let pil = 1; for (const k of STRAP_T) pil -= 0.045 * Math.exp(-Math.pow((t - k) / 0.022, 2)); for (const k of STRAP_U) pil -= 0.045 * Math.exp(-Math.pow((u - k) / 0.012, 2));
       for (const [bu, bt, bs, ba] of bumps) { const du = Math.min(Math.abs(u - bu), 1 - Math.abs(u - bu)); pil += ba * Math.exp(-(du * du + (t - bt) * (t - bt)) / (bs * bs)); }
-      const yy = lerp(Y0, Y1, 0.5 + 0.5 * sup(qy, 0.62)), ang = az + sup(qx, 0.72) * BAGW * (0.92 + 0.08 * pil);
-      const rmin = 0.425, rmax = Math.max(rmin + 0.05, OUT(yy) - 0.04), v = 0.5 + 0.5 * sup(qz, 0.62) * pil, rad = lerp(rmin, rmax, clamp(v, 0, 1));
+      const yy = lerp(Y0, Y1, 0.5 + 0.5 * sup(qy, 0.42)), ang = az + sup(qx, 0.42) * BAGW * (0.92 + 0.08 * pil);
+      const rmin = 0.425, rmax = Math.max(rmin + 0.05, OUT(yy) - 0.04), v = 0.5 + 0.5 * sup(qz, 0.42) * pil, rad = lerp(rmin, rmax, clamp(v, 0, 1));
       p.setXYZ(i, Math.sin(ang) * rad, yy, Math.cos(ang) * rad);
     }
     geo.computeVertexNormals(); return geo;
   };
-  const bags = [[0.45, 11, '#d6cfbc'], [0.45 + (Math.PI * 2) / 3, 23, '#d2cbb8'], [0.45 + (Math.PI * 4) / 3, 37, '#d8d0be']];
+  const bags = [[0.45, 11, '#aaa594'], [0.45 + (Math.PI * 2) / 3, 23, '#a6a190'], [0.45 + (Math.PI * 4) / 3, 37, '#aca796']];
   for (const [az, seed, col] of bags) add(scene, wedge(az, seed), std(0xffffff, 0.86, 0, {map: bagPaint(seed, col), bumpMap: bagPaint(seed, col, true), bumpScale: 0.9}));
   // the mortars: two drogue mortars standing in the gaps between the bags, three small pilot mortars high up by the tunnel; a cap and a bolted foot each
   const mortar = (az, rad, y, r0, h, cap) => {
     const m = new THREE.Group(); m.position.set(Math.sin(az) * rad, y, Math.cos(az) * rad); scene.add(m);
     add(m, new THREE.CylinderGeometry(r0, r0, h, 32), std(0xa2a4a5, 0.34, 0.9));
     add(m, new THREE.CylinderGeometry(r0 + 0.014, r0 + 0.014, 0.03, 32), std(0x55575a, 0.4, 0.85), 0, -h / 2 + 0.02, 0);
-    add(m, new THREE.SphereGeometry(r0 * 0.98, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), std(cap, 0.82, 0), 0, h / 2, 0);
+    const dome = add(m, new THREE.SphereGeometry(r0 * 0.98, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), std(cap, 0.7, 0.2), 0, h / 2, 0); dome.scale.y = 0.42;
   };
-  mortar(0.45 + Math.PI / 3, 0.62, 2.16, 0.088, 0.42, 0xb65a2c); mortar(0.45 + Math.PI, 0.62, 2.16, 0.088, 0.42, 0xb65a2c);
-  mortar(0.45 + (Math.PI * 5) / 3, 0.6, 2.1, 0.045, 0.26, 0xbcae8c); mortar(0.45 + (Math.PI * 5) / 3 + 0.14, 0.72, 2.08, 0.045, 0.26, 0xbcae8c); mortar(0.45 + (Math.PI * 5) / 3 - 0.14, 0.72, 2.08, 0.045, 0.26, 0xbcae8c);
+  mortar(0.45 + Math.PI / 3, 0.62, 2.16, 0.088, 0.42, 0x8e5230); mortar(0.45 + Math.PI, 0.62, 2.16, 0.088, 0.42, 0x8e5230);
+  mortar(0.45 + (Math.PI * 5) / 3, 0.6, 2.1, 0.045, 0.26, 0x70706a); mortar(0.45 + (Math.PI * 5) / 3 + 0.14, 0.72, 2.08, 0.045, 0.26, 0x70706a); mortar(0.45 + (Math.PI * 5) / 3 - 0.14, 0.72, 2.08, 0.045, 0.26, 0x70706a);
   // risers: steel cables looped from the bags to the tunnel's foot
   const steelC = std(0xc0c0ba, 0.32, 0.95);
   for (let i = 0; i < 3; i++) { const az = 0.45 + (i * Math.PI * 2) / 3 + Math.PI / 3, pts = [V3(Math.sin(az) * 0.46, 2.03, Math.cos(az) * 0.46), V3(Math.sin(az + 0.3) * 0.74, 2.08, Math.cos(az + 0.3) * 0.74), V3(Math.sin(az + 0.1) * 0.86, 2.0, Math.cos(az + 0.1) * 0.86), V3(Math.sin(az - 0.2) * 0.72, 1.98, Math.cos(az - 0.2) * 0.72), V3(Math.sin(az - 0.5) * 0.5, 2.0, Math.cos(az - 0.5) * 0.5)]; add(scene, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.011, 8), steelC); }
   // the soft key from above the bay and a cold rim from behind
-  spot(scene, 0xfff0dd, 46, V3(-2.2, 7.4, 3.8), V3(0, 2.35, 0), 0.2, 1, 1.3, 18, 2048, 2, 14, -0.0005, 0.008);
+  spot(scene, 0xfff0dd, 34, V3(-3.6, 6.4, 4.2), V3(0, 2.35, 0), 0.2, 0.8, 1.3, 18, 2048, 2, 14, -0.0005, 0.008);
   spot(scene, 0xa8bedd, 10, V3(3.4, 4.6, -4.2), V3(0, 2.0, 0), 0.5, 1, 1.3, 14);
-  spot(scene, 0xb8c4d8, 4.2, V3(-3.6, -1.6, 5.5), V3(0, 0.8, 0), 0.5, 1, 1.3, 14);
+  spot(scene, 0xb8c4d8, 22, V3(-3.8, -1.2, 5.5), V3(0, 0.8, 0), 0.5, 1, 1.3, 14);
   scene.add(new THREE.AmbientLight(0x454850, 0.18));
   return {draw: (f) => {
-    const k = ease(f / 299), t = lerp(-0.86, -0.04, k), rad = lerp(9.6, 3.5, k), h = lerp(2.9, 4.9, k);
+    const k = ease(f / 299), t = lerp(-0.86, -0.22, k), rad = lerp(9.6, 3.9, k), h = lerp(2.9, 3.9, k);
     camera.position.set(Math.sin(t) * rad, h, Math.cos(t) * rad);
-    camera.lookAt(0, lerp(1.32, 2.36, k), 0); camera.fov = lerp(30, 27, k); camera.up.set(0, 1, 0);
+    camera.lookAt(0, lerp(1.32, 2.34, k), 0); camera.fov = lerp(30, 27, k); camera.up.set(0, 1, 0);
   }};
 });
 
@@ -443,9 +460,9 @@ export const GMeter = () => useScene((e) => {
   const [gc, gg] = canvasOf(2048, 2048); gg.fillStyle = '#000'; gg.fillRect(0, 0, 2048, 2048);
   for (const g of [fg, gg]) {
     g.strokeStyle = g.fillStyle = '#efeee4'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    for (let i = 0; i <= 40; i++) { const v = i / 2, t = ANG(v), x = Math.sin(t), y = -Math.cos(t), big = i % 10 === 0, mid = i % 2 === 0; g.lineWidth = big ? 16 : mid ? 8 : 4; g.beginPath(); g.moveTo(C + x * (big ? 740 : mid ? 800 : 840), C + y * (big ? 740 : mid ? 800 : 840)); g.lineTo(C + x * 900, C + y * 900); g.stroke(); }
-    g.font = '700 150px Arial, sans-serif'; for (let v = 0; v <= 20; v += 5) { const t = ANG(v); g.fillText(String(v), C + Math.sin(t) * 580, C - Math.cos(t) * 580); }
-    g.font = '700 190px Arial, sans-serif'; g.fillText('G', C, C + 430);
+    for (let i = 0; i <= 40; i++) { const v = i / 2, t = ANG(v), x = Math.sin(t), y = -Math.cos(t), big = i % 10 === 0, mid = i % 2 === 0; g.lineWidth = big ? 16 : mid ? 8 : 4; g.beginPath(); g.moveTo(C + x * (big ? 590 : mid ? 640 : 670), C + y * (big ? 590 : mid ? 640 : 670)); g.lineTo(C + x * 730, C + y * 730); g.stroke(); }
+    g.font = '700 128px Arial, sans-serif'; for (let v = 0; v <= 20; v += 5) { const t = ANG(v); g.fillText(String(v), C + Math.sin(t) * 860, C - Math.cos(t) * 860); }
+    g.font = '700 170px Arial, sans-serif'; g.fillText('G', C, C + 400);
   }
   // a little wear, because this has been to the Moon
   const r0 = rng(17); for (let i = 0; i < 2400; i++) { fg.fillStyle = `rgba(255,255,255,${r0() * 0.012})`; fg.fillRect(r0() * 2048, r0() * 2048, 2 + r0() * 8, 2 + r0() * 8); }
@@ -465,25 +482,26 @@ export const GMeter = () => useScene((e) => {
   stamp(scene, lv, lvM, [[-3.0, 1.1], [-3.0, 0.3], [-3.0, -0.5], [-3.0, -1.3], [3.1, 1.2], [3.1, 0.4], [3.1, -0.4], [3.1, -1.2]].map(([x, y], i) => mat4(x, y, 0.1, Math.PI / 2 - (i % 3 ? 0.5 : -0.5), 0, 0, 1.6)));
   stamp(scene, new THREE.CylinderGeometry(0.11, 0.13, 0.08, 6), steel, [[-3.0, 1.1], [-3.0, 0.3], [-3.0, -0.5], [-3.0, -1.3], [3.1, 1.2], [3.1, 0.4], [3.1, -0.4], [3.1, -1.2]].map(([x, y]) => mat4(x, y, 0.08, Math.PI / 2)));
   // the needles
-  const needleShape = new THREE.Shape(); needleShape.moveTo(-0.022, -0.28); needleShape.lineTo(0.022, -0.28); needleShape.lineTo(0.013, 0.86); needleShape.lineTo(0, 0.92); needleShape.lineTo(-0.013, 0.86); needleShape.closePath();
+  const needleShape = new THREE.Shape(); needleShape.moveTo(-0.022, -0.24); needleShape.lineTo(0.022, -0.24); needleShape.lineTo(0.013, 0.66); needleShape.lineTo(0, 0.71); needleShape.lineTo(-0.013, 0.66); needleShape.closePath();
   const needleG = new THREE.ExtrudeGeometry(needleShape, {depth: 0.01, bevelEnabled: false});
   const needleM = std(0xfbfaf2, 0.45, 0, {emissive: 0xffb873, emissiveIntensity: 0.5}), peakM = std(0xe8a53a, 0.4, 0.2, {emissive: 0xe8a53a, emissiveIntensity: 0.55});
   const nPiv = new THREE.Group(); nPiv.position.z = 0.115; const nM = new THREE.Mesh(needleG, needleM); nM.castShadow = true; nPiv.add(nM); scene.add(nPiv);
-  const pPiv = new THREE.Group(); pPiv.position.z = 0.08; const pM = new THREE.Mesh(new THREE.BoxGeometry(0.014, 1.06, 0.006), peakM); pM.position.y = 0.4; pM.castShadow = true; pPiv.add(pM); scene.add(pPiv);
+  const pPiv = new THREE.Group(); pPiv.position.z = 0.08; const pM = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.82, 0.006), peakM); pM.position.y = 0.31; pM.castShadow = true; pPiv.add(pM); scene.add(pPiv);
   add(scene, new THREE.CylinderGeometry(0.1, 0.12, 0.05, 40), std(0x101112, 0.3, 0.7), 0, 0, 0.145, Math.PI / 2);
   add(scene, new THREE.SphereGeometry(0.05, 20, 12), std(0x777a7c, 0.25, 1), 0, 0, 0.165);
   // a smear of the needle while it's moving fast: copies between last frame's angle and this one's
-  const ghosts = Array.from({length: 7}, () => { const m = new THREE.Mesh(needleG, new THREE.MeshBasicMaterial({color: new THREE.Color(1.0, 0.92, 0.82), transparent: true, opacity: 0, depthWrite: false})); m.position.z = 0.11; scene.add(m); return m; });
+  const ghosts = Array.from({length: 36}, () => { const m = new THREE.Mesh(needleG, new THREE.MeshBasicMaterial({color: new THREE.Color(1.0, 0.92, 0.82), transparent: true, opacity: 0, depthWrite: false})); m.position.z = 0.11; scene.add(m); return m; });
   // the glass
-  const glass = new THREE.Mesh(new THREE.CircleGeometry(1.03, 96), new THREE.MeshPhysicalMaterial({color: 0xffffff, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.11, depthWrite: false, envMapIntensity: 2.2})); glass.position.z = 0.215; scene.add(glass);
+  const glass = new THREE.Mesh(new THREE.CircleGeometry(1.03, 96), new THREE.MeshPhysicalMaterial({color: 0x000000, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.16, depthWrite: false, envMapIntensity: 2.6})); glass.position.z = 0.215; scene.add(glass);
   // dust in the beam; it jumps at the hit and hangs
-  const N = 110, pos = new Float32Array(N * 3), rd = rng(99), seeds = Array.from({length: N}, () => [rd() * 7 - 3.5, rd() * 5 - 2.5, 0.3 + rd() * 3.2, rd(), rd()]);
+  const N = 110, pos = new Float32Array(N * 3), rd = rng(99), seeds = Array.from({length: N}, () => [rd() * 4.4 - 2.2, rd() * 3.6 - 1.8, 0.4 + rd() * 2.4, rd(), rd()]);
   const dustG = new THREE.BufferGeometry(); dustG.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const [mc, mg] = canvasOf(64, 64), gd = mg.createRadialGradient(32, 32, 0, 32, 32, 32); gd.addColorStop(0, 'rgba(255,255,255,1)'); gd.addColorStop(1, 'rgba(255,255,255,0)'); mg.fillStyle = gd; mg.fillRect(0, 0, 64, 64);
-  const dust = new THREE.Points(dustG, new THREE.PointsMaterial({map: texOf(mc), size: 0.05, color: new THREE.Color(0.5, 0.42, 0.33), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, sizeAttenuation: true})); dust.frustumCulled = false; scene.add(dust);
+  const dust = new THREE.Points(dustG, new THREE.PointsMaterial({map: texOf(mc), size: 0.028, color: new THREE.Color(0.26, 0.22, 0.17), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, sizeAttenuation: true})); dust.frustumCulled = false; scene.add(dust);
   // the light: a narrow flood from the upper left, so the needle throws a real shadow on the face
   const key = spot(scene, 0xffe6c8, 26, V3(-2.2, 3.0, 4.4), V3(0, 0, 0), 0.34, 0.8, 1.3, 16, 2048, 1, 12, -0.0003, 0.004);
-  const amber = spot(scene, 0xff8a30, 5, V3(5, -3.2, 3), V3(0, 0, 0), 0.6, 1, 1.4, 12);
+  const amber = spot(scene, 0xff8a30, 26, V3(6.5, -2.4, 2.1), V3(1.2, 0, 0), 0.7, 1, 1.4, 14);
+  spot(scene, 0xc4d4f4, 10, V3(-6.5, 2.6, 2.0), V3(-2, 0, 0), 0.6, 1, 1.4, 14);
   scene.add(new THREE.AmbientLight(0x3b3e44, 0.2));
   // the reading as a pure function of the frame: a sway under the chutes, the hit, a bounce at the top, a fall with a ring
   const gOf = (f) => {
@@ -498,16 +516,16 @@ export const GMeter = () => useScene((e) => {
     const d = f - HIT, g = gOf(f), gp = gOf(f - 1);
     nPiv.rotation.z = -ANG(g); pPiv.rotation.z = -ANG(f < HIT ? 1.3 : Math.max(1.3, Math.min(15, lerp(1.3, 15, clamp(d / 3)))));
     const dv = Math.abs(ANG(g) - ANG(gp)), blur = clamp((dv - 0.1) * 2.2);
-    ghosts.forEach((m, i) => { m.rotation.z = -lerp(ANG(gp), ANG(g), (i + 0.5) / 7); m.material.opacity = 0.2 * blur; m.visible = blur > 0.01; });
+    ghosts.forEach((m, i) => { m.rotation.z = -lerp(ANG(gp), ANG(g), (i + 0.5) / 36); m.material.opacity = 0.05 * blur; m.visible = blur > 0.01; });
     // the blow: a very hard jolt that dies fast, plus a rattle
     const hit = d >= 0 ? Math.exp(-d * 0.11) : 0, jolt = d >= 0 && d <= 2 ? [0.32, -0.26, 0.18][d] : 0;
     const sx = Math.sin(f * 11.3) * Math.cos(f * 3.1) * 0.13 * hit, sy = jolt + Math.cos(f * 9.7) * Math.sin(f * 4.3) * 0.15 * hit;
     const k = ease(f / 239), sw = Math.sin(f * 0.052) * 0.05;
-    camera.position.set(lerp(-1.0, 0.25, k) + sx + sw, lerp(-0.55, -0.25, k) + sy, lerp(5.6, 4.7, k));
-    camera.lookAt(lerp(-0.06, 0.1, k) + sx * 0.5, lerp(0.05, 0.08, k) + sy * 0.5, 0);
+    camera.position.set(lerp(-2.7, -1.5, k) + sx + sw, lerp(-1.25, -0.8, k) + sy, lerp(5.0, 4.3, k));
+    camera.lookAt(lerp(-0.1, 0.05, k) + sx * 0.5, lerp(0.05, 0.08, k) + sy * 0.5, 0);
     camera.fov = 30; camera.up.set(Math.sin(f * 7.1) * 0.02 * hit + 0.018 * hit * (d < 8 ? 1 : 0), 1, 0);
     const flick = d >= 0 && d < 24 ? (Math.sin(f * 2.9) > 0.15 ? 1 : 0.45) : 1, off = d >= 0 && d < 3 ? 0.5 : 1;
-    key.intensity = 26 * flick * off; amber.intensity = 5 * (d >= 0 ? 1.4 : 1); face.material.emissiveIntensity = 0.22 * flick;
+    key.intensity = 26 * flick * off; amber.intensity = 26 * (d >= 0 ? 1.2 : 1); face.material.emissiveIntensity = 0.22 * flick;
     for (let i = 0; i < N; i++) { const [x, y, z, a, b] = seeds[i], rise = d >= 0 ? (1 - Math.exp(-d * 0.05)) * (0.3 + a * 0.7) * 1.1 : 0; pos[i * 3] = x + Math.sin(f * 0.012 + b * 9) * 0.1 + rise * (a - 0.5) * 0.6; pos[i * 3 + 1] = y + Math.cos(f * 0.01 + a * 9) * 0.1 + rise * (b - 0.35); pos[i * 3 + 2] = z; }
     dustG.attributes.position.needsUpdate = true; dust.material.opacity = d >= 0 ? clamp(d / 4) * (0.7 - clamp((d - 60) / 160) * 0.35) : 0.1;
     e.final.white.value = 0;
@@ -606,7 +624,7 @@ export const BreakerPull = () => useScene((e) => {
   const bs = []; for (let i = 0; i < 10; i++) { const t = (i / 10) * Math.PI * 2; bs.push(mat4(Math.cos(t) * 1.74, -2.76, Math.sin(t) * 1.74)); }
   stamp(B, new THREE.CylinderGeometry(0.05, 0.05, 0.05, 6), std(0x8a8c8c, 0.3, 1), bs, false);
   // the counter: four real drums behind four windows in a face plate, MIN and SEC cut into it
-  const CT = new THREE.Group(); CT.position.set(-3.1, -1.62, 3.0); CT.rotation.y = 0.32; CT.scale.setScalar(1.08); B.add(CT);
+  const CT = new THREE.Group(); CT.position.set(-3.75, -0.62, 3.0); CT.rotation.y = 0.32; CT.scale.setScalar(0.98); B.add(CT);
   const [fcc, fgg] = noiseCanvas(1600, 800, '#25272a', 6, 1400, 0.03); fgg.fillStyle = '#ecebe2'; fgg.textAlign = 'center'; fgg.textBaseline = 'middle'; fgg.font = '700 74px Arial, sans-serif'; fgg.letterSpacing = '6px'; fgg.fillText('MIN', 433, 92); fgg.fillText('SEC', 1058, 92);
   fgg.strokeStyle = '#ecebe2'; fgg.lineWidth = 6; fgg.beginPath(); fgg.moveTo(210, 92); fgg.lineTo(340, 92); fgg.moveTo(526, 92); fgg.lineTo(655, 92); fgg.moveTo(835, 92); fgg.lineTo(965, 92); fgg.moveTo(1151, 92); fgg.lineTo(1280, 92); fgg.moveTo(210, 92); fgg.lineTo(210, 130); fgg.moveTo(655, 92); fgg.lineTo(655, 130); fgg.moveTo(835, 92); fgg.lineTo(835, 130); fgg.moveTo(1280, 92); fgg.lineTo(1280, 130); fgg.stroke();
   const faceS = new THREE.Shape(), HW = 1.4, HH = 0.62; faceS.moveTo(-HW, -HH); faceS.lineTo(HW, -HH); faceS.lineTo(HW, HH); faceS.lineTo(-HW, HH); faceS.closePath();
@@ -615,7 +633,7 @@ export const BreakerPull = () => useScene((e) => {
   const faceG = new THREE.ShapeGeometry(faceS); { const uv = faceG.attributes.uv, p = faceG.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, (p.getX(i) + HW) / (2 * HW), (p.getY(i) + HH) / (2 * HH)); }
   const faceM = new THREE.Mesh(faceG, new THREE.MeshStandardMaterial({map: texOf(fcc), roughness: 0.48, metalness: 0.35})); faceM.position.z = 0.34; faceM.receiveShadow = true; CT.add(faceM);
   add(CT, new THREE.BoxGeometry(2.86, 1.3, 0.04), std(0x0c0c0d, 0.8, 0.3), 0, 0, -0.34);       // the back of the box
-  const digitTex = (n) => { const [c, g] = canvasOf(256, 1024); g.fillStyle = '#e9e8de'; g.fillRect(0, 0, 256, 1024); g.fillStyle = '#121213'; g.font = `700 ${Math.round((1024 / n) * 0.8)}px Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; for (let i = 0; i < n; i++) g.fillText(String(i), 128, 1024 - (i + 0.5) * (1024 / n) + 4); const t = texOf(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+  const digitTex = (n) => { const CH = 320 * n, [c, g] = canvasOf(256, CH); g.fillStyle = '#e9e8de'; g.fillRect(0, 0, 256, CH); g.fillStyle = '#121213'; g.font = '700 248px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; for (let i = 0; i < n; i++) g.fillText(String(i), 128, CH - (i + 0.5) * 320 + 14); const t = texOf(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
   const drum = (x, n) => { const r2 = (0.48 * n) / (2 * Math.PI) * 1.02, arc = 2 * Math.asin(Math.min(0.9, 0.3 / r2)), g = new THREE.CylinderGeometry(r2, r2, 0.38, 48, 1, true, -arc / 2, arc); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) { const th = -arc / 2 + uv.getX(i) * arc; uv.setXY(i, uv.getY(i), -th / (Math.PI * 2)); } const map = digitTex(n), m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({map, roughness: 0.55, metalness: 0.05})); m.rotation.z = -Math.PI / 2; m.position.set(x, -0.18, 0.31 - r2); CT.add(m); return {map, n}; };
   const drums = [drum(-0.92, 10), drum(-0.46, 10), drum(0.12, 6), drum(0.58, 10)];
   add(CT, new RoundedBoxGeometry(0.1, 0.1, 0.03, 2, 0.01), std(0xe9e8de, 0.5, 0), -0.17, -0.06, 0.345, 0, 0, 0, false);
@@ -623,10 +641,10 @@ export const BreakerPull = () => useScene((e) => {
   const ctM = std(0x54565a, 0.4, 0.8);
   add(CT, new THREE.BoxGeometry(2.88, 0.04, 0.72), ctM, 0, -0.64, -0.02); add(CT, new THREE.BoxGeometry(2.88, 0.04, 0.72), ctM, 0, 0.64, -0.02); add(CT, new THREE.BoxGeometry(0.04, 1.3, 0.72), ctM, -1.42, 0, -0.02); add(CT, new THREE.BoxGeometry(0.04, 1.3, 0.72), ctM, 1.42, 0, -0.02);
   stamp(CT, new THREE.CylinderGeometry(0.034, 0.034, 0.02, 20), std(0x9a9c9c, 0.3, 1), [[-1.3, -0.52], [1.3, -0.52], [-1.3, 0.52], [1.3, 0.52]].map(([x, y]) => mat4(x, y, 0.35, Math.PI / 2)), false);
-  add(B, new THREE.CylinderGeometry(0.1, 0.14, 1.3, 24), std(0x24262a, 0.5, 0.7), -3.1, -2.5, 3.0);
+  add(B, new THREE.CylinderGeometry(0.09, 0.14, 2.4, 24), std(0x24262a, 0.5, 0.7), -3.75, -2.2, 3.0);
   spot(B, 0xfff0dd, 170, V3(-5.4, 8.5, 6.4), V3(0, -0.2, 0.4), 0.46, 0.9, 1.3, 26, 2048, 2, 22, -0.0005, 0.012);
   spot(B, 0xa8bedd, 44, V3(7, 3.4, -7), V3(0, 0, 0), 0.5, 1, 1.3, 24);
-  spot(B, 0xffd8a8, 26, V3(-5.6, 0.5, 9.8), V3(-3.1, -1.6, 3.0), 0.3, 1, 1.3, 18);
+  spot(B, 0xffd8a8, 26, V3(-6.2, 1.5, 9.8), V3(-3.75, -0.62, 3.0), 0.3, 1, 1.3, 18);
   B.add(new THREE.AmbientLight(0x3f434a, 0.32));
   // the counter's seconds as a pure function of the frame; the wheels' angle follows from it in closed form
   const clockAt = (f) => { const x = clamp((f - C0) / (C1 - C0)); return 180 * (1 - Math.pow(1 - x, 1.8)); };
@@ -715,7 +733,7 @@ export const StarSight = () => useScene((e) => {
   const ELW = 1024, ELH = 1360, [elc, elg] = canvasOf(ELW, ELH), elT = texOf(elc);
   const SEG = {0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcfgd'};
   const seg = (x, y, w, h, s, on) => {
-    const t = w * 0.15, gp = t * 0.22, P = {a: [[x + gp, y], [x + w - gp, y], [x + w - t - gp, y + t], [x + t + gp, y + t]], d: [[x + t + gp, y + h - t], [x + w - t - gp, y + h - t], [x + w - gp, y + h], [x + gp, y + h]], f: [[x, y + gp], [x + t, y + t + gp], [x + t, y + h / 2 - t / 2 - gp], [x, y + h / 2 - gp]], b: [[x + w - t, y + t + gp], [x + w, y + gp], [x + w, y + h / 2 - gp], [x + w - t, y + h / 2 - t / 2 - gp]], e: [[x, y + h / 2 + gp], [x + t, y + h / 2 + t / 2 + gp], [x + t, y + h - t - gp], [x, y + h - gp]], c: [[x + w - t, y + h / 2 + t / 2 + gp], [x + w, y + h / 2 + gp], [x + w, y + h - gp], [x + w - t, y + h - t - gp]], g: [[x + t * 0.8 + gp, y + h / 2 - t / 2], [x + w - t * 0.8 - gp, y + h / 2 - t / 2], [x + w - gp, y + h / 2], [x + w - t * 0.8 - gp, y + h / 2 + t / 2], [x + t * 0.8 + gp, y + h / 2 + t / 2], [x + gp, y + h / 2]]}[s];
+    const t = w * 0.19, gp = t * 0.18, P = {a: [[x + gp, y], [x + w - gp, y], [x + w - t - gp, y + t], [x + t + gp, y + t]], d: [[x + t + gp, y + h - t], [x + w - t - gp, y + h - t], [x + w - gp, y + h], [x + gp, y + h]], f: [[x, y + gp], [x + t, y + t + gp], [x + t, y + h / 2 - t / 2 - gp], [x, y + h / 2 - gp]], b: [[x + w - t, y + t + gp], [x + w, y + gp], [x + w, y + h / 2 - gp], [x + w - t, y + h / 2 - t / 2 - gp]], e: [[x, y + h / 2 + gp], [x + t, y + h / 2 + t / 2 + gp], [x + t, y + h - t - gp], [x, y + h - gp]], c: [[x + w - t, y + h / 2 + t / 2 + gp], [x + w, y + h / 2 + gp], [x + w, y + h - gp], [x + w - t, y + h - t - gp]], g: [[x + t * 0.8 + gp, y + h / 2 - t / 2], [x + w - t * 0.8 - gp, y + h / 2 - t / 2], [x + w - gp, y + h / 2], [x + w - t * 0.8 - gp, y + h / 2 + t / 2], [x + t * 0.8 + gp, y + h / 2 + t / 2], [x + gp, y + h / 2]]}[s];
     elg.fillStyle = on ? '#fff' : 'rgba(255,255,255,0.011)'; elg.beginPath(); P.forEach(([a, b], i) => (i ? elg.lineTo(a, b) : elg.moveTo(a, b))); elg.closePath(); elg.fill();
   };
   const digit = (x, y, w, h, ch) => { const on = ch == null || ch === ' ' ? '' : SEG[ch] || ''; for (const s of 'abcdefg') seg(x, y, w, h, s, on.includes(s)); };
@@ -728,7 +746,7 @@ export const StarSight = () => useScene((e) => {
     elg.fillStyle = comp ? '#fff' : 'rgba(255,255,255,0.011)'; elg.fillRect(60, 40, 300, 170);
     elg.fillStyle = comp ? '#000' : 'rgba(255,255,255,0.06)'; elg.font = '700 52px Arial, sans-serif'; elg.textAlign = 'center'; elg.textBaseline = 'middle'; elg.fillText('COMP', 210, 92); elg.fillText('ACTY', 210, 158);
     const label = (x, y, w, t) => { elg.fillStyle = '#fff'; elg.fillRect(x, y, w, 58); elg.fillStyle = '#000'; elg.font = '700 42px Arial, sans-serif'; elg.fillText(t, x + w / 2, y + 30); };
-    label(620, 40, 300, 'PROG'); digit(640, 112, 118, 150, '5'); digit(782, 112, 118, 150, '2');
+    label(620, 40, 300, 'PROG'); digit(640, 116, 118, 136, '5'); digit(782, 116, 118, 136, '2');
     const show = reading ? Math.floor((f - READ) / 12) % 2 === 0 : false;
     label(60, 276, 300, 'VERB'); label(620, 276, 300, 'NOUN');
     digit(80, 348, 118, 150, show ? '0' : ' '); digit(222, 348, 118, 150, show ? '6' : ' ');
@@ -739,12 +757,12 @@ export const StarSight = () => useScene((e) => {
   };
   const elM = new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, uniforms: {t: {value: elT}, gain: {value: 1}},
     vertexShader: 'out vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: 'precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D t; uniform float gain; void main(){ vec3 c = texture(t, vUv).rgb; float a = c.r; vec3 glow = vec3(0.2, 1.0, 0.42) * a * 1.5 * gain; o = vec4(glow + vec3(0.004, 0.009, 0.006), 1.0); }'});
+    fragmentShader: 'precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D t; uniform float gain; void main(){ vec3 c = texture(t, vUv).rgb; float a = c.r; vec3 glow = vec3(0.2, 1.0, 0.42) * a * 1.5 * gain; o = vec4(glow + vec3(0.0015, 0.0035, 0.0025), 1.0); }'});
   const elP = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 3.3 * (ELH / ELW)), elM); elP.position.set(1.95, 1.72, 0.012); B.add(elP);
   // window glass and the frame round the display, stepped in
   const frameS = new THREE.Shape(); frameS.moveTo(-1.9, -2.48); frameS.lineTo(1.9, -2.48); frameS.lineTo(1.9, 2.48); frameS.lineTo(-1.9, 2.48); frameS.closePath(); const fh = new THREE.Path(); fh.moveTo(-1.65, -2.22); fh.lineTo(-1.65, 2.22); fh.lineTo(1.65, 2.22); fh.lineTo(1.65, -2.22); fh.closePath(); frameS.holes.push(fh);
   const fm = new THREE.Mesh(new THREE.ExtrudeGeometry(frameS, {depth: 0.09, bevelEnabled: true, bevelSize: 0.022, bevelThickness: 0.022, bevelSegments: 2}), dk); fm.position.set(1.95, 1.72, 0.012); B.add(fm);
-  const glassEL = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 4.44), new THREE.MeshPhysicalMaterial({color: 0xffffff, roughness: 0.04, transparent: true, opacity: 0.03, depthWrite: false, envMap: envB, envMapIntensity: 1.4})); glassEL.position.set(1.95, 1.72, 0.09); glassEL.renderOrder = 3; B.add(glassEL);
+  const glassEL = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 4.44), new THREE.MeshPhysicalMaterial({color: 0x000000, roughness: 0.04, transparent: true, opacity: 0.05, depthWrite: false, envMap: envB, envMapIntensity: 1.4})); glassEL.position.set(1.95, 1.72, 0.09); glassEL.renderOrder = 3; B.add(glassEL);
   // status lamps: grey plates with their words, dark
   const LAMPS = [['UPLINK ACTY', 'TEMP'], ['NO ATT', 'GIMBAL LOCK'], ['STBY', 'PROG'], ['KEY REL', 'RESTART'], ['OPR ERR', 'TRACKER'], ['', 'ALT'], ['', 'VEL']];
   const lampTex = (t) => { const [c, g] = canvasOf(320, 128); g.fillStyle = '#7f8185'; g.fillRect(0, 0, 320, 128); g.fillStyle = '#16161a'; g.font = '700 38px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; const w = t.split(' '); w.forEach((l, i) => g.fillText(l, 160, 64 + (i - (w.length - 1) / 2) * 42)); return texOf(c); };

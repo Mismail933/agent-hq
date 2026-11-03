@@ -205,7 +205,11 @@ export const PowerDrop = () => useScene((e) => {
   });
   const relay = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.17, 0.16), std(0x1f2023, 0.45, 0.7)); relay.position.set(0, 4.72, 0.72); world.add(relay);
   // the straps, thick copper, from the batteries' posts to the relay box: they heat up
-  [[-0.35, -0.08], [-0.15, -0.03], [0.15, 0.03], [0.35, 0.08]].forEach(([x0, x1]) => tubeW([V(x0, 4.6, 1.07), V(x0, 4.72, 1.04), V((x0 + x1) / 2, 4.79, 0.92), V(x1, 4.75, 0.8)], 0.0075, copper));
+  [[-0.35, -0.12], [-0.15, -0.04], [0.15, 0.04], [0.35, 0.12]].forEach(([x0, x1]) => {
+    tubeW([V(x0, 4.6, 1.07), V(x0, 4.72, 1.04), V((x0 + x1) / 2, 4.79, 0.92), V(x1, 4.75, 0.81)], 0.0075, copper);
+    // each strap lands on its own brass post on the relay's face
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.03, 14), std(0xa98747, 0.34, 1)); post.rotation.x = Math.PI / 2; post.position.set(x1, 4.75, 0.812); world.add(post);
+  });
 
   // the wiring: the cells' bus up through the bulkhead; the current in it stops when they die
   const bus = cellAt.map(([x, z]) => flowWire([V(x, 3.65, z), V(x * 0.8, 3.76, z - 0.08), V(x * 0.4, 3.88, 0.98), V(x * 0.18, 4.3, 0.84), V(x * 0.1, 4.68, 0.8)], 0.007, [0.25, 1.1, 0.65]));
@@ -258,7 +262,7 @@ const VOLT_F = 90;                               // 3.0 s: the fall
 const needleV = (f) => {
   if (f < VOLT_F) return 28 + Math.sin(f * 0.37) * 0.04 + Math.sin(f * 0.91) * 0.025;
   const d = f - VOLT_F;
-  const fall = 28 - 9.5 * (1 - Math.exp(-d * 0.62) * Math.cos(d * 0.75));       // a slam, a small swing back
+  const fall = 28 - 9.5 * (1 - Math.exp(-d * 0.36) * Math.cos(d * 0.34));       // a fast fall, a small swing past and back
   if (d < 45) return fall + Math.sin(f * 2.1) * 0.05 + Math.sin(f * 3.7) * 0.05;
   const u = d - 45;                              // 4.5 s: it climbs back, overshoots a little
   const rise = 18.5 + 5.1 * (1 - Math.exp(-u * 0.16) * Math.cos(u * 0.2));
@@ -448,7 +452,7 @@ export const ShortSpark = () => useScene((e) => {
 
   // what the arc does
   const arcM = ribbons(2400); e.glow.add(arcM);
-  const key = new THREE.SpotLight(0xffc896, 5.5, 30, 0.42, 0.9, 1.5); key.position.set(-3.6, 4.2, 6); key.target.position.set(0.3, 0.4, 0); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.radius = 3; scene.add(key, key.target);
+  const key = new THREE.SpotLight(0xffc896, 19, 30, 0.42, 0.9, 1.5); key.position.set(-3.6, 4.2, 6); key.target.position.set(0.3, 0.4, 0); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.radius = 3; scene.add(key, key.target);
   const flare = new THREE.PointLight(0xbcd0ff, 0, 30, 1.8); flare.position.copy(ARC).add(V(0.02, 0.02, 0.1)); flare.castShadow = true; flare.shadow.mapSize.set(1024, 1024); flare.shadow.bias = -0.003; flare.shadow.camera.near = 0.05; flare.shadow.camera.far = 30; scene.add(flare);
   const heat = new THREE.PointLight(0xff5a18, 0, 4, 2); heat.position.copy(ARC).add(V(-0.04, 0.12, 0.14)); scene.add(heat);
   scene.add(new THREE.AmbientLight(0x4a4e56, 0.1));
@@ -457,7 +461,7 @@ export const ShortSpark = () => useScene((e) => {
   // a thin smoke, soft sprites that rise and thin out
   const [sc, sg] = canvas(256, 256), srg = sg.createRadialGradient(128, 128, 8, 128, 128, 126); srg.addColorStop(0, 'rgba(255,255,255,0.55)'); srg.addColorStop(0.5, 'rgba(255,255,255,0.18)'); srg.addColorStop(1, 'rgba(255,255,255,0)'); sg.fillStyle = srg; sg.fillRect(0, 0, 256, 256);
   const smokeT = tex(sc), smoke = []; const sr = rng(311);
-  for (let i = 0; i < 26; i++) { const m = new THREE.SpriteMaterial({map: smokeT, transparent: true, depthWrite: false, color: new THREE.Color(0.3, 0.29, 0.28), opacity: 0}); const s = new THREE.Sprite(m); scene.add(s); smoke.push({s, m, t0: ON + 4 + i * 2.2 + sr() * 2, dx: (sr() - 0.5) * 0.5, rot: sr() * 6}); }
+  for (let i = 0; i < 70; i++) { const m = new THREE.SpriteMaterial({map: smokeT, transparent: true, depthWrite: false, color: new THREE.Color(0.34, 0.33, 0.32), opacity: 0}); const s = new THREE.Sprite(m); scene.add(s); smoke.push({s, m, t0: ON + 3 + i * 0.75 + sr(), dx: (sr() - 0.5) * 0.14, rot: sr() * 6}); }
   const [hc, hg] = canvas(512, 512), hr = hg.createRadialGradient(256, 256, 0, 256, 256, 256); [[0, 1], [0.06, 0.55], [0.16, 0.22], [0.32, 0.07], [0.6, 0.015], [1, 0]].forEach(([a, b]) => hr.addColorStop(a, `rgba(255,255,255,${b})`)); hg.fillStyle = '#000'; hg.fillRect(0, 0, 512, 512); hg.fillStyle = hr; hg.fillRect(0, 0, 512, 512);
   const haloT = tex(hc), halo = new THREE.Sprite(new THREE.SpriteMaterial({map: haloT, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, depthTest: false, color: new THREE.Color(0, 0, 0)})); halo.position.copy(ARC); halo.scale.set(2.6, 2.6, 1); e.glow.add(halo);
   // arc strength over time: full, gone, back, sputtering out
@@ -483,8 +487,8 @@ export const ShortSpark = () => useScene((e) => {
     flare.intensity = pw * 4.2; halo.material.color.setRGB(pw * 0.9, pw * 1.05, pw * 1.4);
     const since = f - 52, glow = f < ON ? 0 : f <= 52 ? 1 : Math.exp(-since * 0.075);
     copper.emissiveIntensity = glow * 1.5; heat.intensity = glow * 0.3;
-    smoke.forEach(({s, m, t0, dx, rot}) => { const t = f - t0; if (t < 0) { m.opacity = 0; return; } const u = t / 90; s.position.set(ARC.x + dx * u * 1.2 + Math.sin(t * 0.05 + rot) * 0.08 * u, ARC.y + 0.1 + u * 1.5, ARC.z + 0.06); const sz = 0.22 + u * 0.9; s.scale.set(sz, sz, 1); m.opacity = 0.05 * clamp(t / 10) * clamp(1 - u); m.rotation = rot + u; });
-    e.final.white.value = f === ON ? 0.08 : 0;
+    smoke.forEach(({s, m, t0, dx, rot}) => { const t = f - t0; if (t < 0) { m.opacity = 0; return; } const u = t / 90; s.position.set(ARC.x + dx * u + Math.sin(f * 0.045 - t * 0.09) * 0.2 * u + u * u * 0.12, ARC.y + 0.1 + u * 1.7, ARC.z + 0.06); const sz = 0.07 + u * 0.34; s.scale.set(sz, sz, 1); m.opacity = 0.085 * clamp(t / 6) * clamp(1 - u * 1.05) * Math.exp(-Math.max(0, f - 70) * 0.012); m.rotation = rot + u; });
+    e.final.white.value = 0;
   }};
 });
 
@@ -492,8 +496,8 @@ export const ShortSpark = () => useScene((e) => {
 const stackPlate = (brainsOk) => () => useScene((e) => {
   const {camera, cloud} = e, R = stormRocket(e), xray = makeXray(); e.glow.add(xray);
   cloud.near_.value = 28; cloud.far_.value = 2400;
-  e.final.bloom.value = 0.42; e.final.vign.value = 0.8;
-  R.saturn.traverse((m) => { if (m.isMesh && m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.8; } });
+  e.final.bloom.value = 0.3; e.final.vign.value = 0.9;
+  R.saturn.traverse((m) => { if (m.isMesh && m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.42; } });
   xray.traverse((m) => { if (m.isLineSegments) m.visible = false; });
   const axis = new THREE.Group(); e.glow.add(axis);     // what rides with the rocket inside the x-ray
   const ghost = new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide,
@@ -505,23 +509,23 @@ const stackPlate = (brainsOk) => () => useScene((e) => {
   const band = new THREE.Mesh(new THREE.CylinderGeometry(3.32, 3.32, 0.92, 96, 1, true), iuM); band.position.y = 89.05; axis.add(band);
   const boxM = new THREE.MeshBasicMaterial({color: new THREE.Color(0.3, 3.6, 1.8), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false});
   for (let i = 0; i < 32; i++) { const a = (i / 32) * 6.2832, b = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.54, 0.3), boxM); b.position.set(Math.cos(a) * 2.98, 89.05, Math.sin(a) * 2.98); b.rotation.y = -a; axis.add(b); }
-  const iuL = new THREE.PointLight(0x38ff9a, 1200, 90, 1.8); iuL.position.set(-9, 88, 14); R.rocket.add(iuL);
+  const iuL = new THREE.PointLight(0x38ff9a, 170, 34, 2); iuL.position.set(-5, 89, 8); R.rocket.add(iuL);
   // the spacecraft on top
   const pod = new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     uniforms: {amt: {value: 0}, col: {value: new THREE.Color(1, 0.08, 0.04)}},
     vertexShader: `out vec3 vN; out vec3 vV; void main(){ vec4 m = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-m.xyz); gl_Position = projectionMatrix * m; }`,
     fragmentShader: `precision highp float; in vec3 vN; in vec3 vV; out vec4 o; uniform float amt; uniform vec3 col; void main(){ float f = 1.0 - abs(dot(normalize(vN), normalize(vV))); o = vec4(col * amt * (0.1 + 2.0 * f * f), 1.0); }`});
   axis.add(new THREE.Mesh(new THREE.LatheGeometry([[1.97, 98], [1.97, 101.1], [1.97, 101.3], [0.37, 104.7]].map(([r, y]) => new THREE.Vector2(r, y)), 64), pod));
-  const podL = new THREE.PointLight(0xff2a14, 0, 60, 1.8); podL.position.set(-8, 100, 12); R.rocket.add(podL);
+  const podL = new THREE.PointLight(0xff2a14, 0, 26, 2); podL.position.set(-5, 101, 7); R.rocket.add(podL);
   // the flight line: straight through the storm, fixed in the world, with ticks the rocket rides past
   const lineM = new THREE.MeshBasicMaterial({color: new THREE.Color(0.16, 1.0, 0.55), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false});
-  const line = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 2400, 8), lineM); e.glow.add(line);
+  const line = new THREE.Mesh(new THREE.CylinderGeometry(brainsOk ? 0.075 : 0.13, brainsOk ? 0.075 : 0.13, 2400, 8), lineM); e.glow.add(line);
   const ticks = []; for (let i = 0; i < 44; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.05, 6, 28), lineM); t.rotation.x = Math.PI / 2; e.glow.add(t); ticks.push(t); }
   const F1 = 118;
   return {draw: (f) => {
     const t = f / 30, y0 = 2600 + f * 7.2; R.place(y0, t);
     let th = 0, dx = 0;
-    if (!brainsOk) { const u = clamp((f - 96) / 204); th = -0.11 * u * u * (1.4 - 0.4 * u); dx = 9 * u * u * u + 2 * u * u; }
+    if (!brainsOk) { const u = clamp((f - 70) / 170, 0, 1.35); th = -0.14 * Math.pow(u, 1.7); dx = 5 * u * u * u + 2 * u * u; }
     const CG = 48, x = dx + CG * Math.sin(th), y = y0 + CG - CG * Math.cos(th);
     R.rocket.position.set(x, y, 0); R.rocket.rotation.z = th;
     R.flame.position.set(x, y, 0); R.flame.rotation.z = th * 1.15; R.fire.position.set(x + 12 * Math.sin(th), y - 12, 0);
@@ -530,11 +534,11 @@ const stackPlate = (brainsOk) => () => useScene((e) => {
     const fl = brainsOk ? flashAt(f, F1) : flashAt(f, 40), pw = fl > 0.6 ? fl : fl * 0.3;
     // spacecraft: flickering red, the fault is here (or healthy, when the fault is below)
     const flick = (0.42 + 0.32 * Math.sin(f * 1.7) * Math.sin(f * 0.43) + (Math.floor(f / 4) * 7 % 5 === 0 ? 0.34 : 0)) * (1 + pw * 2);
-    if (brainsOk) { xray.userData.set(0.1, -9, true); pod.uniforms.amt.value = flick * 0.7; podL.intensity = flick * 130; iuM.color.setRGB(0.14, 1.5, 0.78); boxM.color.setRGB(0.22, 2.6, 1.3); iuL.intensity = 150; }
+    if (brainsOk) { xray.userData.set(0.1, -9, true); pod.uniforms.amt.value = flick * 0.9; podL.intensity = flick * 90; iuM.color.setRGB(0.06, 0.62, 0.32); boxM.color.setRGB(0.14, 1.9, 0.95); iuL.intensity = 170; }
     else {
-      xray.userData.set(0.1, -9, false); pod.uniforms.col.value.setRGB(0.08, 1, 0.5); pod.uniforms.amt.value = 0.22; podL.color.setRGB(0.2, 1, 0.6); podL.intensity = 60;
-      const die = 0.012 + 0.988 * (1 - ease((f - 34) / 16)), sput = f > 34 && f < 60 ? (Math.floor(f / 3) % 2 ? 1 : 0.2) : 1;
-      iuM.color.setRGB(0.14 * die * sput, 1.5 * die * sput, 0.78 * die * sput); boxM.color.setRGB(0.22 * die * sput, 2.6 * die * sput, 1.3 * die * sput); iuL.intensity = 150 * die * sput;
+      xray.userData.set(0.1, -9, false); pod.uniforms.col.value.setRGB(0.08, 1, 0.5); pod.uniforms.amt.value = 0.2; podL.color.setRGB(0.2, 1, 0.6); podL.intensity = 26;
+      const die = 0.05 + 0.95 * (1 - ease((f - 34) / 16)), sput = f > 34 && f < 60 ? (Math.floor(f / 3) % 2 ? 1 : 0.2) : 1;
+      iuM.color.setRGB(0.06 * die * sput, 0.62 * die * sput, 0.32 * die * sput); boxM.color.setRGB(0.14 * die * sput, 1.9 * die * sput, 0.95 * die * sput); iuL.intensity = 170 * die * die * sput;
     }
     // the world's line, and its ticks sliding past
     line.position.set(0, y0 + 40, 0);
@@ -542,9 +546,9 @@ const stackPlate = (brainsOk) => () => useScene((e) => {
     cloud.flame.value = 0.35;
     const k = ease(f / 300), sh = fl * 1.1, sx = Math.sin(f * 17.3) * sh, sy = Math.cos(f * 13.1) * sh;
     const my = brainsOk ? 0 : 6 * ease((f - 96) / 204);
-    const c = brainsOk ? ease((f - 70) / 215) : 0.14 * k;   // Brains: the whole stack, then up to the ring and what sits above it
+    const c = brainsOk ? ease((f - 70) / 215) : 0.03 * k;   // Brains: the whole stack, then up to the ring and what sits above it
     camera.position.set(lerp(-68, -24, c) + sx, y0 + lerp(6, 76, c) + sy, lerp(94, 32, c));
-    camera.lookAt(my * 0.5 + 3, y0 + lerp(52, 92, c), 0);
+    camera.lookAt(my * 0.5 + 3, y0 + lerp(brainsOk ? 52 : 48, 92, c), 0);
     camera.fov = lerp(62, 46, c); camera.up.set(0, 1, 0); camera.rotateZ(lerp(-0.13, -0.05, c));
     R.strike.intensity = pw * 6; R.strike.position.set(-300, y0 + 300, -180);
     cloud.flash.value = fl * 0.85; e.common.flash.value = fl * 0.8;
@@ -558,10 +562,10 @@ export const StackSwap = stackPlate(false);
 
 // ------------------------------------------------------------------ what an abort would be: the escape tower pulls the capsule off the rocket
 export const EscapeTower = () => useScene((e) => {
-  const {scene, camera, cloud, renderer} = e, F0 = 30;
+  const {scene, camera, cloud, renderer} = e, F0 = 24;
   renderer.localClippingEnabled = true;
-  cloud.near_.value = 62; cloud.far_.value = 2400;
-  e.final.bloom.value = 0.36;
+  cloud.near_.value = 80; cloud.far_.value = 2400;
+  e.final.bloom.value = 0.3;
   scene.add(new THREE.HemisphereLight(0x8fa0b4, 0x201a16, 0.3));
   const key = new THREE.DirectionalLight(0xb0c0d4, 1.0); key.position.set(-200, 60, -30); scene.add(key);
   const lowerPlane = new THREE.Plane(V(0, -1, 0), 0), upperPlane = new THREE.Plane(V(0, 1, 0), 0);
@@ -577,39 +581,39 @@ export const EscapeTower = () => useScene((e) => {
   const NOZY = 107.65, CANT = 0.61, nozzleM = std(0x202124, 0.45, 0.85, {side: THREE.DoubleSide});
   const plumeMats = [], dirs = [];
   [0, 1, 2, 3].forEach((i) => {
-    const a = Math.PI / 4 + (i * Math.PI) / 2, dir = V(Math.cos(a) * Math.sin(CANT), -Math.cos(CANT), Math.sin(a) * Math.sin(CANT)); dirs.push(dir);
+    const a = (75 * Math.PI) / 180 + (i * Math.PI) / 2, dir = V(Math.cos(a) * Math.sin(CANT), -Math.cos(CANT), Math.sin(a) * Math.sin(CANT)); dirs.push(dir);
     const n = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 0.42, 20, 1, true), nozzleM); n.position.set(dir.x * 0.42, NOZY + dir.y * 0.2, dir.z * 0.42); n.quaternion.setFromUnitVectors(V(0, 1, 0), dir.clone().negate()); upper.add(n);
   });
-  const plumeShader = (u) => new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: u,
+  const plumeShader = (u) => new THREE.ShaderMaterial({glslVersion: THREE.GLSL3, transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor, side: THREE.DoubleSide, uniforms: u,
     vertexShader: `out vec3 vN; out vec3 vV; out vec2 vU; void main(){ vU = uv; vec4 m = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-m.xyz); gl_Position = projectionMatrix * m; }`,
     fragmentShader: `precision highp float; in vec3 vN; in vec3 vV; in vec2 vU; out vec4 o; uniform float time, power, speed, on; uniform vec3 col;
       float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); vec2 w = vec2(1.0, 0.0); return mix(mix(h(i), h(i + w), f.x), mix(h(i + w.yx), h(i + 1.0), f.x), f.y); }
       float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * n(p); p = p * 2.03 + 11.7; a *= 0.5; } return s; }
-      void main(){ float along = 1.0 - vU.y; float side = pow(abs(dot(normalize(vN), normalize(vV))), 1.3);
+      void main(){ float along = 1.0 - vU.y; float side = pow(clamp(abs(dot(normalize(vN), normalize(vV))), 0.0, 1.0), 1.3);
         float t = fbm(vec2(vU.x * 14.0, vU.y * 6.0 + time * speed));
-        float fade = smoothstep(0.0, 0.01, along) * pow(1.0 - along, 1.5);
+        float fade = smoothstep(0.0, 0.01, along) * pow(clamp(1.0 - along, 0.0, 1.0), 1.5);
         float soft = 1.0 - smoothstep(0.35, 1.0, along);
-        o = vec4(col * side * fade * soft * (0.72 + 0.55 * t) * power * on, 1.0); }`});
+        o = vec4(col * side * fade * soft * (0.3 + 1.2 * t) * power * on, 1.0); }`});
   const capsuleGlow = new THREE.Group(); e.glow.add(capsuleGlow);
   dirs.forEach((dir) => {
-    [[0.13, 1.5, 15, [1, 0.42, 0.13], 0.5, 3.1], [0.11, 0.75, 9, [1, 0.68, 0.3], 0.85, 4.0], [0.1, 0.32, 3.4, [1, 0.92, 0.72], 3.2, 5.0]].forEach(([rt, rb, len, col, pw, sp]) => {
+    [[0.13, 1.25, 8, [1, 0.42, 0.13], 0.8, 3.1], [0.11, 0.62, 5.2, [1, 0.68, 0.3], 1.2, 4.0], [0.1, 0.26, 2.4, [1, 0.92, 0.72], 2.4, 5.0]].forEach(([rt, rb, len, col, pw, sp]) => {
       const u = {time: {value: 0}, col: {value: new THREE.Color(...col)}, power: {value: pw}, speed: {value: sp}, on: {value: 0}}; plumeMats.push(u);
-      const c = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, len, 32, 12, true), plumeShader(u)); c.frustumCulled = false; c.position.y = -len / 2;   // the narrow end at the nozzle
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, len, 32, 12, true), plumeShader(u)); c.frustumCulled = false; c.renderOrder = 2; c.position.y = -len / 2;   // the narrow end at the nozzle
       const holder = new THREE.Group(); holder.position.set(dir.x * 0.66, NOZY + dir.y * 0.42, dir.z * 0.66); holder.quaternion.setFromUnitVectors(V(0, -1, 0), dir); holder.add(c); capsuleGlow.add(holder);
     });
   });
-  const fire = new THREE.PointLight(0xfff0d8, 0, 240, 1.7); scene.add(fire); camera.near = 2;
+  const fire = new THREE.PointLight(0xffc088, 0, 240, 1.7); scene.add(fire); camera.near = 2;
     const hit = new THREE.DirectionalLight(0xfff0d8, 0); scene.add(hit, hit.target);
   // solid-rocket smoke: soft puffs left behind in the air, lit by the fire close to the motor, grey further on
   const [sc, sg] = canvas(256, 256), sr = rng(733);
   for (let i = 0; i < 110; i++) { const x = 128 + (sr() - 0.5) * 150, y = 128 + (sr() - 0.5) * 150, rad = 14 + sr() * 44, v = Math.floor(70 + sr() * 185) , gg = sg.createRadialGradient(x, y, 1, x, y, rad); gg.addColorStop(0, `rgba(${v},${v},${v},0.4)`); gg.addColorStop(1, `rgba(${v},${v},${v},0)`); sg.fillStyle = gg; sg.fillRect(0, 0, 256, 256); }
   const smokeT = tex(sc), smoke = [];
-  for (let i = 0; i < 170; i++) { const m = new THREE.SpriteMaterial({map: smokeT, transparent: true, depthWrite: false, color: new THREE.Color(0.5, 0.5, 0.5), opacity: 0, rotation: sr() * 6.28}); const s = new THREE.Sprite(m); s.visible = false; s.renderOrder = -1; e.glow.add(s); smoke.push({s, m, i, a: sr() * 6.283, r: sr(), g: 0.75 + sr() * 0.6, ph: sr()}); }
+  for (let i = 0; i < 340; i++) { const m = new THREE.SpriteMaterial({map: smokeT, transparent: true, depthWrite: false, color: new THREE.Color(0.5, 0.5, 0.5), opacity: 0, rotation: sr() * 6.28}); const s = new THREE.Sprite(m); s.visible = false; e.glow.add(s); smoke.push({s, m, i, a: sr() * 6.283, r: sr(), g: 0.75 + sr() * 0.6, ph: (((i >> 2) * 0.6180339887) + (i & 3) * 0.25) % 1}); }
   // the capsule's path: 10 g from ignition, leaning off to one side as the motor's thrust isn't quite through its centre
-  const G = 98 / 900;                 // metres per frame squared
+  const G = 70 / 900;                 // metres per frame squared: a little under the real thing, so it can be read
   const rise = (f) => { const t = Math.max(0, f - F0); return 0.5 * G * t * t; };
-  const lean = (f) => -0.3 * ease((f - F0 - 12) / 80), side = (f) => -rise(f) * 0.1;
+  const lean = (f) => -0.2 * ease((f - F0 - 12) / 80), side = (f) => -rise(f) * 0.1;
   const nozzleAt = (f) => { const th = lean(f); return V(side(f) + (NOZY - CUT) * Math.sin(th), 2500 + f * 7.2 + rise(f) + CUT + (NOZY - CUT) * Math.cos(th), 0); };
   return {draw: (f) => {
     const t = f / 30, y0 = 2500 + f * 7.2, h = rise(f), sx = side(f), th = lean(f), burn = clamp((f - F0) / 2);
@@ -620,31 +624,34 @@ export const EscapeTower = () => useScene((e) => {
     capsuleGlow.position.copy(upper.position); capsuleGlow.rotation.z = -th;
     plumeMats.forEach((u) => { u.time.value = t; u.on.value = burn * (0.92 + 0.08 * Math.sin(f * 2.9)); });
     const nozzle = nozzleAt(f);
-    fire.position.copy(nozzle).add(V(0, -2, 0)); fire.intensity = burn * 140;
-    hit.intensity = burn * 0.3; hit.position.copy(nozzle).add(V(-4, 2, 22)); hit.target.position.copy(nozzle).add(V(0, -6, 0));
-    // the smoke stays where the air is, and we are flying: so from here it rushes down and away, a column that grows from ignition
-    const SPEED = 3.4, LEN = 130, ran = (f - F0) * SPEED;
+    fire.position.copy(nozzle).add(V(0, -2, 0)); fire.intensity = burn * (34 + Math.sin(f * 3.1) * 4);
+    hit.intensity = burn * 0.12; hit.position.copy(nozzle).add(V(-4, 2, 22)); hit.target.position.copy(nozzle).add(V(0, -6, 0));
+    // the smoke: each jet opens out from its nozzle and they merge behind the capsule, a column that grows from ignition
+    const LEN = 120, RATE = 1 / 40, SC = Math.sin(CANT), camL = Math.hypot(32, 50), camX = -32 / camL, camZ = 50 / camL;
     smoke.forEach((p) => {
-      const d = ((f * SPEED + p.ph * LEN + p.i * 1.1) % LEN) + 13;
-      if (f < F0 || d > ran + 13) { p.s.visible = false; return; }
-      const u = d / LEN, wide = 0.7 + d * 0.075, sz = (2.4 + d * 0.13) * p.g;
-      p.s.visible = true; p.s.position.set(nozzle.x - d * 0.045 + Math.cos(p.a) * p.r * wide, nozzle.y - 2.5 - d, Math.sin(p.a) * p.r * wide); p.s.scale.set(sz, sz, 1);
-      const near = Math.exp(-(d - 13) * 0.08), v = lerp(0.42, 1.25, near);
-      p.m.color.setRGB(v, v * lerp(0.98, 0.7, near), v * lerp(0.96, 0.4, near));
-      p.m.opacity = 0.62 * clamp((d - 13) / 4) * clamp((1 - u) * 2.5);
+      const ph = (f * RATE + p.ph) % 1, age = ph / RATE;
+      if (f < F0 || age > f - F0) { p.s.visible = false; return; }
+      const along = LEN * Math.pow(ph, 1.7), j = dirs[p.i % 4], lat = 6.2 * (1 - Math.exp(-along / 4.5)) * Math.exp(-along / 34), r = 0.25 + along * 0.085, sz = (1.5 + along * 0.17) * p.g;
+      p.s.visible = true; p.s.scale.set(sz, sz, 1);
+      p.s.position.set(nozzle.x + (j.x / SC) * lat + Math.cos(p.a) * p.r * r - along * 0.03, nozzle.y - 1 - along + (p.r - 0.5) * r, (j.z / SC) * lat + Math.sin(p.a) * p.r * r);
+      const hot = Math.exp(-along / 4), warm = Math.exp(-along / 16);
+      p.m.color.setRGB(0.34 + warm + hot * 5, 0.34 + warm * 0.62 + hot * 2.8, 0.36 + warm * 0.24 + hot);
+      p.m.opacity = 0.55 * clamp(along) * clamp((1 - along / LEN) * 2.5);
+      const dx = p.s.position.x - nozzle.x, dz = p.s.position.z, behind = dx * camX + dz * camZ, lateral = Math.abs(dx * camZ - dz * camX), rC = along < 3 ? 0.5 : along < 13 ? 0.5 + (along - 3) * 0.19 : 0;
+      if (behind < 0 && rC > 0 && lateral < rC + sz * 0.42) p.s.visible = false;
     });
-    // the camera stays on the capsule, a beat behind it, as the stack drops away
-    const lag = rise(f), kick = f >= F0 ? 0.55 * Math.exp(-(f - F0) * 0.05) : 0, cx = Math.sin(f * 7.3) * kick, cz = Math.cos(f * 5.1) * kick;
+    // the camera holds the capsule, a beat behind it, as the stack drops away
+    const lag = 6 * (1 - Math.exp(-rise(f) / 28)), camY = y0 + rise(f) - lag, kick = f >= F0 ? 0.55 * Math.exp(-(f - F0) * 0.05) : 0, cx = Math.sin(f * 7.3) * kick, cz = Math.cos(f * 5.1) * kick;
     const k = ease((f - F0) / 80);
-    camera.position.set(lerp(-28, -24, k) + side(f) + cx, y0 + lag + lerp(92, 96, k) + cz, lerp(48, 48, k));
-    camera.lookAt(side(f) * 0.98, y0 + lag + lerp(98, 100, k), 0);
-    camera.fov = 30; camera.up.set(-0.04, 1, 0);
+    camera.position.set(lerp(-34, -30, k) + side(f) + cx, camY + 88 + cz, 50);
+    camera.fov = 34; camera.up.set(-0.04, 1, 0);
+    camera.lookAt(side(f) * 0.98, camY + CUT - 2, 0);
     cloud.flameA.value.copy(nozzle); cloud.flameB.value.copy(nozzle).add(V(0, -90, 0)); cloud.flame.value = f >= F0 ? 0.1 : 0.6;
     if (f < F0) { cloud.flameA.value.set(0, y0 - 8, 0); cloud.flameB.value.set(0, y0 - 170, 0); }
     cloud.flash.value = 0; e.common.flash.value = 0;
     cloud.boltA.value.copy(nozzle); cloud.boltB.value.copy(nozzle);
     cloud.wind.value.set(f * 0.0009, -f * 0.0011 + 0.75, f * 0.0004);
-    e.final.white.value = f === F0 ? 0.08 : 0;
+    e.final.white.value = 0;
   }};
 });
 
