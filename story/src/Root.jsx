@@ -11,6 +11,7 @@ import {VShort, VW, VH} from './trench';
 import {VDeep, DW as DVW, DH as DVH} from './deepv';
 import {RomeTest} from './rome';
 import {SpyShort, SW, SH} from './spy';
+import {NextShort} from './short_next';
 
 export const RemotionRoot = () => {
   const props = getInputProps();
@@ -27,6 +28,7 @@ export const RemotionRoot = () => {
       <Composition id="FranceEvent" component={FranceEvent} durationInFrames={Math.max(30, Number(props.frames) || 270)} fps={FPS} width={W} height={H} defaultProps={props} />
       <Composition id="VShort" component={VShort} durationInFrames={frames} fps={FPS} width={VW} height={VH} defaultProps={props} />
       <Composition id="SpyShort" component={SpyShort} durationInFrames={frames} fps={FPS} width={SW} height={SH} defaultProps={props} />
+      <Composition id="NextShort" component={NextShort} durationInFrames={frames} fps={FPS} width={SW} height={SH} defaultProps={props} />
       <Composition id="RomeTest" component={RomeTest} durationInFrames={frames} fps={FPS} width={W} height={H} defaultProps={props} />
       <Composition id="VDeep" component={VDeep} durationInFrames={frames} fps={FPS} width={DVW} height={DVH} defaultProps={props} />
       <Composition id="EmojiSheet" component={EmojiSheet} durationInFrames={1} fps={FPS} width={W} height={H} defaultProps={props} />

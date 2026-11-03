@@ -406,6 +406,8 @@ def ensure_app():
         try:
             os.symlink(str(animate.APP / "node_modules"), str(APP / "node_modules"), target_is_directory=True)
         except OSError:
+            if os.name != "nt":   # a Mac or Linux symlink failing is a real error, not a missing privilege
+                raise SystemExit(f"story app: can't link node_modules to {animate.APP / 'node_modules'}")
             subprocess.run(["cmd", "/c", "mklink", "/J", str(APP / "node_modules"), str(animate.APP / "node_modules")], capture_output=True)
     # ready-made props (2.55.0): Fluent Emoji, flat (MIT), as public/emoji/<slug>.svg, copied once
     em, dst = HOME / "fluent-emoji" / "assets", APP / "public" / "emoji"

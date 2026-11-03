@@ -91,7 +91,7 @@ def passages(spec):
     for i, ln in enumerate(L):
         p = ln.get("p") or {}
         text = ln.get("eleven_say") or ln["text"]
-        if ln.get("voice_file"):
+        if ln.get("voice_file") and not ln.get("eleven_say"):   # a one-line re-voice that keeps its words in eleven_say stays in the long take
             if cur:
                 groups.append(cur)
             cur, n = [], 0
