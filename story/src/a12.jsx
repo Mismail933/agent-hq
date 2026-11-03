@@ -26,7 +26,8 @@ const Clip = ({c, len}) => {
 };
 
 const Plate = ({text, x, y, align = 'left', size = 28, a, b, f, gold = true}) => {
-  const k = clamp((f - a) / 6) * (1 - clamp((f - b) / 6));
+  // a tag goes on its cut, never carried over the next picture (a reconstruction read "REAL FILM" for 6 frames)
+  const k = f >= b ? 0 : clamp((f - a) / 6);
   if (k <= 0) return null;
   return (
     <div style={{position: 'absolute', [align === 'right' ? 'right' : 'left']: x, top: y, opacity: k, background: 'rgba(8,10,14,0.72)', padding: '8px 18px 9px',
@@ -90,7 +91,13 @@ export const ClipLayer = ({line, len}) => {
         const from = c.sync ? Math.max(0, Math.round(c.sync[1] * 30) - (syncAt - a)) : Math.round((c.from || 0) * 30);
         return <Sequence key={i} from={a} durationInFrames={Math.max(1, b - a)} layout="none"><Clip c={{...c, _from: from}} len={b - a} /></Sequence>;
       })}
-      {clips.map((c, i) => c.tag && <Plate key={i} f={f} text={c.tag} x={56} y={48} a={starts[i] + 3} b={i + 1 < clips.length ? starts[i + 1] : 1e9} size={26} />)}
+      {clips.map((c, i) => {
+        // a run of clips with the same tag shows one tag, up until the first clip with another (or none)
+        if (!c.tag || (i && clips[i - 1].tag === c.tag)) return null;
+        let j = i + 1;
+        while (j < clips.length && clips[j].tag === c.tag) j++;
+        return <Plate key={i} f={f} text={c.tag} x={56} y={48} a={starts[i] + 3} b={j < clips.length ? starts[j] : 1e9} size={26} />;
+      })}
       {clock != null && <div style={{position: 'absolute', right: 56, top: 44, fontFamily: OSW, fontWeight: 600, fontSize: 58, letterSpacing: 3, color: p.clk_alarm ? '#FF5A3C' : '#F7F4EA', background: 'rgba(8,10,14,0.62)', padding: '2px 22px 6px', fontVariantNumeric: 'tabular-nums'}}>{fmtT(clock)}</div>}
       {p.big && <Big rows={p.big} line={line} f={f} y={p.big_y} />}
       {(p.who || []).map((w, i) => <Who key={i} w={w} line={line} f={f} />)}
