@@ -618,5 +618,10 @@ def start(slug, port=None):
 
 def start_all(port):
     STATE["port"] = port
+    if os.environ.get("HQ_SIMULATE") == "1" and not os.environ.get("HQ_CLIENTS_DIR") and os.environ.get("HQ_CLIENTS") != "1":
+        # a practice office must never poll a real client's bot: it would take his messages from the real office
+        # (the store in ~/.agent-hq/clients is shared). Test with HQ_CLIENTS_DIR=<scratch> and a fake Telegram.
+        print("  Client bots: off in practice mode (HQ_CLIENTS_DIR or HQ_CLIENTS=1 to test them).", flush=True)
+        return
     for s in all_slugs():
         start(s)

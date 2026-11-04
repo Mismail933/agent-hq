@@ -339,7 +339,7 @@ Agents never spend money without the owner's explicit approval.
   as "<name> (client)", a finished video logged in data.client_decisions; the owner and Atlas are told at once. Routes: GET
   /api/clients (+ the waiting outbox, PC only), POST /api/clients/new {name, project}, /<slug>/token (raw body, PC only; refuses the
   owner's own bot token and another client's), /<slug>/say, /<slug>/send {path, caption, approve}, /<slug>/unpair. hq client-new |
-  clients | client-say | client-send. Tested with a fake Telegram (scratchpad fake_tg.py + test_clientbot.py: 23 checks). Not yet:
+  clients | client-say | client-send. Tested with a fake Telegram (scratchpad fake_tg.py + test_clientbot.py: 23 checks). 2.82.4: a practice office (HQ_SIMULATE=1) never starts the client bots (the store in ~/.agent-hq/clients is shared, so it would take a client's messages from the real office) unless HQ_CLIENTS_DIR or HQ_CLIENTS=1. Not yet:
   his own channel's map-first look (the "client channel" style options), Omar on his channel, a /status answer without the owner's OK.
   2.69.1: his voice notes/audio are transcribed on arrival (`clientbot.transcribe`: faster-whisper in the shorts venv, rule
   client.voice_model, default base.en = already on this PC), saved as <file>.txt beside it, and the text goes into messages.jsonl, the
