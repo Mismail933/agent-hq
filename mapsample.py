@@ -135,12 +135,41 @@ def _km(line):
     return d
 
 
+MAR_SOUTH = 27.6667   # Morocco's southern line (27 deg 40' N); south of it is Western Sahara, its own shape (SAH)
+
+
+def _north_of(geom, lat):
+    """The part of a (Multi)Polygon north of a parallel (Sutherland-Hodgman on each ring; rings left with < 4 points drop)."""
+    def clip(ring):
+        out = []
+        for i in range(len(ring)):
+            p1, p2 = ring[i - 1], ring[i]
+            in1, in2 = p1[1] >= lat, p2[1] >= lat
+            if in1 != in2:
+                t = (lat - p1[1]) / (p2[1] - p1[1])
+                out.append([p1[0] + t * (p2[0] - p1[0]), lat])
+            if in2:
+                out.append(list(p2))
+        if out and out[0] != out[-1]:
+            out.append(out[0])
+        return out if len(out) >= 4 else None
+    polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+    kept = []
+    for poly in polys:
+        outer = clip(poly[0])
+        if outer:
+            kept.append([outer] + [r for r in (clip(h) for h in poly[1:]) if r])
+    return {"type": "MultiPolygon", "coordinates": kept}
+
+
 def prep():
     countries = json.loads((GEO / "ne_10m_admin_0_countries.geojson").read_text(encoding="utf-8"))
     world, detail = [], []
     for f in countries["features"]:
         p = f["properties"]
         a3 = p.get("ADM0_A3") or p.get("ISO_A3")
+        if a3 == "MAR":   # Bassel 11-03: a filled Morocco ran over Western Sahara down to Mauritania
+            f = {**f, "geometry": _north_of(f["geometry"], MAR_SOUTH)}
         g = _simplify(f["geometry"], 0.08, 2)
         if g:
             world.append({"type": "Feature", "properties": {"a3": a3}, "geometry": g})

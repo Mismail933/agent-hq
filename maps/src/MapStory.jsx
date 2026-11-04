@@ -154,7 +154,7 @@ const PoleFlag = ({x, y, s, f, name}) => (s <= 0.01 || !FLAG[name] ? null :
     <g transform={`translate(1.5 -62) skewY(${Math.sin(f / 7) * 3})`}>{FLAG[name]}</g>
   </g>);
 
-export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
+export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   if (!lines.length) return null;
@@ -274,7 +274,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
     }
   }
   // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
-  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} flag={line.shipflag} /> : null;
+  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} flag={line.shipflag} trail={trails} /> : null;
   // dates [[seconds, text]]: the chip changes on its words (1642 -> 1665 -> Today)
   let dateText = line.date, dateAt = line.t0;
   (line.dates || []).forEach(([s, txt]) => { if (t >= s) { dateText = txt; dateAt = s; } });
@@ -338,7 +338,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false}) => {
             </g>
           );
         }))}
-        {lines.flatMap((l, i) => (i <= li ? (l.march || []).map((m, k) => <March key={`mr${i}-${k}`} m={m} path={path} P={P} f={f} fps={fps} live={i === li} />) : []))}
+        {lines.flatMap((l, i) => (i <= li ? (l.march || []).map((m, k) => <March key={`mr${i}-${k}`} m={m} path={path} P={P} f={f} fps={fps} live={i === li} trailOn={trails} />) : []))}
         {(line.fx || []).map((x, i) => <Battle key={`fx${i}`} x={x} P={P} f={f} fps={fps} />)}
         {line.shake ? <Shake s={line.shake} P={P} f={f} fps={fps} /> : null}
         {lines.flatMap((l, i) => (i === li && earth && cam[2] >= 1500 ? (l.flags || []).map((x, k) => {
@@ -537,7 +537,7 @@ function Footage({v, f, fps, xy}) {
   );
 }
 
-function Voyage({pts, proj, path, p, f, big = false, flag = null}) {
+function Voyage({pts, proj, path, p, f, big = false, flag = null, trail = true}) {
   const {dense, at} = courseOf(pts);
   const {here, j} = at(p);
   const done = [...dense.slice(0, j), here];
@@ -547,7 +547,7 @@ function Voyage({pts, proj, path, p, f, big = false, flag = null}) {
   const bob = Math.sin(f / 6) * 2.5;
   return (
     <g>
-      <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#F2EEE4" strokeWidth={3} strokeDasharray="10 8" opacity={0.85} />
+      {trail ? <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#F2EEE4" strokeWidth={3} strokeDasharray="10 8" opacity={0.85} /> : null}
       <g transform={`translate(${a[0]} ${a[1] + bob}) scale(${dir * (big ? 1.35 : 1)} ${big ? 1.35 : 1})`} opacity={p > 0 ? 1 : 0}>
         <ellipse cx={0} cy={14} rx={30} ry={6} fill="rgba(0,0,0,0.35)" />
         <path d="M-28 2 L28 2 L20 14 L-22 14 Z" fill="#7A4A2A" stroke="#F2EEE4" strokeWidth={2} />
@@ -595,7 +595,8 @@ function Battle({x, P, f, fps}) {
 // march {at, dur, pts [[lon, lat], ...]}: an army moves across the map (Bassel: 'show armies moving across the map to capture these
 // lands'): a blue arrow grows along the route, a column of small pieces with the French flag at its head, a clash at each stop it
 // reaches; afterwards the route stays as a faint trail
-function March({m, path, P, f, fps, live}) {
+// trailOn false (Bassel, Chapter 2): no route behind it, no arrow, no column: just the flag moving
+function March({m, path, P, f, fps, live, trailOn = true}) {
   const a = Math.round(m.at * fps), n = Math.round((m.dur || 4) * fps);
   if (f < a) return null;
   const dense = [];
@@ -611,12 +612,12 @@ function March({m, path, P, f, fps, live}) {
   const stops = m.pts.slice(1).map((ll, i) => ({ll, at: a + Math.round(((i + 1) / (m.pts.length - 1)) * n)}));
   return (
     <g>
-      <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#0B1A33" strokeOpacity={0.55 * trail} strokeWidth={13} strokeLinecap="round" strokeLinejoin="round" />
-      <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#3FB8DE" strokeOpacity={trail} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="18 10" strokeDashoffset={-f * 1.6} />
-      {marching && <g transform={`translate(${head[0]} ${head[1]}) rotate(${(ang * 180) / Math.PI})`}>
+      {trailOn && <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#0B1A33" strokeOpacity={0.55 * trail} strokeWidth={13} strokeLinecap="round" strokeLinejoin="round" />}
+      {trailOn && <path d={path({type: 'LineString', coordinates: done})} fill="none" stroke="#3FB8DE" strokeOpacity={trail} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="18 10" strokeDashoffset={-f * 1.6} />}
+      {marching && trailOn && <g transform={`translate(${head[0]} ${head[1]}) rotate(${(ang * 180) / Math.PI})`}>
         <path d="M 14 0 L -8 -12 L -3 0 L -8 12 Z" fill="#3FB8DE" stroke="#F4FBFF" strokeWidth={2} />
       </g>}
-      {marching && [0, 1, 2, 3, 4].map((q) => {
+      {marching && trailOn && [0, 1, 2, 3, 4].map((q) => {
         const p2 = P(dense[Math.max(0, j - 2 - q * 2)]), bob = Math.abs(Math.sin((f + q * 5) / 4)) * 4;
         return <g key={q} transform={`translate(${p2[0]} ${p2[1] - bob})`}><circle r={7} fill="#2B3E7A" stroke="#F4FBFF" strokeWidth={1.6} /><rect x={-3} y={-15} width={6} height={7} fill="#B0302C" /></g>;
       })}
