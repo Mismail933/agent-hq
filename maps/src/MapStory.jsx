@@ -11,7 +11,7 @@ import {Earth} from './Earth';
 const W = 1920, H = 1080, MAPX = W * 0.5, MAPY = H * 0.54;
 const C = {
   bg: ['#0A1426', '#03060D'], sea: '#0C1D38', grat: 'rgba(120,180,230,0.10)', atmo: '#4FC9F0',
-  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#3FB8DE', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE', free: '#7FC47A',   /* Bassel: French blue, British red, Spanish yellow everywhere; free = independent */
+  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#3FB8DE', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE', free: '#7FC47A', ru: '#E08A3C', cp: '#9A72C8',   /* First World War: Russia orange, the Central Powers purple */   /* Bassel: French blue, British red, Spanish yellow everywhere; free = independent */
   accent: '#FF6A3D', white: '#F2F7FF', text: '#EAF6FF', sub: '#C4DAE6', halo: 'rgba(3,8,16,0.85)',
 };
 const FRANCE = new Set(['FRA', 'GUF', 'FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);
@@ -274,7 +274,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
     }
   }
   // ship [[lon, lat], ...]: a sailing ship crossing from France along these waypoints while the line is spoken (dashed wake behind it)
-  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} flag={line.shipflag} trail={trails} /> : null;
+  const voyage = line.ship ? <Voyage pts={line.ship} proj={proj} path={path} p={sailP(line, f, fps)} f={f} big={!!line.follow} flag={line.shipflag} /> : null;
   // dates [[seconds, text]]: the chip changes on its words (1642 -> 1665 -> Today)
   let dateText = line.date, dateAt = line.t0;
   (line.dates || []).forEach(([s, txt]) => { if (t >= s) { dateText = txt; dateAt = s; } });
