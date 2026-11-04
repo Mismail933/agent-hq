@@ -2,23 +2,23 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.317",
-   "checked": "2026-11-03"
+   "last_seen": "2.1.318",
+   "checked": "2026-11-04"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-11-02 Message threads beta; 10-28 request size 128 MB; 10-30 Opus 4.8 fast mode deprecated",
-   "checked": "2026-11-03"
+   "last_seen": "2026-11-03 text watermark; 11-02 Message threads beta; 10-30 Opus 4.8 fast deprecated",
+   "checked": "2026-11-04"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-28 AI for Science; 10-26 S-1 filing; no new models since Haiku 5.5 (Oct 7)",
-   "checked": "2026-11-03"
+   "last_seen": "2026-10-28 AI for Science; no new models since Haiku 5.5 (Oct 7)",
+   "checked": "2026-11-04"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
-   "last_seen": "terms to be accepted by 2027-01-31; thresholds still 4,000 h / 10M",
-   "checked": "2026-10-08"
+   "last_seen": "4,000 h / 10M today; 2FA required; terms by 2027-01-31",
+   "checked": "2026-11-04"
   },
   "claude-code-prompt-caching-docs": {
    "url": "https://code.claude.com/docs/en/prompt-caching",
@@ -114,6 +114,16 @@
    "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
    "last_seen": "beta, 5 min idle expiry, not ZDR, cache_control top-level",
    "checked": "2026-11-03"
+  },
+  "youtube-ypp-blog-2027": {
+   "url": "https://blog.youtube/news-and-events/youtube-partner-program-updates-2027-new-opportunities-earn/",
+   "last_seen": "2026-08-10: new applicants 8,000 h / 20M; Shorts revenue needs 10M per 90 days from 2027-02-01; no deadline or activity rules in the post",
+   "checked": "2026-11-04"
+  },
+  "youtube-synthetic-content-help": {
+   "url": "https://support.google.com/youtube/answer/14328491",
+   "last_seen": "fully animated non-realistic content needs no disclosure",
+   "checked": "2026-11-04"
   }
  },
  "repos": {
@@ -167,11 +177,11 @@
    "note": "MIT; picks the best of several tries of a task"
   },
   "eat-pray-ai/yutu": {
-   "stars": 701,
-   "last_commit": "2026-10-18",
-   "verdict": "skip",
-   "checked": "2026-10-19",
-   "note": "Has upload/delete; conflicts with read-only Omar"
+   "stars": 712,
+   "last_commit": "2026-10-31",
+   "verdict": "watch",
+   "checked": "2026-11-04",
+   "note": "YouTube CLI/MCP, Apache-2.0; only if uploads are ever allowed"
   },
   "Hao0321/video-autopilot-kit": {
    "stars": 2183,

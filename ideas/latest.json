@@ -1,127 +1,131 @@
 {
- "date": "2026-11-03",
- "focus": "tools",
- "note": "No idea today. New since yesterday: Claude Code 2.1.317 and the Messages API 'message threads' beta (Nov 2). Neither helps us enough to ask for your time. Short run: about 7 searches and 7 pages, below my usual bar.",
+ "date": "2026-11-04",
+ "focus": "results",
+ "note": "No idea today. YouTube's rules for 2027 are already in your Atlas notes (idea 2026-10-08-2); I re-checked them against YouTube's own blog and found nothing new. Short run: 9 searches, 11 pages, below my usual bar.",
  "research": {
-  "searches": 7,
-  "pages_read": 7,
+  "searches": 9,
+  "pages_read": 11,
   "minutes": 15,
   "questions": [
-   "Does the new Messages API 'message threads' beta cut cost or time for any of our agent loops (llm.py, workers.py)?",
-   "Is the caveman token-saving skill (117k stars) worth adopting for our workers or Atlas?",
-   "Did YouTube change anything for Shorts creators since the 11-02 run?"
+   "Did YouTube publish any Shorts, originality or AI-label change since 2026-10-08 that affects a faceless animated history channel?",
+   "Is the 2027 Partner Program change described the same way by YouTube's own blog as by news sites?",
+   "Does Claude Code 2.1.318 or the Nov API notes change how our claude -p workers should run?"
   ],
   "gaps": [
-   "Below the 15 searches / 8 pages bar: no deep focus research today.",
-   "Message threads doc says nothing on price; caching works via top-level cache_control. Not verified against our llm.py loop in detail.",
-   "No official YouTube November announcement found; Oct 1 originality change known from secondary reports only.",
-   "Did not read caveman's eval files or code."
+   "No official YouTube page announcing the Oct 2026 'original content' Shorts recommendation change (only secondary blogs, grade C).",
+   "No public data on first-3-second retention for history Shorts (only vendor blogs).",
+   "Did not open the full Claude Code changelog past 2.1.311; it is 1 MB."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.317: claude -p now exits 1 (not 0) when a full disk or quota loses transcript/config writes; new CLAUDE_CODE_DISABLE_NESTED_SESSION_ID; ask-before-sending-account-email check",
-  "Claude API 2026-11-02: Message threads beta (header message-threads-2026-08-12): server keeps the conversation, requests send only new messages; expires 5 min idle, deleted within 1 h; not ZDR eligible; Opus/Sonnet/Haiku 5.5 supported",
-  "Claude API 2026-10-28: max request size 32 MB -> 128 MB"
+  "Claude Code 2.1.318: claude -p adds credential_expires_at to JSON results and warns on stderr when a claude.ai sign-in nears its end (useful for our unattended workers, small)",
+  "Claude Code 2.1.317/2.1.314: claude -p now exits with code 1 when startup fails or a full disk loses transcript writes (was exit 0)",
+  "API 2026-11-03: Claude Mythos 5, Opus 4.7 and Sonnet 4.6 text carries Anthropic's text watermark (nothing for us)",
+  "YouTube's 10 Aug 2026 blog post: no signing deadline or activity rules in the post itself; those come from the Help page and secondary sites"
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
-   "url": "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "used",
-   "why": "2.1.317 is new; the claude -p exit-code fix helps workers.py failure detection but needs no change"
+   "why": "2.1.318 is new; two claude -p items worth a glance, no idea"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "used",
-   "why": "message threads beta found"
-  },
-  {
-   "title": "Message threads doc",
-   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
-   "tier": "A",
-   "result": "rejected",
-   "why": "helps long loops on the API; our workers run through claude -p on the subscription, and the API path is only a fallback"
+   "result": "nothing new",
+   "why": "Message threads beta and Opus 4.8 fast deprecation already seen; no pricing or caching change"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "no new models; Agent Skills donated to Agentic AI Foundation (10-22)"
-  },
-  {
-   "title": "caveman README",
-   "url": "https://github.com/JuliusBrussee/caveman",
-   "tier": "B",
-   "result": "rejected",
-   "why": "telemetry on by default, curl|bash installer, savings are output-only"
-  },
-  {
-   "title": "caveman HONEST-NUMBERS",
-   "url": "https://github.com/JuliusBrussee/caveman/blob/main/docs/HONEST-NUMBERS.md",
-   "tier": "B",
-   "result": "used",
-   "why": "its own data: 300-run test cut output 44% but total cost +0.06%; quality not proven"
-  },
-  {
-   "title": "Tubefilter on YPP changes",
-   "url": "https://www.tubefilter.com/2026/08/10/youtube-partner-program-ad-eligibility-requirements-shorts/",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "already covered in the 10-08 report"
-  },
-  {
-   "title": "Shorts originality search (secondary reports)",
-   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
-   "tier": "C",
-   "result": "nothing new",
-   "why": "same Oct 1 change as before; sources disagree on who announced it"
-  },
-  {
-   "title": "GitHub search: claude code skills",
-   "url": "https://api.github.com/search/repositories?q=claude+code+skills",
-   "tier": "A",
-   "result": "used",
-   "why": "big repos listed; none fits"
+   "why": "No new model since Haiku 5.5 (Oct 7)"
   },
   {
    "title": "GitHub search: youtube shorts automation",
    "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
    "tier": "A",
-   "result": "nothing new",
-   "why": "small repos; nothing we lack"
+   "result": "used",
+   "why": "Only generic video-automation kits; one YouTube CLI worth watching"
   },
   {
-   "title": "GitHub search: LLM token cost reduction",
-   "url": "https://api.github.com/search/repositories?q=LLM+token+cost+reduction+agent",
+   "title": "YouTube Help: reused content",
+   "url": "https://support.google.com/youtube/answer/1311392",
    "tier": "A",
    "result": "nothing new",
-   "why": "tiny repos (1-2 stars); glyphdown is noncommercial"
+   "why": "Inauthentic-content wording unchanged (July 2025 rename)"
+  },
+  {
+   "title": "YouTube Help: YPP eligibility",
+   "url": "https://support.google.com/youtube/answer/72851",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Still 4,000 h / 10M today; 2FA required; terms by 31 Jan 2027"
+  },
+  {
+   "title": "YouTube Help: altered or synthetic content",
+   "url": "https://support.google.com/youtube/answer/14328491",
+   "tier": "A",
+   "result": "used",
+   "why": "Fully animated, non-realistic video needs no toggle; our description line is a courtesy, not required"
+  },
+  {
+   "title": "YouTube creator updates",
+   "url": "https://support.google.com/youtube/answer/9072033",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest entry is May 2026; nothing on YPP or Shorts originality"
+  },
+  {
+   "title": "YouTube blog: YPP updates 2027",
+   "url": "https://blog.youtube/news-and-events/youtube-partner-program-updates-2027-new-opportunities-earn/",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "8,000 h / 20M for new applicants; 10M per 90 days for Shorts revenue from 1 Feb 2027. Matches idea 2026-10-08-2"
+  },
+  {
+   "title": "Search Engine Journal on YPP terms",
+   "url": "https://www.searchenginejournal.com/youtube-updates-partner-program-terms-shorts-payout-rules/585331/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Adds activity rules (1,000 h / 1M views / 5 Shorts per 90 days) not in YouTube's blog post; unverified"
+  },
+  {
+   "title": "OutlierKit on YPP 2027",
+   "url": "https://outlierkit.com/resources/youtube-partner-program-changes-2027/",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Repeats SEJ and vidIQ, no primary source"
+  },
+  {
+   "title": "Retention benchmark blogs (vendor)",
+   "url": "https://vidiq.com/blog/post/youtube-shorts-algorithm/",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Numbers (30% swipe-away, 80% at 3 s) vary between vendors, none from YouTube"
+  },
+  {
+   "title": "Faceless-channel demonetization blogs",
+   "url": "https://thenextweb.com/news/youtube-ai-slop-crackdown-faceless-creators-collateral-damage",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Search result only, not opened; no documented history-Shorts case"
   }
  ],
  "repo_watch": [
   {
-   "name": "JuliusBrussee/caveman",
-   "url": "https://github.com/JuliusBrussee/caveman",
+   "name": "eat-pray-ai/yutu",
+   "url": "https://github.com/eat-pray-ai/yutu",
    "licence": "Apache-2.0",
-   "stars": 116983,
-   "last_commit": "2026-11-02",
-   "verdict": "skip",
-   "fit": "Terse-output skill; would only shorten agent replies",
-   "why": "Its own data shows no proven net cost saving; default telemetry; curl|bash installer"
-  },
-  {
-   "name": "OpenMontage",
-   "url": "https://github.com/calesthio/OpenMontage",
-   "licence": "AGPL-3.0",
-   "stars": 75415,
-   "last_commit": "2026-10-28",
-   "verdict": "skip",
-   "fit": "Video pipeline",
-   "why": "AGPL: ideas only, never copy code"
+   "stars": 712,
+   "last_commit": "2026-10-31",
+   "verdict": "watch",
+   "fit": "YouTube CLI/MCP server; could cover uploads later if the owner ever allows Omar to upload (today Omar is read-only)",
+   "why": "Active, but our youtube.py is read-only on purpose; not opened beyond the search listing"
   }
  ],
  "ideas": []
