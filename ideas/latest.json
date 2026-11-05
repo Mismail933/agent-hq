@@ -1,132 +1,43 @@
 {
- "date": "2026-11-04",
- "focus": "results",
- "note": "No idea today. YouTube's rules for 2027 are already in your Atlas notes (idea 2026-10-08-2); I re-checked them against YouTube's own blog and found nothing new. Short run: 9 searches, 11 pages, below my usual bar.",
+ "date": "2026-11-05",
+ "focus": "agents",
+ "note": "No idea today. Claude Code, the API notes and Anthropic news have nothing new since yesterday. Very short run (3 pages, no searches), far below my usual bar, so I kept the focus open instead of guessing.",
  "research": {
-  "searches": 9,
-  "pages_read": 11,
-  "minutes": 15,
+  "searches": 0,
+  "pages_read": 3,
+  "minutes": 5,
   "questions": [
-   "Did YouTube publish any Shorts, originality or AI-label change since 2026-10-08 that affects a faceless animated history channel?",
-   "Is the 2027 Partner Program change described the same way by YouTube's own blog as by news sites?",
-   "Does Claude Code 2.1.318 or the Nov API notes change how our claude -p workers should run?"
+   "Did Claude Code, the API or Anthropic publish anything since 2026-11-04 that changes how our claude -p workers should run?"
   ],
   "gaps": [
-   "No official YouTube page announcing the Oct 2026 'original content' Shorts recommendation change (only secondary blogs, grade C).",
-   "No public data on first-3-second retention for history Shorts (only vendor blogs).",
-   "Did not open the full Claude Code changelog past 2.1.311; it is 1 MB."
+   "No GitHub repo sweep and no web searches this run.",
+   "Did not read the Claude Code changelog past its first 100k characters (it is ~1 MB)."
   ]
  },
- "new_today": [
-  "Claude Code 2.1.318: claude -p adds credential_expires_at to JSON results and warns on stderr when a claude.ai sign-in nears its end (useful for our unattended workers, small)",
-  "Claude Code 2.1.317/2.1.314: claude -p now exits with code 1 when startup fails or a full disk loses transcript writes (was exit 0)",
-  "API 2026-11-03: Claude Mythos 5, Opus 4.7 and Sonnet 4.6 text carries Anthropic's text watermark (nothing for us)",
-  "YouTube's 10 Aug 2026 blog post: no signing deadline or activity rules in the post itself; those come from the Help page and secondary sites"
- ],
+ "new_today": [],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "used",
-   "why": "2.1.318 is new; two claude -p items worth a glance, no idea"
+   "result": "nothing new",
+   "why": "Newest is still 2.1.318"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "Message threads beta and Opus 4.8 fast deprecation already seen; no pricing or caching change"
+   "why": "Newest entry is 2026-11-03 (text watermark), already seen"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "No new model since Haiku 5.5 (Oct 7)"
-  },
-  {
-   "title": "GitHub search: youtube shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
-   "tier": "A",
-   "result": "used",
-   "why": "Only generic video-automation kits; one YouTube CLI worth watching"
-  },
-  {
-   "title": "YouTube Help: reused content",
-   "url": "https://support.google.com/youtube/answer/1311392",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Inauthentic-content wording unchanged (July 2025 rename)"
-  },
-  {
-   "title": "YouTube Help: YPP eligibility",
-   "url": "https://support.google.com/youtube/answer/72851",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Still 4,000 h / 10M today; 2FA required; terms by 31 Jan 2027"
-  },
-  {
-   "title": "YouTube Help: altered or synthetic content",
-   "url": "https://support.google.com/youtube/answer/14328491",
-   "tier": "A",
-   "result": "used",
-   "why": "Fully animated, non-realistic video needs no toggle; our description line is a courtesy, not required"
-  },
-  {
-   "title": "YouTube creator updates",
-   "url": "https://support.google.com/youtube/answer/9072033",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Newest entry is May 2026; nothing on YPP or Shorts originality"
-  },
-  {
-   "title": "YouTube blog: YPP updates 2027",
-   "url": "https://blog.youtube/news-and-events/youtube-partner-program-updates-2027-new-opportunities-earn/",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "8,000 h / 20M for new applicants; 10M per 90 days for Shorts revenue from 1 Feb 2027. Matches idea 2026-10-08-2"
-  },
-  {
-   "title": "Search Engine Journal on YPP terms",
-   "url": "https://www.searchenginejournal.com/youtube-updates-partner-program-terms-shorts-payout-rules/585331/",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Adds activity rules (1,000 h / 1M views / 5 Shorts per 90 days) not in YouTube's blog post; unverified"
-  },
-  {
-   "title": "OutlierKit on YPP 2027",
-   "url": "https://outlierkit.com/resources/youtube-partner-program-changes-2027/",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Repeats SEJ and vidIQ, no primary source"
-  },
-  {
-   "title": "Retention benchmark blogs (vendor)",
-   "url": "https://vidiq.com/blog/post/youtube-shorts-algorithm/",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Numbers (30% swipe-away, 80% at 3 s) vary between vendors, none from YouTube"
-  },
-  {
-   "title": "Faceless-channel demonetization blogs",
-   "url": "https://thenextweb.com/news/youtube-ai-slop-crackdown-faceless-creators-collateral-damage",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Search result only, not opened; no documented history-Shorts case"
+   "why": "Newest post Oct 28; no new model since Haiku 5.5"
   }
  ],
- "repo_watch": [
-  {
-   "name": "eat-pray-ai/yutu",
-   "url": "https://github.com/eat-pray-ai/yutu",
-   "licence": "Apache-2.0",
-   "stars": 712,
-   "last_commit": "2026-10-31",
-   "verdict": "watch",
-   "fit": "YouTube CLI/MCP server; could cover uploads later if the owner ever allows Omar to upload (today Omar is read-only)",
-   "why": "Active, but our youtube.py is read-only on purpose; not opened beyond the search listing"
-  }
- ],
+ "repo_watch": [],
  "ideas": []
 }

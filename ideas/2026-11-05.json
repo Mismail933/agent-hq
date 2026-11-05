@@ -1,0 +1,43 @@
+{
+ "date": "2026-11-05",
+ "focus": "agents",
+ "note": "No idea today. Claude Code, the API notes and Anthropic news have nothing new since yesterday. Very short run (3 pages, no searches), far below my usual bar, so I kept the focus open instead of guessing.",
+ "research": {
+  "searches": 0,
+  "pages_read": 3,
+  "minutes": 5,
+  "questions": [
+   "Did Claude Code, the API or Anthropic publish anything since 2026-11-04 that changes how our claude -p workers should run?"
+  ],
+  "gaps": [
+   "No GitHub repo sweep and no web searches this run.",
+   "Did not read the Claude Code changelog past its first 100k characters (it is ~1 MB)."
+  ]
+ },
+ "new_today": [],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest is still 2.1.318"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest entry is 2026-11-03 (text watermark), already seen"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest post Oct 28; no new model since Haiku 5.5"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}
