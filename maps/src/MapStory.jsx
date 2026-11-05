@@ -59,7 +59,10 @@ function camera(f, lines, fps) {
     // spin.wait s: first a zoom out from the line's own view (e.g. close on French Guiana) to the whole globe, then the turn (Bassel)
     const sa = l.spin && l.spin.wait ? a + Math.round(l.spin.wait * fps) : a + Math.max(24, dur);   // the turn starts once the move there is done (Bassel: it cut)
     if (l.spin && l.spin.wait && f < sa) cur = move(l.view, [l.spin.from, l.spin.lat, l.spin.scale], interpolate(f, [Math.max(0, a), sa], [0, 1], {...clamp, easing: ease}));
-    if (l.spin && f >= sa) {
+    if (l.spin && l.spin.rate != null) {   // rate: degrees a second from t (seconds); no end: lines sharing from/t/rate turn as one (Bassel: it kept stopping)
+      const s0 = l.spin.t != null ? Math.round(l.spin.t * fps) : sa;
+      if (f >= s0) cur = [l.spin.from + (l.spin.rate * (f - s0)) / fps, l.spin.lat, l.spin.scale];
+    } else if (l.spin && f >= sa) {
       const end = Math.round((l.t1 + (l.spin.extra != null ? l.spin.extra : 0.4)) * fps);   // extra: the turn runs on into the line's silence
       cur = [interpolate(f, [sa, end], [l.spin.from, l.spin.to], l.spin.even ? clamp : {...clamp, easing: Easing.inOut(Easing.sin)}), l.spin.lat, l.spin.scale];
       // tail {s, v}: past its end the turn slows over s seconds to v degrees a second and keeps drifting (Bassel: a dead stop read as a lag); later lines with `keep` leave it running
@@ -358,8 +361,12 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
           const sz = earth ? (cam[2] < 1000 ? 36 : 54) : 34, wide = String(p.label).length * sz * 0.68, flip = x + 22 + (p.off ? p.off[0] : 0) + wide > W - 40;
           return <Text key={`n${k}`} x={flip ? x - 22 : x + 22 + (p.off ? p.off[0] : 0)} y={y - 18 + (p.off ? p.off[1] : 0)} size={sz} weight={800} anchor={flip ? 'end' : 'start'} op={on(pa, 8)} pop={pop(pa)}>{p.label}</Text>;
         })}
-        {(line.labels || []).map((lb, k) => (t >= lb.at - 0.05 && geoDistance(cam.slice(0, 2), lb.ll) < 1.45
-          ? <Text key={`lb${k}`} {...xy(P(lb.ll))} size={earth ? 50 : 34} color={earth ? C.white : C.sub} op={on(lb.at, 12)}>{lb.text}</Text> : null))}
+        {(line.labels || []).map((lb, k) => {
+          const R = line.label_r || 1.45, d = geoDistance(cam.slice(0, 2), lb.ll);   // label_r: only near the middle, fading at its rim (Bassel: the turning globe)
+          if (t < lb.at - 0.05 || d >= R) return null;
+          const op = on(lb.at, 12) * (line.label_r ? Math.min(1, (R - d) / 0.22) : 1);
+          return <Text key={`lb${k}`} {...xy(P(lb.ll))} size={line.label_size || (earth ? 50 : 34)} color={earth ? C.white : C.sub} op={op}>{lb.text}</Text>;
+        })}
         {line.label ? <Text {...xy(P([line.label[1], line.label[2]]))} size={earth ? 62 : 40} weight={800} color={earth ? C.white : C.sub} op={on(line.t0 + 0.6, 12)}>{line.label[0]}</Text> : null}
         {(line.regions || []).filter((r) => r.label && r.color !== 'none').map((r) => (
           <Text key={`rl${r.id}`} {...xy(P(r.label[1]))} size={earth ? 48 : 30} weight={800} color={C.white} op={li > 0 && (lines[li - 1].regions || []).some((q) => q.id === r.id && q.label) ? 1 : on(line.t0 + 0.5, 12)}>{r.label[0]}</Text>))}
@@ -617,7 +624,7 @@ function March({m, path, P, f, fps, live, trailOn = true}) {
       {marching && trailOn && <g transform={`translate(${head[0]} ${head[1]}) rotate(${(ang * 180) / Math.PI})`}>
         <path d="M 14 0 L -8 -12 L -3 0 L -8 12 Z" fill="#3FB8DE" stroke="#F4FBFF" strokeWidth={2} />
       </g>}
-      {marching && trailOn && [0, 1, 2, 3, 4].map((q) => {
+      {marching && (trailOn || m.column) && [0, 1, 2, 3, 4].map((q) => {
         const p2 = P(dense[Math.max(0, j - 2 - q * 2)]), bob = Math.abs(Math.sin((f + q * 5) / 4)) * 4;
         return <g key={q} transform={`translate(${p2[0]} ${p2[1] - bob})`}><circle r={7} fill="#2B3E7A" stroke="#F4FBFF" strokeWidth={1.6} /><rect x={-3} y={-15} width={6} height={7} fill="#B0302C" /></g>;
       })}
