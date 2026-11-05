@@ -11,7 +11,7 @@ import {Earth} from './Earth';
 const W = 1920, H = 1080, MAPX = W * 0.5, MAPY = H * 0.54;
 const C = {
   bg: ['#0A1426', '#03060D'], sea: '#0C1D38', grat: 'rgba(120,180,230,0.10)', atmo: '#4FC9F0',
-  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#3FB8DE', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE', free: '#7FC47A', ru: '#E08A3C', cp: '#9A72C8',   /* First World War: Russia orange, the Central Powers purple */   /* Bassel: French blue, British red, Spanish yellow everywhere; free = independent */
+  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#3FB8DE', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE', free: '#7FC47A', ru: '#E08A3C', cp: '#9A72C8', vichy: '#A3A3A3',   /* First World War: Russia orange, the Central Powers purple */   /* Bassel: French blue, British red, Spanish yellow everywhere; free = independent */
   accent: '#FF6A3D', white: '#F2F7FF', text: '#EAF6FF', sub: '#C4DAE6', halo: 'rgba(3,8,16,0.85)',
 };
 const FRANCE = new Set(['FRA', 'GUF', 'FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);
@@ -191,6 +191,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
   const wipes = [];   // tints with `from`: the new colour spreads through the country from that point
   lines.forEach((l, i) => (l.tints || []).forEach((x) => {
     if (i > li || t < x.at) return;
+    if (lines.some((m, j) => j > i && j <= li && (m.fill || []).includes('-' + x.code.split(':')[0]))) return;   // a later '-XXX' (independence) ends an earlier tint (Bassel: the Vichy colours)
     const [a3, who] = x.code.split(':'), from = tint[a3] || C.fill, to = who === '-' ? C.fr : who === 'none' ? from : C[who] || C.fill;
     if (x.from && who !== '-' && who !== 'none') {
       const kw = interpolate(f, [at(x.at), at(x.at + (x.dur || 3))], [0, 1], {...clamp, easing: Easing.inOut(Easing.quad)});
@@ -325,7 +326,8 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
           <g key={`r${i}`}>
             <Draw d={path(geo.rivers[l.river])} p={interpolate(f, [l.follow && l.ship ? sailFrames(l, fps)[1] : at(l.t0), (l.follow && l.ship ? sailFrames(l, fps)[1] : at(l.t0)) + 50], [0, 1], {...clamp, easing: ease})} color="#7FD7FF" width={4} />
           </g>) : null))}
-        {lines.map((l, i) => (l.arc && i <= li ? (
+        {lines.map((l, i) => (l.arc && i <= li && !lines.some((m, j) => j > i && j <= li && m.arc_off) ? (   // arc_off on a later line takes earlier arcs away (Bassel: the France-Algeria line stayed)
+
           <Draw key={`a${i}`} d={path({type: 'LineString', coordinates: Array.from({length: 41}, (_, k) => geoInterpolate(l.arc[0], l.arc[1])(k / 40))})}
                 p={interpolate(f, [at(l.t0), at(l.t0) + 40], [0, 1], {...clamp, easing: ease})} color={C.accent} width={4} />) : null))}
         {lines.flatMap((l, i) => (l.pins || []).map((p, k) => {
@@ -380,7 +382,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
             <div key={txt} style={{display: 'flex', alignItems: 'center', gap: 14, margin: '4px 0'}}>
               <div style={{width: 30, height: 18, background: C[c] || c, opacity: 0.8, border: `2px dashed ${C[c] || c}`}} />{txt}
             </div>))}
-          <div style={{fontSize: 16, opacity: 0.6, marginTop: 6}}>Areas approximate</div>
+          {line.legend_note === false ? null : <div style={{fontSize: 16, opacity: 0.6, marginTop: 6}}>Areas approximate</div>}
         </div>) : null}
       {dateText ? (
         <div style={{position: 'absolute', right: 60, top: 50, fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 84, color: C.white,
