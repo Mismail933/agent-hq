@@ -210,6 +210,8 @@ def part(folder):
             b["label"] = [s["label"][0], s["label"][1], s["label"][2]]
         if s.get("tints"):   # [[cue, "HTI:free"]]: a filled place changes colour on its word
             b["tints"] = [{"at": cue(x[0]), "code": x[1], **({"from": x[2]} if len(x) > 2 else {}), **({"dur": x[3]} if len(x) > 3 else {})} for x in s["tints"]]
+        if s.get("regions"):   # a region's `on` = its cue word: the delay comes from the voice
+            b["regions"] = [dict(r, delay=round(cue(r["on"]) - b["t0"], 3)) if r.get("on") else r for r in s["regions"]]
         if s.get("march"):   # [[cue, seconds, [[lon, lat], ...]]]: an army moves across the map
             b["march"] = [{"at": cue(w), "dur": d, "pts": pts, **({"column": True} if s.get("march_column") else {})} for w, d, pts in s["march"]]   # march_column: the marching pieces show (Bassel: figurines)
         if s.get("fx"):   # [["battle", cue, seconds, [[lon, lat], ...]]]: battles flare on the map while the narrator goes on
@@ -235,6 +237,7 @@ def part(folder):
             who = re.sub(r"\s+", " ", c.get("author") or "").strip()[:50]
             b["footage"] = {"key": v["key"], "at": round(at, 3), "dur": round(max(2.5, dur), 2), "from": v.get("from", 0),
                             "caption": v["caption"], **({"ll": v["ll"]} if v.get("ll") else {}), **({"zoom": v["zoom"]} if v.get("zoom") else {}),
+                            **{k: True for k in ("cut_in", "cut_out") if v.get(k)},   # film to film with a straight cut (Bassel: no map between)
                             "credit": "AI recreation, Google Gemini" if c.get("licence") == "AI recreation" else f"{who + ', ' if who else ''}{c.get('licence', '')}, via Wikimedia Commons",
                             **({"ai": True} if c.get("licence") == "AI recreation" else {})}
         if s.get("duo"):   # [{key, caption, side, on}]: two portraits at once, one each side of the map

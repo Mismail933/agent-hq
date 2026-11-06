@@ -11,7 +11,7 @@ import {Earth} from './Earth';
 const W = 1920, H = 1080, MAPX = W * 0.5, MAPY = H * 0.54;
 const C = {
   bg: ['#0A1426', '#03060D'], sea: '#0C1D38', grat: 'rgba(120,180,230,0.10)', atmo: '#4FC9F0',
-  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#3FB8DE', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE', free: '#7FC47A', ru: '#E08A3C', cp: '#9A72C8', vichy: '#A3A3A3',   /* First World War: Russia orange, the Central Powers purple */   /* Bassel: French blue, British red, Spanish yellow everywhere; free = independent */
+  land: '#25334C', world: '#1F2B41', line: 'rgba(235,244,255,0.55)', france: ['#49C6E6', '#1C93C0'], fill: '#3FB8DE', uk: '#C8505A', es: '#E3B75A', us: '#8E9FBF', fr: '#3FB8DE', free: '#7FC47A', ru: '#E08A3C', cp: '#9A72C8', vichy: '#A3A3A3', de: '#7A3434',   /* First World War: Russia orange, the Central Powers purple */   /* Bassel: French blue, British red, Spanish yellow everywhere; free = independent */
   accent: '#FF6A3D', white: '#F2F7FF', text: '#EAF6FF', sub: '#C4DAE6', halo: 'rgba(3,8,16,0.85)',
 };
 const FRANCE = new Set(['FRA', 'GUF', 'FRO', 'MAF', 'BLM', 'SPM', 'NCL', 'PYF', 'WLF', 'ATF', 'CLP']);
@@ -228,7 +228,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
     let ft = {type: 'Polygon', coordinates: [[...ring, ring[0]]]};
     if (geoArea(ft) > 2 * Math.PI) ft = {type: 'Polygon', coordinates: [[...ring, ring[0]].reverse()]};
     const k = i === li ? on(l.t0 + (r.delay != null ? r.delay : 0.2), Math.round((r.slow || 0.55) * fps)) : 1;
-    regions[r.id] = {ring, ft, color: r.color, from: was ? was.color : 'none', k, label: r.label || (was && was.label), wipe: i === li ? r.wipe : null, flags: i === li ? r.flags : null, flagAt: r.flagAt};
+    regions[r.id] = {ring, ft, color: r.color, from: was ? was.color : 'none', k, label: r.label || (was && was.label), wipe: i === li ? r.wipe : null, flags: i === li ? r.flags : null, flagAt: r.flagAt, clip: r.clip || (was && was.clip)};
   }));
   const regionPaths = Object.entries(regions).map(([id, r]) => {
     const col = (c) => (c === 'none' ? null : C[c] || c);
@@ -250,8 +250,10 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
         </g>
       );
     }
+    const own = r.clip && geo.detail.features.find((ft) => ft.properties.a3 === r.clip);   // clip: only inside that country (Bassel: Vichy and occupied France)
     return (
-      <g key={`g${id}`} clipPath="url(#land)">
+      <g key={`g${id}`} clipPath={own ? `url(#rc${id})` : 'url(#land)'}>
+        {own ? <defs><clipPath id={`rc${id}`}><path d={path(own)} /></clipPath></defs> : null}
         <path d={path(r.ft)} fill={fill} fillOpacity={b && a ? 0.8 : op * 1.25} />
         <path d={path(r.ft)} fill="none" stroke="#F4FBFF" strokeWidth={5} strokeOpacity={(b ? r.k : 1 - r.k) * 0.95} strokeLinejoin="round" />
       </g>
@@ -492,8 +494,8 @@ const Photo = ({ph, a: as, b: bs, f, fps}) => {
 // the map opens onto a picture and closes back onto it (the owner 2026-10-29, "zoom transitions from the map into scenes and back, no hard
 // cuts"): a circle grows from the place on the map (or the middle) to the whole screen while the picture inside settles from a close
 // push, a thin light ring on its edge; at the end it shrinks back onto that place
-function Iris({a, n, f, children}) {
-  const op = interpolate(f, [a, a + 24, a + n - 24, a + n], [0, 1, 1, 0], {...clamp, easing: Easing.inOut(Easing.sin)});
+function Iris({a, n, f, children, cutIn = false, cutOut = false}) {   // cutIn/cutOut: a straight cut instead of the fade (film to film)
+  const op = interpolate(f, [a, a + (cutIn ? 1 : 24), a + n - (cutOut ? 1 : 24), a + n], [cutIn ? 1 : 0, 1, 1, cutOut ? 1 : 0], {...clamp, easing: Easing.inOut(Easing.sin)});
   if (op <= 0) return null;
   const sc = interpolate(f, [a, a + n], [1.03, 1.0], clamp);
   return <AbsoluteFill style={{opacity: op}}><AbsoluteFill style={{transform: `scale(${sc})`}}>{children}</AbsoluteFill></AbsoluteFill>;
@@ -524,11 +526,11 @@ function EventClip({ev, t0, f, fps, xy, lit}) {
 function Footage({v, f, fps, xy}) {
   const a = Math.round(v.at * fps), n = Math.round((v.dur || 5) * fps);
   if (f < a - 1 || f > a + n + 1) return null;
-  const tag = interpolate(f, [a + 14, a + 26, a + n - 18, a + n - 8], [0, 1, 1, 0], clamp);
+  const tag = interpolate(f, [a + (v.cut_in ? 4 : 14), a + (v.cut_in ? 12 : 26), a + n - 18, a + n - 8], [0, 1, 1, 0], clamp);
   const push = (v.zoom || 1) * interpolate(f, [a, a + n], [1.0, 1.07], clamp);   // zoom: a letterboxed clip filled (Reunion's is 2.35:1)
   return (
     <Sequence from={a} durationInFrames={n}>
-      <Iris a={a} n={n} xy={xy} f={f}>
+      <Iris a={a} n={n} xy={xy} f={f} cutIn={!!v.cut_in} cutOut={!!v.cut_out}>
         <AbsoluteFill style={{transform: `scale(${push})`, background: '#000'}}>
           <OffthreadVideo src={staticFile(`footage/${v.key}.mp4`)} startFrom={Math.round((v.from || 0) * fps)} muted
                           style={{width: '100%', height: '100%', objectFit: 'cover', filter: 'contrast(1.04) saturate(0.95) brightness(0.92)'}} />
