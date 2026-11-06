@@ -1,34 +1,37 @@
 {
- "date": "2026-11-05",
- "focus": "agents",
- "note": "No idea today. Claude Code, the API notes and Anthropic news have nothing new since yesterday. Very short run (3 pages, no searches), far below my usual bar, so I kept the focus open instead of guessing.",
+ "date": "2026-11-06",
+ "focus": "reliability",
+ "note": "No idea today. Nothing new since yesterday: Claude Code is still 2.1.318, no new model, no Anthropic news after Oct 28. Short run (6 pages, 3 repo searches), below my usual bar. Small reliability notes only: claude -p now exits 1 on a full disk (2.1.317) and on startup failure (2.1.314).",
  "research": {
-  "searches": 0,
-  "pages_read": 3,
-  "minutes": 5,
+  "searches": 3,
+  "pages_read": 6,
+  "minutes": 8,
   "questions": [
-   "Did Claude Code, the API or Anthropic publish anything since 2026-11-04 that changes how our claude -p workers should run?"
+   "Did Claude Code or the API change anything about how claude -p fails or reports errors that workers.py should handle?"
   ],
   "gaps": [
-   "No GitHub repo sweep and no web searches this run.",
-   "Did not read the Claude Code changelog past its first 100k characters (it is ~1 MB)."
+   "No web searches beyond three GitHub repo queries.",
+   "Did not read the Claude Code changelog past its first 100k characters.",
+   "No YouTube sources checked (not a results day)."
   ]
  },
- "new_today": [],
+ "new_today": [
+  "API release notes 2026-11-05: Console IP allowlist (beta) and Enterprise sign-out Admin API: not relevant to us."
+ ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest is still 2.1.318"
+   "why": "Newest 2.1.318. 2.1.314/2.1.317: claude -p exits 1 on startup failure or full disk; workers.py already treats non-zero as Unavailable."
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest entry is 2026-11-03 (text watermark), already seen"
+   "why": "Only Nov 5 admin items; Opus 4.8 fast mode removed Nov 30 (we do not use it)"
   },
   {
    "title": "Anthropic news",
@@ -36,6 +39,27 @@
    "tier": "A",
    "result": "nothing new",
    "why": "Newest post Oct 28; no new model since Haiku 5.5"
+  },
+  {
+   "title": "GitHub search: claude code subagents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Role-prompt libraries only (wshobson/agents, VoltAgent); reference material"
+  },
+  {
+   "title": "GitHub search: LLM token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Tiny repos, one noncommercial (glyphdown)"
+  },
+  {
+   "title": "GitHub search: faceless Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+faceless+video+automation",
+   "tier": "B",
+   "result": "rejected",
+   "why": "1-star auto-upload bots; uploads not allowed"
   }
  ],
  "repo_watch": [],
