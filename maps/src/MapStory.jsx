@@ -360,7 +360,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
       <svg width={W} height={H} style={{position: 'absolute'}}>
         {(line.pins || []).map((p, k) => {
           const pa = pinAt(line, p, fps);
-          if (!p.label || t < pa - 0.05 || (p.until != null && t >= p.until) || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
+          if (!p.label || line.pin_names === false || t < pa - 0.05 || (p.until != null && t >= p.until) || geoDistance(cam.slice(0, 2), p.ll) > 1.45) return null;
           const [x, y] = P(p.ll);
           const sz = earth ? (cam[2] < 1000 ? 36 : 54) : 34, wide = String(p.label).length * sz * 0.68, flip = x + 22 + (p.off ? p.off[0] : 0) + wide > W - 40;
           return <Text key={`n${k}`} x={flip ? x - 22 : x + 22 + (p.off ? p.off[0] : 0)} y={y - 18 + (p.off ? p.off[1] : 0)} size={sz} weight={800} anchor={flip ? 'end' : 'start'} op={on(pa, 8)} pop={pop(pa)}>{p.label}</Text>;
