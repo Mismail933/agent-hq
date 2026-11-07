@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.318",
-   "checked": "2026-11-06"
+   "last_seen": "2.1.319",
+   "checked": "2026-11-07"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-11-05 Console IP allowlist; 11-03 watermark",
-   "checked": "2026-11-06"
+   "last_seen": "2026-11-05 Console IP allowlist; 11-02 Message threads beta",
+   "checked": "2026-11-07"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-10-28 AI for Science; no new models since Haiku 5.5",
-   "checked": "2026-11-06"
+   "checked": "2026-11-07"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -124,6 +124,11 @@
    "url": "https://support.google.com/youtube/answer/14328491",
    "last_seen": "fully animated non-realistic content needs no disclosure",
    "checked": "2026-11-04"
+  },
+  "claude-code-headless-docs": {
+   "url": "https://code.claude.com/docs/en/headless",
+   "last_seen": "--bare skips OAuth; will become default for -p",
+   "checked": "2026-11-07"
   }
  },
  "repos": {
@@ -231,6 +236,13 @@
    "verdict": "skip",
    "checked": "2026-10-31",
    "note": "PolyForm Noncommercial"
+  },
+  "ARahim3/cachebeat": {
+   "stars": 85,
+   "last_commit": "2026-10-13",
+   "verdict": "skip",
+   "checked": "2026-11-07",
+   "note": "idle-session cache keeper, no fit"
   }
  },
  "issues": {

@@ -1,0 +1,188 @@
+{
+ "date": "2026-11-07",
+ "focus": "tokens",
+ "note": "One small, free idea today: trim what every worker's claude -p run loads at startup (auto memory, CLAUDE.md files, MCP, skills). The official fix, --bare, would break our subscription login, so the idea uses smaller switches and a one-run measurement first. Claude Code is now 2.1.319; no new models.",
+ "research": {
+  "searches": 16,
+  "pages_read": 9,
+  "minutes": 30,
+  "questions": [
+   "Does a claude -p worker (workers.py) load context we don't need, and is there an official switch that cuts it without --bare (which skips the subscription login)?",
+   "Did Claude Code 2.1.314-2.1.319 or the API notes change anything claude -p or caching related that we should handle?",
+   "Is there strong evidence for cheaper hand-offs between our agents (schemas, formats, merged calls)?"
+  ],
+  "gaps": [
+   "No official number for how many tokens a bare vs normal claude -p run saves; the 150k figure is one blogger's repo.",
+   "Could not confirm that --setting-sources keeps the OAuth login working (no official statement); needs one local test.",
+   "Read only the first 100k characters of the changelog and env-vars page.",
+   "YouTube's own pages not opened (not a results day); Shorts originality news seen only via secondary sites."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.319 (was 2.1.318): claude -p exits 1 when auto mode refuses its actions; new permissions.denyInsteadOfPrompting setting.",
+  "Claude Code 2.1.318: claude -p JSON results report when the claude.ai sign-in expires; stderr warning starts 10 days before. Useful for the START-HERE sign-in check.",
+  "Claude Code 2.1.318: claude -p and SDK sessions no longer report success when an API error cut off a reply.",
+  "Claude Code 2.1.316: fast mode on Opus 4.8 removed on 2026-11-30 (we don't use it; check no limit sets it).",
+  "API 2026-11-02: Message threads (beta), server keeps the conversation so later requests send only new messages; threads live 1 hour at most, not ZDR. Only helps long single conversations: our workers are one-shot.",
+  "Docs: --bare will become the default for claude -p in a future release and never reads OAuth/keychain. If that lands, workers.py (subscription) would break unless we pass login another way. Worth watching."
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.319 and 2.1.318 claude -p exit-code and sign-in expiry changes."
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "used",
+   "why": "Message threads beta (Nov 2); nothing on pricing or caching."
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest post Oct 28; no new model."
+  },
+  {
+   "title": "Run Claude Code programmatically (headless)",
+   "url": "https://code.claude.com/docs/en/headless",
+   "tier": "A",
+   "result": "used",
+   "why": "--bare skips CLAUDE.md, hooks, skills, plugins, MCP, auto memory but never reads OAuth; will become the default for -p."
+  },
+  {
+   "title": "CLI reference",
+   "url": "https://code.claude.com/docs/en/cli-reference",
+   "tier": "A",
+   "result": "used",
+   "why": "--strict-mcp-config, --disable-slash-commands, --setting-sources documented."
+  },
+  {
+   "title": "Environment variables",
+   "url": "https://code.claude.com/docs/en/env-vars",
+   "tier": "A",
+   "result": "used",
+   "why": "CLAUDE_CODE_DISABLE_AUTO_MEMORY, CLAUDE_CODE_DISABLE_CLAUDE_MDS, CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS quoted."
+  },
+  {
+   "title": "Manage costs effectively",
+   "url": "https://code.claude.com/docs/en/costs",
+   "tier": "A",
+   "result": "used",
+   "why": "Confirms CLAUDE.md and MCP load at start; no headless-specific number."
+  },
+  {
+   "title": "Message threads (API beta)",
+   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "tier": "A",
+   "result": "rejected",
+   "why": "For long agent loops; our workers are short one-shot runs."
+  },
+  {
+   "title": "claude -p: what headless loads and when bare is right",
+   "url": "https://dev.to/rulestack/claude-p-what-headless-claude-code-actually-loads-and-when-bare-is-the-right-call-182c",
+   "tier": "C",
+   "result": "used",
+   "why": "One repo measured ~150k tokens before work; single anecdote, only supports looking."
+  },
+  {
+   "title": "Reports that --bare breaks subscription login (claudeissues.com 68618, 48840)",
+   "url": "https://claudeissues.com/issue/68618-bare-flag-strips-auth-credentials-making-it-non-functional",
+   "tier": "B",
+   "result": "used",
+   "why": "Agrees with the docs: bare needs an API key. Open request for a no-hooks flag that keeps OAuth."
+  },
+  {
+   "title": "exclude-dynamic-system-prompt-sections test (mer.vin)",
+   "url": "https://mer.vin/news/why-exclude-dynamic-system-prompt-sections-didnt-help-my-cache/",
+   "tier": "C",
+   "result": "rejected",
+   "why": "One test shows no cache gain; we replace the system prompt anyway."
+  },
+  {
+   "title": "Token optimisation in multi-agent pipelines (search results: arXiv 2605.29676, 2605.00410)",
+   "url": "https://arxiv.org/abs/2605.29676",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Compact formats save up to 18% with accuracy cost; no clear win for us."
+  },
+  {
+   "title": "Anthropic donates Agent Skills to AAIF",
+   "url": "https://www.anthropic.com/news/donating-agent-skills-to-the-agentic-ai-foundation",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Governance move; existing SKILL.md files keep working."
+  },
+  {
+   "title": "YouTube Shorts originality update coverage",
+   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "Same Oct 2026 recommendation change already in watch.json; monetization rules unchanged."
+  },
+  {
+   "title": "GitHub search: claude code token cost / prompt caching / skills-hooks / headless orchestration / faceless shorts",
+   "url": "https://api.github.com/search/repositories?q=claude+code+token+cost+reduction",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Five queries; tools are third-party token savers (some noncommercial) or tiny repos."
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "ARahim3/cachebeat",
+   "url": "https://github.com/ARahim3/cachebeat",
+   "licence": "MIT",
+   "stars": 85,
+   "last_commit": "2026-10-13",
+   "verdict": "skip",
+   "fit": "Keeps cache warm in idle interactive sessions; our workers are one-shot and the office already uses 1h cache on subscription.",
+   "why": "Not opened beyond the search listing; no fit."
+  },
+  {
+   "name": "MikkoParkkola/glyphdown",
+   "url": "https://github.com/MikkoParkkola/glyphdown",
+   "licence": "PolyForm Noncommercial",
+   "stars": 2,
+   "last_commit": "2026-10-12",
+   "verdict": "skip",
+   "fit": "Token compression plugin.",
+   "why": "Noncommercial licence: off-limits."
+  }
+ ],
+ "ideas": [
+  {
+   "id": "2026-11-07-1",
+   "title": "Measure and trim what each worker's claude -p loads at startup",
+   "area": "tokens",
+   "problem": "workers.run() starts claude -p with --system-prompt, --tools and --no-session-persistence (workers.py lines 87-94) but nothing else. Per the official headless docs, without --bare a -p run still loads everything an interactive session would, including anything in ~/.claude: auto memory, CLAUDE.md memory files, skills list, plugins, MCP servers and hooks. Our workers (Doulya, Sage, Vera, Serge, Calina, Israa, Tarek, Omar, Rana, Ghassan) run in empty folders on the owner's PC, where his own ~/.claude is full (this Builder chat, memory notes, skills). The repo has no CLAUDE_CODE_DISABLE_AUTO_MEMORY, DISABLE_CLAUDE_MDS, --strict-mcp-config or --disable-slash-commands anywhere. We have never measured it: the usage table keeps input/output/cache tokens per run, so the baseline already exists. --bare itself is not an option: the docs say it never reads OAuth or the keychain, so our subscription login would fail.",
+   "proposal": "Step 1 (free, no code): pick Vera (shortest run, $0.06). Run her once in practice-off mode as today, then once with the extra switches below set by hand, and compare input+cache tokens from the usage table (cp.usage_today). Step 2, only if the saving is 10%+ per run: in workers.run() add to the command `--strict-mcp-config` and `--disable-slash-commands`, and add to the env copy (atlas_engine._env() result) CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CODE_DISABLE_CLAUDE_MDS=1. Put it behind a rule `workers.lean_start` (default on, in rules.py) so Atlas or the owner can switch it off. Do NOT touch Atlas's own claude -p in atlas_engine.py: he needs his journal and memory. Try `--setting-sources project,local` only if a local test shows the login still works (official docs list the flag; no source says what it does to OAuth). Watch for a case where Ghassan or Rana relied on a user-level skill: both get explicit tools, so none should.",
+   "gain": "Fewer input and cache-write tokens on every one-shot worker run, which counts against the subscription allowances (SUBSCRIPTION_DAILY_VALUE_USD per agent). Size unknown: one blogger measured ~150k tokens before work in a repo with a long CLAUDE.md, skills and two MCP servers; ours is an empty folder, so the real saving may be small. That is why step 1 measures first. Success = per-run input+cache tokens down 10% or more for Vera, Serge and Israa with identical output quality.",
+   "test": "1) Normal: Vera on one idea, before and after, compare the usage rows; verdict JSON still valid. 2) Edge: Calina batch (WebSearch+WebFetch tools) still searches and writes episodes with sources. 3) Failure: with rule workers.lean_start on, a run where claude is signed in via the subscription still returns structured_output (no 'Not logged in'); if it fails, the rule goes off and the old command runs. Pass = same verdicts/episode counts and lower token rows.",
+   "effort": "S",
+   "confidence": "low",
+   "confidence_why": "The docs (tier A) say -p loads user config and name the switches; no measurement for our setup exists, and the OAuth interaction of --setting-sources is unverified. Weakest link: the saving may be tiny in an empty working folder.",
+   "risks": "A switch might hide something a worker needs (user-level settings, proxy config). --bare and later a possible default of --bare for -p (docs: 'will become the default for -p in a future release') could break subscription logins regardless: separate watch item. No outside code involved.",
+   "links": [
+    {
+     "title": "Run Claude Code programmatically (bare mode)",
+     "url": "https://code.claude.com/docs/en/headless"
+    },
+    {
+     "title": "Environment variables",
+     "url": "https://code.claude.com/docs/en/env-vars"
+    },
+    {
+     "title": "CLI reference",
+     "url": "https://code.claude.com/docs/en/cli-reference"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
+}
