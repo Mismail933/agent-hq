@@ -286,7 +286,7 @@ def part(folder):
         pass
     else:
       # in saved pieces, each with a fresh browser: a crash at 94% (10-30, memory) cost 80 minutes. A piece already made is kept when the props are the same.
-      props = _props_file(folder, {"lines": beats, "seconds": secs, "earth": earth, "trails": spec.get("trails", True) is not False})   # trails false: a march over land is the flag alone (ships keep their line)
+      props = _props_file(folder, {"lines": beats, "seconds": secs, "earth": earth, "trails": spec.get("trails", True) is not False, "drift": bool(spec.get("drift"))})   # drift: the map camera never sits still (the owner, 11-07)   # trails false: a march over land is the flag alone (ships keep their line)
       import hashlib
       sig = hashlib.sha1(Path(props).read_bytes()).hexdigest()[:10]
       n, parts = int(round(secs * 30)), []

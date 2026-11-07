@@ -40,7 +40,7 @@ const Draw = ({d, p, color, width}) => {
 // A line with `follow` {from, mid} and a ship rides with it (Bassel, 10-27: "zoom on France, go with the ship with a bit of zooming out",
 // then land close on the destination): the camera cuts in close on the port (zoom `from`), pulls back to `mid` while the ship is at sea,
 // following it with a little lag, and comes down on the line's view at the end of the voyage.
-function camera(f, lines, fps) {
+function camera(f, lines, fps, drift = false) {
   let cur = lines[0].view;
   for (let i = 0; i < lines.length; i++) {   // from line 0: its own mid-line views count too (part 4's opening never moved)
     const l = lines[i];
@@ -73,12 +73,23 @@ function camera(f, lines, fps) {
       }
     }
     // views [{at, view}]: the camera moves on mid-line (e.g. from Pondicherry to Saint-Louis on 'the island of Saint Louis')
-    let base = l.view;
+    let base = l.view, settle = a + dur;
     for (const v of l.views || []) {
       const va = Math.round(v.at * fps);
       if (f < va) break;
       cur = move(base, v.view, interpolate(f, [va, va + 75], [0, 1], {...clamp, easing: ease}));
       base = v.view;
+      settle = va + 75;
+    }
+    // drift: a still framing slowly pushes in and slides (the owner: 'the camera stuck on a country ... feels so dead')
+    if (drift && !l.spin && !(l.follow && l.ship) && l.drift !== false) {
+      const nextA = i + 1 < lines.length ? Math.round((lines[i + 1].t0 - 0.15) * fps) : Infinity;
+      const dt = (Math.min(f, nextA) - settle) / fps;
+      if (dt > 0) {
+        const z = Math.min(1.18, 1 + 0.014 * dt), side = i % 2 ? 1 : -1;
+        const slide = Math.min(dt, 16) * 12 * (57.3 / cur[2]) / Math.max(0.3, Math.cos((cur[1] * Math.PI) / 180));
+        cur = [cur[0] + side * slide, cur[1], cur[2] * z];
+      }
     }
   }
   return cur;
@@ -157,11 +168,11 @@ const PoleFlag = ({x, y, s, f, name}) => (s <= 0.01 || !FLAG[name] ? null :
     <g transform={`translate(1.5 -62) skewY(${Math.sin(f / 7) * 3})`}>{FLAG[name]}</g>
   </g>);
 
-export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true}) => {
+export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true, drift = false}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   if (!lines.length) return null;
-  const cam = camera(f, lines, fps);
+  const cam = camera(f, lines, fps, drift);
   const proj = geoOrthographic().rotate([-cam[0], -cam[1]]).scale(cam[2]).translate([MAPX, MAPY]).clipExtent([[-20, -20], [W + 20, H + 20]]).precision(0.35);
   const path = geoPath(proj);
   const P = (ll) => proj(ll) || [NaN, NaN];
@@ -250,7 +261,7 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
         </g>
       );
     }
-    const own = r.clip && geo.detail.features.find((ft) => ft.properties.a3 === r.clip);   // clip: only inside that country (Bassel: Vichy and occupied France)
+    const own = r.clip && (geo.detail.features.find((ft) => ft.properties.a3 === r.clip) || WORLD.find((ft) => ft.properties.a3 === r.clip));   // a country not in the detailed set: its world shape   // clip: only inside that country (Bassel: Vichy and occupied France)
     return (
       <g key={`g${id}`} clipPath={own ? `url(#rc${id})` : 'url(#land)'}>
         {own ? <defs><clipPath id={`rc${id}`}><path d={path(own)} /></clipPath></defs> : null}
