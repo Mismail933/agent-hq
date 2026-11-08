@@ -1,0 +1,150 @@
+{
+ "date": "2026-11-08",
+ "focus": "tools",
+ "note": "One small idea: the backup Atlas still runs on Haiku 4.5. Haiku 5.5 is out, costs 10x less, and we must add its price to settings.py when we switch. Claude Code is still 2.1.319; no new models this week. This was a lighter run than usual (see gaps).",
+ "research": {
+  "searches": 4,
+  "pages_read": 8,
+  "minutes": 15,
+  "questions": [
+   "Does any model ID in settings.py face a retirement date, and what do the replacements cost?",
+   "Did the API change anything (sampling parameters, API version) that our llm.py or atlas_cloud.py would trip on?",
+   "Is there a mature repo that gives the owner a better view of agent activity than our office page?"
+  ],
+  "gaps": [
+   "Only 4 searches (3 GitHub API queries + 1 web search), below the 15 asked for. Done in a short run.",
+   "Did not read the changelog past its first 100k characters, nor YouTube's pages (not a results day).",
+   "Did not open the Haiku 5.5 model page or run any quality test of Haiku 5.5 as Atlas; quality for our chat tasks is untested.",
+   "Did not read Claude-Code-Agent-Monitor's source, only its README page."
+  ]
+ },
+ "new_today": [
+  "Claude Code: still 2.1.319 (no newer version than yesterday).",
+  "API: Sonnet 4.5 (claude-sonnet-4-5-20250929) retires 2026-11-30. We do not use it (settings.py has only haiku-4-5, sonnet-5-5, opus-5-5).",
+  "API: fast mode on Opus 4.8 removed 2026-11-30. We do not use it.",
+  "API: sampling parameters (temperature, top_p, top_k) return 400 from API version 2026-10-21. llm.py and atlas_cloud.py send none and pin 2023-06-01, so nothing breaks.",
+  "API: Haiku 5.5 base price $0.10 in / $0.50 out per MTok (up to 100k-token prompts) vs Haiku 4.5 $1 / $5.",
+  "Haiku 4.5 retirement: 'not sooner than October 15, 2026' and no deprecation notice yet. Anthropic promises 60 days' notice, so it is safe now but is the oldest model we use."
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Top entry is still 2.1.319."
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "used",
+   "why": "Opus 4.8 fast mode removal, Sonnet 4.5 retirement, Haiku 5.5 cache pricing."
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest post Oct 28; no model or product that changes our choices."
+  },
+  {
+   "title": "Model deprecations",
+   "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+   "tier": "A",
+   "result": "used",
+   "why": "Status table for every model ID we use."
+  },
+  {
+   "title": "Models overview",
+   "url": "https://platform.claude.com/docs/en/models/overview",
+   "tier": "A",
+   "result": "used",
+   "why": "Haiku 5.5: ID claude-haiku-5-5, 1M context, adaptive thinking, retirement not before 2027-10-07."
+  },
+  {
+   "title": "Pricing",
+   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+   "tier": "A",
+   "result": "used",
+   "why": "Haiku 5.5 $0.10/$0.50 (up to 100k prompt), $0.50/$2.50 above; Haiku 4.5 $1/$5."
+  },
+  {
+   "title": "Migrating to API version 2026-10-21",
+   "url": "https://platform.claude.com/docs/en/api/migration-2026-10-21",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Opt-in version; we pin 2023-06-01 and send no sampling parameters."
+  },
+  {
+   "title": "Sonnet 4.5 retirement coverage (codersera, kingy.ai etc.)",
+   "url": "https://codersera.com/blog/claude-sonnet-4-5-retirement-migration-2026/",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Repeats the official table; not opened, only seen in search results."
+  },
+  {
+   "title": "GitHub search: claude code dashboard agents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+dashboard+agents",
+   "tier": "A",
+   "result": "used",
+   "why": "Found Claude-Code-Agent-Monitor, ccglass, ai-maestro."
+  },
+  {
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "video-autopilot-kit and yutu already on watch; nothing else with traction."
+  },
+  {
+   "title": "GitHub search: llm prompt caching token cost",
+   "url": "https://api.github.com/search/repositories?q=llm+prompt+caching+token+cost",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "All tiny (under 150 stars) or noncommercial."
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "hoangsonww/Claude-Code-Agent-Monitor",
+   "url": "https://github.com/hoangsonww/Claude-Code-Agent-Monitor",
+   "licence": "MIT",
+   "stars": 1159,
+   "last_commit": "2026-11-06",
+   "verdict": "watch",
+   "fit": "Local dashboard of Claude Code sessions, tool calls and cost; could inspire an Ops view, but our workers run with --no-session-persistence.",
+   "why": "MIT, loopback only, active, 24 open issues; needs Node 22 and installs hooks, so not for the office PC without a test. Source not read."
+  }
+ ],
+ "ideas": [
+  {
+   "id": "2026-11-08-1",
+   "title": "Move the backup Atlas from Haiku 4.5 to Haiku 5.5 (and add its price)",
+   "area": "tokens",
+   "problem": "settings.py line 12 sets MODELS['atlas'] = 'claude-haiku-4-5-20251001', used by the API backup Atlas (agents.py Atlas.chat, llm.run). It is the only 4.x model we still call. Haiku 4.5's retirement date is 'not sooner than 2026-10-15' (already passed, though no notice was issued; Anthropic promises 60 days' notice). Also PRICES_PER_MTOK has no entry for Haiku 5.5: control_plane.py line 239 falls back to (5.0, 25.0) for unknown models, so a plain ID swap would count its cost about 50x too high and could trip the daily budget or the Atlas cap.",
+   "proposal": "1) settings.py: MODELS['atlas'] = 'claude-haiku-5-5'. 2) Add to PRICES_PER_MTOK: 'claude-haiku-5-5': (0.10, 0.50) and keep the 4-5 line one more month. Note Haiku 5.5 costs $0.50/$2.50 for prompts over 100k tokens; Atlas's backup prompts are far below that. 3) Also change the Atlas limit default if it lists the model (cp.LIMITS model.atlas) so the office's Limits tab shows the new name. settings.py is on Ghassan's PROTECTED list, so the Builder does this, not Ghassan.",
+   "gain": "Backup Atlas input/output cost falls 10x ($1/$5 -> $0.10/$0.50 per MTok) and we leave the oldest model before it gets a retirement notice. In absolute terms small: the backup only answers when Claude Code is unavailable. Measure: events model_call for Atlas show the new model and cost_usd about a tenth of before for a similar message.",
+   "test": "Normal: in practice mode with HQ_ATLAS_ENGINE=api, send 'status' and 'list ideas'; Atlas answers and calls the right tools. Edge: a message needing 3 tool calls (spend report then list ideas then retry); tool-calling still works with Haiku 5.5. Failure: remove the price line and confirm the cost is wrongly counted at the (5, 25) default, to prove the price entry is needed. One real run (a few cents) to check the model ID is accepted before shipping.",
+   "effort": "S",
+   "confidence": "moderate",
+   "confidence_why": "Prices, ID and retirement dates are from Anthropic's own pages (A). Weakest link: no test of Haiku 5.5 quality as Atlas's tool-using backup.",
+   "risks": "Haiku 5.5 may answer in a different style or call tools differently than 4.5; the backup is rarely used, so impact is low. Easy to revert (one line).",
+   "links": [
+    {
+     "title": "Model deprecations",
+     "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+    },
+    {
+     "title": "Pricing",
+     "url": "https://platform.claude.com/docs/en/about-claude/pricing"
+    },
+    {
+     "title": "Models overview",
+     "url": "https://platform.claude.com/docs/en/models/overview"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
+}

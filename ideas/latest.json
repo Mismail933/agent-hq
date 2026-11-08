@@ -1,185 +1,147 @@
 {
- "date": "2026-11-07",
- "focus": "tokens",
- "note": "One small, free idea today: trim what every worker's claude -p run loads at startup (auto memory, CLAUDE.md files, MCP, skills). The official fix, --bare, would break our subscription login, so the idea uses smaller switches and a one-run measurement first. Claude Code is now 2.1.319; no new models.",
+ "date": "2026-11-08",
+ "focus": "tools",
+ "note": "One small idea: the backup Atlas still runs on Haiku 4.5. Haiku 5.5 is out, costs 10x less, and we must add its price to settings.py when we switch. Claude Code is still 2.1.319; no new models this week. This was a lighter run than usual (see gaps).",
  "research": {
-  "searches": 16,
-  "pages_read": 9,
-  "minutes": 30,
+  "searches": 4,
+  "pages_read": 8,
+  "minutes": 15,
   "questions": [
-   "Does a claude -p worker (workers.py) load context we don't need, and is there an official switch that cuts it without --bare (which skips the subscription login)?",
-   "Did Claude Code 2.1.314-2.1.319 or the API notes change anything claude -p or caching related that we should handle?",
-   "Is there strong evidence for cheaper hand-offs between our agents (schemas, formats, merged calls)?"
+   "Does any model ID in settings.py face a retirement date, and what do the replacements cost?",
+   "Did the API change anything (sampling parameters, API version) that our llm.py or atlas_cloud.py would trip on?",
+   "Is there a mature repo that gives the owner a better view of agent activity than our office page?"
   ],
   "gaps": [
-   "No official number for how many tokens a bare vs normal claude -p run saves; the 150k figure is one blogger's repo.",
-   "Could not confirm that --setting-sources keeps the OAuth login working (no official statement); needs one local test.",
-   "Read only the first 100k characters of the changelog and env-vars page.",
-   "YouTube's own pages not opened (not a results day); Shorts originality news seen only via secondary sites."
+   "Only 4 searches (3 GitHub API queries + 1 web search), below the 15 asked for. Done in a short run.",
+   "Did not read the changelog past its first 100k characters, nor YouTube's pages (not a results day).",
+   "Did not open the Haiku 5.5 model page or run any quality test of Haiku 5.5 as Atlas; quality for our chat tasks is untested.",
+   "Did not read Claude-Code-Agent-Monitor's source, only its README page."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.319 (was 2.1.318): claude -p exits 1 when auto mode refuses its actions; new permissions.denyInsteadOfPrompting setting.",
-  "Claude Code 2.1.318: claude -p JSON results report when the claude.ai sign-in expires; stderr warning starts 10 days before. Useful for the START-HERE sign-in check.",
-  "Claude Code 2.1.318: claude -p and SDK sessions no longer report success when an API error cut off a reply.",
-  "Claude Code 2.1.316: fast mode on Opus 4.8 removed on 2026-11-30 (we don't use it; check no limit sets it).",
-  "API 2026-11-02: Message threads (beta), server keeps the conversation so later requests send only new messages; threads live 1 hour at most, not ZDR. Only helps long single conversations: our workers are one-shot.",
-  "Docs: --bare will become the default for claude -p in a future release and never reads OAuth/keychain. If that lands, workers.py (subscription) would break unless we pass login another way. Worth watching."
+  "Claude Code: still 2.1.319 (no newer version than yesterday).",
+  "API: Sonnet 4.5 (claude-sonnet-4-5-20250929) retires 2026-11-30. We do not use it (settings.py has only haiku-4-5, sonnet-5-5, opus-5-5).",
+  "API: fast mode on Opus 4.8 removed 2026-11-30. We do not use it.",
+  "API: sampling parameters (temperature, top_p, top_k) return 400 from API version 2026-10-21. llm.py and atlas_cloud.py send none and pin 2023-06-01, so nothing breaks.",
+  "API: Haiku 5.5 base price $0.10 in / $0.50 out per MTok (up to 100k-token prompts) vs Haiku 4.5 $1 / $5.",
+  "Haiku 4.5 retirement: 'not sooner than October 15, 2026' and no deprecation notice yet. Anthropic promises 60 days' notice, so it is safe now but is the oldest model we use."
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "used",
-   "why": "2.1.319 and 2.1.318 claude -p exit-code and sign-in expiry changes."
+   "result": "nothing new",
+   "why": "Top entry is still 2.1.319."
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "used",
-   "why": "Message threads beta (Nov 2); nothing on pricing or caching."
+   "why": "Opus 4.8 fast mode removal, Sonnet 4.5 retirement, Haiku 5.5 cache pricing."
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest post Oct 28; no new model."
+   "why": "Newest post Oct 28; no model or product that changes our choices."
   },
   {
-   "title": "Run Claude Code programmatically (headless)",
-   "url": "https://code.claude.com/docs/en/headless",
+   "title": "Model deprecations",
+   "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
    "tier": "A",
    "result": "used",
-   "why": "--bare skips CLAUDE.md, hooks, skills, plugins, MCP, auto memory but never reads OAuth; will become the default for -p."
+   "why": "Status table for every model ID we use."
   },
   {
-   "title": "CLI reference",
-   "url": "https://code.claude.com/docs/en/cli-reference",
+   "title": "Models overview",
+   "url": "https://platform.claude.com/docs/en/models/overview",
    "tier": "A",
    "result": "used",
-   "why": "--strict-mcp-config, --disable-slash-commands, --setting-sources documented."
+   "why": "Haiku 5.5: ID claude-haiku-5-5, 1M context, adaptive thinking, retirement not before 2027-10-07."
   },
   {
-   "title": "Environment variables",
-   "url": "https://code.claude.com/docs/en/env-vars",
+   "title": "Pricing",
+   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
    "tier": "A",
    "result": "used",
-   "why": "CLAUDE_CODE_DISABLE_AUTO_MEMORY, CLAUDE_CODE_DISABLE_CLAUDE_MDS, CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS quoted."
+   "why": "Haiku 5.5 $0.10/$0.50 (up to 100k prompt), $0.50/$2.50 above; Haiku 4.5 $1/$5."
   },
   {
-   "title": "Manage costs effectively",
-   "url": "https://code.claude.com/docs/en/costs",
+   "title": "Migrating to API version 2026-10-21",
+   "url": "https://platform.claude.com/docs/en/api/migration-2026-10-21",
    "tier": "A",
-   "result": "used",
-   "why": "Confirms CLAUDE.md and MCP load at start; no headless-specific number."
+   "result": "nothing new",
+   "why": "Opt-in version; we pin 2023-06-01 and send no sampling parameters."
   },
   {
-   "title": "Message threads (API beta)",
-   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
-   "tier": "A",
-   "result": "rejected",
-   "why": "For long agent loops; our workers are short one-shot runs."
-  },
-  {
-   "title": "claude -p: what headless loads and when bare is right",
-   "url": "https://dev.to/rulestack/claude-p-what-headless-claude-code-actually-loads-and-when-bare-is-the-right-call-182c",
-   "tier": "C",
-   "result": "used",
-   "why": "One repo measured ~150k tokens before work; single anecdote, only supports looking."
-  },
-  {
-   "title": "Reports that --bare breaks subscription login (claudeissues.com 68618, 48840)",
-   "url": "https://claudeissues.com/issue/68618-bare-flag-strips-auth-credentials-making-it-non-functional",
-   "tier": "B",
-   "result": "used",
-   "why": "Agrees with the docs: bare needs an API key. Open request for a no-hooks flag that keeps OAuth."
-  },
-  {
-   "title": "exclude-dynamic-system-prompt-sections test (mer.vin)",
-   "url": "https://mer.vin/news/why-exclude-dynamic-system-prompt-sections-didnt-help-my-cache/",
+   "title": "Sonnet 4.5 retirement coverage (codersera, kingy.ai etc.)",
+   "url": "https://codersera.com/blog/claude-sonnet-4-5-retirement-migration-2026/",
    "tier": "C",
    "result": "rejected",
-   "why": "One test shows no cache gain; we replace the system prompt anyway."
+   "why": "Repeats the official table; not opened, only seen in search results."
   },
   {
-   "title": "Token optimisation in multi-agent pipelines (search results: arXiv 2605.29676, 2605.00410)",
-   "url": "https://arxiv.org/abs/2605.29676",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Compact formats save up to 18% with accuracy cost; no clear win for us."
+   "title": "GitHub search: claude code dashboard agents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+dashboard+agents",
+   "tier": "A",
+   "result": "used",
+   "why": "Found Claude-Code-Agent-Monitor, ccglass, ai-maestro."
   },
   {
-   "title": "Anthropic donates Agent Skills to AAIF",
-   "url": "https://www.anthropic.com/news/donating-agent-skills-to-the-agentic-ai-foundation",
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
    "tier": "A",
    "result": "nothing new",
-   "why": "Governance move; existing SKILL.md files keep working."
+   "why": "video-autopilot-kit and yutu already on watch; nothing else with traction."
   },
   {
-   "title": "YouTube Shorts originality update coverage",
-   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
-   "tier": "C",
-   "result": "nothing new",
-   "why": "Same Oct 2026 recommendation change already in watch.json; monetization rules unchanged."
-  },
-  {
-   "title": "GitHub search: claude code token cost / prompt caching / skills-hooks / headless orchestration / faceless shorts",
-   "url": "https://api.github.com/search/repositories?q=claude+code+token+cost+reduction",
+   "title": "GitHub search: llm prompt caching token cost",
+   "url": "https://api.github.com/search/repositories?q=llm+prompt+caching+token+cost",
    "tier": "A",
    "result": "nothing new",
-   "why": "Five queries; tools are third-party token savers (some noncommercial) or tiny repos."
+   "why": "All tiny (under 150 stars) or noncommercial."
   }
  ],
  "repo_watch": [
   {
-   "name": "ARahim3/cachebeat",
-   "url": "https://github.com/ARahim3/cachebeat",
+   "name": "hoangsonww/Claude-Code-Agent-Monitor",
+   "url": "https://github.com/hoangsonww/Claude-Code-Agent-Monitor",
    "licence": "MIT",
-   "stars": 85,
-   "last_commit": "2026-10-13",
-   "verdict": "skip",
-   "fit": "Keeps cache warm in idle interactive sessions; our workers are one-shot and the office already uses 1h cache on subscription.",
-   "why": "Not opened beyond the search listing; no fit."
-  },
-  {
-   "name": "MikkoParkkola/glyphdown",
-   "url": "https://github.com/MikkoParkkola/glyphdown",
-   "licence": "PolyForm Noncommercial",
-   "stars": 2,
-   "last_commit": "2026-10-12",
-   "verdict": "skip",
-   "fit": "Token compression plugin.",
-   "why": "Noncommercial licence: off-limits."
+   "stars": 1159,
+   "last_commit": "2026-11-06",
+   "verdict": "watch",
+   "fit": "Local dashboard of Claude Code sessions, tool calls and cost; could inspire an Ops view, but our workers run with --no-session-persistence.",
+   "why": "MIT, loopback only, active, 24 open issues; needs Node 22 and installs hooks, so not for the office PC without a test. Source not read."
   }
  ],
  "ideas": [
   {
-   "id": "2026-11-07-1",
-   "title": "Measure and trim what each worker's claude -p loads at startup",
+   "id": "2026-11-08-1",
+   "title": "Move the backup Atlas from Haiku 4.5 to Haiku 5.5 (and add its price)",
    "area": "tokens",
-   "problem": "workers.run() starts claude -p with --system-prompt, --tools and --no-session-persistence (workers.py lines 87-94) but nothing else. Per the official headless docs, without --bare a -p run still loads everything an interactive session would, including anything in ~/.claude: auto memory, CLAUDE.md memory files, skills list, plugins, MCP servers and hooks. Our workers (Doulya, Sage, Vera, Serge, Calina, Israa, Tarek, Omar, Rana, Ghassan) run in empty folders on the owner's PC, where his own ~/.claude is full (this Builder chat, memory notes, skills). The repo has no CLAUDE_CODE_DISABLE_AUTO_MEMORY, DISABLE_CLAUDE_MDS, --strict-mcp-config or --disable-slash-commands anywhere. We have never measured it: the usage table keeps input/output/cache tokens per run, so the baseline already exists. --bare itself is not an option: the docs say it never reads OAuth or the keychain, so our subscription login would fail.",
-   "proposal": "Step 1 (free, no code): pick Vera (shortest run, $0.06). Run her once in practice-off mode as today, then once with the extra switches below set by hand, and compare input+cache tokens from the usage table (cp.usage_today). Step 2, only if the saving is 10%+ per run: in workers.run() add to the command `--strict-mcp-config` and `--disable-slash-commands`, and add to the env copy (atlas_engine._env() result) CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CODE_DISABLE_CLAUDE_MDS=1. Put it behind a rule `workers.lean_start` (default on, in rules.py) so Atlas or the owner can switch it off. Do NOT touch Atlas's own claude -p in atlas_engine.py: he needs his journal and memory. Try `--setting-sources project,local` only if a local test shows the login still works (official docs list the flag; no source says what it does to OAuth). Watch for a case where Ghassan or Rana relied on a user-level skill: both get explicit tools, so none should.",
-   "gain": "Fewer input and cache-write tokens on every one-shot worker run, which counts against the subscription allowances (SUBSCRIPTION_DAILY_VALUE_USD per agent). Size unknown: one blogger measured ~150k tokens before work in a repo with a long CLAUDE.md, skills and two MCP servers; ours is an empty folder, so the real saving may be small. That is why step 1 measures first. Success = per-run input+cache tokens down 10% or more for Vera, Serge and Israa with identical output quality.",
-   "test": "1) Normal: Vera on one idea, before and after, compare the usage rows; verdict JSON still valid. 2) Edge: Calina batch (WebSearch+WebFetch tools) still searches and writes episodes with sources. 3) Failure: with rule workers.lean_start on, a run where claude is signed in via the subscription still returns structured_output (no 'Not logged in'); if it fails, the rule goes off and the old command runs. Pass = same verdicts/episode counts and lower token rows.",
+   "problem": "settings.py line 12 sets MODELS['atlas'] = 'claude-haiku-4-5-20251001', used by the API backup Atlas (agents.py Atlas.chat, llm.run). It is the only 4.x model we still call. Haiku 4.5's retirement date is 'not sooner than 2026-10-15' (already passed, though no notice was issued; Anthropic promises 60 days' notice). Also PRICES_PER_MTOK has no entry for Haiku 5.5: control_plane.py line 239 falls back to (5.0, 25.0) for unknown models, so a plain ID swap would count its cost about 50x too high and could trip the daily budget or the Atlas cap.",
+   "proposal": "1) settings.py: MODELS['atlas'] = 'claude-haiku-5-5'. 2) Add to PRICES_PER_MTOK: 'claude-haiku-5-5': (0.10, 0.50) and keep the 4-5 line one more month. Note Haiku 5.5 costs $0.50/$2.50 for prompts over 100k tokens; Atlas's backup prompts are far below that. 3) Also change the Atlas limit default if it lists the model (cp.LIMITS model.atlas) so the office's Limits tab shows the new name. settings.py is on Ghassan's PROTECTED list, so the Builder does this, not Ghassan.",
+   "gain": "Backup Atlas input/output cost falls 10x ($1/$5 -> $0.10/$0.50 per MTok) and we leave the oldest model before it gets a retirement notice. In absolute terms small: the backup only answers when Claude Code is unavailable. Measure: events model_call for Atlas show the new model and cost_usd about a tenth of before for a similar message.",
+   "test": "Normal: in practice mode with HQ_ATLAS_ENGINE=api, send 'status' and 'list ideas'; Atlas answers and calls the right tools. Edge: a message needing 3 tool calls (spend report then list ideas then retry); tool-calling still works with Haiku 5.5. Failure: remove the price line and confirm the cost is wrongly counted at the (5, 25) default, to prove the price entry is needed. One real run (a few cents) to check the model ID is accepted before shipping.",
    "effort": "S",
-   "confidence": "low",
-   "confidence_why": "The docs (tier A) say -p loads user config and name the switches; no measurement for our setup exists, and the OAuth interaction of --setting-sources is unverified. Weakest link: the saving may be tiny in an empty working folder.",
-   "risks": "A switch might hide something a worker needs (user-level settings, proxy config). --bare and later a possible default of --bare for -p (docs: 'will become the default for -p in a future release') could break subscription logins regardless: separate watch item. No outside code involved.",
+   "confidence": "moderate",
+   "confidence_why": "Prices, ID and retirement dates are from Anthropic's own pages (A). Weakest link: no test of Haiku 5.5 quality as Atlas's tool-using backup.",
+   "risks": "Haiku 5.5 may answer in a different style or call tools differently than 4.5; the backup is rarely used, so impact is low. Easy to revert (one line).",
    "links": [
     {
-     "title": "Run Claude Code programmatically (bare mode)",
-     "url": "https://code.claude.com/docs/en/headless"
+     "title": "Model deprecations",
+     "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations"
     },
     {
-     "title": "Environment variables",
-     "url": "https://code.claude.com/docs/en/env-vars"
+     "title": "Pricing",
+     "url": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     {
-     "title": "CLI reference",
-     "url": "https://code.claude.com/docs/en/cli-reference"
+     "title": "Models overview",
+     "url": "https://platform.claude.com/docs/en/models/overview"
     }
    ],
    "builds_on": ""
