@@ -268,6 +268,8 @@ def part(folder):
             b["flags"] = [{"name": x[0], "ll": [x[1], x[2]], "at": cue(x[3])} for x in s["flags"]]
         if s.get("sfx"):   # [[kind, cue, seconds]]: a line's own sound (sea, creak, cannon, birds, rumble)
             b["sfx"] = [[k, cue(w), d] for k, w, d in s["sfx"]]
+        if s.get("border"):   # {key, on}: a border from geo.json drawn on its word and kept (Bassel 11-09: highlight the Guiana-Brazil border again)
+            b["border"] = {"key": s["border"]["key"], "at": cue(s["border"]["on"]) if s["border"].get("on") else b["t0"]}
         for slot in ("photo", "photo2"):   # photo2: a second print on its word (e.g. Saint-Louis after Pondicherry)
             if not s.get(slot):
                 continue

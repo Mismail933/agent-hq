@@ -339,6 +339,11 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
           <g key={`r${i}`}>
             <Draw d={path(geo.rivers[l.river])} p={interpolate(f, [l.follow && l.ship ? sailFrames(l, fps)[1] : at(l.t0), (l.follow && l.ship ? sailFrames(l, fps)[1] : at(l.t0)) + 50], [0, 1], {...clamp, easing: ease})} color="#7FD7FF" width={4} />
           </g>) : null))}
+        {lines.map((l, i) => (l.border && geo.borders[l.border.key] && i <= li ? (   // a border drawn on its word, glowing, kept to the end (Bassel 11-09)
+          <g key={`b${i}`}>
+            <Draw d={path(geo.borders[l.border.key])} p={interpolate(f, [at(l.border.at), at(l.border.at) + 45], [0, 1], {...clamp, easing: ease})} color={C.accent} width={12} />
+            <Draw d={path(geo.borders[l.border.key])} p={interpolate(f, [at(l.border.at), at(l.border.at) + 45], [0, 1], {...clamp, easing: ease})} color={C.white} width={4} />
+          </g>) : null))}
         {lines.map((l, i) => (l.arc && i <= li && !lines.some((m, j) => j > i && j <= li && m.arc_off) ? (   // arc_off on a later line takes earlier arcs away (Bassel: the France-Algeria line stayed)
 
           <Draw key={`a${i}`} d={path({type: 'LineString', coordinates: Array.from({length: 41}, (_, k) => geoInterpolate(l.arc[0], l.arc[1])(k / 40))})}
