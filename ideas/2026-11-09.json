@@ -1,0 +1,68 @@
+{
+ "date": "2026-11-09",
+ "focus": "results",
+ "note": "Nothing new worth your time today. Claude Code is still 2.1.319, no new Anthropic model or API change since yesterday, and no new YouTube policy dated November. This was a light run (see gaps), so zero ideas.",
+ "research": {
+  "searches": 3,
+  "pages_read": 5,
+  "minutes": 8,
+  "questions": [
+   "Did YouTube change Shorts or Partner Program rules in November?",
+   "Did Claude Code or the API change anything that touches claude -p, caching or cost since 11-08?"
+  ],
+  "gaps": [
+   "Did not open YouTube Help or Creator Insider directly; only secondary coverage (B/C) of the Feb 2027 thresholds, whose Shorts figure conflicts (10M vs 20M views).",
+   "Light run: fewer than the 15 searches and 8 pages the job asks for."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.319: nothing relevant new vs yesterday (claude -p exits 1 on more failures)",
+  "wshobson/agents now 42k stars (was 40k)"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "still 2.1.319"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "latest entry 2026-11-05, already seen"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "latest 2026-10-28; no new model"
+  },
+  {
+   "title": "Search: YouTube Shorts policy November 2026",
+   "url": "https://ppc.land/youtube-cuts-shorts-pay-for-channels-under-10m-views-from-february-2027/",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "only Aug-Oct coverage already known; no November change found"
+  },
+  {
+   "title": "GitHub search: claude code subagents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "same MIT role-prompt libraries as before"
+  },
+  {
+   "title": "GitHub search: faceless shorts automation",
+   "url": "https://api.github.com/search/repositories?q=faceless+shorts+video+automation",
+   "tier": "A",
+   "result": "rejected",
+   "why": "all 0-1 star repos, some unlicensed"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}

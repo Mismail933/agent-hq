@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.319",
-   "checked": "2026-11-08"
+   "checked": "2026-11-09"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-11-05 IP allowlist; Opus 4.8 fast mode removed 11-30; Sonnet 4.5 retires 11-30",
-   "checked": "2026-11-08"
+   "last_seen": "2026-11-05 entries; no change",
+   "checked": "2026-11-09"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-28 AI for Science; no new model",
-   "checked": "2026-11-08"
+   "last_seen": "2026-10-28; no new model",
+   "checked": "2026-11-09"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -147,10 +147,10 @@
    "note": "MIT log viewer; workers run without session logs."
   },
   "wshobson/agents": {
-   "stars": 40433,
-   "last_commit": "2026-10-12",
+   "stars": 42333,
+   "last_commit": "2026-11-09",
    "verdict": "watch",
-   "checked": "2026-10-13",
+   "checked": "2026-11-09",
    "note": "MIT role-prompt library; reference only."
   },
   "getagentseal/codeburn": {
