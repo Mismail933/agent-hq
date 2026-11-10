@@ -168,7 +168,7 @@ const PoleFlag = ({x, y, s, f, name}) => (s <= 0.01 || !FLAG[name] ? null :
     <g transform={`translate(1.5 -62) skewY(${Math.sin(f / 7) * 3})`}>{FLAG[name]}</g>
   </g>);
 
-export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true, drift = false}) => {
+export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true, drift = false, noFrance = false}) => {   // noFrance: a story not about France (Bassel's fact Shorts) leaves France unpainted
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   if (!lines.length) return null;
@@ -218,10 +218,10 @@ export const MapStory = ({lines = [], seconds = 10, earth = false, trails = true
   const detail = geo.detail.features.map((ft) => {
     const a3 = ft.properties.a3;
     const k = fills[a3] || 0;
-    const fr = a3 === 'FRA' || (FRANCE.has(a3) && k > 0 && !tint[a3]);   // a tint (e.g. ':uk') wins over France's colour   // a French territory turns France's colour once the story reaches it
+    const fr = !noFrance && (a3 === 'FRA' || (FRANCE.has(a3) && k > 0 && !tint[a3]));   // a tint (e.g. ':uk') wins over France's colour   // a French territory turns France's colour once the story reaches it
     const fill = fr ? 'url(#france)' : k > 0 ? (tint[a3] || C.fill) : C.land;
     const op = fr ? (a3 === 'FRA' ? 1 : 0.3 + 0.7 * k) : k > 0 ? 0.35 + 0.6 * k : 1;
-    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (k > 0 || a3 === 'FRA' ? Math.min(0.94, op) : 0.08) : op}
+    return <path key={a3} d={path(ft)} fill={fill} fillOpacity={earth ? (k > 0 || (a3 === 'FRA' && !noFrance) ? Math.min(0.94, op) : 0.08) : op}
                  stroke={fr ? '#E8FBFF' : C.line} strokeWidth={fr ? 2 : 1.6} />;
   });
   const world = WORLD.map((ft) => {
