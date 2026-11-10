@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.319",
-   "checked": "2026-11-09"
+   "last_seen": "2.1.322",
+   "checked": "2026-11-10"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-11-05 entries; no change",
-   "checked": "2026-11-09"
+   "last_seen": "2026-11-09 Fable 5.2 / Mythos 5.2",
+   "checked": "2026-11-10"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-10-28; no new model",
-   "checked": "2026-11-09"
+   "last_seen": "2026-11-09 Fable 5.2 and Mythos 5.2",
+   "checked": "2026-11-10"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -62,8 +62,8 @@
   },
   "claude-code-model-config": {
    "url": "https://code.claude.com/docs/en/model-config",
-   "last_seen": "fallback chains max 3, never on rate-limit; classifier fallback",
-   "checked": "2026-10-16"
+   "last_seen": "fable alias = Fable 5.2; -p bills Fable usage credits without asking; efforts low..max",
+   "checked": "2026-11-10"
   },
   "claude-code-routines-doc": {
    "url": "https://code.claude.com/docs/en/routines",
@@ -129,6 +129,11 @@
    "url": "https://code.claude.com/docs/en/headless",
    "last_seen": "--bare skips OAuth; will become default for -p",
    "checked": "2026-11-07"
+  },
+  "claude-api-pricing": {
+   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+   "last_seen": "Fable 5.2 $8/$40; Fable 5.1 $10/$50; Opus 5.5 $4/$20 per settings.py",
+   "checked": "2026-11-10"
   }
  },
  "repos": {

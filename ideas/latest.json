@@ -1,68 +1,171 @@
 {
- "date": "2026-11-09",
- "focus": "results",
- "note": "Nothing new worth your time today. Claude Code is still 2.1.319, no new Anthropic model or API change since yesterday, and no new YouTube policy dated November. This was a light run (see gaps), so zero ideas.",
+ "date": "2026-11-10",
+ "focus": "reliability",
+ "note": "One idea today: the 'fable' model choice in our worker settings can spend real money in the background. Claude Code now maps it to Fable 5.2 ($8/$40 per million tokens) and bills it to usage credits without asking when run with -p. Small fix, owner-only switch plus a hard dollar cap per run.",
  "research": {
-  "searches": 3,
-  "pages_read": 5,
-  "minutes": 8,
+  "searches": 11,
+  "pages_read": 12,
+  "minutes": 20,
   "questions": [
-   "Did YouTube change Shorts or Partner Program rules in November?",
-   "Did Claude Code or the API change anything that touches claude -p, caching or cost since 11-08?"
+   "Can a worker set to model 'fable' spend money without the owner knowing, now that Fable 5.2 is out?",
+   "What did Claude Code 2.1.319-2.1.322 change for claude -p runs (exit codes, errors, permissions)?",
+   "Does Claude Code have a built-in per-run dollar cap we can use in workers.py?"
   ],
   "gaps": [
-   "Did not open YouTube Help or Creator Insider directly; only secondary coverage (B/C) of the Feb 2027 thresholds, whose Shorts figure conflicts (10M vs 20M views).",
-   "Light run: fewer than the 15 searches and 8 pages the job asks for."
+   "Fewer searches than the 15 target (11 searches, 12 pages opened). Today's focus was narrow.",
+   "I could not open Anthropic's own Fable 5.2 announcement (the guessed URL returned 404) or the support article 'Claude Fable models on your plan' directly; I rely on its search-result summary (tier B for that part) plus the Claude Code docs (tier A).",
+   "I do not know the owner's plan tier or whether usage credits are switched on, and no agent is set to fable today as far as the code shows. So the risk is a latent one, not a bill we have seen.",
+   "No Creator Insider / YouTube Help change dated November 2026 found (latest are Aug-Oct 2026, already on file)."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.319: nothing relevant new vs yesterday (claude -p exits 1 on more failures)",
-  "wshobson/agents now 42k stars (was 40k)"
+  "Claude Code 2.1.322 (new since 2.1.319): fast mode no longer loses replies when rate-limited; claude -p no longer misstates the background-command timeout; claude -p/SDK no longer hangs when memory runs out reading a transcript.",
+  "Claude Code 2.1.321: 'fable' alias now = Claude Fable 5.2 ($8 input / $40 output per MTok, cache read $0.20). Saved Fable 5.1 picks move to the alias. Needs v2.1.321+.",
+  "Claude Code 2.1.319: claude -p now exits 1 (text and JSON) in auto mode when actions were refused; permissions.denyInsteadOfPrompting added.",
+  "Claude Code 2.1.318: claude -p / SDK no longer report success when an API error cut a reply short (our workers.py already checks is_error and subtype).",
+  "Claude API 2026-11-09: Fable 5.2 and Mythos 5.2 launched (1M context, 128k output). 2026-11-02: message threads beta. 2026-10-30: Opus 4.8 fast mode deprecated, removed 2026-11-30 (we do not use fast mode).",
+  "Claude Code docs: with -p, Fable usage bills usage credits 'without asking'; Fable has no default on any plan and must be selected."
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "nothing new",
-   "why": "still 2.1.319"
+   "result": "used",
+   "why": "2.1.322 is newest; read 2.1.316-2.1.322. Fable 5.2 default and the claude -p fixes."
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "nothing new",
-   "why": "latest entry 2026-11-05, already seen"
+   "result": "used",
+   "why": "Fable 5.2 / Mythos 5.2 on 2026-11-09; nothing else touches our code."
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
-   "result": "nothing new",
-   "why": "latest 2026-10-28; no new model"
+   "result": "used",
+   "why": "Fable 5.2 and Mythos 5.2 announced 2026-11-09. Headline only: the post itself was not opened."
   },
   {
-   "title": "Search: YouTube Shorts policy November 2026",
-   "url": "https://ppc.land/youtube-cuts-shorts-pay-for-channels-under-10m-views-from-february-2027/",
-   "tier": "C",
+   "title": "Claude Code model config",
+   "url": "https://code.claude.com/docs/en/model-config",
+   "tier": "A",
+   "result": "used",
+   "why": "'fable' resolves to Fable 5.2; -p bills Fable to usage credits without asking; efforts low..max."
+  },
+  {
+   "title": "Claude Code costs doc",
+   "url": "https://code.claude.com/docs/en/costs",
+   "tier": "A",
+   "result": "used",
+   "why": "Usage credits, spend limits, and that cost shown is a local estimate."
+  },
+  {
+   "title": "Claude Code CLI reference",
+   "url": "https://code.claude.com/docs/en/cli-reference",
+   "tier": "A",
+   "result": "used",
+   "why": "--max-budget-usd: print mode only, client-side estimate, can overshoot, subagent spend counts."
+  },
+  {
+   "title": "Claude API pricing",
+   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+   "tier": "A",
+   "result": "used",
+   "why": "Fable 5.2 $8/$40; Fable 5.1 $10/$50. Our settings.py price table has no Fable row."
+  },
+  {
+   "title": "Use the Agent SDK with your Claude plan",
+   "url": "https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan",
+   "tier": "A",
    "result": "nothing new",
-   "why": "only Aug-Oct coverage already known; no November change found"
+   "why": "Signed-in claude -p still draws subscription limits (note of 2026-10-07). Does not say how usage-credit spill-over behaves."
+  },
+  {
+   "title": "Claude Fable models on your plan (support article, via search summary)",
+   "url": "https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan",
+   "tier": "B",
+   "result": "used",
+   "why": "Per summary: Max/premium seats include Fable inside weekly limits; Pro and standard seats run Fable on usage credits from the start. Not opened directly."
+  },
+  {
+   "title": "GitHub issues on claude -p billing (e.g. anthropics/claude-code #43333)",
+   "url": "https://github.com/anthropics/claude-code/issues/43333",
+   "tier": "C",
+   "result": "rejected",
+   "why": "User reports of billing confusion; not used as evidence, only as a reminder to check the JSON result."
+  },
+  {
+   "title": "YouTube policy news, Nov 2026 (search)",
+   "url": "https://www.tubefilter.com/2026/08/10/youtube-partner-program-ad-eligibility-requirements-shorts/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Newest items are Aug-Oct 2026, already in watch.json."
   },
   {
    "title": "GitHub search: claude code subagents",
    "url": "https://api.github.com/search/repositories?q=claude+code+subagents",
    "tier": "A",
    "result": "nothing new",
-   "why": "same MIT role-prompt libraries as before"
+   "why": "Same big collections (wshobson/agents 42k, MIT). Nothing fits a gap of ours."
   },
   {
-   "title": "GitHub search: faceless shorts automation",
-   "url": "https://api.github.com/search/repositories?q=faceless+shorts+video+automation",
+   "title": "GitHub search: faceless YouTube Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
    "tier": "A",
    "result": "rejected",
-   "why": "all 0-1 star repos, some unlicensed"
+   "why": "All 0-1 star repos, several with no licence."
+  },
+  {
+   "title": "GitHub search: token cost / prompt caching",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching",
+   "tier": "A",
+   "result": "rejected",
+   "why": "glyphdown is PolyForm Noncommercial: off-limits."
+  },
+  {
+   "title": "GitHub search: claude code hooks budget guard",
+   "url": "https://api.github.com/search/repositories?q=claude+code+hooks+budget+guard",
+   "tier": "A",
+   "result": "rejected",
+   "why": "SpendGuard, agent-cap and similar: 0-1 stars, hook-based caps for interactive sessions. Our cp.LIMITS already does this in code."
   }
  ],
  "repo_watch": [],
- "ideas": []
+ "ideas": [
+  {
+   "id": "2026-11-10-1",
+   "title": "Make 'fable' an owner-only choice and put a dollar cap on every Fable run",
+   "area": "reliability",
+   "problem": "control_plane.py line 103 lets any worker's model be set to 'fable' (the comment still says claude-fable-5-1). Atlas can set it with `hq limit model.Calina fable`; only atlas.ships and atlas.autopilot_approve are owner-only. workers.run() then passes `--model fable` to `claude -p`. Claude Code's own docs say that in -p mode Fable usage 'bills without asking', and Fable can run on usage credits (real money) depending on the plan; the support article says Pro and standard seats pay by credits from the first token. Since Claude Code 2.1.321 the alias means Fable 5.2 at $8/$40 per million tokens, twice Opus 5.5 ($4/$20 in our settings.py). Our daily 'allowance' (e.g. $6 for Calina) is measured from total_cost_usd and is labelled 'subscription value', so a run that really cost money looks the same as a free one. CLAUDE.md says agents never spend money without the owner's explicit approval; this path would break that quietly. Nothing in the code shows an agent on fable today, so this is a latent risk.",
+   "proposal": "1) control_plane.set_limit: when key starts with 'model.' and the new value is 'fable', refuse unless by == 'Owner' (same pattern as rules.OWNER_ONLY, rules.py line 364). Reword the LIMITS label at line 103 to \"<agent>'s model on the subscription (fable = Fable 5.2, $8/$40 per MTok, may use usage credits = real money)\" and fix the comment (5.1 -> 5.2). 2) workers.run(): when model == 'fable', add `--max-budget-usd <min(remaining daily allowance, 3.00)>` to cmd (flag is print-mode only; it is a client-side estimate and can overshoot, so keep headroom) and log a `fable_run` event with api_value_usd so it shows in Activity. 3) Optional, S: add a 'claude-fable-5-2': (8.00, 40.00) row to settings.PRICES_PER_MTOK so the spend counter can price it if an API path ever uses it. Files: control_plane.py, workers.py, settings.py (all PROTECTED from Ghassan: the Builder chat does it).",
+   "gain": "Closes the one place where a model choice can turn into unapproved spend. No cost today; removes the worst case (a long Calina run on Fable 5.2: for example 300k input and 60k output tokens is about $4.80 on Fable 5.2 vs $2.40 on Opus 5.5 at list price, repeated per retry). Measured by: `hq limit model.Calina fable` as Atlas is refused; the Owner can still set it; the cmd list of a fable run contains --max-budget-usd.",
+   "test": "Normal: Owner sets model.Calina=opus in Spend & limits, it saves as before. Edge: Owner sets fable, run Calina in practice mode with HQ_WORKER_ENGINE=claude_code on a stub and check the printed command has --max-budget-usd 3.00 (or less when the allowance is nearly used), and a fable_run event is logged. Failure case: Atlas runs `hq limit model.Calina fable`; it must be refused with a clear reason and no limit_changed event; a run cut by the budget (subtype error_max_budget_usd) must become workers.Unavailable with that reason, not a crash. Pass = all three behave as described.",
+   "effort": "S",
+   "confidence": "moderate",
+   "confidence_why": "Rests on Claude Code docs (model-config, costs, cli-reference: tier A) and the pricing page (A). The weak link: how much Fable costs on the owner's own plan comes from a support-article summary (B) and I do not know his plan or whether usage credits are on.",
+   "risks": "--max-budget-usd uses Claude Code's own estimate, can overshoot, and a user report says it stopped a run with total cost shown as $0 (tier C, unverified). A cap that is too low cuts a long Calina script run short; start at $3 and keep it a rule (e.g. workers.fable_cap_usd). No outside code is involved, so no licence or security issue.",
+   "links": [
+    {
+     "title": "Claude Code model config: the fable alias and billing in -p",
+     "url": "https://code.claude.com/docs/en/model-config"
+    },
+    {
+     "title": "Claude Code CLI reference: --max-budget-usd",
+     "url": "https://code.claude.com/docs/en/cli-reference"
+    },
+    {
+     "title": "Claude API pricing (Fable 5.2 $8/$40)",
+     "url": "https://platform.claude.com/docs/en/about-claude/pricing"
+    },
+    {
+     "title": "Claude Fable models on your plan",
+     "url": "https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
 }
