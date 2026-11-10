@@ -259,7 +259,7 @@ def part(folder):
                 at = cue(v["on"]) + float(v.get("delay") or 0) if v.get("on") else b["t0"] + float(v.get("delay") or 0)
                 dur = (cue(v["off"]) - at) if v.get("off") else float(v.get("dur") or 4)
                 b["plates"].append({**{k: x for k, x in v.items() if k not in ("on", "off", "delay")}, "at": round(at, 3), "dur": round(max(2.0, dur), 2),
-                                    "credit": f"{who + ', ' if who else ''}{c.get('licence', 'Public domain')}, via Wikimedia Commons"})
+                                    **({"credit": f"{who + ', ' if who else ''}{c.get('licence', 'Public domain')}, via Wikimedia Commons"} if c else {})})   # our own graphic (no credits entry): no credit line
         if s.get("card"):   # {on?, year, title}: where we are in the story
             b["card"] = {**s["card"], "at": cue(s["card"]["on"]) if s["card"].get("on") else b["t0"]}
         if s.get("mention"):   # {on, flag, text}: a country only named: a flag in the corner, the camera stays
