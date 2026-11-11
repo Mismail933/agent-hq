@@ -37,7 +37,7 @@ No Israa or Tarek rounds for this channel. Run this list yourself before renderi
 ## Words and voice
 - Don't say what's already been said (Bourbon = Reunion once). Dates only when they matter (no list of trading-post dates).
 - A real full stop between paragraphs that change subject, with a pause you can feel.
-- Voice: Chris (ElevenLabs `iP95p4xoKVk53GoZ742B`) for finished videos, on the owner's plan. Natural pace, no per-line tempo. Script `voice: "eleven:<id>"`, `story_gap` 0.6.
+- Voice: FREE by default (Bassel 11-11: "never use a paid voice unless i ask you to"): Kokoro am_michael (`free_voice: true`). Chris (ElevenLabs `iP95p4xoKVk53GoZ742B`, `voice: "eleven:<id>"`) only on a video where he asks for it. Natural pace, no per-line tempo, `story_gap` 0.6.
 - Sound: real recordings only, effects at least 15 dB under the voice, never over it.
 
 ## Before sending
