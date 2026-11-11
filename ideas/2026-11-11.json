@@ -1,0 +1,43 @@
+{
+ "date": "2026-11-11",
+ "focus": "agents",
+ "note": "Nothing new worth your time today. Claude Code is at 2.1.322 (same as yesterday's check), Fable 5.2 is still the newest model news, and I found no new API or Anthropic change. This was a very light run (see gaps), so zero ideas.",
+ "research": {
+  "searches": 0,
+  "pages_read": 3,
+  "minutes": 5,
+  "questions": [
+   "Did Claude Code, the API release notes or Anthropic news change anything for our agents since 2026-11-10?"
+  ],
+  "gaps": [
+   "No web search tool was available in this run, so no GitHub repo sweep and no YouTube policy check.",
+   "Only the changelog, API release notes and Anthropic news index were opened; deep research on the 'agents' focus was not done."
+  ]
+ },
+ "new_today": [],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Top entry is 2.1.322 (Vertex fast mode), already seen."
+  },
+  {
+   "title": "Claude Platform release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Latest entry is 2026-11-09 Fable 5.2 / Mythos 5.2, already reported."
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Headline list shows no new model or product that changes our choices."
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}
