@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.322",
-   "checked": "2026-11-11"
+   "checked": "2026-11-12"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-11-09 Fable 5.2 / Mythos 5.2",
-   "checked": "2026-11-11"
+   "last_seen": "2026-11-09 Fable 5.2 / Mythos 5.2; 2026-11-02 message threads beta",
+   "checked": "2026-11-12"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
-   "last_seen": "2026-11-09 Fable 5.2 and Mythos 5.2",
-   "checked": "2026-11-11"
+   "last_seen": "2026-11-10 IPO roadshow; 2026-11-09 Fable 5.2",
+   "checked": "2026-11-12"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -63,7 +63,7 @@
   "claude-code-model-config": {
    "url": "https://code.claude.com/docs/en/model-config",
    "last_seen": "fable alias = Fable 5.2; -p bills Fable usage credits without asking; efforts low..max",
-   "checked": "2026-11-10"
+   "checked": "2026-11-12"
   },
   "claude-code-routines-doc": {
    "url": "https://code.claude.com/docs/en/routines",
@@ -215,11 +215,11 @@
    "note": "HarnessMD/munder-difflin, MIT; README not yet read"
   },
   "JuliusBrussee/caveman": {
-   "stars": 116983,
-   "last_commit": "2026-11-02",
+   "stars": 119173,
+   "last_commit": "2026-11-10",
    "verdict": "skip",
-   "checked": "2026-11-03",
-   "note": "output-only savings, telemetry default"
+   "checked": "2026-11-12",
+   "note": "Apache-2.0; ~5% saving vs 'be concise' by its own numbers; telemetry default"
   },
   "affaan-m/ECC": {
    "stars": 284988,

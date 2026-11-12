@@ -1,0 +1,129 @@
+{
+ "date": "2026-11-12",
+ "focus": "tools",
+ "note": "Nothing new worth your time today. Claude Code is still 2.1.322, no new API entries since Fable 5.2, and no repo beat what we already have. The run was shorter than the full brief (see gaps), so zero ideas.",
+ "research": {
+  "searches": 7,
+  "pages_read": 9,
+  "minutes": 10,
+  "questions": [
+   "Did Claude Code, the API notes or Anthropic news change anything for our agents since 2026-11-11?",
+   "Is there a new, permissively licensed repo that replaces or improves something we built (token cost, YouTube Shorts tooling)?",
+   "Did YouTube or Remotion change a rule that touches POV Then History or our renders?"
+  ],
+  "gaps": [
+   "Fewer than the 15 searches / 8 solid pages the brief asks for; deep research on the tools focus was not finished.",
+   "Two pages returned 404 (Anthropic's Fable 5.2 post URL guess, the Fable 5.2 what's-new doc).",
+   "No official YouTube page opened; policy summary rests on secondary sources.",
+   "No independent cost-per-task data for Fable 5.2; the 'half the cost' claim is Anthropic's own."
+  ]
+ },
+ "new_today": [
+  "Fable 5.2 (2026-11-09) is $8/$40 per MTok, effort default medium; claude -p bills Fable to usage credits with no consent prompt (already covered by the 2026-11-10 idea).",
+  "API: message threads beta (2026-11-02) sends only new messages on each request; API-only, not used by claude -p.",
+  "Anthropic donated the Agent Skills standard to the Agentic AI Foundation (2026-10-22): no change for us.",
+  "Anthropic news 2026-11-10: IPO roadshow. Not relevant to our choices."
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Top entry still 2.1.322 (Vertex fast mode)."
+  },
+  {
+   "title": "Claude Platform release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest is Fable 5.2 on 2026-11-09; message threads beta noted."
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "IPO roadshow, Fable 5.2, government and science items."
+  },
+  {
+   "title": "Claude Code model config",
+   "url": "https://code.claude.com/docs/en/model-config",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Default model Opus 5.5; fable alias = 5.2; -p bills Fable credits without asking; same as 11-10."
+  },
+  {
+   "title": "Message threads (API beta)",
+   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "tier": "A",
+   "result": "rejected",
+   "why": "Raw API only, not eligible for ZDR; our workers use claude -p, which does not use it."
+  },
+  {
+   "title": "Remotion 5.0 migration",
+   "url": "https://remotion.dev/docs/5-0-migration",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "5.0 not confirmed released; contractors will count toward team size; we pin 4.0.250."
+  },
+  {
+   "title": "JuliusBrussee/caveman",
+   "url": "https://github.com/JuliusBrussee/caveman",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Its own numbers: ~5% saving versus 'Answer concisely'; telemetry on by default; cloud routing. Our agents already have length caps."
+  },
+  {
+   "title": "GitHub search: Claude Code skills (30 days)",
+   "url": "https://api.github.com/search/repositories?q=claude+code+skills+pushed:>2026-10-13&sort=stars&order=desc",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Large generic skill collections; OpenMontage is AGPL so off-limits."
+  },
+  {
+   "title": "GitHub search: token reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+token+reduction+cost+pushed:>2026-10-13",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Tiny repos (under 15 stars)."
+  },
+  {
+   "title": "GitHub search: faceless Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless+pushed:>2026-10-13",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "All 0-1 star repos; nothing beyond our own pipeline."
+  },
+  {
+   "title": "GitHub search: prompt caching agents",
+   "url": "https://api.github.com/search/repositories?q=prompt+caching+agent+pushed:>2026-10-13",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Third-party agent runtimes; none fit claude -p workers."
+  },
+  {
+   "title": "Web search: Fable 5.2 vs Opus 5.5",
+   "url": "https://www.callmissed.com/blog/fable-5-2-vs-opus-5-5",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "Vendor-reported numbers; no independent Fable 5.2 cost data."
+  },
+  {
+   "title": "Web search: YouTube AI monetization policy",
+   "url": "https://thedesk.net/2026/07/youtube-clamps-down-loq-quality-ai-slop/",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "July 2026 rewrite is a clarification; nothing dated November."
+  },
+  {
+   "title": "Web search: claude -p --json-schema issues",
+   "url": "https://code.claude.com/docs/en/headless",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Known older issues (null structured_output, cold-start fail); we already ask once then fall back."
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}
