@@ -102,7 +102,7 @@ def make(folder):
         x["b"] = y["a"]
     shots[-1]["b"] = total
     hook = spec.get("hook")
-    props = {"seconds": total, "shots": shots, "pops": pops, "words": words, **({"hook": {"text": hook["text"], "b": hook.get("dur", 2.4)}} if hook else {})}
+    props = {"seconds": total, "lines_t0": [l["t0"] for l in lines], "shots": shots, "pops": pops, "words": words, **({"hook": {"text": hook["text"], "b": hook.get("dur", 2.4)}} if hook else {})}
     pf = folder / "_props.json"
     pf.write_text(json.dumps(props), encoding="utf-8")
     (folder / "beats.json").write_text(json.dumps(props, indent=1), encoding="utf-8")
@@ -123,8 +123,18 @@ def mux(folder, spec, props, total):
     # a whoosh on every cut after the first, a pop on every pop; quiet, under the voice
     cues = [("whoosh", s["a"], -24) for s in props["shots"][1:]] + [("pop", p["a"], -20) for p in props["pops"]]
     ins = ["-i", str(folder / "picture.mp4"), "-i", str(folder / "voice.wav"), "-stream_loop", "-1", "-i", str(music)]
-    flt = [f"[1:a]aresample=48000,loudnorm=I=-15:TP=-1.5,apad=whole_dur={total}[v]",
-           f"[2:a]aresample=48000,atrim=0:{total},asetpts=N/SR/TB,afade=t=in:d=0.6,afade=t=out:st={total - 2.5}:d=2.5,loudnorm=I={spec.get('music_lufs', -27)}:TP=-6[m]"]
+    lufs = spec.get('music_lufs', -27)
+    m2 = spec.get("music2")   # {file, line, lufs?}: a second track from that line on (Bassel 11-13: Egyptian music for the tomb, then something calmer)
+    if m2:
+        sw = props["lines_t0"][int(m2["line"])]
+        ins += ["-stream_loop", "-1", "-i", str(Path(m2["file"]).expanduser())]
+        flt = [f"[1:a]aresample=48000,loudnorm=I=-15:TP=-1.5,apad=whole_dur={total}[v]",
+               f"[2:a]aresample=48000,atrim=0:{sw + 1.2},asetpts=N/SR/TB,afade=t=in:d=0.6,afade=t=out:st={sw - 1.0}:d=2.2,loudnorm=I={lufs}:TP=-6,apad=whole_dur={total}[m1]",
+               f"[3:a]aresample=48000,atrim=0:{total - sw + 1.0},asetpts=N/SR/TB,afade=t=in:d=2.0,afade=t=out:st={total - sw - 1.5}:d=2.5,loudnorm=I={m2.get('lufs', lufs)}:TP=-6,adelay={int((sw - 1.0) * 1000)}|{int((sw - 1.0) * 1000)}[m2]",
+               "[m1][m2]amix=inputs=2:duration=first:normalize=0[m]"]
+    else:
+        flt = [f"[1:a]aresample=48000,loudnorm=I=-15:TP=-1.5,apad=whole_dur={total}[v]",
+               f"[2:a]aresample=48000,atrim=0:{total},asetpts=N/SR/TB,afade=t=in:d=0.6,afade=t=out:st={total - 2.5}:d=2.5,loudnorm=I={lufs}:TP=-6[m]"]
     mixin = ["[v]", "[m]"]
     for k, (name, t, db) in enumerate(cues):
         f = SFX / f"{name}.mp3"

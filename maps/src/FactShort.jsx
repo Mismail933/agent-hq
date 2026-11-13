@@ -50,9 +50,9 @@ function Pop({p, fps}) {
   return (
     <div style={{position: 'absolute', left: 50, right: 50, top: p.y ?? 330, textAlign: 'center', opacity: out,
                  transform: `scale(${0.3 + 0.7 * k}) rotate(${(p.tilt ?? -3) * (1 - k) + wob * 0.4}deg)`}}>
-      <div style={{fontFamily: 'Archivo Black', fontSize: p.size || 150, lineHeight: 1.0, color: p.color || YELLOW,
-                   WebkitTextStroke: '14px #111', paintOrder: 'stroke', textShadow: '0 10px 30px rgba(0,0,0,0.6)'}}>{p.text}</div>
-      {p.sub ? <div style={{marginTop: 14, fontFamily: 'Montserrat', fontWeight: 800, fontSize: 52, color: '#fff', textTransform: 'uppercase',
+      <div style={{fontFamily: 'Archivo Black', fontSize: Math.round((p.size || 150) * 0.72), lineHeight: 1.0, color: p.color || YELLOW,
+                   WebkitTextStroke: '11px #111', paintOrder: 'stroke', textShadow: '0 10px 30px rgba(0,0,0,0.6)'}}>{p.text}</div>
+      {p.sub ? <div style={{marginTop: 14, fontFamily: 'Montserrat', fontWeight: 800, fontSize: 38, color: '#fff', textTransform: 'uppercase',
                             WebkitTextStroke: '9px #111', paintOrder: 'stroke', opacity: interpolate(f, [5, 12], [0, 1], clamp)}}>{p.sub}</div> : null}
     </div>
   );
@@ -78,8 +78,8 @@ function Captions({words, fps}) {
       {c.map((w, i) => {
         const on = t >= w[1] - 0.03 && t < (c[i + 1] ? c[i + 1][1] : w[2] + 0.6);
         return (
-          <span key={i} style={{display: 'inline-block', margin: '0 20px', fontFamily: 'Montserrat', fontWeight: 900, fontSize: 82,
-                                textTransform: 'uppercase', color: on ? YELLOW : '#FFFFFF', WebkitTextStroke: '12px #000', paintOrder: 'stroke',
+          <span key={i} style={{display: 'inline-block', margin: '0 14px', fontFamily: 'Montserrat', fontWeight: 900, fontSize: 60,
+                                textTransform: 'uppercase', color: on ? YELLOW : '#FFFFFF', WebkitTextStroke: '10px #000', paintOrder: 'stroke',
                                 transform: on ? 'scale(1.08)' : 'none'}}>{w[0].replace(/[,;:]$/, '')}</span>
         );
       })}
@@ -101,7 +101,7 @@ export const FactShort = ({shots = [], pops = [], words = [], hook = null, credi
         <Sequence key={`p${i}`} from={Math.round(p.a * fps)} durationInFrames={Math.max(1, Math.round((p.b - p.a) * fps))}><Pop p={p} fps={fps} /></Sequence>
       ))}
       {hook ? (
-        <div style={{position: 'absolute', left: 50, right: 50, top: 300, textAlign: 'center', fontFamily: 'Archivo Black', fontSize: 92, lineHeight: 1.05,
+        <div style={{position: 'absolute', left: 50, right: 50, top: 300, textAlign: 'center', fontFamily: 'Archivo Black', fontSize: 70, lineHeight: 1.05,
                      color: '#fff', WebkitTextStroke: '13px #111', paintOrder: 'stroke',
                      opacity: interpolate(f, [hook.b * fps - 8, hook.b * fps], [1, 0], clamp),
                      transform: `scale(${0.6 + 0.4 * spring({frame: f, fps, config: {damping: 10, stiffness: 170}})})`}}>
