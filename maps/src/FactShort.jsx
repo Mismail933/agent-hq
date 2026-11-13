@@ -11,6 +11,7 @@ import {FONT_CSS} from './fonts';
 const W = 1080, H = 1920;
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'};
 const YELLOW = '#FFD23F';
+let TH = {font: 'Archivo Black', accent: YELLOW, caption: 'Montserrat', weight: 900, upper: true};   // set per video by props.theme
 const XF = 5;   // frames of crossfade at a cut (a hard cut with a quick punch-in reads as energetic, a few frames hide codec seams)
 
 function Shot({s, fps}) {
@@ -25,11 +26,21 @@ function Shot({s, fps}) {
   const fade = interpolate(f, [0, XF], [0, 1], clamp);
   const style = {position: 'absolute', width: W, height: H, objectFit: 'cover', objectPosition: `${fx}% ${fy}%`,
                  transform: `scale(${z})`, transformOrigin: `${fx}% ${fy}%`};
+  const media = (st) => (s.kind === 'photo'
+    ? <Img src={staticFile(s.src)} style={st} />
+    : <OffthreadVideo src={staticFile(s.src)} muted startFrom={Math.round((s.from || 0) * fps)} playbackRate={s.rate || 1} style={st} />);
+  // fit (Bassel 11-13: "too zoomed in so we don't understand anything"): the whole wide frame in the middle, over a blurred copy
+  const FH = Math.round(W / (s.aspect || 16 / 9)), FY = s.fy_box ?? 640;
+  const [fz0, fz1] = s.zoom || [1.0, 1.05];
+  const fz = fz0 + (fz1 - fz0) * p;
   return (
     <AbsoluteFill style={{opacity: fade, background: '#000'}}>
-      {s.kind === 'photo'
-        ? <Img src={staticFile(s.src)} style={style} />
-        : <OffthreadVideo src={staticFile(s.src)} muted startFrom={Math.round((s.from || 0) * fps)} playbackRate={s.rate || 1} style={style} />}
+      {s.fit ? <>
+        {media({position: 'absolute', width: W, height: H, objectFit: 'cover', filter: 'blur(38px) brightness(0.42) saturate(1.1)', transform: 'scale(1.15)'})}
+        <div style={{position: 'absolute', left: 0, top: FY, width: W, height: FH, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.6)'}}>
+          {media({position: 'absolute', width: W, height: FH, objectFit: 'cover', objectPosition: `${fx}% ${fy}%`, transform: `scale(${fz})`, transformOrigin: `${fx}% ${fy}%`})}
+        </div>
+      </> : media(style)}
       {/* a soft dark band top and bottom so the words always read */}
       <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%)'}} />
       {s.ai || s.tag ? (
@@ -50,9 +61,9 @@ function Pop({p, fps}) {
   return (
     <div style={{position: 'absolute', left: 50, right: 50, top: p.y ?? 330, textAlign: 'center', opacity: out,
                  transform: `scale(${0.3 + 0.7 * k}) rotate(${(p.tilt ?? -3) * (1 - k) + wob * 0.4}deg)`}}>
-      <div style={{fontFamily: 'Archivo Black', fontSize: Math.round((p.size || 150) * 0.72), lineHeight: 1.0, color: p.color || YELLOW,
+      <div style={{fontFamily: TH.font, fontSize: Math.round((p.size || 150) * 0.72), lineHeight: 1.0, color: p.color || TH.accent,
                    WebkitTextStroke: '11px #111', paintOrder: 'stroke', textShadow: '0 10px 30px rgba(0,0,0,0.6)'}}>{p.text}</div>
-      {p.sub ? <div style={{marginTop: 14, fontFamily: 'Montserrat', fontWeight: 800, fontSize: 38, color: '#fff', textTransform: 'uppercase',
+      {p.sub ? <div style={{marginTop: 14, fontFamily: TH.caption, fontWeight: 800, fontSize: 38, color: '#fff', textTransform: 'uppercase',
                             WebkitTextStroke: '9px #111', paintOrder: 'stroke', opacity: interpolate(f, [5, 12], [0, 1], clamp)}}>{p.sub}</div> : null}
     </div>
   );
@@ -78,8 +89,8 @@ function Captions({words, fps}) {
       {c.map((w, i) => {
         const on = t >= w[1] - 0.03 && t < (c[i + 1] ? c[i + 1][1] : w[2] + 0.6);
         return (
-          <span key={i} style={{display: 'inline-block', margin: '0 14px', fontFamily: 'Montserrat', fontWeight: 900, fontSize: 60,
-                                textTransform: 'uppercase', color: on ? YELLOW : '#FFFFFF', WebkitTextStroke: '10px #000', paintOrder: 'stroke',
+          <span key={i} style={{display: 'inline-block', margin: '0 14px', fontFamily: TH.caption, fontWeight: TH.weight, fontSize: TH.capsize || 60,
+                                textTransform: TH.upper ? 'uppercase' : 'none', color: on ? TH.accent : '#FFFFFF', WebkitTextStroke: '10px #000', paintOrder: 'stroke',
                                 transform: on ? 'scale(1.08)' : 'none'}}>{w[0].replace(/[,;:]$/, '')}</span>
         );
       })}
@@ -87,8 +98,9 @@ function Captions({words, fps}) {
   );
 }
 
-export const FactShort = ({shots = [], pops = [], words = [], hook = null, credit = ''}) => {
+export const FactShort = ({shots = [], pops = [], words = [], hook = null, credit = '', theme = null}) => {
   const {fps} = useVideoConfig();
+  TH = {font: 'Archivo Black', accent: YELLOW, caption: 'Montserrat', weight: 900, upper: true, ...(theme || {})};
   const f = useCurrentFrame();
   return (
     <AbsoluteFill style={{background: '#000'}}>
@@ -101,11 +113,11 @@ export const FactShort = ({shots = [], pops = [], words = [], hook = null, credi
         <Sequence key={`p${i}`} from={Math.round(p.a * fps)} durationInFrames={Math.max(1, Math.round((p.b - p.a) * fps))}><Pop p={p} fps={fps} /></Sequence>
       ))}
       {hook ? (
-        <div style={{position: 'absolute', left: 50, right: 50, top: 300, textAlign: 'center', fontFamily: 'Archivo Black', fontSize: 70, lineHeight: 1.05,
+        <div style={{position: 'absolute', left: 50, right: 50, top: 300, textAlign: 'center', fontFamily: TH.font, fontSize: 70, lineHeight: 1.05,
                      color: '#fff', WebkitTextStroke: '13px #111', paintOrder: 'stroke',
                      opacity: interpolate(f, [hook.b * fps - 8, hook.b * fps], [1, 0], clamp),
                      transform: `scale(${0.6 + 0.4 * spring({frame: f, fps, config: {damping: 10, stiffness: 170}})})`}}>
-          {hook.text.split('|').map((x, i) => <div key={i} style={{color: i % 2 ? YELLOW : '#fff'}}>{x}</div>)}
+          {hook.text.split('|').map((x, i) => <div key={i} style={{color: i % 2 ? TH.accent : '#fff'}}>{x}</div>)}
         </div>
       ) : null}
       <Captions words={words} fps={fps} />
