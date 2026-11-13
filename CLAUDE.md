@@ -341,6 +341,14 @@ Agents never spend money without the owner's explicit approval.
   owner's own bot token and another client's), /<slug>/say, /<slug>/send {path, caption, approve}, /<slug>/unpair. hq client-new |
   clients | client-say | client-send. Tested with a fake Telegram (scratchpad fake_tg.py + test_clientbot.py: 23 checks). 2.82.4: a practice office (HQ_SIMULATE=1) never starts the client bots (the store in ~/.agent-hq/clients is shared, so it would take a client's messages from the real office) unless HQ_CLIENTS_DIR or HQ_CLIENTS=1. Not yet:
   his own channel's map-first look (the "client channel" style options), Omar on his channel, a /status answer without the owner's OK.
+  2.84.0 Answer now (the owner 11-14: "You answer every sentence this is annoying he is sometimes explaining a long idea in batches ...
+  An answer now button ... and also he can set u back to automatic answer"): `clientbot.mode(c)` = the client's own choice (store `mode`)
+  else rule client.reply_mode (wait|auto, default wait). WAIT: his messages (text, transcribed voice notes, files) are kept in order in the
+  store's `pending` (on disk; LOCK is an RLock so load+append+save is one step) and the bot says nothing; a keyboard under his typing box
+  (`_keyboard`, is_persistent) has ✅ Answer now and 🔁 Automatic replies. `answer_now` takes and empties the list in one step and runs ONE
+  `draft` with every message numbered with its time, asking for one short reply (remarks -> numbered summary + ask for his go). AUTO: as
+  before (each message drafted), keyboard ⏸ Wait mode; switching to auto answers anything still waiting. Also /answer /auto /wait. The
+  keyboard + a one-line tip are shown once per mode (store `kb`), also at bot start. Test: scratchpad test_answer_now.py (13 checks).
   2.69.1: his voice notes/audio are transcribed on arrival (`clientbot.transcribe`: faster-whisper in the shorts venv, rule
   client.voice_model, default base.en = already on this PC), saved as <file>.txt beside it, and the text goes into messages.jsonl, the
   owner's live copy and Atlas's draft as "(voice note, transcribed) ...".

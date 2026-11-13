@@ -44,7 +44,7 @@ API = os.environ.get("HQ_TELEGRAM_API", "https://api.telegram.org").rstrip("/")
 MAX_TRIES = 5
 MAX_IN = 20 * 1024 * 1024        # a bot can download files up to 20 MB
 ACK_EVERY = 600                  # the fixed "got it" at most once per 10 minutes
-LOCK = threading.Lock()
+LOCK = threading.RLock()
 RUNNING = {}                     # slug -> True while its loop runs
 STATE = {"port": None, "tries": {}, "acked": {}, "ask": {}}   # tries/acked/ask per slug (ask = an episode waiting for his note)
 
@@ -199,6 +199,62 @@ def _tg_file(token, method, field, path, timeout=300, **params):
 def _say(c, text, buttons=None):
     markup = {"inline_keyboard": [[{"text": l, "callback_data": d} for l, d in row] for row in buttons]} if buttons else None
     return _tg(c["token"], "sendMessage", chat_id=c["chat"], text=str(text)[:4000], disable_web_page_preview=True, reply_markup=markup)
+
+
+# ---- wait mode and the Answer now button (the owner 2026-11-14: "Everytime he talks to u. You answer every sentence this is annoying
+# he is sometimes explaining a long idea in batches ... An answer now button ... and also he can set u back to automatic answer") ----
+ANSWER_NOW, AUTO_ON, WAIT_ON = "✅ Answer now", "🔁 Automatic replies", "⏸ Wait mode"
+
+
+def mode(c):
+    """'wait' (collect his messages until he taps Answer now) or 'auto' (answer each one): his own choice, else rule client.reply_mode."""
+    m = c.get("mode") or rules.get("client.reply_mode") or "wait"
+    return m if m in ("wait", "auto") else "wait"
+
+
+def _keyboard(c):
+    """A keyboard that stays under his typing box: Answer now + Automatic replies in wait mode, Wait mode in auto mode."""
+    rows = [[{"text": ANSWER_NOW}], [{"text": AUTO_ON}]] if mode(c) == "wait" else [[{"text": WAIT_ON}]]
+    return {"keyboard": rows, "resize_keyboard": True, "is_persistent": True}
+
+
+def _say_kb(c, text):
+    save(c["slug"], kb=mode(c))
+    return _tg(c["token"], "sendMessage", chat_id=c["chat"], text=str(text)[:4000], disable_web_page_preview=True, reply_markup=_keyboard(c))
+
+
+WAIT_TIP = ("Take your time: send all your messages, voice notes and files. I'll stay quiet while you write. "
+            "When you're done, tap ✅ Answer now and I'll answer everything together, in order.")
+
+
+def answer_now(slug, by="client"):
+    """Everything he sent since the last answer, in order, answered in ONE reply."""
+    with LOCK:   # take the list and empty it in one step: a message arriving now goes into the next batch, never lost
+        c = find(slug)
+        pend = c.get("pending") or []
+        if pend:
+            save(c["slug"], pending=[])
+    if not pend:
+        return _say_kb(c, "There's nothing new from you to answer yet. Send your messages first, then tap ✅ Answer now.")
+    text = (f"He sent {len(pend)} message(s) while the bot waited, in this order. Read them ALL together and send ONE short reply. "
+            "If they are remarks or requests, list them back as a short numbered summary and ask for his go; do not answer them one by one.\n"
+            + "\n".join(f"{i}. [{p['ts']}] {p['text'] or '(sent a file)'}" for i, p in enumerate(pend, 1)))
+    files = [f for p in pend for f in p.get("files") or []]
+    cp.log(c["name"] + " (client)", "client_answer_now", None, {"messages": len(pend), "by": by})
+    threading.Thread(target=draft, args=(c["slug"], text, files), daemon=True).start()
+    return None
+
+
+def set_mode(slug, new, by="client"):
+    c = find(slug)
+    save(c["slug"], mode=new)
+    c = load(c["slug"])
+    cp.log(c["name"] + " (client)", "client_reply_mode", None, {"mode": new, "by": by})
+    if new == "auto":
+        if c.get("pending"):
+            answer_now(c["slug"], by=by)
+        return _say_kb(c, "Automatic replies are on: I'll answer each message. Tap ⏸ Wait mode to go back to answering everything at once.")
+    return _say_kb(c, WAIT_TIP)
 
 
 def _owner(text, buttons=None):
@@ -483,7 +539,13 @@ def on_message(c, m):
         return _tg(c["token"], "sendMessage", chat_id=chat, text="This is a private bot.")
     cmd = text.split()[0].split("@")[0].lower() if text.startswith("/") else ""
     if cmd in ("/start", "/help"):
-        return _say(c, HELP)
+        return _say_kb(c, HELP + ("\n\n" + WAIT_TIP if mode(c) == "wait" else ""))
+    if text == ANSWER_NOW or cmd == "/answer":
+        return answer_now(c["slug"])
+    if text == AUTO_ON or cmd == "/auto":
+        return set_mode(c["slug"], "auto")
+    if text == WAIT_ON or cmd == "/wait":
+        return set_mode(c["slug"], "wait")
     ask = STATE["ask"].pop(c["slug"], None)
     if ask and text and not cmd:   # the note for a Changes / Reject he tapped
         return _decide(c, ask["action"], ask["episode"], text)
@@ -517,6 +579,13 @@ def on_message(c, m):
                 phone.send_media({"kind": kind, "path": str(f), "caption": f"From {c['name']}"})
         except Exception as e:  # noqa: BLE001
             print("Client file -> owner:", repr(e)[:200], flush=True)
+    if mode(c) == "wait":   # silent: kept in order until he taps Answer now (on disk, so a restart loses nothing)
+        with LOCK:   # LOCK is re-entrant: load + append + save as one step, so two quick messages never lose one
+            c = load(c["slug"])
+            save(c["slug"], pending=(c.get("pending") or []) + [{"ts": time.strftime("%Y-%m-%d %H:%M:%S"), "text": text, "files": rel}])
+        if c.get("kb") != "wait":   # the first time in wait mode: the buttons and one short tip, once
+            _say_kb(load(c["slug"]), WAIT_TIP)
+        return None
     now = time.time()
     if rules.get("client.ack") and now - STATE["acked"].get(c["slug"], 0) > ACK_EVERY:
         STATE["acked"][c["slug"]] = now
@@ -612,6 +681,11 @@ def start(slug, port=None):
     if not c or not c.get("token") or RUNNING.get(c["slug"]):
         return
     RUNNING[c["slug"]] = True
+    if c.get("chat") and c.get("kb") != mode(c):   # the buttons he hasn't seen yet (new mode or new version): shown once at start
+        try:
+            _say_kb(c, WAIT_TIP if mode(c) == "wait" else "Automatic replies are on. Tap ⏸ Wait mode to have everything answered at once.")
+        except Exception as e:  # noqa: BLE001
+            print(f"Client bot {c['slug']}: keyboard not shown:", repr(e)[:200], flush=True)
     threading.Thread(target=_poll, args=(c["slug"],), daemon=True).start()
     print(f"  Client {c['name']}: @{c.get('bot', '?')} " + ("connected." if c.get("chat") else f"waiting for pairing code {c.get('code')}."), flush=True)
 

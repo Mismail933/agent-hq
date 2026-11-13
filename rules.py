@@ -175,6 +175,7 @@ RULES = {
     "client.draft_replies": _r("Clients", "bool", True, None, None, "Atlas drafts a reply to each client message (in a client-only role: his project only) for you to send, edit or drop"),
     "client.projects": _r("Clients", "text", "6", None, None, "Projects the owner marked as a client's (numbers, e.g. 4,6): Rana's style frames and the other client tools work for them too, not only for client music videos"),
     "client.voice_model": _r("Clients", "text", "base.en", None, None, "The local speech-to-text model that transcribes a client's voice notes (faster-whisper: base.en is on this PC; small or medium hear better but are downloaded once, ask the owner)"),
+    "client.reply_mode": _r("Clients", "choice", "wait", ("wait", "auto"), None, "How a client's bot answers him: wait = it stays silent and collects his messages until he taps ✅ Answer now, then Atlas answers them all at once, in order (the owner 11-14: Bassel explains ideas in batches); auto = Atlas answers each message. He can switch it himself with the buttons; this is the default for clients who haven't"),
     "client.can_approve": _r("Clients", "bool", True, None, None, "Scripts and videos sent to a client carry Approve / Changes / Reject buttons; his decision on his own project is final"),
     "phone.send": _r("Phone", "choice", "decisions", ("decisions", "everything", "nothing"), None,
                      "What reaches the phone at once: decisions (things that need the owner + finished videos), everything, or nothing"),
