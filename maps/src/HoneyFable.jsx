@@ -286,7 +286,7 @@ function Timeline({t, fps, a, pins = [], bracket, y = 1080}) {
 
 // ---------- SCENE 0+1 (lines 0-1): the hook. honey footage, a counter that spins 100 / 200 / 1,000 ... then way past 3,000 ----------
 function SceneHook({t, at, fps, a, b, lines}) {
-  const h1 = at(0, 'hundred'), h2 = at(0, 'hundred', 1), th = at(0, 'thousand'), way = at(1, 'way'), q = at(0, 'How');
+  const h1 = at(0, 'hundred'), h2 = at(0, 'hundred', 1), th = at(0, 'thousand'), way = at(1, 'way');
   const value = t < h1 ? 0
     : t < h2 ? lerp(0, 100, ease(t, h1, 0.35))
     : t < th ? lerp(100, 200, ease(t, h2, 0.35))
@@ -301,8 +301,7 @@ function SceneHook({t, at, fps, a, b, lines}) {
     <Scene t={t} a={a}>
       <Clip src="honey-drip-ai.mp4" a={a} b={lines[1].t0} t={t} fps={fps} ai zoom={[1.02, 1.12]} dark={0.3} />
       <Clip src="pyramids-1897.mp4" a={lines[1].t0} b={b} t={t} fps={fps} zoom={[1.1, 1.22]} fx={50} fy={40} dark={0.3} sepia={0.6} />
-      {/* HOW OLD? question, then the number */}
-      <Pop t={t} a={q} until={h1 - 0.1} fps={fps} y={330} size={160} color={CREAM}>HOW OLD?</Pop>
+      {/* the counter (review 3: no title words, the footage carries the question) */}
       {t >= h1 ? (
         <div style={{position: 'absolute', left: 0, right: 0, top: 300, textAlign: 'center', transform: `scale(${punch}) translateX(${shake}px)`}}>
           <div style={{fontFamily: BIG, fontSize: 230, lineHeight: 1, color: done ? AMBER : CREAM, letterSpacing: -4, WebkitTextStroke: '12px #140A02', paintOrder: 'stroke',
@@ -315,7 +314,6 @@ function SceneHook({t, at, fps, a, b, lines}) {
           {[h1, h2, th].map((w, i) => (t >= w ? <circle key={i} cx={540} cy={430} r={160 + 500 * lin(t, w, 0.7)} fill="none" stroke={AMBER} strokeWidth={10 * (1 - lin(t, w, 0.7))} opacity={1 - lin(t, w, 0.7)} /> : null))}
         </svg>
       ) : null}
-      <Pop t={t} a={way} fps={fps} y={740} size={120} color={AMBER}>WAY OLDER</Pop>
     </Scene>
   );
 }
@@ -343,7 +341,7 @@ function SceneProven({t, at, fps, a, b}) {
 
 // ---------- SCENE 4 (line 4): Georgia. a drawn map (Black Sea, Caucasus, Caspian), a clay pot rises, a pin drops, the timeline gets 2500 BC ----------
 function SceneGeorgia({t, at, fps, a, b}) {
-  const oldest = at(4, 'oldest'), honey = at(4, 'honey'), clay = at(4, 'clay'), geo = at(4, 'Georgia'), four = at(4, 'four'), older = at(4, 'older');
+  const oldest = at(4, 'oldest'), honey = at(4, 'honey'), clay = at(4, 'clay'), geo = at(4, 'Georgia'), four = at(4, 'four');
   const draw = ease(t, oldest, 1.2);
   const cam = 1 + 0.12 * lin(t, a, b - a);
   const kPot = pop(t, clay, fps, bouncy);
@@ -391,8 +389,6 @@ function SceneGeorgia({t, at, fps, a, b}) {
         </g>
       </svg>
       <Tag t={t} a={geo} fps={fps} x={600} y={760} size={38} bg={RED} fg={CREAM}>Georgia</Tag>
-      <Tag t={t} a={clay} fps={fps} x={300} y={870} bg={CREAM} size={28}>clay pots, honey traces</Tag>
-      <Pop t={t} a={older} until={clay} fps={fps} y={220} size={96} color={AMBER}>OLDER STILL</Pop>
       {/* Kodiani, Georgia: 27th-25th century BC, so the pin sits at 2500 BC (review 1) */}
       <Timeline t={t} fps={fps} a={a}
                 pins={[{year: -1323, at: a + 0.3, label: '1323 BC', sub: 'Tutankhamun', color: CREAM}, {year: 1922, at: a + 0.6, label: '1922', sub: 'tomb opened', color: CREAM},
@@ -403,7 +399,7 @@ function SceneGeorgia({t, at, fps, a, b}) {
 }
 // ---------- SCENE 5 (line 5): why does it last? the jar; germs fly in; on "desert" the honey becomes a desert with a sun and heat shimmer ----------
 function SceneDesert({t, at, fps, a, b}) {
-  const why = at(5, 'why'), forW = at(5, 'For'), germs = at(5, 'germs'), desert = at(5, 'desert');
+  const germs = at(5, 'germs'), desert = at(5, 'desert');
   const kJar = pop(t, a, fps, soft);
   const cam = 1 + 0.08 * lin(t, a, b - a);
   const kDes = ease(t, desert, 0.8);
@@ -414,7 +410,7 @@ function SceneDesert({t, at, fps, a, b}) {
     <Scene t={t} a={a}>
       <SciBg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
-        <g transform={`translate(540, 680) scale(${cam * (0.9 + 0.5 * kJar)})`} opacity={kJar}>
+        <g transform={`translate(540, 640) scale(${cam * (0.9 + 0.5 * kJar)})`} opacity={kJar}>
           <Jar id="jd" fill={0.78} honey={HONEY}>
             {/* desert inside the jar: a sun and two dunes and shimmer, all rising with kDes */}
             <circle cx={60} cy={lerp(60, -70, kDes)} r={48} fill={CREAM} opacity={0.9 * kDes} />
@@ -427,7 +423,7 @@ function SceneDesert({t, at, fps, a, b}) {
           </Jar>
           {/* germs fly in from the edges, land on the dunes, start to feel the heat */}
           {starts.map((s0, i) => {
-            const sx = lerp(s0[0] - 540, lands[i][0], germIn), sy = lerp(s0[1] - 680, lands[i][1], germIn);
+            const sx = lerp(s0[0] - 540, lands[i][0], germIn), sy = lerp(s0[1] - 640, lands[i][1], germIn);
             const heat = lin(t, desert + 0.3, 0.9);
             return (
               <g key={i}>
@@ -441,9 +437,6 @@ function SceneDesert({t, at, fps, a, b}) {
           })}
         </g>
       </svg>
-      <Pop t={t} a={why} until={forW} fps={fps} y={230} size={150} color={CREAM}>WHY?</Pop>
-      <Tag t={t} a={germs} fps={fps} x={560} y={1010} bg={CREAM} size={30}>for germs...</Tag>
-      <Pop t={t} a={desert} fps={fps} y={230} size={140} color={AMBER}>A DESERT</Pop>
     </Scene>
   );
 }
@@ -511,22 +504,20 @@ function SceneWater({t, at, fps, a, b}) {
                      transform: `scale(${1 + 0.1 * (1 - fillP)})`, transformOrigin: 'left center'}}>{Math.round(pct)}%</div>
       ) : null}
       <Tag t={t} a={water} fps={fps} x={560} y={530} bg={BLUE} fg={BROWN} size={36}>water</Tag>
-      <Tag t={t} a={bact} fps={fps} x={740} y={660} bg={CREAM} size={28}>bacteria lands in it</Tag>
       <Tag t={t} a={dries} fps={fps} x={700} y={1105} bg={BLUE} fg={BROWN} size={30}>water pulled out</Tag>
-      <Pop t={t} a={dries + 0.2} fps={fps} y={1095} x={-250} size={66} color={PALE}>DRIES OUT</Pop>
     </Scene>
   );
 }
 
 // ---------- SCENE 7 (line 7): acidic. a pH scale 0-14 builds; the honey marker slides from 7 to 3.9; orange juice pops next to it at 3.5 ----------
 function ScenePH({t, at, fps, a, b}) {
-  const acidic = at(7, 'acidic'), around = at(7, 'around'), ph = at(7, 'pH'), three = at(7, 'three'), sour = at(7, 'sour'), oj = at(7, 'orange');
+  const acidic = at(7, 'acidic'), ph = at(7, 'pH'), three = at(7, 'three'), oj = at(7, 'orange');
   const build = ease(t, a + 0.1, 0.8);
   const px = (v) => interpolate(v, [0, 14], [110, 970]);
   const slide = ease(t, three, 1.0, Easing.inOut(Easing.cubic));
   const val = lerp(7, 3.9, slide);
   const kOJ = pop(t, oj, fps, bouncy);
-  const barY = 720;
+  const barY = 660;   // review 3: nudged up now that the ACIDIC title is gone
   const stops = ['#D7352B', '#E8632B', '#F2A42B', '#E8D24A', '#9CC94B', '#4FB36B', '#3F9F8E', '#3B7FBF', '#4C5BB2', '#6B48A8'];
   return (
     <Scene t={t} a={a}>
@@ -568,14 +559,12 @@ function ScenePH({t, at, fps, a, b}) {
           <text x={0} y={130} textAnchor="middle" fontFamily={SMALL} fontWeight={800} fontSize={22} fill={CREAM}>ORANGE JUICE 3.5</text>
         </g>
       </svg>
-      <Pop t={t} a={acidic} until={around} fps={fps} y={300} size={150} color={ORANGE}>ACIDIC</Pop>
       {t >= ph ? (
         <div style={{position: 'absolute', left: 0, right: 0, top: 300, textAlign: 'center', fontFamily: BIG, fontSize: 170, color: CREAM, lineHeight: 1,
                      WebkitTextStroke: '10px #140A02', paintOrder: 'stroke', transform: `scale(${0.5 + 0.5 * pop(t, ph, fps, bouncy)})`}}>
           pH {t < three ? '?' : val.toFixed(1)}
         </div>
       ) : null}
-      <Tag t={t} a={sour} fps={fps} x={660} y={1030} bg={ORANGE} fg={BROWN} size={36}>as sour as</Tag>
     </Scene>
   );
 }
@@ -602,10 +591,10 @@ function SceneEnzyme({t, at, fps, a, b}) {
   const beeOut = ease(t, enzyme + 0.4, 1.0, Easing.in(Easing.quad));
   const bx = lerp(-120, 540, beeIn) + beeOut * 760, by = 380 + Math.sin(t * 7) * 14 - beeOut * 300;
   const kBlob = pop(t, enzyme, fps, bouncy);
-  const blobY = lerp(420, 640, ease(t, enzyme, 0.6, Easing.bounce));
+  const blobY = lerp(400, 600, ease(t, enzyme, 0.6, Easing.bounce));
   const feeds = [0, 1, 2, 3, 4].map((i) => slowly + i * 0.75);
   const eating = feeds.reduce((m, f) => Math.max(m, t > f + 0.8 && t < f + 1.1 ? Math.sin((t - f - 0.8) / 0.3 * Math.PI) : 0), 0);
-  const germsR = [[880, 420], [900, 640], [860, 860]];
+  const germsR = [[880, 380], [900, 600], [860, 820]];
   const kKit = pop(t, first, fps, bouncy);
   return (
     <Scene t={t} a={a}>
@@ -647,7 +636,7 @@ function SceneEnzyme({t, at, fps, a, b}) {
         {/* the bee */}
         {t > bees && beeOut < 1 ? <Bee x={bx} y={by} t={t} s={1.1} /> : null}
         {/* enzyme drop falls from the bee */}
-        {t > enzyme - 0.3 && t < enzyme ? <circle cx={540} cy={lerp(420, 640, lin(t, enzyme - 0.3, 0.3))} r={20} fill={AMBER} /> : null}
+        {t > enzyme - 0.3 && t < enzyme ? <circle cx={540} cy={lerp(400, 600, lin(t, enzyme - 0.3, 0.3))} r={20} fill={AMBER} /> : null}
         {/* first aid kit */}
         <g transform={`translate(230, 1000) scale(${kKit}) rotate(${-8 * (1 - kKit)})`} opacity={kKit}>
           <rect x={-120} y={-80} width={240} height={160} rx={22} fill={CREAM} />
@@ -658,16 +647,14 @@ function SceneEnzyme({t, at, fps, a, b}) {
           <text x={78} y={70} textAnchor="middle" fontFamily={SMALL} fontWeight={800} fontSize={14} fill={CREAM}>H₂O₂</text>
         </g>
       </svg>
-      <Tag t={t} a={enzyme} fps={fps} x={560} y={830} bg={AMBER} size={28}>enzyme · glucose oxidase</Tag>
+      <Tag t={t} a={enzyme} fps={fps} x={560} y={790} bg={AMBER} size={28}>enzyme · glucose oxidase</Tag>
       <Tag t={t} a={slowly} fps={fps} x={210} y={420} bg={CREAM} size={26}>glucose in</Tag>
-      <Pop t={t} a={hydrogen} fps={fps} y={200} size={84} color={CREAM}>HYDROGEN PEROXIDE</Pop>
-      <Tag t={t} a={first} fps={fps} x={700} y={1030} bg={CREAM} size={28}>same stuff as your first aid kit</Tag>
     </Scene>
   );
 }
 // ---------- SCENE 9 (line 9): crystallised. liquid honey in the jar turns grainy and solid from the bottom up; STILL GOOD tick ----------
 function SceneCrystal({t, at, fps, a, b}) {
-  const solid = at(9, 'solid'), grainy = at(9, 'grainy'), hasnt = at(9, "hasn't"), bad = at(9, 'bad'), cryst = at(9, 'crystallised');
+  const solid = at(9, 'solid'), grainy = at(9, 'grainy'), hasnt = at(9, "hasn't");
   const kJar = pop(t, a, fps, soft);
   const grow = ease(t, solid, 1.6, Easing.inOut(Easing.quad));
   const kTick = pop(t, hasnt, fps, bouncy);
@@ -691,7 +678,7 @@ function SceneCrystal({t, at, fps, a, b}) {
     <Scene t={t} a={a}>
       <SciBg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
-        <g transform={`translate(${440 + shake}, 690) scale(${(0.9 + 0.5 * kJar) * 1.2}) rotate(${shake})`} opacity={kJar}>
+        <g transform={`translate(${440 + shake}, 650) scale(${(0.9 + 0.5 * kJar) * 1.2}) rotate(${shake})`} opacity={kJar}>
           <Jar id="jc" fill={0.82} honey={HONEY}>
             {/* liquid: a gentle wave while it is still liquid */}
             <path d={`M-160,${-105 + Math.sin(t * 2.5) * 5 * (1 - grow)} q 60 ${-10 * (1 - grow)} 120 0 t 120 0 L160,-80 L-160,-80 Z`} fill={LIGHT} opacity={0.4} />
@@ -711,17 +698,13 @@ function SceneCrystal({t, at, fps, a, b}) {
           })}
         </g>
       </svg>
-      <Pop t={t} a={solid} until={hasnt} fps={fps} y={230} size={90} color={LIGHT}>SOLID & GRAINY</Pop>
-      <Tag t={t} a={bad} fps={fps} x={850} y={640} bg={GREEN} fg={BROWN} size={34}>still good</Tag>
-      <Pop t={t} a={cryst} fps={fps} y={230} size={100} color={AMBER}>CRYSTALLISED</Pop>
-      <Tag t={t} a={cryst + 0.3} fps={fps} x={560} y={1040} bg={CREAM} size={28}>not spoiled, just sugar crystals</Tag>
     </Scene>
   );
 }
 
 // ---------- SCENE 10 (line 10): what is honey made of? a donut chart builds slice by slice on the words; molecules fly into their slices ----------
 function SceneComposition({t, at, fps, a, b}) {
-  const made = at(10, 'made'), mostly = at(10, 'Mostly'), two = at(10, 'two'), about = at(10, 'about');
+  const made = at(10, 'made'), mostly = at(10, 'Mostly');
   const t38 = at(10, 'thirty'), fru = at(10, 'fructose'), t31 = at(10, 'thirty', 1), glu = at(10, 'glucose'), plus = at(10, 'plus');
   const mal = at(10, 'maltose'), aci = at(10, 'acids'), min = at(10, 'minerals'), enz = at(10, 'enzymes');
   const slices = [
@@ -733,7 +716,7 @@ function SceneComposition({t, at, fps, a, b}) {
     {name: 'Acids, minerals, enzymes', lines: ['Acids, minerals', '& enzymes'], pct: 4, color: GREEN, at: aci, dur: 0.4, steps: [aci, min, enz]},
   ];
   // donut on the left, legend to its right (review 1: nothing of the composition below y 1100)
-  const cx = 340, cy = 640, r0 = 175, r1 = 300;
+  const cx = 340, cy = 600, r0 = 175, r1 = 300;
   let ang = 0;
   const drawn = slices.map((s) => {
     let k;
@@ -778,7 +761,7 @@ function SceneComposition({t, at, fps, a, b}) {
         {drawn.map((s, i) => {
           if (s.k <= 0) return null;
           const k = pop(t, s.steps ? s.steps[0] : s.at, fps, soft);
-          const y = 450 + i * 72;
+          const y = 410 + i * 72;
           return (
             <g key={i} transform={`translate(${(1 - k) * 60}, 0)`} opacity={k}>
               <rect x={650} y={y - 20} width={40} height={40} rx={10} fill={s.color} />
@@ -790,8 +773,6 @@ function SceneComposition({t, at, fps, a, b}) {
           );
         })}
       </svg>
-      <Pop t={t} a={made} until={mostly} fps={fps} y={230} size={130} color={CREAM}>MADE OF?</Pop>
-      <Pop t={t} a={two} until={about} fps={fps} y={230} size={130} color={AMBER}>2 SUGARS</Pop>
     </Scene>
   );
 }
@@ -822,8 +803,8 @@ function SceneLid({t, at, fps, a, b}) {
             <stop offset="100%" stopColor={AMBER} stopOpacity={0} />
           </radialGradient>
         </defs>
-        <circle cx={540} cy={700} r={460 + 40 * push} fill="url(#jarglow)" opacity={glow} />
-        <g transform={`translate(${540 + shake * (1 - settle)}, 700) scale(${jarS * (0.8 + 0.2 * kJar)})`} opacity={kJar}>
+        <circle cx={540} cy={660} r={460 + 40 * push} fill="url(#jarglow)" opacity={glow} />
+        <g transform={`translate(${540 + shake * (1 - settle)}, 660) scale(${jarS * (0.8 + 0.2 * kJar)})`} opacity={kJar}>
           <Jar id="jl" fill={0.8} lidOpen={lidOpen} lidRot={screw * 360} lidY={screw < 1 ? -10 * Math.sin(screw * Math.PI) : 0}>
             {/* fermentation bubbles */}
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
@@ -861,9 +842,6 @@ function SceneLid({t, at, fps, a, b}) {
           }) : null}
         </g>
       </svg>
-      <Pop t={t} a={at(11, 'catch')} until={water - 0.1} fps={fps} y={230} size={130} color={CREAM}>ONE CATCH</Pop>
-      <Tag t={t} a={water} fps={fps} x={560} y={230} bg={BLUE} fg={BROWN} size={32}>water gets in</Tag>
-      <Tag t={t} a={lid} fps={fps} x={540} y={1030} bg={AMBER} size={34}>keep the lid on</Tag>
     </Scene>
   );
 }
