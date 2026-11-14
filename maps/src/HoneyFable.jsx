@@ -320,61 +320,23 @@ function SceneHook({t, at, fps, a, b, lines}) {
   );
 }
 
-// ---------- SCENE 2 (line 2): the tomb. AI tomb clip, then the real Burton photo of the jars; 1922 and 3,000+ pop; a timeline builds ----------
+// ---------- SCENE 2 (line 2): the tomb. review 2: only the footage. AI tomb clip, then the real Burton photo of the jars; "3,000+" pops ----------
 function SceneTomb({t, at, fps, a, b}) {
-  const jars = at(2, 'jars'), y1922 = at(2, 'nineteen'), tut = at(2, 'Tutankhamun'), three = at(2, 'three'), they = at(2, 'they');
+  const jars = at(2, 'jars'), three = at(2, 'three');
   return (
     <Scene t={t} a={a}>
       <Clip src="honey-tomb-ai.mp4" a={a} b={jars} t={t} fps={fps} ai zoom={[1.04, 1.16]} dark={0.3} />
       <Clip src="tut-burton-020.jpg" photo a={jars} b={b} t={t} fps={fps} zoom={[1.1, 1.3]} fx={50} fy={45} dark={0.35} />
-      <Pop t={t} a={y1922} until={they} fps={fps} y={300} size={210} color={CREAM}>1922</Pop>
-      <Tag t={t} a={jars} fps={fps} x={560} y={840} size={30}>Jars labelled honey</Tag>
       <Pop t={t} a={three} fps={fps} y={300} size={200} color={AMBER}>3,000+</Pop>
-      {t >= three ? <Tag t={t} a={at(2, 'years')} fps={fps} x={560} y={560} bg={CREAM}>years old</Tag> : null}
-      <Timeline t={t} fps={fps} a={a + 0.2}
-                pins={[{year: -1323, at: tut, label: '1323 BC', sub: 'Tutankhamun buried', color: CREAM}, {year: 1922, at: y1922, label: '1922', sub: 'tomb opened'}]}
-                bracket={{from: -1323, to: 1922, at: three, n: 3000}} />
     </Scene>
   );
 }
 
-// ---------- SCENE 3 (line 3): still good to eat? a jar on the Burton photo, a tick that is not quite sure, NOT PROVEN stamp ----------
+// ---------- SCENE 3 (line 3): still good to eat? review 2: only the Burton photo with its slow push; the narration carries the words ----------
 function SceneProven({t, at, fps, a, b}) {
-  const good = at(3, 'good'), nobody = at(3, 'nobody'), proven = at(3, 'proven'), stories = at(3, 'Stories');
-  const bob = Math.sin(t * 2.2) * 10;
-  const kJar = pop(t, stories, fps, soft);
-  const kTick = pop(t, good, fps, bouncy);
-  const doubt = t >= nobody ? Math.sin((t - nobody) * 28) * 8 * Math.max(0, 1 - (t - nobody) / 0.8) : 0;
-  const kStamp = pop(t, proven, fps, {damping: 14, stiffness: 300, mass: 0.6});
   return (
     <Scene t={t} a={a}>
-      <Clip src="tut-burton-026.jpg" photo a={a} b={b} t={t} fps={fps} zoom={[1.15, 1.3]} fx={40} fy={50} dark={0.65} blur={3} />
-      <svg width={W} height={H} style={{position: 'absolute'}}>
-        <g transform={`translate(540, ${720 + bob}) scale(${0.6 + 0.6 * kJar})`} opacity={kJar}>
-          <Jar id="jp" fill={0.8} label="HONEY" />
-          {/* steam-like sparkles rising: is it still good? */}
-          {[0, 1, 2, 3].map((i) => {
-            const ph = ((t * 0.5 + rnd(i)) % 1);
-            return <circle key={i} cx={-90 + i * 60 + Math.sin(t * 3 + i) * 10} cy={-260 - ph * 120} r={6 + 4 * (1 - ph)} fill={AMBER} opacity={(1 - ph) * 0.8} />;
-          })}
-        </g>
-        {/* the hopeful tick */}
-        <g transform={`translate(${790 + doubt}, 520) scale(${kTick}) rotate(${doubt})`} opacity={kTick * (1 - 0.6 * kStamp)}>
-          <circle r={95} fill={GREEN} />
-          <path d="M-45,5 L-12,40 L50,-40" stroke={CREAM} strokeWidth={22} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        </g>
-        {/* the question mark that keeps bouncing above */}
-        <text x={300} y={520 + Math.abs(Math.sin(t * 4)) * -30} textAnchor="middle" fontFamily={BIG} fontSize={190} fill={AMBER} opacity={pop(t, stories + 0.3, fps, bouncy) * (1 - 0.7 * kStamp)}
-              stroke="#140A02" strokeWidth={10} paintOrder="stroke">?</text>
-      </svg>
-      <Tag t={t} a={good} fps={fps} x={560} y={1000} bg={CREAM} size={34}>still good to eat?</Tag>
-      {/* the stamp */}
-      {t >= proven ? (
-        <div style={{position: 'absolute', left: 0, right: 0, top: 640, textAlign: 'center', transform: `scale(${2.2 - 1.2 * kStamp}) rotate(${-10 * kStamp}deg)`, opacity: Math.min(1, kStamp * 3)}}>
-          <div style={{display: 'inline-block', padding: '18px 40px', border: `14px solid ${RED}`, borderRadius: 24, fontFamily: BIG, fontSize: 110, color: RED, letterSpacing: 2,
-                       background: 'rgba(26,15,5,0.6)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>NOT PROVEN</div>
-        </div>
-      ) : null}
+      <Clip src="tut-burton-026.jpg" photo a={a} b={b} t={t} fps={fps} zoom={[1.15, 1.3]} fx={40} fy={50} dark={0.45} />
     </Scene>
   );
 }
@@ -433,7 +395,7 @@ function SceneGeorgia({t, at, fps, a, b}) {
       <Pop t={t} a={older} until={clay} fps={fps} y={220} size={96} color={AMBER}>OLDER STILL</Pop>
       {/* Kodiani, Georgia: 27th-25th century BC, so the pin sits at 2500 BC (review 1) */}
       <Timeline t={t} fps={fps} a={a}
-                pins={[{year: -1323, at: a, label: '1323 BC', sub: 'Tutankhamun', color: CREAM}, {year: 1922, at: a, label: '1922', sub: 'tomb opened', color: CREAM},
+                pins={[{year: -1323, at: a + 0.3, label: '1323 BC', sub: 'Tutankhamun', color: CREAM}, {year: 1922, at: a + 0.6, label: '1922', sub: 'tomb opened', color: CREAM},
                        {year: -2500, at: four, label: '2500 BC', sub: 'Georgia pots'}]}
                 bracket={{from: -2500, to: 2026, at: four, n: 4500}} />
     </Scene>
@@ -834,47 +796,34 @@ function SceneComposition({t, at, fps, a, b}) {
   );
 }
 
-// ---------- SCENE 11 (line 11): the catch. water drops in, honey ferments; the lid screws on; a family tree of tiny faces ----------
-function Face({x, y, s = 1, seed = 0, k = 1, t = 0}) {
-  const hair = Math.floor(rnd(seed) * 3);
-  const skin = ['#F1C9A5', '#D9A273', '#8D5A3B', '#F7D7B8'][Math.floor(rnd(seed + 1) * 4)];
-  const hc = ['#2B1B10', '#C98B3C', '#6B4423', '#D9D2C5'][Math.floor(rnd(seed + 2) * 4)];
-  const blink = Math.sin(t * 2.2 + seed * 1.7) > 0.96 ? 0.15 : 1;
-  return (
-    <g transform={`translate(${x}, ${y}) scale(${s * k})`} opacity={k}>
-      <circle r={40} fill={skin} />
-      {hair === 0 ? <path d="M-40,-8 A40,40 0 0 1 40,-8 L40,0 Q0,-26 -40,0 Z" fill={hc} /> : null}
-      {hair === 1 ? <path d="M-40,-6 L-30,-48 L-14,-30 L0,-54 L14,-30 L30,-48 L40,-6 Z" fill={hc} /> : null}
-      {hair === 2 ? <g><path d="M-40,-8 A40,40 0 0 1 40,-8 Z" fill={hc} /><circle cx={0} cy={-44} r={14} fill={hc} /></g> : null}
-      <ellipse cx={-14} cy={-4} rx={5} ry={6 * blink} fill={BROWN} />
-      <ellipse cx={14} cy={-4} rx={5} ry={6 * blink} fill={BROWN} />
-      <path d={`M-14,14 Q0,${24 + Math.sin(t * 3 + seed) * 3} 14,14`} stroke={BROWN} strokeWidth={4} fill="none" strokeLinecap="round" />
-    </g>
-  );
-}
-
+// ---------- SCENE 11 (line 11): the catch. water drops in, honey ferments; the lid screws on; the closed jar glows and holds to the end ----------
 function SceneLid({t, at, fps, a, b}) {
-  const water = at(11, 'water'), inW = at(11, 'in'), ferment = at(11, 'ferment'), so = at(11, 'So'), lid = at(11, 'lid'), on = at(11, 'on');
-  const outlast = at(11, 'outlast'), your = at(11, 'your'), g1 = at(11, 'great'), g2 = at(11, 'great', 1), gk = at(11, 'grandchildren');
+  const water = at(11, 'water'), inW = at(11, 'in'), ferment = at(11, 'ferment'), lid = at(11, 'lid'), on = at(11, 'on');
   const kJar = pop(t, a, fps, soft);
   const lidOpen = 1 - ease(t, lid, 0.5, Easing.inOut(Easing.cubic));
   const screw = ease(t, on, 0.6, Easing.out(Easing.cubic));
   const closed = t > on + 0.3;
   const ferm = t > ferment ? Math.min(1, lin(t, ferment, 0.5)) * (1 - ease(t, on, 0.8)) : 0;
-  const shiftX = lerp(540, 250, ease(t, outlast, 0.8, Easing.inOut(Easing.cubic)));
-  const jarS = lerp(1.25, 0.85, ease(t, outlast, 0.8));
   const shake = ferm > 0 ? Math.sin(t * 40) * 4 * ferm : 0;
   const drops = [0, 1, 2].map((i) => water + i * 0.35);
-  const rows = [[1, outlast, 'you'], [2, your, 'kids'], [3, g1, 'grandkids'], [4, g2, 'great'], [5, gk, 'great great']];
-  // the tree stays above y 1100 and left of x 960 (Shorts buttons); generation labels sit to its left
-  const TX = 760;
-  const rowY = (r) => 300 + r * 165;
-  const rowX = (r, n, i) => TX + (i - (n - 1) / 2) * (n > 3 ? 80 : 120);
+  // review 2: no family tree. after the lid is on, the jar settles back to the centre, glows gently and pushes in slowly to the end
+  const settle = ease(t, on + 0.6, 0.8, Easing.inOut(Easing.cubic));
+  const push = lin(t, on + 0.6, Math.max(0.5, b - on - 0.6));
+  const jarS = 1.25 + 0.12 * push;
+  const glow = ease(t, on + 0.4, 1.2) * (0.42 + 0.08 * Math.sin(t * 2));
   return (
     <Scene t={t} a={a}>
       <SciBg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
-        <g transform={`translate(${shiftX + shake}, 700) scale(${jarS * (0.8 + 0.2 * kJar)})`} opacity={kJar}>
+        <defs>
+          <radialGradient id="jarglow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={AMBER} stopOpacity={0.9} />
+            <stop offset="55%" stopColor={AMBER} stopOpacity={0.25} />
+            <stop offset="100%" stopColor={AMBER} stopOpacity={0} />
+          </radialGradient>
+        </defs>
+        <circle cx={540} cy={700} r={460 + 40 * push} fill="url(#jarglow)" opacity={glow} />
+        <g transform={`translate(${540 + shake * (1 - settle)}, 700) scale(${jarS * (0.8 + 0.2 * kJar)})`} opacity={kJar}>
           <Jar id="jl" fill={0.8} lidOpen={lidOpen} lidRot={screw * 360} lidY={screw < 1 ? -10 * Math.sin(screw * Math.PI) : 0}>
             {/* fermentation bubbles */}
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
@@ -911,31 +860,10 @@ function SceneLid({t, at, fps, a, b}) {
             return <polygon key={i} points={polyPts(120 - i * 110, -200 - i * 25, 16 * Math.sin(p * Math.PI), 4)} fill={CREAM} />;
           }) : null}
         </g>
-        {/* family tree */}
-        {rows.map(([n, start, label], r) => {
-          if (t < start) return null;
-          const k = pop(t, start, fps, bouncy);
-          const y = rowY(r);
-          return (
-            <g key={r}>
-              {r > 0 ? <path d={`M${rowX(r - 1, rows[r - 1][0], (rows[r - 1][0] - 1) / 2)} ${y - 165 + 44} L${TX} ${y - 100} L${rowX(r, n, 0)} ${y - 44} M${TX} ${y - 100} L${rowX(r, n, n - 1)} ${y - 44}`}
-                              stroke={AMBER} strokeWidth={5} fill="none" strokeLinecap="round" opacity={0.6 * k} /> : null}
-              {Array.from({length: n}).map((_, i) => <Face key={i} x={rowX(r, n, i)} y={y} s={n > 3 ? 0.78 : 0.95} seed={r * 7 + i * 3} k={pop(t, start + i * 0.06, fps, bouncy)} t={t} />)}
-              <text x={545} y={y + 8} textAnchor="end" fontFamily={SMALL} fontWeight={800} fontSize={20} fill={CREAM} opacity={0.7 * k} letterSpacing={2}>{label.toUpperCase()}</text>
-            </g>
-          );
-        })}
       </svg>
       <Pop t={t} a={at(11, 'catch')} until={water - 0.1} fps={fps} y={230} size={130} color={CREAM}>ONE CATCH</Pop>
       <Tag t={t} a={water} fps={fps} x={560} y={230} bg={BLUE} fg={BROWN} size={32}>water gets in</Tag>
-      {t >= ferment && t < so ? (
-        <div style={{position: 'absolute', left: 0, right: 0, top: 1020, textAlign: 'center', transform: `rotate(${Math.sin(t * 30) * 2}deg) scale(${0.6 + 0.4 * pop(t, ferment, fps, bouncy)})`}}>
-          <div style={{fontFamily: BIG, fontSize: 110, color: ORANGE, WebkitTextStroke: '10px #140A02', paintOrder: 'stroke'}}>FERMENT</div>
-        </div>
-      ) : null}
-      <Tag t={t} a={lid} fps={fps} x={shiftX} y={985} bg={AMBER} size={34}>keep the lid on</Tag>
-      <Pop t={t} a={outlast} until={gk + 1.2} fps={fps} y={190} size={90} color={AMBER}>OUTLASTS...</Pop>
-      <Pop t={t} a={gk + 1.2} fps={fps} y={1050} x={-40} size={56} color={CREAM}>GREAT GREAT GRANDCHILDREN</Pop>
+      <Tag t={t} a={lid} fps={fps} x={540} y={1030} bg={AMBER} size={34}>keep the lid on</Tag>
     </Scene>
   );
 }
