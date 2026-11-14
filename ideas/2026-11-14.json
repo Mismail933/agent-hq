@@ -1,0 +1,116 @@
+{
+ "date": "2026-11-14",
+ "focus": "reliability",
+ "note": "One small idea today: workers.py logs the model we ASKED for, not the one that actually answered, so a silent model switch would be invisible. Claude Code 2.1.325 is out; nothing else needs your time. Honest note: this run was lighter than the 15-search / 8-page target.",
+ "research": {
+  "searches": 4,
+  "pages_read": 8,
+  "minutes": 12,
+  "questions": [
+   "Did Claude Code 2.1.319-2.1.325 change anything that affects our claude -p workers?",
+   "Does the Shorts original-content update (Oct 1) affect POV Then History?",
+   "Do we record which model actually answered a worker run?"
+  ],
+  "gaps": [
+   "Run was short of the 15 searches / 8 pages target (4 searches, 8 pages incl. 2 API searches)",
+   "No official YouTube text on public-domain footage under original narration",
+   "yutu: last commit date and open security issues not visible from the page"
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.325: scheduled tasks and /loop now ask before running a skill that declares allowed-tools or hooks (add Skill(name) to permissions.allow); claude -p waits for account data on a clean first run",
+  "Claude Code 2.1.323: claude -p now warns on stderr when it silently used another model because settings blocked the requested one",
+  "Claude Code 2.1.321: Fable 5.2 default Fable model ($8/$40 per Mtok, cache read $0.20)",
+  "Claude Code 2.1.319: permissions.denyInsteadOfPrompting; claude -p in auto mode exits 1 if actions were refused",
+  "API 2026-11-12: self-hosted Managed Agents; 2026-11-02: message threads beta; 2026-10-30: Opus 4.8 fast mode removed 2026-11-30 (we don't use it)",
+  "Anthropic news: nothing relevant since 2026-11-10 (IPO roadshow)"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.325 is new; 2.1.323 model-substitution warning is the basis of today's idea"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "nothing new for us since 2026-11-12 entry"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "no new items since the 2026-11-10 roadshow"
+  },
+  {
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+pushed:>2026-10-15&sort=stars&order=desc",
+   "tier": "B",
+   "result": "rejected",
+   "why": "generic clip/automation tools; we have our own pipeline"
+  },
+  {
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:>2026-10-15&sort=stars&order=desc",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "wshobson/agents etc. already known; nothing we need"
+  },
+  {
+   "title": "Shorts original-content update (Relevant Audience, citing Creator Insider 2026-10-01)",
+   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "same as already on watch; still no start date and silent on public-domain material"
+  },
+  {
+   "title": "eat-pray-ai/yutu",
+   "url": "https://github.com/eat-pray-ai/yutu",
+   "tier": "B",
+   "result": "rejected",
+   "why": "upload/manage tooling; Omar is read-only by rule and Apache-2.0 fit is irrelevant"
+  },
+  {
+   "title": "Search: claude -p silent model fallback",
+   "url": "https://claudeissues.com/issue/69613-docs-model-configuration-docs-omit-deprecated-auto-updated-model-warning-behavio",
+   "tier": "C",
+   "result": "used",
+   "why": "issue reports show silent remaps in -p JSON output; supports but does not prove the risk"
+  },
+  {
+   "title": "Search: Shorts hook/retention 2026",
+   "url": "https://dev.to/bulkdl/hook-engineering-the-science-of-the-first-3-seconds-in-short-form-video-2026-2jp9",
+   "tier": "C",
+   "result": "rejected",
+   "why": "marketing blogs, conflicting numbers, no method"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": [
+  {
+   "id": "2026-11-14-1",
+   "title": "Log the model that really answered each worker run",
+   "area": "reliability",
+   "problem": "workers.run (workers.py ~line 124) writes info['model'] = the model we requested, and cp.record_usage gets the same. Claude Code can answer with another model (2.1.323 added a stderr warning for exactly this). We would never see it: a worker could run on a weaker model, and the usage table would still say Opus.",
+   "proposal": "In workers.run, read the keys of out['modelUsage'] (already parsed for webSearchRequests on line 120). Put them in info['models_used']. If none matches the requested alias/model, log a 'model_substituted' event (agent, asked, got) and add the model to the usage row's note. Also keep the first 300 chars of p.stderr when it contains 'model'. Warn only; never fail the run. Not a protected-file change if done in workers.py by the Builder chat (workers.py is protected from Ghassan).",
+   "gain": "Cost and quality numbers stay true; Israa/Tarek/Calina results can be explained when a run was on a different model. Measured by: zero silent mismatches in a week, or a visible event when one happens.",
+   "test": "1) Normal: a Vera run on 'opus' logs models_used=[claude-opus-...] and no event. 2) Edge: a run whose modelUsage has two models (main + helper) logs both, no false event. 3) Failure: feed a fake JSON with modelUsage of another model; expect a model_substituted event and the run still succeeds.",
+   "effort": "S",
+   "confidence": "moderate",
+   "confidence_why": "2.1.323 changelog (A) confirms the substitution can happen; our code gap read directly (A). Weakest link: no evidence yet that it has happened to us.",
+   "risks": "modelUsage may include helper models (e.g. small classifier), causing false alarms: match on the main model only and log helpers quietly.",
+   "links": [
+    {
+     "title": "Claude Code CHANGELOG",
+     "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
+}
