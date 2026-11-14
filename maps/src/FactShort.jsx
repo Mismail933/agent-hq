@@ -69,7 +69,7 @@ function Pop({p, fps}) {
   );
 }
 
-function Captions({words, fps}) {
+export function Captions({words, fps}) {
   const f = useCurrentFrame();
   const t = f / fps;
   // chunks of up to 3 words, broken after punctuation; a chunk shows from its first word to the next chunk
