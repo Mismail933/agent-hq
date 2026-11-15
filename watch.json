@@ -3,22 +3,22 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.325",
-   "checked": "2026-11-14"
+   "checked": "2026-11-15"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-11-12 self-hosted Managed Agents; 2026-11-09 Fable 5.2 / Mythos 5.2",
-   "checked": "2026-11-14"
+   "checked": "2026-11-15"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-11-10 IPO roadshow; 2026-11-09 Fable 5.2",
-   "checked": "2026-11-14"
+   "checked": "2026-11-15"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
    "last_seen": "4,000 h / 10M today; 2FA required; terms by 2027-01-31",
-   "checked": "2026-11-04"
+   "checked": "2026-11-15"
   },
   "claude-code-prompt-caching-docs": {
    "url": "https://code.claude.com/docs/en/prompt-caching",
@@ -187,18 +187,18 @@
    "note": "MIT; picks the best of several tries of a task"
   },
   "eat-pray-ai/yutu": {
-   "stars": 712,
+   "stars": 723,
    "last_commit": "2026-10-31",
    "verdict": "watch",
-   "checked": "2026-11-04",
+   "checked": "2026-11-15",
    "note": "YouTube CLI/MCP, Apache-2.0; only if uploads are ever allowed"
   },
   "Hao0321/video-autopilot-kit": {
-   "stars": 2183,
+   "stars": 2317,
    "last_commit": "2026-10-06",
    "verdict": "skip",
-   "checked": "2026-10-14",
-   "note": "MIT; needs outside Editkin service"
+   "checked": "2026-11-15",
+   "note": "MIT but needs closed-source unsigned Windows renderer Editkin; skip"
   },
   "gotalab/cc-sdd": {
    "stars": 3720,

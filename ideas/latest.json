@@ -1,116 +1,134 @@
 {
- "date": "2026-11-14",
- "focus": "reliability",
- "note": "One small idea today: workers.py logs the model we ASKED for, not the one that actually answered, so a silent model switch would be invisible. Claude Code 2.1.325 is out; nothing else needs your time. Honest note: this run was lighter than the 15-search / 8-page target.",
+ "date": "2026-11-15",
+ "focus": "results",
+ "note": "Nothing new worth your time today, so zero ideas. Claude Code is still 2.1.325, no new API or Anthropic news since 11-10, and no YouTube policy dated November. This was a lighter run than the job asks (see gaps).",
  "research": {
-  "searches": 4,
-  "pages_read": 8,
+  "searches": 9,
+  "pages_read": 9,
   "minutes": 12,
   "questions": [
-   "Did Claude Code 2.1.319-2.1.325 change anything that affects our claude -p workers?",
-   "Does the Shorts original-content update (Oct 1) affect POV Then History?",
-   "Do we record which model actually answered a worker run?"
+   "Did YouTube change Shorts, Partner Program or originality rules in November?",
+   "Does any new evidence change how a history Shorts channel should open or pace its videos?",
+   "Did Claude Code, routines or API pricing change in a way that touches claude -p cost or limits?"
   ],
   "gaps": [
-   "Run was short of the 15 searches / 8 pages target (4 searches, 8 pages incl. 2 API searches)",
-   "No official YouTube text on public-domain footage under original narration",
-   "yutu: last commit date and open security issues not visible from the page"
+   "Fewer than the 15 searches the job asks for (9 done).",
+   "Did not open YouTube's official Aug 2026 YPP blog post; the Shorts entry bar still conflicts across secondary sources (10M vs 20M views), though YouTube Help (A) says 10M today and updates start 2027-02-01.",
+   "Retention and hook numbers come only from vendor blogs (C); YouTube publishes no benchmarks, so no idea rests on them.",
+   "Routines daily-run caps and whether routines draw session limits: sources conflict, official doc not re-read today."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.325: scheduled tasks and /loop now ask before running a skill that declares allowed-tools or hooks (add Skill(name) to permissions.allow); claude -p waits for account data on a clean first run",
-  "Claude Code 2.1.323: claude -p now warns on stderr when it silently used another model because settings blocked the requested one",
-  "Claude Code 2.1.321: Fable 5.2 default Fable model ($8/$40 per Mtok, cache read $0.20)",
-  "Claude Code 2.1.319: permissions.denyInsteadOfPrompting; claude -p in auto mode exits 1 if actions were refused",
-  "API 2026-11-12: self-hosted Managed Agents; 2026-11-02: message threads beta; 2026-10-30: Opus 4.8 fast mode removed 2026-11-30 (we don't use it)",
-  "Anthropic news: nothing relevant since 2026-11-10 (IPO roadshow)"
+  "Nothing new since 11-14: Claude Code top version is 2.1.325 (sandbox permission flow, scheduled tasks ask before skills with hooks, subagent model fixes).",
+  "Fable 5.2 pricing per changelog 2.1.321: $8/$40 per million tokens, cache reads $0.20 (already known model, price noted)."
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "used",
-   "why": "2.1.325 is new; 2.1.323 model-substitution warning is the basis of today's idea"
+   "result": "nothing new",
+   "why": "Still 2.1.325 as on 11-14."
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "nothing new for us since 2026-11-12 entry"
+   "why": "Newest entries 11-12 self-hosted Managed Agents, 11-09 Fable 5.2 / Mythos 5.2; Opus 4.8 fast mode removed 2026-11-30 (we do not use it)."
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "no new items since the 2026-11-10 roadshow"
+   "why": "Newest is 11-10 IPO roadshow."
   },
   {
-   "title": "GitHub search: youtube shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+pushed:>2026-10-15&sort=stars&order=desc",
-   "tier": "B",
-   "result": "rejected",
-   "why": "generic clip/automation tools; we have our own pipeline"
+   "title": "YouTube Help: YPP eligibility",
+   "url": "https://support.google.com/youtube/answer/72851",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "1,000 subs + 10M Shorts views in 90 days today; updated terms must be accepted by 2027-01-31, changes start 2027-02-01."
   },
   {
-   "title": "GitHub search: claude code subagents skills",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:>2026-10-15&sort=stars&order=desc",
+   "title": "ppc.land: Shorts 10M view floor",
+   "url": "https://ppc.land/youtube-vp-cites-a-few-cents-to-justify-10-million-shorts-view-floor/",
    "tier": "B",
    "result": "nothing new",
-   "why": "wshobson/agents etc. already known; nothing we need"
+   "why": "Same Feb 2027 facts already in watch.json: 20M entry, 10M floor for Shorts revenue share."
   },
   {
-   "title": "Shorts original-content update (Relevant Audience, citing Creator Insider 2026-10-01)",
+   "title": "Web search: Shorts originality / reused content",
    "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
    "tier": "B",
    "result": "nothing new",
-   "why": "same as already on watch; still no start date and silent on public-domain material"
+   "why": "Only the 2026-10-01 originality change we already track; no November announcement found."
   },
   {
-   "title": "eat-pray-ai/yutu",
-   "url": "https://github.com/eat-pray-ai/yutu",
-   "tier": "B",
-   "result": "rejected",
-   "why": "upload/manage tooling; Omar is read-only by rule and Apache-2.0 fit is irrelevant"
-  },
-  {
-   "title": "Search: claude -p silent model fallback",
-   "url": "https://claudeissues.com/issue/69613-docs-model-configuration-docs-omit-deprecated-auto-updated-model-warning-behavio",
-   "tier": "C",
-   "result": "used",
-   "why": "issue reports show silent remaps in -p JSON output; supports but does not prove the risk"
-  },
-  {
-   "title": "Search: Shorts hook/retention 2026",
-   "url": "https://dev.to/bulkdl/hook-engineering-the-science-of-the-first-3-seconds-in-short-form-video-2026-2jp9",
+   "title": "Web search: AI slop and faceless channels",
+   "url": "https://air.io/en/news-air/how-youtube-treats-ai-in-2026-new-update",
    "tier": "C",
    "result": "rejected",
-   "why": "marketing blogs, conflicting numbers, no method"
+   "why": "Mostly SEO blogs; says faceless/voice-over alone is not a violation but templated mass uploads are risky. Nothing to act on."
+  },
+  {
+   "title": "Web search: Shorts retention and hooks",
+   "url": "https://easyviral.ai/blog/we-analyzed-500-viral-faceless-shorts",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Vendor data, unmeasurable method; no official benchmarks exist."
+  },
+  {
+   "title": "Claude Code routines docs (via search)",
+   "url": "https://code.claude.com/docs/en/routines",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "No November change found; sources conflict on run caps."
+  },
+  {
+   "title": "GitHub search: Claude Code subagents/skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:>2026-10-16&sort=stars&order=desc",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Mostly big hubs (wshobson/agents) already watched; others are coding-specific."
+  },
+  {
+   "title": "GitHub search: YouTube Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+pushed:>2026-10-16&sort=stars&order=desc",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "video-autopilot-kit and yutu already tracked; small clip-cutters add nothing to our own pipeline."
+  },
+  {
+   "title": "GitHub search: token cost / prompt caching",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching+pushed:>2026-10-16&sort=stars&order=desc",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Query returned no results."
+  },
+  {
+   "title": "Hao0321/video-autopilot-kit",
+   "url": "https://github.com/Hao0321/video-autopilot-kit",
+   "tier": "A",
+   "result": "rejected",
+   "why": "MIT but needs a closed-source, unsigned Windows renderer (Editkin); we have our own Remotion pipeline."
+  },
+  {
+   "title": "Web search: Claude pricing Fable 5.2 / Sonnet 5.5",
+   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Search lagged behind (no Fable 5.2); changelog 2.1.321 gives the 5.2 price."
+  },
+  {
+   "title": "Web search: multi-agent orchestration repos",
+   "url": "https://github.com/Yeachan-Heo/oh-my-claudecode",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Coding-team orchestrators, aggregator coverage only; no fit for our content pipeline."
   }
  ],
  "repo_watch": [],
- "ideas": [
-  {
-   "id": "2026-11-14-1",
-   "title": "Log the model that really answered each worker run",
-   "area": "reliability",
-   "problem": "workers.run (workers.py ~line 124) writes info['model'] = the model we requested, and cp.record_usage gets the same. Claude Code can answer with another model (2.1.323 added a stderr warning for exactly this). We would never see it: a worker could run on a weaker model, and the usage table would still say Opus.",
-   "proposal": "In workers.run, read the keys of out['modelUsage'] (already parsed for webSearchRequests on line 120). Put them in info['models_used']. If none matches the requested alias/model, log a 'model_substituted' event (agent, asked, got) and add the model to the usage row's note. Also keep the first 300 chars of p.stderr when it contains 'model'. Warn only; never fail the run. Not a protected-file change if done in workers.py by the Builder chat (workers.py is protected from Ghassan).",
-   "gain": "Cost and quality numbers stay true; Israa/Tarek/Calina results can be explained when a run was on a different model. Measured by: zero silent mismatches in a week, or a visible event when one happens.",
-   "test": "1) Normal: a Vera run on 'opus' logs models_used=[claude-opus-...] and no event. 2) Edge: a run whose modelUsage has two models (main + helper) logs both, no false event. 3) Failure: feed a fake JSON with modelUsage of another model; expect a model_substituted event and the run still succeeds.",
-   "effort": "S",
-   "confidence": "moderate",
-   "confidence_why": "2.1.323 changelog (A) confirms the substitution can happen; our code gap read directly (A). Weakest link: no evidence yet that it has happened to us.",
-   "risks": "modelUsage may include helper models (e.g. small classifier), causing false alarms: match on the main model only and log helpers quietly.",
-   "links": [
-    {
-     "title": "Claude Code CHANGELOG",
-     "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md"
-    }
-   ],
-   "builds_on": ""
-  }
- ]
+ "ideas": []
 }
