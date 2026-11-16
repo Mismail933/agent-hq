@@ -209,7 +209,7 @@ def prep():
         print(f"border {key}: {len(lines)} line(s), {sum(len(l) for l in lines)} points, {km} km along Natural Earth's line")
     rv = json.loads((GEO / "ne_10m_rivers_lake_centerlines.geojson").read_text(encoding="utf-8"))
     rivers = {}
-    for key, name in (("mississippi", "Mississippi"), ("stlawrence", "St. Lawrence"), ("ohio", "Ohio")):   # the long map stories (2.71.0)
+    for key, name in (("mississippi", "Mississippi"), ("stlawrence", "St. Lawrence"), ("ohio", "Ohio"), ("seine", "Seine"), ("potomac", "Potomac")):   # the long map stories (2.71.0); Seine + Potomac: aviation chapter 1 (2.84.7)
         lines = []
         for f in rv["features"]:
             if (f["properties"].get("name") or "") == name:

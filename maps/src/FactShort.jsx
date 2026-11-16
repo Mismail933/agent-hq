@@ -69,7 +69,7 @@ function Pop({p, fps}) {
   );
 }
 
-export function Captions({words, fps}) {
+export function Captions({words, fps, top = 1260, size = 0}) {
   const f = useCurrentFrame();
   const t = f / fps;
   // chunks of up to 3 words, broken after punctuation; a chunk shows from its first word to the next chunk
@@ -85,11 +85,11 @@ export function Captions({words, fps}) {
   const a = c[0][1];
   const k = spring({frame: Math.round((t - a) * fps), fps, config: {damping: 12, stiffness: 220}});
   return (
-    <div style={{position: 'absolute', left: 60, right: 60, top: 1260, textAlign: 'center', transform: `scale(${0.85 + 0.15 * k})`}}>
+    <div style={{position: 'absolute', left: 60, right: 60, top, textAlign: 'center', transform: `scale(${0.85 + 0.15 * k})`}}>
       {c.map((w, i) => {
         const on = t >= w[1] - 0.03 && t < (c[i + 1] ? c[i + 1][1] : w[2] + 0.6);
         return (
-          <span key={i} style={{display: 'inline-block', margin: '0 14px', fontFamily: TH.caption, fontWeight: TH.weight, fontSize: TH.capsize || 60,
+          <span key={i} style={{display: 'inline-block', margin: '0 14px', fontFamily: TH.caption, fontWeight: TH.weight, fontSize: size || TH.capsize || 60,
                                 textTransform: TH.upper ? 'uppercase' : 'none', color: on ? TH.accent : '#FFFFFF', WebkitTextStroke: '10px #000', paintOrder: 'stroke',
                                 transform: on ? 'scale(1.08)' : 'none'}}>{w[0].replace(/[,;:]$/, '')}</span>
         );

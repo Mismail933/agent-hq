@@ -5,6 +5,7 @@ import {MapShort} from './MapShort';
 import {MapStory} from './MapStory';
 import {WarTable} from './WarTable';
 import {FactShort} from './FactShort';
+import {AviHistShort} from './AviHistShort';
 import {AviShort} from './AviShort';
 import {HoneyFableShort} from './HoneyFableShort';
 
@@ -19,6 +20,7 @@ export const Root = () => {
       <Composition id="WarTable" component={WarTable} durationInFrames={Math.round(Number(props.frames) || 680)} fps={FPS} width={W} height={H} defaultProps={props} />
       <Composition id="HoneyFableShort" component={HoneyFableShort} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={1080} height={1920} defaultProps={props} />
       <Composition id="AviShort" component={AviShort} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={1080} height={1920} defaultProps={props} />
+      <Composition id="AviHistShort" component={AviHistShort} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={1920} height={1080} defaultProps={props} />
       <Composition id="FactShort" component={FactShort} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={1080} height={1920} defaultProps={props} />
       <Composition id="MapStory" component={MapStory} durationInFrames={Math.round(secs * FPS)} fps={FPS} width={W} height={H} defaultProps={props} />
     </>
