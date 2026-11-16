@@ -1,11 +1,12 @@
 // Aviation.jsx: three SAMPLE Shorts for the aviation series (brief 2026-11-16, client notes applied; review 1 applied: real geography
-// from geo.json + d3-geo, Routes ends on the footage alone, the coffin-corner chart rebuilt, a real jet engine, real pilots).
+// from geo.json + d3-geo, Routes ends on the footage alone, the coffin-corner chart rebuilt, a real jet engine, real pilots; review 2
+// applied: three new last lines per sample, a transition that rewinds to 1903 / 1914 and holds on a public-domain photo).
 // 1080x1920, 30 fps, each plays under its recorded narration. Animated explainer: things build, move and react on the spoken words
 // (helper at(line, 'word')). Real footage where it shows the real thing, drawings where it explains; no title words, only numbers,
 // real information and labels that name something in a drawing. Captions are drawn by another layer at y 1180-1440 (kept empty
 // here); top 0-120 and x<40, x>1040 are kept clear too. Every frame is a pure function of the frame number.
 import React from 'react';
-import {AbsoluteFill, Sequence, OffthreadVideo, staticFile, interpolate, spring, Easing, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Sequence, OffthreadVideo, Img, staticFile, interpolate, spring, Easing, useCurrentFrame, useVideoConfig} from 'remotion';
 import {geoOrthographic, geoMercator, geoPath, geoInterpolate, geoGraticule10} from 'd3-geo';
 import geo from './geo.json';   // Natural Earth (public domain): geo.world.features, properties.a3 = ISO3
 
@@ -50,6 +51,12 @@ const qb = (p0, c, p1, u) => {
   const dx = 2 * (1 - u) * (c[0] - p0[0]) + 2 * u * (p1[0] - c[0]);
   const dy = 2 * (1 - u) * (c[1] - p0[1]) + 2 * u * (p1[1] - c[1]);
   return {x, y, ang: Math.atan2(dy, dx) * 180 / Math.PI};
+};
+// a cubic bezier point at u
+const cb = (p0, c1, c2, p1, u) => {
+  const w = 1 - u;
+  return [w * w * w * p0[0] + 3 * w * w * u * c1[0] + 3 * w * u * u * c2[0] + u * u * u * p1[0],
+          w * w * w * p0[1] + 3 * w * w * u * c1[1] + 3 * w * u * u * c2[1] + u * u * u * p1[1]];
 };
 
 // ---------- real geography (review 1) ----------
@@ -104,10 +111,10 @@ function CaptionBand() {
   return <div style={{position: 'absolute', left: 0, top: 1180, width: W, height: 260, background: 'linear-gradient(180deg, rgba(11,27,51,0) 0%, rgba(11,27,51,0.4) 25%, rgba(11,27,51,0.4) 75%, rgba(11,27,51,0) 100%)'}} />;
 }
 
-// small credit tag top-left ("Real footage" / "AI recreation")
-function Credit({t, a, children}) {
+// small credit tag top-left ("Real footage" / "AI recreation" / "Photo: public domain")
+function Credit({t, a, children, x = 44, y = 136}) {
   return (
-    <div style={{position: 'absolute', left: 44, top: 136, padding: '7px 14px', borderRadius: 8, background: 'rgba(11,27,51,0.6)', border: '1px solid rgba(255,255,255,0.25)',
+    <div style={{position: 'absolute', left: x, top: y, padding: '7px 14px', borderRadius: 8, background: 'rgba(11,27,51,0.6)', border: '1px solid rgba(255,255,255,0.25)',
                  fontFamily: SMALL, fontWeight: 700, fontSize: 22, color: WHITE, letterSpacing: 1, opacity: ease(t, a + 0.1, 0.3)}}>{children}</div>
   );
 }
@@ -131,6 +138,32 @@ function Clip({src, from = 0, a, b, t, fps, zoom = [1.04, 1.14], fx = 50, fy = 5
       </Sequence>
       <AbsoluteFill style={{background: `linear-gradient(180deg, rgba(11,27,51,${dark + 0.25}) 0%, rgba(11,27,51,${dark * 0.3}) 28%, rgba(11,27,51,${dark * 0.3}) 58%, rgba(11,27,51,${dark + 0.4}) 100%)`}} />
       <Credit t={t} a={a}>{ai ? 'AI recreation' : 'Real footage'}</Credit>
+    </AbsoluteFill>
+  );
+}
+
+// an old public-domain photo in a framed box (the full picture, not a crop), slow push (Ken Burns), a soft dark vignette, a light
+// film grain (seeded per frame), no colourising. `dim` darkens it so drawings can sit in front.
+const PHOTO_BOX = [40, 300, 1000, 780];
+function Photo({src, id, a, b, t, zoom = [1.0, 1.1], fx = 50, fy = 50, dim = 0, box = PHOTO_BOX}) {
+  if (t < a || t > b + XF) return null;
+  const p = lin(t, a, Math.max(0.1, b - a));
+  const z = lerp(zoom[0], zoom[1], p);
+  return (
+    <AbsoluteFill style={{opacity: interpolate(t, [a, a + XF], [0, 1], CL)}}>
+      <div style={{position: 'absolute', left: box[0], top: box[1], width: box[2], height: box[3], overflow: 'hidden', borderRadius: 18, background: '#000', boxShadow: '0 20px 60px rgba(0,0,0,0.5)'}}>
+        <Img src={staticFile(`fs/${src}`)} style={{position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${fx}% ${fy}%`, transform: `scale(${z})`, transformOrigin: `${fx}% ${fy}%`, filter: 'grayscale(1) contrast(1.05)'}} />
+        <div style={{position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', background: 'radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.6) 100%)'}} />
+        <svg width={box[2]} height={box[3]} style={{position: 'absolute', left: 0, top: 0}}>
+          <filter id={`grain-${id}`}>
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves={1} seed={Math.floor(t * 30) % 97} />
+            <feColorMatrix type="saturate" values="0" />
+          </filter>
+          <rect width={box[2]} height={box[3]} filter={`url(#grain-${id})`} opacity={0.09} style={{mixBlendMode: 'overlay'}} />
+        </svg>
+        {dim > 0 ? <div style={{position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', background: NAVY, opacity: dim}} /> : null}
+      </div>
+      <Credit t={t} a={a} x={box[0] + 20} y={box[1] + 16}>Photo: public domain</Credit>
     </AbsoluteFill>
   );
 }
@@ -180,14 +213,41 @@ const PlaneSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, accent = AMBER})
     <path d="M30,-9 L40,-9 L36,-4 L28,-4 Z" fill={NAVY} opacity={0.6} />
   </g>
 );
+// the 1903 Wright Flyer seen from the side, nose to +x (canard in front, props behind), about 200 px wide at scale 1; the pilot lies on the lower wing
+const FlyerSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1}) => (
+  <g transform={`translate(${x}, ${y}) rotate(${rot}) scale(${s})`} opacity={o}>
+    <rect x={-80} y={-34} width={160} height={6} rx={3} fill={color} />
+    <rect x={-80} y={6} width={160} height={6} rx={3} fill={color} />
+    {[-60, -30, 0, 30, 60].map((sx) => <line key={sx} x1={sx} y1={-30} x2={sx} y2={8} stroke={color} strokeWidth={2.5} opacity={0.8} />)}
+    {[-60, 0, 60].map((sx) => <line key={sx} x1={sx} y1={-30} x2={sx + 30} y2={8} stroke={color} strokeWidth={1.5} opacity={0.5} />)}
+    <line x1={70} y1={-12} x2={120} y2={-16} stroke={color} strokeWidth={3} />
+    <rect x={100} y={-26} width={34} height={5} rx={2} fill={color} />
+    <rect x={100} y={-10} width={34} height={5} rx={2} fill={color} />
+    <line x1={-78} y1={-12} x2={-118} y2={-10} stroke={color} strokeWidth={3} />
+    <rect x={-124} y={-30} width={6} height={36} rx={2} fill={color} />
+    <rect x={-30} y={-2} width={44} height={10} rx={5} fill={AMBER} />
+    <circle cx={16} cy={2} r={6} fill={AMBER} />
+    <ellipse cx={-62} cy={-12} rx={4} ry={22} fill={color} opacity={0.7} />
+  </g>
+);
+// a 1914 flying boat seen from above (biplane, hull), nose to +x, about 120 px long at scale 1
+const BoatTop = ({x, y, s = 1, rot = 0, color = WHITE, o = 1}) => (
+  <g transform={`translate(${x}, ${y}) rotate(${rot}) scale(${s})`} opacity={o}>
+    <rect x={-6} y={-92} width={16} height={184} rx={4} fill={color} />
+    <rect x={-14} y={-80} width={10} height={160} rx={3} fill={color} opacity={0.6} />
+    <path d="M-70,-9 L30,-9 Q52,-6 54,0 Q52,6 30,9 L-70,9 Q-78,0 -70,-9 Z" fill={color} />
+    <rect x={-78} y={-30} width={8} height={60} rx={3} fill={color} />
+    <rect x={-30} y={-3} width={22} height={6} rx={3} fill={AMBER} />
+  </g>
+);
 // a dot pin on a map with its name; `pt` is the projected [x, y] (null when off the globe)
-function Pin({t, fps, a, pt, label, lx = 0, ly = -26, anchor = 'middle', color = AMBER, size = 22, o = 1}) {
+function Pin({t, fps, a, pt, label, lx = 0, ly = -26, anchor = 'middle', color = AMBER, size = 22, o = 1, r = 11}) {
   if (t < a || !pt) return null;
   const k = pop(t, a, fps, bouncy);
   return (
     <g transform={`translate(${pt[0]}, ${pt[1]})`} opacity={Math.min(1, k * 1.5) * o}>
-      <circle r={22 * k} fill={color} opacity={0.25} />
-      <circle r={11 * k} fill={color} stroke={WHITE} strokeWidth={4} />
+      <circle r={2 * r * k} fill={color} opacity={0.25} />
+      <circle r={r * k} fill={color} stroke={WHITE} strokeWidth={r > 8 ? 4 : 2.5} />
       <text x={lx} y={ly} textAnchor={anchor} fontFamily={SMALL} fontWeight={800} fontSize={size} fill={WHITE} letterSpacing={2} opacity={k}>{label}</text>
     </g>
   );
@@ -296,10 +356,18 @@ function Pilot({stripes = 4, skin = '#C98B63', hair = '#2B1A0E', t = 0, seed = 0
 
 // a cockpit seen from behind the two seats: windshield with a moving horizon, dashboard, two pilots (caps, gold stripes), a tray beside
 // each seat. local coords: windshield top at y -130, trays at y 400 (about 760 wide, 560 tall)
-function Cockpit({t, fps, labelL, labelR, trayAt, dishL = 'none', dishR = 'none', dishAt, sickL = 0, tickR = 0, id = 'ck'}) {
+// a part of the cockpit that has fallen away by f (0..1): drops, drifts left, tilts and fades
+const Drop = ({f, children}) => {
+  const e = f * f;
+  return <g transform={`translate(${-40 * e}, ${e * 1000}) rotate(${-14 * e})`} opacity={1 - f}>{children}</g>;
+};
+// `decay` 0..1 (review 2) makes the cockpit's parts fall away one after another: trays, instruments, dashboard, the co-pilot and his
+// seat, the captain's seat, the captain, the frame; the sky stays.
+function Cockpit({t, fps, labelL, labelR, trayAt, dishL = 'none', dishR = 'none', dishAt, sickL = 0, tickR = 0, id = 'ck', decay = 0}) {
   const kTray = trayAt === undefined ? 0 : pop(t, trayAt, fps, soft);
   const kDish = dishAt === undefined ? 1 : pop(t, dishAt, fps, bouncy);
   const horizon = 30 + Math.sin(t * 0.6) * 6;
+  const fall = (th) => (decay <= th ? 0 : clamp01((decay - th) / 0.3));
   return (
     <g>
       <defs>
@@ -317,26 +385,38 @@ function Cockpit({t, fps, labelL, labelR, trayAt, dishL = 'none', dishR = 'none'
           return <ellipse key={i} cx={x} cy={-60 + rnd(i + 12) * 70} rx={60 + rnd(i + 13) * 40} ry={14 + rnd(i + 14) * 8} fill={WHITE} opacity={0.75} />;
         })}
       </g>
-      <path d="M-370,-130 Q-380,-130 -376,-120 L-300,90 L300,90 L376,-120 Q380,-130 370,-130 Z" fill="none" stroke="#1F3357" strokeWidth={16} strokeLinejoin="round" />
-      <rect x={-14} y={-130} width={28} height={220} fill="#1F3357" />
+      <Drop f={fall(0.78)}>
+        <path d="M-370,-130 Q-380,-130 -376,-120 L-300,90 L300,90 L376,-120 Q380,-130 370,-130 Z" fill="none" stroke="#1F3357" strokeWidth={16} strokeLinejoin="round" />
+        <rect x={-14} y={-130} width={28} height={220} fill="#1F3357" />
+      </Drop>
       {/* dashboard */}
-      <rect x={-400} y={90} width={800} height={80} rx={10} fill="#1A2D4E" />
-      {[-300, -240, -180, 180, 240, 300].map((x) => <circle key={x} cx={x} cy={130} r={20} fill="#0B1B33" stroke="#4F6A94" strokeWidth={3} />)}
-      {[-300, -240, -180, 180, 240, 300].map((x, i) => <line key={x} x1={x} y1={130} x2={x + Math.cos(t * 1.2 + i) * 14} y2={130 + Math.sin(t * 1.2 + i) * 14} stroke={AMBER} strokeWidth={3} strokeLinecap="round" />)}
-      <rect x={-80} y={104} width={160} height={52} rx={6} fill="#0B1B33" stroke="#4F6A94" strokeWidth={3} />
-      {[-60, -30, 0, 30].map((x, i) => <rect key={x} x={x} y={112 + (i % 2) * 10} width={20} height={30 - (i % 2) * 14} fill={i % 2 ? SKY : GREEN} opacity={0.8} />)}
-      {/* seats, pilots above the seat backs */}
+      <Drop f={fall(0.3)}>
+        <rect x={-400} y={90} width={800} height={80} rx={10} fill="#1A2D4E" />
+      </Drop>
+      <Drop f={fall(0.14)}>
+        {[-300, -240, -180, 180, 240, 300].map((x) => <circle key={x} cx={x} cy={130} r={20} fill="#0B1B33" stroke="#4F6A94" strokeWidth={3} />)}
+        {[-300, -240, -180, 180, 240, 300].map((x, i) => <line key={x} x1={x} y1={130} x2={x + Math.cos(t * 1.2 + i) * 14} y2={130 + Math.sin(t * 1.2 + i) * 14} stroke={AMBER} strokeWidth={3} strokeLinecap="round" />)}
+        <rect x={-80} y={104} width={160} height={52} rx={6} fill="#0B1B33" stroke="#4F6A94" strokeWidth={3} />
+        {[-60, -30, 0, 30].map((x, i) => <rect key={x} x={x} y={112 + (i % 2) * 10} width={20} height={30 - (i % 2) * 14} fill={i % 2 ? SKY : GREEN} opacity={0.8} />)}
+      </Drop>
+      {/* seats, pilots above the seat backs: the co-pilot goes first (there was none in 1903), the captain last */}
       {[-1, 1].map((sgn) => (
         <g key={sgn} transform={`translate(${sgn * 200}, 0)`}>
-          <Pilot stripes={sgn < 0 ? 4 : 3} skin={sgn < 0 ? '#C98B63' : '#8D5B3C'} hair={sgn < 0 ? '#2B1A0E' : '#111'} t={t} seed={sgn} />
-          <rect x={-110} y={150} width={220} height={200} rx={26} fill="#24395E" />
-          <rect x={-110} y={150} width={220} height={200} rx={26} fill="none" stroke="#3B5582" strokeWidth={4} />
-          <path d="M-96,330 Q0,300 96,330 L96,360 L-96,360 Z" fill="#24395E" />
-          <rect x={-150} y={230} width={46} height={120} rx={14} fill="#2E4B78" /><rect x={104} y={230} width={46} height={120} rx={14} fill="#2E4B78" />
+          <Drop f={fall(sgn < 0 ? 0.66 : 0.44)}>
+            <Pilot stripes={sgn < 0 ? 4 : 3} skin={sgn < 0 ? '#C98B63' : '#8D5B3C'} hair={sgn < 0 ? '#2B1A0E' : '#111'} t={t} seed={sgn} />
+          </Drop>
+          <Drop f={fall(sgn < 0 ? 0.56 : 0.44)}>
+            <rect x={-110} y={150} width={220} height={200} rx={26} fill="#24395E" />
+            <rect x={-110} y={150} width={220} height={200} rx={26} fill="none" stroke="#3B5582" strokeWidth={4} />
+            <path d="M-96,330 Q0,300 96,330 L96,360 L-96,360 Z" fill="#24395E" />
+            <rect x={-150} y={230} width={46} height={120} rx={14} fill="#2E4B78" /><rect x={104} y={230} width={46} height={120} rx={14} fill="#2E4B78" />
+          </Drop>
         </g>
       ))}
-      <Tray x={-200} y={420} s={0.95} k={kTray} dish={dishL} dishK={kDish} sick={sickL} t={t} />
-      <Tray x={200} y={420} s={0.95} k={kTray} dish={dishR} dishK={kDish} tick={tickR} t={t} />
+      <Drop f={fall(0)}>
+        <Tray x={-200} y={420} s={0.95} k={kTray} dish={dishL} dishK={kDish} sick={sickL} t={t} />
+        <Tray x={200} y={420} s={0.95} k={kTray} dish={dishR} dishK={kDish} tick={tickR} t={t} />
+      </Drop>
       {labelL}{labelR}
     </g>
   );
@@ -356,7 +436,7 @@ function Fin({t, fps, a, x, y, lines, fill = WHITE, fg = NAVY}) {
 }
 
 // =====================================================================================================================
-// SAMPLE 1: MEALS (6 lines, ~39.7 s)
+// SAMPLE 1: MEALS (9 lines, ~64.5 s; lines 6-8 are the transition into the history video)
 // =====================================================================================================================
 const TOKYO_LL = [139.7, 35.7], ANCH_LL = [-149.9, 61.2], CPH_LL = [12.6, 55.7];
 const GLOBE_ROT = [-160, -70];   // orthographic view centred on lon 160E, lat 70N: the polar route reads as the real one (tune here)
@@ -544,13 +624,107 @@ function SceneM5({t, at, fps, a, b}) {
   );
 }
 
-export const AviMeals = ({lines = [], words = [], seconds = 40, hasAiMeals = true}) => {
+// ---------- line 6 (review 2): "it wasn't always like this". the same cockpit; on "wasn't" a year counter at the top runs back
+// 2025 -> 1903 while the cockpit's parts fall away: trays, instruments, dashboard, the co-pilot and his seat, then the captain, the frame;
+// only the sky is left ----------
+function SceneM6({t, at, fps, a, b}) {
+  const wasnt = at(6, "wasn't");
+  const k = ease(t, wasnt, 1.3, Easing.inOut(Easing.quad));
+  const year = Math.round(lerp(2025, 1903, k));
+  const decay = ease(t, wasnt - 0.1, 1.5, Easing.in(Easing.quad));
+  const fins = 1 - ease(t, a, 0.5);
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <g opacity={fins}>
+          <Fin t={t} fps={fps} a={a - 1} x={150} y={520} lines={['BRITISH', 'AIRWAYS']} fill={WHITE} />
+          <Fin t={t} fps={fps} a={a - 1} x={620} y={520} lines={['VIRGIN', 'ATLANTIC']} fill={AMBER} />
+        </g>
+        <g transform="translate(540, 760) scale(0.88)">
+          <Cockpit id="ck6" t={t} fps={fps} trayAt={a - 1} dishAt={a - 1} dishL="fish" dishR="chicken" sickL={1} tickR={1} decay={decay} />
+        </g>
+      </svg>
+      <Num t={t} a={a} fps={fps} x={540} y={150} size={110} color={k > 0 ? AMBER : WHITE}>{year}</Num>
+    </Scene>
+  );
+}
+
+// the small framed print the photo shrinks into on the last line (review 3): lower left, about 40% wide, clear of the captions
+const PRINT_BOX = [40, 820, 432, 337];
+const printBox = (sh) => [40, lerp(PHOTO_BOX[1], PRINT_BOX[1], sh), lerp(PHOTO_BOX[2], PRINT_BOX[2], sh), lerp(PHOTO_BOX[3], PRINT_BOX[3], sh)];
+
+// ---------- lines 7-8 (review 2, 3): the 1903 photo (John T. Daniels, Kill Devil Hills): "1903" top-left on the year; on "Orville" a ring
+// around Orville on the lower wing at the Flyer's centre and a pointer to it from an ORVILLE WRIGHT pill on the sand; a 0 -> 12 S
+// timer top-right on "twelve seconds". Line 8: on "how" the photo shrinks into a small framed print in the lower left; on the clean
+// navy beside it a dotted climb rises from "12 S" to a jet with its meal tray ("dinner"), "35,000 FT" counts on "thirty five thousand";
+// rings pulse from Orville in the print on "there"; then hold, calm, to the end ----------
+function SceneM78({t, at, fps, a, b}) {
+  const year = at(7, '1903'), orville = at(7, 'Orville'), twelve = at(7, 'twelve');
+  const how = at(8, 'how'), twelve8 = at(8, 'twelve'), dinner = at(8, 'dinner'), thirty = at(8, 'thirty'), there = at(8, 'there');
+  const timer = 12 * ease(t, twelve, 1.0, Easing.out(Easing.quad));
+  const sh = ease(t, how, 1.0, Easing.inOut(Easing.cubic));   // 0 = the full photo, 1 = the small print
+  const box = printBox(sh);
+  const big = 1 - sh;
+  // Orville lies on the lower wing at the Flyer's centre: about 42% across and 40% down the picture
+  const orv = [box[0] + 0.42 * box[2], box[1] + 0.40 * box[3]];
+  const P = [690, 990];
+  const dx = orv[0] - P[0], dy = orv[1] - P[1], L = Math.hypot(dx, dy) || 1;
+  const Q = [orv[0] - dx / L * 46, orv[1] - dy / L * 46];
+  const kOrv = Math.min(1, pop(t, orville, fps, soft));
+  // line 8: the climb on the navy, from 12 S (lower middle) up to the jet (upper right)
+  const START = [620, 930], JET = [800, 400], ctl = [600, 450];
+  const climb = ease(t, twelve8, 1.6, Easing.inOut(Easing.quad));
+  const kJet = pop(t, dinner, fps, bouncy);
+  const feet = 35000 * ease(t, thirty, 1.0, Easing.out(Easing.quad));
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <Photo src="wright-first-flight-1903.jpg" id="m78" a={a} b={b} t={t} zoom={[1.0, 1.12]} fy={55} box={box} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        {/* Orville: a small ring around him (stays on the print), the pointer from the pill while the photo is big */}
+        <circle cx={orv[0]} cy={orv[1]} r={lerp(34, 13, sh) + 3 * Math.sin(t * 3)} fill="none" stroke={AMBER} strokeWidth={3} opacity={kOrv * 0.9} />
+        <g opacity={kOrv * big}>
+          <line x1={P[0]} y1={P[1]} x2={Q[0]} y2={Q[1]} stroke={AMBER} strokeWidth={4} />
+          <polygon points={polyPts(Q[0], Q[1], 14, 3, Math.atan2(dy, dx))} fill={AMBER} />
+        </g>
+        <SvgPill t={t} fps={fps} a={orville} x={790} y={1010} w={260} size={22} o={big}>ORVILLE WRIGHT</SvgPill>
+        <Lbl x={48} y={806} anchor="start" size={22} o={sh * 0.9}>1903</Lbl>
+        {/* line 8: the dotted climb from 12 S to a jet with its meal, on the navy */}
+        {climb > 0 ? Array.from({length: 36}, (_, i) => {
+          const u = (i + 1) / 36;
+          if (u > climb) return null;
+          const q = qb(START, ctl, JET, u);
+          return <circle key={i} cx={q.x} cy={q.y} r={4.5} fill={AMBER} opacity={0.9} />;
+        }) : null}
+        {climb > 0 && climb < 1 ? (() => { const q = qb(START, ctl, JET, climb); return <circle cx={q.x} cy={q.y} r={9} fill={AMBER} />; })() : null}
+        <g transform={`translate(${JET[0]}, ${JET[1]}) scale(${kJet})`} opacity={Math.min(1, kJet)}>
+          <PlaneSide x={0} y={0} s={1.8} />
+          <Tray x={120} y={-8} s={0.5} dish="steak" t={t} />
+        </g>
+        {t >= there ? [0, 1].map((i) => {
+          const ph = ((t - there) * 0.8 + i * 0.5) % 1;
+          return <circle key={i} cx={orv[0]} cy={orv[1]} r={14 + ph * 90} fill="none" stroke={AMBER} strokeWidth={5 * (1 - ph)} opacity={(1 - ph) * 0.8} />;
+        }) : null}
+      </svg>
+      <div style={{opacity: big}}>
+        <Num t={t} a={year} fps={fps} x={60} y={160} size={100} color={WHITE} align="left">1903</Num>
+        <Num t={t} a={twelve} fps={fps} x={1020} y={160} size={100} color={AMBER} align="right">{Math.round(timer)} S</Num>
+      </div>
+      <Num t={t} a={twelve8} fps={fps} x={START[0] + 24} y={START[1] - 20} size={64} color={AMBER} align="left">12 S</Num>
+      <Num t={t} a={thirty} fps={fps} x={JET[0]} y={JET[1] + 60} size={56} color={AMBER}>{fmt(feet)} FT</Num>
+    </Scene>
+  );
+}
+
+export const AviMeals = ({lines = [], words = [], seconds = 65, hasAiMeals = true}) => {
   const {fps} = useVideoConfig();
   const frame = useCurrentFrame();
   const t = frame / fps;
   const at = makeAt(lines);
   const T = (i) => (lines[i] ? lines[i].t0 : seconds);
-  const scenes = [[0, T(1), SceneM0], [T(1), T(2), SceneM1], [T(2), T(3), SceneM2], [T(3), T(4), SceneM3], [T(4), T(5), SceneM4], [T(5), seconds + 1, SceneM5]];
+  const scenes = [[0, T(1), SceneM0], [T(1), T(2), SceneM1], [T(2), T(3), SceneM2], [T(3), T(4), SceneM3], [T(4), T(5), SceneM4], [T(5), T(6), SceneM5],
+                  [T(6), T(7), SceneM6], [T(7), seconds + 1, SceneM78]];
   return (
     <AbsoluteFill style={{background: NAVY}}>
       {scenes.map(([a, b, C], i) => (t >= a && t < b + XF ? <C key={i} t={t} at={at} fps={fps} a={a} b={b} lines={lines} hasAiMeals={hasAiMeals} /> : null))}
@@ -561,7 +735,7 @@ export const AviMeals = ({lines = [], words = [], seconds = 40, hasAiMeals = tru
 };
 
 // =====================================================================================================================
-// SAMPLE 2: ROUTES (5 lines, ~33.2 s)
+// SAMPLE 2: ROUTES (8 lines, ~57.6 s; lines 5-7 are the transition into the history video)
 // =====================================================================================================================
 // a route line that draws on (progress 0..1) with a soft glow and a pulse once drawn
 function Route({d, p, t, color = AMBER, width = 7, glow = true, o = 1}) {
@@ -740,14 +914,134 @@ function SceneR4({t, at, fps, a, b}) {
   );
 }
 
-export const AviRoutes = ({lines = [], words = [], seconds = 34}) => {
+// ---------- line 5 (review 2, 3): Korea from the start of the line. the Gimpo-Jeju line with its twelve planes and the 14.4 MILLION
+// counter on screen; from "But" the counter runs all the way down (millions, thousands, hundreds...) to 1 on "one", the planes
+// vanishing one by one until a single plane is left on the line ----------
+const REG_KOR_ONLY = fitRegion([124, 32.8, 131.6, 43]);
+function SceneR5({t, at, fps, a, b}) {
+  const but = at(5, 'But'), one = at(5, 'one');
+  const proj = camera(REG_KOR_ONLY, REG_KOR_ONLY, 0);
+  const path = geoPath(proj);
+  const G = proj(GMP), J = proj(CJU);
+  const k = ease(t, but, 1.55, Easing.inOut(Easing.cubic));   // 14.4 MILLION -> 1, from "But" to "one"
+  const v = Math.exp(lerp(Math.log(14.4e6), 0, k));
+  const label = v >= 1e6 ? `${(v / 1e6).toFixed(1)} MILLION` : fmt(v);
+  const pulse = 1 + 0.12 * (1 - ease(t, one, 0.4));
+  const planes = [];
+  if (G && J) {
+    const dx = J[0] - G[0], dy = J[1] - G[1], L = Math.hypot(dx, dy) || 1, ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    const nx = -dy / L, nyy = dx / L;
+    const along = (u, side) => [G[0] + dx * u + nx * side, G[1] + dy * u + nyy * side];
+    for (let i = 0; i < 12; i++) {
+      const gone = clamp01((k - (i + 1) / 13) / 0.06);
+      if (gone >= 1) continue;
+      const toJeju = i % 2 === 0;
+      const u0 = ((t - a + 2) / 2.4 + rnd(i + 30)) % 1;
+      const pos = along(toJeju ? u0 : 1 - u0, (toJeju ? 1 : -1) * (12 + rnd(i + 31) * 16));
+      planes.push(<PlaneTop key={i} x={pos[0]} y={pos[1]} rot={toJeju ? ang : ang + 180} s={0.34 * (1 - gone)} o={1 - gone} color={i % 3 ? WHITE : AMBER} />);
+    }
+    // the one that stays: settles on the middle of the line
+    const last = along(0.5 + 0.08 * Math.sin(t * 1.2), 0);
+    planes.push(<PlaneTop key="one" x={last[0]} y={last[1]} rot={ang} s={0.5 * (1 + 0.15 * (1 - ease(t, one, 0.5)))} />);
+  }
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <path d={path(LAND_FC) || ''} fill={LAND} stroke={LAND2} strokeWidth={1.5} strokeLinejoin="round" />
+        {G && J ? (
+          <g>
+            <Route d={`M${G[0]},${G[1]} L${J[0]},${J[1]}`} p={1} t={t} />
+            {planes}
+            <Pin t={t} fps={fps} a={a - 1} pt={G} label="SEOUL · GIMPO" lx={-26} ly={8} anchor="end" />
+            <Pin t={t} fps={fps} a={a - 1} pt={J} label="JEJU" ly={54} />
+          </g>
+        ) : null}
+      </svg>
+      <div style={{position: 'absolute', left: 0, right: 0, top: 196, textAlign: 'center', transform: `scale(${pulse})`}}>
+        <div style={{fontFamily: BIG, fontSize: 84, lineHeight: 1, color: v > 1.5 ? AMBER : WHITE, letterSpacing: -1, textShadow: '0 8px 24px rgba(0,0,0,0.45)'}}>{label}</div>
+        <div style={{fontFamily: SMALL, fontWeight: 800, fontSize: 24, color: WHITE, letterSpacing: 3, marginTop: 6, textTransform: 'uppercase', opacity: 0.9}}>{v > 1.5 ? 'seats a year' : 'seat'}</div>
+      </div>
+    </Scene>
+  );
+}
+
+// ---------- line 6 (review 2): Tampa Bay, 1 January 1914. a real map of the bay (USA from geo.json, Mercator); ST. PETERSBURG and TAMPA
+// pinned; "1 JAN 1914" on the year; on "carried" a flying boat crosses the bay, "1 PASSENGER" on "single"; on "The trip" the photo of the
+// Benoist flying boat with the crowd, "23 MIN" counts on "twenty three". Line 7: "1 -> MILLIONS" as a small number pair on "one" /
+// "millions"; hold on the photo to the end ----------
+// review 3: the whole Florida peninsula (the bay itself is too coarse in this data); the two dots and the short hop stay
+const REG_FLA = fitRegion([-88, 24, -79, 31]);
+const STP = [-82.64, 27.77], TPA = [-82.46, 27.95];
+function SceneR6({t, at, fps, a, b}) {
+  const year = at(6, '1914'), carried = at(6, 'carried'), single = at(6, 'single'), bay = at(6, 'Bay');
+  const proj = camera(REG_FLA, REG_FLA, 0);
+  const path = geoPath(proj);
+  const S = proj(STP), Tp = proj(TPA);
+  const p = ease(t, carried, Math.max(0.8, bay + 0.6 - carried), Easing.inOut(Easing.quad));
+  const land = ease(t, a, 0.8);
+  let boat = null, lineEl = null, ring = null, mid = [540, 700];
+  if (S && Tp) {
+    const dx = Tp[0] - S[0], dy = Tp[1] - S[1], ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    mid = [(S[0] + Tp[0]) / 2, (S[1] + Tp[1]) / 2];
+    boat = t >= carried ? <BoatTop x={S[0] + dx * p} y={S[1] + dy * p} rot={ang} s={0.3} /> : null;
+    lineEl = <path d={`M${S[0]},${S[1]} L${S[0] + dx * p},${S[1] + dy * p}`} stroke={AMBER} strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray="2 8" />;
+    // a soft ring draws the eye to the bay, since the hop is short at this scale
+    ring = <circle cx={mid[0]} cy={mid[1]} r={64 + 6 * Math.sin(t * 2.5)} fill="none" stroke={AMBER} strokeWidth={3} opacity={0.35 * ease(t, a + 0.3, 0.6)} />;
+  }
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <g opacity={land}>
+          <path d={path(LAND_FC) || ''} fill={LAND} stroke={LAND2} strokeWidth={1.5} strokeLinejoin="round" />
+        </g>
+        {ring}
+        {lineEl}
+        {boat}
+        <Pin t={t} fps={fps} a={a + 0.4} pt={S} label="ST. PETERSBURG" lx={-22} ly={30} anchor="end" r={6} />
+        <Pin t={t} fps={fps} a={a + 0.6} pt={Tp} label="TAMPA" lx={22} ly={-14} anchor="start" r={6} />
+        <SvgPill t={t} fps={fps} a={single} x={mid[0]} y={mid[1] + 120} w={230} size={22}>1 PASSENGER</SvgPill>
+      </svg>
+      <Num t={t} a={year} fps={fps} x={540} y={170} size={72} color={WHITE}>1 JAN 1914</Num>
+    </Scene>
+  );
+}
+function SceneR7({t, at, fps, a, b}) {
+  const twenty = at(6, 'twenty'), one = at(7, 'one'), millions = at(7, 'millions');
+  const mins = 23 * ease(t, twenty, 0.9, Easing.out(Easing.quad));
+  const kOne = pop(t, one, fps, bouncy), kMil = pop(t, millions, fps, bouncy);
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <Photo src="airboat-line-1914.jpg" id="r7" a={a} b={b} t={t} zoom={[1.0, 1.12]} fy={50} />
+      <Num t={t} a={a} fps={fps} x={60} y={170} size={60} color={WHITE} align="left">1 JAN 1914</Num>
+      <Num t={t} a={twenty} fps={fps} x={1020} y={170} size={72} color={AMBER} align="right">{Math.round(mins)} MIN</Num>
+      {t >= one ? (
+        <div style={{position: 'absolute', left: 0, right: 0, top: 1096, display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 22}}>
+          <div style={{fontFamily: BIG, fontSize: 60, lineHeight: 1, color: WHITE, transform: `scale(${0.6 + 0.4 * kOne})`, opacity: Math.min(1, kOne)}}>1</div>
+          <div style={{fontFamily: BIG, fontSize: 60, lineHeight: 1, color: AMBER, transform: `scale(${0.6 + 0.4 * kMil})`, opacity: Math.min(1, kMil)}}>→ MILLIONS</div>
+        </div>
+      ) : null}
+    </Scene>
+  );
+}
+
+export const AviRoutes = ({lines = [], words = [], seconds = 58}) => {
   const {fps} = useVideoConfig();
   const frame = useCurrentFrame();
   const t = frame / fps;
   const at = makeAt(lines);
   const T = (i) => (lines[i] ? lines[i].t0 : seconds);
   const lastBeat = lines[4] ? lines[4].t1 : seconds - 2;
-  const scenes = [[0, T(1), SceneR0], [T(1), lastBeat, SceneRMap], [lastBeat, seconds + 1, SceneR4]];
+  // at() prefix-matches: line 6 has "the" twice before "The trip", so that one is match 2
+  const trip = lines[6] ? at(6, 'The', 2) : seconds;
+  // review 3: the 747 footage may only run BEFORE line 5. With this narration the gap after line 4 is a third of a second, too short
+  // for a shot, so the footage only comes in when the recording leaves at least 1.5 s there; otherwise the map holds until line 5.
+  const gap = T(5) - lastBeat;
+  const scenes = gap >= 1.5
+    ? [[0, T(1), SceneR0], [T(1), lastBeat, SceneRMap], [lastBeat, T(5), SceneR4], [T(5), T(6), SceneR5], [T(6), trip, SceneR6], [trip, seconds + 1, SceneR7]]
+    : [[0, T(1), SceneR0], [T(1), T(5), SceneRMap], [T(5), T(6), SceneR5], [T(6), trip, SceneR6], [trip, seconds + 1, SceneR7]];
   return (
     <AbsoluteFill style={{background: NAVY}}>
       {scenes.map(([a, b, C], i) => (t >= a && t < b + XF ? <C key={i} t={t} at={at} fps={fps} a={a} b={b} lines={lines} /> : null))}
@@ -758,7 +1052,7 @@ export const AviRoutes = ({lines = [], words = [], seconds = 34}) => {
 };
 
 // =====================================================================================================================
-// SAMPLE 3: ALTITUDE (6 lines, ~35.4 s)
+// SAMPLE 3: ALTITUDE (9 lines, ~53.0 s; lines 6-8 are the transition into the history video)
 // =====================================================================================================================
 const LY = (h) => 1100 - h * 45;   // the altitude ladder: 0 km at y 1100, 20 km at y 200
 // an arrow with its head at the far end; dir 'left' or 'up'; len in px
@@ -1051,13 +1345,146 @@ function SceneA4({t, at, fps, a, b}) {
   );
 }
 
-export const AviAltitude = ({lines = [], words = [], seconds = 36}) => {
+// ---------- line 6 (review 2): "planes didn't start up here". the ladder from the start again; on "didn't" the plane slides down the
+// ladder to the sand, nose down; on "here" the camera dives into the bottom of the ladder ----------
+function SceneA6({t, at, fps, a, b}) {
+  const didnt = at(6, "didn't"), here = at(6, 'here');
+  const down = ease(t, didnt, 1.2, Easing.inOut(Easing.cubic));
+  const h = lerp(10, 0.07, down);
+  const dive = 1 + 5 * ease(t, here, Math.max(0.5, b + XF - here), Easing.in(Easing.quad));
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <g transform={`translate(640, 1100) scale(${dive}) translate(-640, -1100)`}>
+          <Ladder t={t} fps={fps} a={a} h={h} tilt={-14 * Math.sin(down * Math.PI)} everestAt={a - 1} concordeAt={a - 1} />
+        </g>
+      </svg>
+    </Scene>
+  );
+}
+
+const LYM = (m) => 1100 - m * 45;   // the metres ladder: 0 m at y 1100, 20 m at y 200
+// ---------- line 7 (review 2): the ladder's first metres. a 0-20 m ladder over sand; the little Wright Flyer glides in on "first flew"
+// and hovers at ~3 M (pill on "three"); "1903" top-left on the year; on "sand" the 1903 photo takes over, KILL DEVIL HILLS · NC on "North" ----------
+function SceneA7({t, at, fps, a, b}) {
+  const first = at(7, 'first'), year = at(7, '1903'), three = at(7, 'three');
+  const zoomIn = 1.5 - 0.5 * ease(t, a, 0.9, Easing.out(Easing.cubic));
+  const fly = ease(t, first, 1.1, Easing.out(Easing.cubic));
+  const fx = lerp(-220, 640, fly), fy = LYM(3) + Math.sin(t * 2.2) * 5;
+  const kThree = pop(t, three, fps, soft);
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <g transform={`translate(640, 1100) scale(${zoomIn}) translate(-640, -1100)`}>
+          {/* sand */}
+          <rect x={0} y={1100} width={W} height={90} fill="#C9B27A" />
+          <path d={`M0,1100 ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => `q 54 ${-6 - 4 * Math.sin(i * 2.1)} 108 0`).join(' ')}`} stroke="#E2CF9A" strokeWidth={5} fill="none" />
+          {/* the metres ladder */}
+          <line x1={150} y1={200} x2={150} y2={1100} stroke={WHITE} strokeWidth={4} opacity={0.5} />
+          {Array.from({length: 21}, (_, m) => (
+            <g key={m}>
+              <line x1={150} y1={LYM(m)} x2={m % 5 === 0 ? 186 : 168} y2={LYM(m)} stroke={WHITE} strokeWidth={m % 5 === 0 ? 4 : 2} opacity={0.6} />
+              {m % 5 === 0 ? <Lbl x={132} y={LYM(m) + 8} anchor="end" size={22} o={0.85}>{m} m</Lbl> : null}
+            </g>
+          ))}
+          {/* the 3 m mark */}
+          <line x1={214} y1={LYM(3)} x2={1040} y2={LYM(3)} stroke={AMBER} strokeWidth={3} strokeDasharray="10 14" opacity={0.6 * kThree} />
+          <line x1={640} y1={1100} x2={640} y2={LYM(3) + 30} stroke={AMBER} strokeWidth={3} opacity={0.5 * kThree} strokeDasharray="4 8" />
+          <FlyerSide x={fx} y={fy} s={1.2} rot={-3 + 4 * Math.sin(t * 1.7)} />
+          <SvgPill t={t} fps={fps} a={three} x={640} y={LYM(3) - 110} w={140} size={24}>~3 M</SvgPill>
+        </g>
+      </svg>
+      <Num t={t} a={year} fps={fps} x={60} y={160} size={100} color={WHITE} align="left">1903</Num>
+    </Scene>
+  );
+}
+function SceneA7p({t, at, fps, a, b}) {
+  const north = at(7, 'North');
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <Photo src="wright-first-flight-1903.jpg" id="a7" a={a} b={b} t={t} zoom={[1.0, 1.06]} fy={55} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <SvgPill t={t} fps={fps} a={a - 1} x={520} y={660} w={140} size={24}>~3 M</SvgPill>
+      </svg>
+      <Num t={t} a={a - 1} fps={fps} x={60} y={160} size={100} color={WHITE} align="left">1903</Num>
+      <Tag t={t} a={north} fps={fps} x={540} y={1104} bg="rgba(11,27,51,0.75)" fg={WHITE} size={22}>Kill Devil Hills · NC</Tag>
+    </Scene>
+  );
+}
+
+// ---------- line 8 (review 2, 3): on "how" the photo shrinks into a small framed print in the lower left; on the clean navy beside it,
+// a split ladder: the bottom part (0-20 m) holds the Flyer at 3 M, the top part (10,000 M) holds the jet with its meal; on "climb" the
+// top part slides up and the break between them stretches, a dotted climb joining the two; "3 M" on "three", "10,000 M" counts on
+// "ten thousand"; then hold, calm ----------
+function SceneA8({t, at, fps, a, b}) {
+  const how = at(8, 'how'), climbW = at(8, 'climb'), three = at(8, 'three'), ten = at(8, 'ten');
+  const sh = ease(t, how, 1.0, Easing.inOut(Easing.cubic));   // 0 = the full photo, 1 = the small print
+  const box = printBox(sh);
+  const split = ease(t, climbW, 2.0, Easing.inOut(Easing.cubic));
+  const AX = 600;                                  // the ladder sits to the right of the print
+  const botTop = 920;                              // top of the bottom segment (20 m)
+  const topBase = lerp(840, 560, split);           // bottom of the top segment: starts right above the break, slides up
+  const jetY = topBase - 120;
+  const flyerY = 1073;
+  const metres = 10000 * ease(t, ten, 0.9, Easing.out(Easing.quad));
+  const zig = [];
+  for (let i = 0; i < 4; i++) zig.push(`L${AX + (i % 2 ? 14 : -14)},${botTop - 12 - i * 10}`);
+  const cam = 1 + 0.04 * lin(t, ten, Math.max(0.5, b - ten));
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <Photo src="wright-first-flight-1903.jpg" id="a8" a={a - 1} b={b} t={t} zoom={[1.06, 1.1]} fy={55} box={box} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <Lbl x={48} y={806} anchor="start" size={22} o={sh * 0.9}>1903</Lbl>
+        <g transform={`translate(${AX + 120}, 760) scale(${cam}) translate(${-(AX + 120)}, -760)`} opacity={sh}>
+          {/* bottom segment: 0-20 m */}
+          <line x1={AX} y1={1100} x2={AX} y2={botTop} stroke={WHITE} strokeWidth={5} opacity={0.85} />
+          {[0, 10, 20].map((m) => <line key={m} x1={AX - 16} y1={1100 - m * 9} x2={AX + 16} y2={1100 - m * 9} stroke={WHITE} strokeWidth={4} opacity={0.7} />)}
+          <Lbl x={AX - 28} y={1108} anchor="end" size={20} o={0.7}>0 m</Lbl>
+          <Lbl x={AX - 28} y={botTop + 8} anchor="end" size={20} o={0.7}>20 m</Lbl>
+          <line x1={AX} y1={flyerY} x2={AX + 160} y2={flyerY} stroke={AMBER} strokeWidth={3} strokeDasharray="8 10" opacity={0.7} />
+          <FlyerSide x={AX + 250} y={flyerY - 6} s={0.6} />
+          {/* the break: the top segment slides up, the gap between them stretches */}
+          <path d={`M${AX},${botTop} ${zig.join(' ')} L${AX},${botTop - 60}`} stroke={WHITE} strokeWidth={5} fill="none" strokeLinejoin="round" opacity={0.85} />
+          <line x1={AX} y1={botTop - 60} x2={AX} y2={topBase + 50} stroke={WHITE} strokeWidth={3} strokeDasharray="6 18" opacity={0.5 * split} />
+          <path d={`M${AX},${topBase + 50} L${AX + 14},${topBase + 38} L${AX - 14},${topBase + 26} L${AX + 14},${topBase + 14} L${AX},${topBase}`} stroke={WHITE} strokeWidth={5} fill="none" strokeLinejoin="round" opacity={0.85 * split} />
+          {/* top segment: around 10,000 m */}
+          <line x1={AX} y1={topBase} x2={AX} y2={topBase - 240} stroke={WHITE} strokeWidth={5} opacity={0.85} />
+          <line x1={AX - 16} y1={jetY} x2={AX + 16} y2={jetY} stroke={WHITE} strokeWidth={4} opacity={0.7} />
+          <line x1={AX} y1={jetY} x2={AX + 160} y2={jetY} stroke={AMBER} strokeWidth={3} strokeDasharray="8 10" opacity={0.7} />
+          <g transform={`translate(${AX + 250}, ${jetY + Math.sin(t * 2) * 4})`}>
+            <PlaneSide x={0} y={0} s={1.6} />
+            <Tray x={110} y={-6} s={0.45} dish="steak" t={t} />
+          </g>
+          {/* the dotted climb from the Flyer to the jet */}
+          {Array.from({length: 40}, (_, i) => {
+            const u = (i + 1) / 40;
+            if (u > split) return null;
+            const q = cb([AX + 250, flyerY - 40], [AX + 380, lerp(flyerY, jetY, 0.3)], [AX + 120, lerp(flyerY, jetY, 0.7)], [AX + 250, jetY + 40], u);
+            return <circle key={i} cx={q[0]} cy={q[1]} r={4.5} fill={AMBER} opacity={0.9} />;
+          })}
+          <SvgPill t={t} fps={fps} a={three} x={AX + 250} y={flyerY + 80} w={120} size={24}>3 M</SvgPill>
+        </g>
+      </svg>
+      <div style={{opacity: sh}}>
+        <Num t={t} a={ten} fps={fps} x={AX + 250} y={jetY - 150} size={64} color={AMBER}>{fmt(metres)} M</Num>
+      </div>
+    </Scene>
+  );
+}
+
+export const AviAltitude = ({lines = [], words = [], seconds = 54}) => {
   const {fps} = useVideoConfig();
   const frame = useCurrentFrame();
   const t = frame / fps;
   const at = makeAt(lines);
   const T = (i) => (lines[i] ? lines[i].t0 : seconds);
-  const scenes = [[0, T(1), SceneA0], [T(1), T(2), SceneA1], [T(2), T(3), SceneA2], [T(3), T(4), SceneA3], [T(4), seconds + 1, SceneA4]];
+  const sand = lines[7] ? at(7, 'sand') : seconds;
+  const scenes = [[0, T(1), SceneA0], [T(1), T(2), SceneA1], [T(2), T(3), SceneA2], [T(3), T(4), SceneA3], [T(4), T(6), SceneA4],
+                  [T(6), T(7), SceneA6], [T(7), sand, SceneA7], [sand, T(8), SceneA7p], [T(8), seconds + 1, SceneA8]];
   return (
     <AbsoluteFill style={{background: NAVY}}>
       {scenes.map(([a, b, C], i) => (t >= a && t < b + XF ? <C key={i} t={t} at={at} fps={fps} a={a} b={b} lines={lines} /> : null))}
