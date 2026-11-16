@@ -1,0 +1,75 @@
+{
+ "date": "2026-11-16",
+ "focus": "tools",
+ "note": "Nothing new worth your time today, so zero ideas. Claude Code is still 2.1.325, no API or Anthropic news after 11-12, no YouTube policy dated November. This was a lighter run than the job asks (see gaps).",
+ "research": {
+  "searches": 3,
+  "pages_read": 3,
+  "minutes": 8,
+  "questions": [
+   "Did Claude Code, the API or Anthropic ship anything since 11-15 that changes claude -p, routines or pricing?",
+   "Do new GitHub repos for Claude Code agents, faceless Shorts or token cost cutting beat what we have?",
+   "Any YouTube Shorts/YPP policy change dated November?"
+  ],
+  "gaps": [
+   "Only 3 searches and 3 pages opened, below the 15/8 the job asks. GitHub search results were read as API tables, repo READMEs and licences were not opened.",
+   "Press reports on YPP thresholds (Feb 2027) and the July 2026 inauthentic-content clarification were not checked against YouTube's own pages today."
+  ]
+ },
+ "new_today": [
+  "Nothing new in Claude Code (2.1.325), API release notes (latest 11-12) or Anthropic news (latest 11-10)."
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Still 2.1.325."
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest entry 2026-11-12 self-hosted Managed Agents."
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Newest titled item 2026-11-10."
+  },
+  {
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Mostly skill hubs (wshobson/agents 42k stars, MIT); no fit gap in our own prompts."
+  },
+  {
+   "title": "GitHub search: faceless shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "tier": "B",
+   "result": "rejected",
+   "why": "All 0-1 star repos, several without licence; our pipeline is further along."
+  },
+  {
+   "title": "GitHub search: LLM token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+cost+reduction+token",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Tiny repos, unverified claims."
+  },
+  {
+   "title": "YouTube Shorts/YPP news search",
+   "url": "https://thenextweb.com/news/youtube-partner-program-doubles-entry-requirements-2027",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "August reports, nothing dated November; only search snippet seen."
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}

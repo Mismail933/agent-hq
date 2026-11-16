@@ -1,26 +1,23 @@
 {
- "date": "2026-11-15",
- "focus": "results",
- "note": "Nothing new worth your time today, so zero ideas. Claude Code is still 2.1.325, no new API or Anthropic news since 11-10, and no YouTube policy dated November. This was a lighter run than the job asks (see gaps).",
+ "date": "2026-11-16",
+ "focus": "tools",
+ "note": "Nothing new worth your time today, so zero ideas. Claude Code is still 2.1.325, no API or Anthropic news after 11-12, no YouTube policy dated November. This was a lighter run than the job asks (see gaps).",
  "research": {
-  "searches": 9,
-  "pages_read": 9,
-  "minutes": 12,
+  "searches": 3,
+  "pages_read": 3,
+  "minutes": 8,
   "questions": [
-   "Did YouTube change Shorts, Partner Program or originality rules in November?",
-   "Does any new evidence change how a history Shorts channel should open or pace its videos?",
-   "Did Claude Code, routines or API pricing change in a way that touches claude -p cost or limits?"
+   "Did Claude Code, the API or Anthropic ship anything since 11-15 that changes claude -p, routines or pricing?",
+   "Do new GitHub repos for Claude Code agents, faceless Shorts or token cost cutting beat what we have?",
+   "Any YouTube Shorts/YPP policy change dated November?"
   ],
   "gaps": [
-   "Fewer than the 15 searches the job asks for (9 done).",
-   "Did not open YouTube's official Aug 2026 YPP blog post; the Shorts entry bar still conflicts across secondary sources (10M vs 20M views), though YouTube Help (A) says 10M today and updates start 2027-02-01.",
-   "Retention and hook numbers come only from vendor blogs (C); YouTube publishes no benchmarks, so no idea rests on them.",
-   "Routines daily-run caps and whether routines draw session limits: sources conflict, official doc not re-read today."
+   "Only 3 searches and 3 pages opened, below the 15/8 the job asks. GitHub search results were read as API tables, repo READMEs and licences were not opened.",
+   "Press reports on YPP thresholds (Feb 2027) and the July 2026 inauthentic-content clarification were not checked against YouTube's own pages today."
   ]
  },
  "new_today": [
-  "Nothing new since 11-14: Claude Code top version is 2.1.325 (sandbox permission flow, scheduled tasks ask before skills with hooks, subagent model fixes).",
-  "Fable 5.2 pricing per changelog 2.1.321: $8/$40 per million tokens, cache reads $0.20 (already known model, price noted)."
+  "Nothing new in Claude Code (2.1.325), API release notes (latest 11-12) or Anthropic news (latest 11-10)."
  ],
  "checked": [
   {
@@ -28,105 +25,49 @@
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "nothing new",
-   "why": "Still 2.1.325 as on 11-14."
+   "why": "Still 2.1.325."
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest entries 11-12 self-hosted Managed Agents, 11-09 Fable 5.2 / Mythos 5.2; Opus 4.8 fast mode removed 2026-11-30 (we do not use it)."
+   "why": "Newest entry 2026-11-12 self-hosted Managed Agents."
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Newest is 11-10 IPO roadshow."
+   "why": "Newest titled item 2026-11-10."
   },
   {
-   "title": "YouTube Help: YPP eligibility",
-   "url": "https://support.google.com/youtube/answer/72851",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "1,000 subs + 10M Shorts views in 90 days today; updated terms must be accepted by 2027-01-31, changes start 2027-02-01."
-  },
-  {
-   "title": "ppc.land: Shorts 10M view floor",
-   "url": "https://ppc.land/youtube-vp-cites-a-few-cents-to-justify-10-million-shorts-view-floor/",
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
    "tier": "B",
    "result": "nothing new",
-   "why": "Same Feb 2027 facts already in watch.json: 20M entry, 10M floor for Shorts revenue share."
+   "why": "Mostly skill hubs (wshobson/agents 42k stars, MIT); no fit gap in our own prompts."
   },
   {
-   "title": "Web search: Shorts originality / reused content",
-   "url": "https://www.relevantaudience.com/youtube/youtube-shorts-original-content-reach-update/",
+   "title": "GitHub search: faceless shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
    "tier": "B",
-   "result": "nothing new",
-   "why": "Only the 2026-10-01 originality change we already track; no November announcement found."
+   "result": "rejected",
+   "why": "All 0-1 star repos, several without licence; our pipeline is further along."
   },
   {
-   "title": "Web search: AI slop and faceless channels",
-   "url": "https://air.io/en/news-air/how-youtube-treats-ai-in-2026-new-update",
+   "title": "GitHub search: LLM token cost reduction",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+cost+reduction+token",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Tiny repos, unverified claims."
+  },
+  {
+   "title": "YouTube Shorts/YPP news search",
+   "url": "https://thenextweb.com/news/youtube-partner-program-doubles-entry-requirements-2027",
    "tier": "C",
-   "result": "rejected",
-   "why": "Mostly SEO blogs; says faceless/voice-over alone is not a violation but templated mass uploads are risky. Nothing to act on."
-  },
-  {
-   "title": "Web search: Shorts retention and hooks",
-   "url": "https://easyviral.ai/blog/we-analyzed-500-viral-faceless-shorts",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Vendor data, unmeasurable method; no official benchmarks exist."
-  },
-  {
-   "title": "Claude Code routines docs (via search)",
-   "url": "https://code.claude.com/docs/en/routines",
-   "tier": "A",
    "result": "nothing new",
-   "why": "No November change found; sources conflict on run caps."
-  },
-  {
-   "title": "GitHub search: Claude Code subagents/skills",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills+pushed:>2026-10-16&sort=stars&order=desc",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Mostly big hubs (wshobson/agents) already watched; others are coding-specific."
-  },
-  {
-   "title": "GitHub search: YouTube Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+pushed:>2026-10-16&sort=stars&order=desc",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "video-autopilot-kit and yutu already tracked; small clip-cutters add nothing to our own pipeline."
-  },
-  {
-   "title": "GitHub search: token cost / prompt caching",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching+pushed:>2026-10-16&sort=stars&order=desc",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Query returned no results."
-  },
-  {
-   "title": "Hao0321/video-autopilot-kit",
-   "url": "https://github.com/Hao0321/video-autopilot-kit",
-   "tier": "A",
-   "result": "rejected",
-   "why": "MIT but needs a closed-source, unsigned Windows renderer (Editkin); we have our own Remotion pipeline."
-  },
-  {
-   "title": "Web search: Claude pricing Fable 5.2 / Sonnet 5.5",
-   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Search lagged behind (no Fable 5.2); changelog 2.1.321 gives the 5.2 price."
-  },
-  {
-   "title": "Web search: multi-agent orchestration repos",
-   "url": "https://github.com/Yeachan-Heo/oh-my-claudecode",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Coding-team orchestrators, aggregator coverage only; no fit for our content pipeline."
+   "why": "August reports, nothing dated November; only search snippet seen."
   }
  ],
  "repo_watch": [],

@@ -2,23 +2,24 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.325",
-   "checked": "2026-11-15"
+   "last_seen": "2.1.325 (unchanged)",
+   "checked": "2026-11-16"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-11-12 self-hosted Managed Agents; 2026-11-09 Fable 5.2 / Mythos 5.2",
-   "checked": "2026-11-15"
+   "checked": "2026-11-16"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-11-10 IPO roadshow; 2026-11-09 Fable 5.2",
-   "checked": "2026-11-15"
+   "checked": "2026-11-16"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
    "last_seen": "4,000 h / 10M today; 2FA required; terms by 2027-01-31",
-   "checked": "2026-11-15"
+   "checked": "2026-11-15",
+   "note": "Aug 2026 reports: new-creator bar 8,000 h or 20M Shorts views from Feb 2027 (press only, B/C)"
   },
   "claude-code-prompt-caching-docs": {
    "url": "https://code.claude.com/docs/en/prompt-caching",
