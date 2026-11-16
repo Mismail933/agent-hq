@@ -102,7 +102,7 @@ def make(folder):
         x["b"] = y["a"]
     shots[-1]["b"] = total
     hook = spec.get("hook")
-    props = {"seconds": total, "lines_t0": [l["t0"] for l in lines], "shots": shots, "pops": pops, "words": words, **({"hook": {"text": hook["text"], "b": hook.get("dur", 2.4)}} if hook else {})}
+    props = {**({"theme": spec["theme"]} if spec.get("theme") else {}), "seconds": total, "lines_t0": [l["t0"] for l in lines], "shots": shots, "pops": pops, "words": words, **({"hook": {"text": hook["text"], "b": hook.get("dur", 2.4)}} if hook else {})}
     pf = folder / "_props.json"
     pf.write_text(json.dumps(props), encoding="utf-8")
     (folder / "beats.json").write_text(json.dumps(props, indent=1), encoding="utf-8")

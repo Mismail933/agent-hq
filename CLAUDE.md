@@ -443,6 +443,9 @@ Agents never spend money without the owner's explicit approval.
   FREE voice Kokoro am_michael only (`maplong.voice`); music per topic (Kevin MacLeod, CC BY, ~/.agent-hq-anim/music/kevin-macleod),
   a quiet whoosh on each cut and a pop on each pop; `--stills 1,4,9` = stills only. Content: content/project-6/long/fs-<topic>/.
   Gemini video: the app's mode picker must be on "3.1 Pro" (Hydrogen answered 'something went wrong'); Portrait 9:16 in the menu.
+  2.84.5 Bassel's aviation samples (11-16, his three topics: pilots' meals, busiest routes, why ~10 km): `maps/src/Aviation.jsx` (AviMeals,
+  AviRoutes, AviAltitude) written by Fable from ~/fable-avi/BRIEF.md (+ REVIEW-N.md), real maps from geo.json + d3-geo; `AviShort.jsx` =
+  the wrapper with captions (prop `which`); voices from `factshort.py make` (Kokoro, free), render = scratchpad render_avi.py <which>.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
