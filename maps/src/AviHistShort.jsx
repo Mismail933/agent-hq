@@ -6,8 +6,9 @@ import {FONT_CSS} from './fonts';
 import {Captions} from './FactShort';
 import {AviHistory1} from './AviHistory1';
 import {AviHistory2} from './AviHistory2';
+import {AviHistory3} from './AviHistory3';
 
-const CHAPTERS = {1: AviHistory1, 2: AviHistory2};
+const CHAPTERS = {1: AviHistory1, 2: AviHistory2, 3: AviHistory3};
 
 export const AviHistShort = ({chapter = 1, lines = [], words = [], seconds = 360}) => {
   const {fps} = useVideoConfig();
