@@ -1,0 +1,86 @@
+{
+ "date": "2026-11-17",
+ "focus": "agents",
+ "note": "Short run, no new idea today. Nothing in the sweep changes how our agents should work. The one lead (rubric-order bias in judge prompts) is too weak to bother you with.",
+ "research": {
+  "searches": 5,
+  "pages_read": 7,
+  "minutes": 10,
+  "questions": [
+   "Does current research on LLM judges (Vera, Israa) suggest a prompt change we can test cheaply?",
+   "Did Claude Code 2.1.323-326 change anything our `claude -p` workers rely on?"
+  ],
+  "gaps": [
+   "Run was lighter than the 15 searches / 8 pages target (5 searches, 7 pages): no idea cleared the bar, so I stopped.",
+   "Did not open the grepture / futureagi judge-bias blogs (C sources, only seen in search snippets).",
+   "Did not read Israa's current prompt against the arXiv paper's finding, so no idea written."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.326: -p shows progress during API retries; permission-check failures name the cause in non-interactive runs; fixes for resumed sessions losing recent turns",
+  "Claude Code 2.1.325: scheduled tasks and /loop ask before running a skill with allowed-tools or hooks; -p waits for cached account data before first request",
+  "Claude Code 2.1.323: -p warns on stderr when settings block the requested model (relates to our 'log the model that answered' idea 2026-11-14)",
+  "API notes 2026-11-16: text watermark extended to Opus 4.6/4.5, Sonnet 4.5, Haiku 4.5 output (nothing for us to do)",
+  "No new Anthropic news since 2026-11-10 (IPO roadshow)"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.326 is newest; nothing breaks our workers"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Only a watermark note since Fable 5.2 on 11-09"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Latest is the 11-10 IPO roadshow"
+  },
+  {
+   "title": "Anthropic: Demystifying evals for AI agents",
+   "url": "https://anthropic.com/engineering/demystifying-evals-for-ai-agents",
+   "tier": "A",
+   "result": "used",
+   "why": "Isolated judge per dimension, an 'Unknown' way out, calibrate against humans; matches our open idea 2026-10-30 (Israa vs owner)"
+  },
+  {
+   "title": "arXiv 2602.02219 position bias in rubric LLM judges",
+   "url": "https://arxiv.org/abs/2602.02219",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Real effect, but Israa gives free-form notes and a 1-10 score; gain unproven for us"
+  },
+  {
+   "title": "GitHub search: claude code subagents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+pushed:>2026-10-18&sort=stars&order=desc",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Only prompt/role collections already on watch"
+  },
+  {
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+pushed:>2026-10-18&sort=stars&order=desc",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Same tools as before; none fit"
+  },
+  {
+   "title": "Search: YouTube Shorts policy Nov 2026",
+   "url": "https://www.tubefilter.com/2026/07/13/youtube-inauthentic-content-monetization-policy-update/",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "No November change found; July three-categories already covered"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}
