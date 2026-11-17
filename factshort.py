@@ -36,7 +36,10 @@ def align(folder, lines):
     """Script words at the times faster-whisper hears them (Kokoro's own times are spread evenly and drift)."""
     from faster_whisper import WhisperModel
     m = WhisperModel("base.en", device="cpu", compute_type="int8")
-    segs, _ = m.transcribe(str(folder / "voice.wav"), word_timestamps=True, vad_filter=False, condition_on_previous_text=False)
+    # each line in its own window: over a whole 6-minute file Whisper's word times drifted and stacked (ch.1: 15 words at one instant)
+    clips = [x for l in lines for x in (max(0.0, l["t0"] - 0.15), l["t1"] + 0.15)]
+    segs, _ = m.transcribe(str(folder / "voice.wav"), word_timestamps=True, vad_filter=False, condition_on_previous_text=False,
+                           clip_timestamps=clips)
     heard = [(w.word.strip(), w.start, w.end) for s in segs for w in s.words]
     script = [(w, l_i) for l_i, l in enumerate(lines) for w in l["text"].split()]
     A, B = [_tok(w) for w, _ in script], [_tok(h[0]) for h in heard]
@@ -44,6 +47,17 @@ def align(folder, lines):
     for blk in difflib.SequenceMatcher(None, A, B, autojunk=False).get_matching_blocks():
         for k in range(blk.size):
             times[blk.a + k] = (heard[blk.b + k][1], heard[blk.b + k][2])
+    # Whisper sometimes stamps a whole stretch at one instant (History of Aviation ch.1: 15 words at 170.6 s while the voice
+    # talked from 165 s, so the picture froze 5 s): a run of 3+ words starting within 20 ms of each other counts as unheard
+    k = 0
+    while k < len(times):
+        j = k
+        while j + 1 < len(times) and times[k] and times[j + 1] and abs(times[j + 1][0] - times[k][0]) < 0.02:
+            j += 1
+        if j - k >= 2:
+            for q in range(max(0, k - 1), j + 1):   # the word before the stack ends where the stack began: also suspect
+                times[q] = None
+        k = j + 1
     # unheard words: spread between their heard neighbours (inside their own line)
     out, i = [], 0
     for l_i, l in enumerate(lines):
