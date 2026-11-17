@@ -32,7 +32,12 @@ LOOKS = ["midnight", "paper", "globe", "editorial", "bold", "bassel"]
 
 # countries drawn in detail (the rest of the world is a light backdrop)
 DETAIL = {"FRA", "ESP", "DEU", "BEL", "LUX", "CHE", "ITA", "AND", "MCO", "GBR", "PRT", "NLD", "AUT", "IRL", "BRA", "SUR", "GUY", "VEN",
-          "HTI", "DOM", "CUB", "JAM", "PRI", "MUS", "COM", "MDG", "VUT", "DJI", "MAR", "SAH", "MRT"}   # the Caribbean too (and the Indian Ocean islands, Bassel: their outlines, not dots): Saint-Domingue's coast was a low-poly blob (Israa, Bassel Part 1)
+          "HTI", "DOM", "CUB", "JAM", "PRI", "MUS", "COM", "MDG", "VUT", "DJI", "MAR", "SAH", "MRT",
+          # History of Aviation (Bassel 11-17: "more realistic outlines and borders"): every country its maps show
+          "USA", "CAN", "MEX", "CHN", "MNG", "KOR", "PRK", "JPN", "TWN", "HKG", "RUS", "GRC", "TUR", "POL", "CZE", "DNK", "NOR", "SWE",
+          "FIN", "HUN", "SVK", "SVN", "HRV", "SRB", "BIH", "MNE", "ALB", "MKD", "BGR", "ROU", "UKR", "BLR", "LTU", "LVA", "EST", "ISL",
+          "DZA", "TUN", "LBY", "EGY", "ISR", "LBN", "SYR", "CYP", "SAU", "ARE", "ZAF", "VNM", "PHL", "IDN", "MYS", "SGP", "IND", "AUS"}
+BIG = {"USA", "CAN", "CHN", "RUS", "AUS", "IND", "IDN", "SAU", "DZA", "LBY", "EGY", "MNG", "MEX"}   # coarser tolerance: file size   # the Caribbean too (and the Indian Ocean islands, Bassel: their outlines, not dots): Saint-Domingue's coast was a low-poly blob (Israa, Bassel Part 1)
 OVERSEAS = {"MAF", "NCL", "SPM", "PYF", "ATF", "BLM", "WLF", "CLP"}   # France outside Europe (Natural Earth admin-0 units), drawn finely
 PLACES = {"paris": [2.35, 48.86], "cayenne": [-52.33, 4.92], "kourou": [-52.65, 5.16]}
 
@@ -185,7 +190,7 @@ def prep():
                     g = _simplify(f["geometry"], 0.004 if key != "FRO" else 0.003, 4, keep)
                     detail.append({"type": "Feature", "properties": {"a3": key}, "geometry": g})
             else:
-                g = _simplify(f["geometry"], 0.006 if a3 != "BRA" else 0.01, 4)
+                g = _simplify(f["geometry"], 0.006 if a3 not in BIG and a3 != "BRA" else (0.01 if a3 == "BRA" else 0.02), 4)
                 if g:
                     detail.append({"type": "Feature", "properties": {"a3": a3}, "geometry": g})
     bl = json.loads((GEO / "ne_10m_admin_0_boundary_lines_land.geojson").read_text(encoding="utf-8"))

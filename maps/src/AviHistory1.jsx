@@ -1,5 +1,5 @@
 // AviHistory1.jsx: History of aviation, Chapter 1 "Before the first flight" (client: Bassel), made with Fable.
-// 1920x1080, 30 fps, 6 min 6 s, plays under the recorded narration (timing.json: 33 lines, word times). Lines 0-8 are the client's
+// 1920x1080, 30 fps, 6 min 8 s, plays under the recorded narration (timing.json: 33 lines, word times). Lines 0-8 are the client's
 // approved "why ~10 km" Short (ref/Aviation.jsx, AviAltitude) re-laid for 16:9: same content, same beats, same footage windows.
 // Lines 9-32 are the chapter: the honey/aviation look (deep navy, white, amber, flat infographics, gentle springs) mixed with real
 // public-domain period pictures and real maps (geo.json + d3-geo). Every drawn aircraft uses REAL proportions (client's rule):
@@ -14,7 +14,7 @@ import geo from './geo.json';   // Natural Earth (public domain): geo.world.feat
 
 // the "possibly" pictures: still downloading while this was written. The Builder switches on the ones that exist
 // (files: av-langley-model.jpg, av-langley-boat.jpg, av-langley-crash.jpg, av-icarus.jpg, av-leonardo-ornithopter.jpg, av-montgolfier-1783.jpg).
-const HAVE = {langleyModel: true, langleyBoat: true, langleyCrash: false, icarus: false, ornithopter: true, montgolfier: true};
+const HAVE = {langleyModel: false, langleyBoat: false, langleyCrash: false, icarus: false, ornithopter: false, montgolfier: false};
 
 const W = 1920, H = 1080;
 const NAVY = '#0B1B33', NAVY2 = '#152C4F', WHITE = '#FFFFFF', AMBER = '#FFB547';
@@ -75,9 +75,18 @@ const dotted = (p0, c, p1, p, n = 40, color = AMBER, r = 4.5) => Array.from({len
 
 // ---------- real geography ----------
 const LAND_FC = geo.world;
-const RIVERS = geo.rivers || null;   // Natural Earth river centrelines (review 1): the Seine through Paris, the Potomac
+// rivers (reviews 1 and 3): `geo.rivers` may be a FeatureCollection of centrelines and/or hold named rivers (`geo.rivers.seine`,
+// `geo.rivers.potomac`); every use is guarded so a missing key just draws nothing
+const RIVERS = geo.rivers && geo.rivers.type ? geo.rivers : null;
+const SEINE = geo.rivers && geo.rivers.seine ? geo.rivers.seine : null;
+const POTOMAC_R = geo.rivers && geo.rivers.potomac ? geo.rivers.potomac : null;
+// detailed country outlines (review 3): `geo.detail.features` (properties.a3) replace the coarse world shape where they exist
+const DETAIL = geo.detail && geo.detail.features ? geo.detail : null;
+const DETAIL_A3 = new Set(DETAIL ? DETAIL.features.map((f) => f.properties.a3) : []);
+const LAND_SHAPES = DETAIL ? [...LAND_FC.features.filter((f) => !DETAIL_A3.has(f.properties.a3)), ...DETAIL.features] : LAND_FC.features;
+const LAND_ALL = {type: 'FeatureCollection', features: LAND_SHAPES};
+const COAST = '#7FA0CF', BORDER = '#5A79A8', HILAND = '#4A6CA3';
 const GRAT = geoGraticule10();
-const feats = (a3s) => ({type: 'FeatureCollection', features: LAND_FC.features.filter((f) => a3s.includes(f.properties.a3))});
 // a Mercator projection fitted so the lon/lat box [lon0, lat0, lon1, lat1] fills the screen box [x, y, w, h] (minus a padding)
 const fitBox = (ll, box, pad = 0) => geoMercator().fitExtent([[box[0] + pad, box[1] + pad], [box[0] + box[2] - pad, box[1] + box[3] - pad]],
   {type: 'MultiPoint', coordinates: [[ll[0], ll[1]], [ll[2], ll[1]], [ll[2], ll[3]], [ll[0], ll[3]]]});
@@ -245,20 +254,33 @@ const Arrow = ({x, y, len, dir = 'left', color = RED, k = 1, w = 10}) => {
     </g>
   );
 };
-// a map panel: rounded box of sea, the real land (all countries), highlighted countries, the graticule; children are drawn in map space
-function MapPanel({proj, hi = [], box, k = 1, id, children, o = 1, rx = 28, rivers = 0}) {
+// a map panel (review 3): a rounded box of sea with a subtle dot texture and graticule, every country as its own shape (the detailed
+// outline where geo.detail has one, else the world shape) with a thin lighter-navy border, a light coastline glow on the sea side,
+// the highlighted countries in a brighter fill with an amber edge; optional rivers; children are drawn in map space
+function MapPanel({proj, hi = [], box, k = 1, id, children, o = 1, rx = 28, rivers = 0, river = null, riverW = 0}) {
   if (k <= 0) return null;
   const path = geoPath(proj.clipExtent([[box[0], box[1]], [box[0] + box[2], box[1] + box[3]]]));
   const c = boxC(box);
   return (
     <g transform={`translate(${c[0]}, ${c[1]}) scale(${0.92 + 0.08 * Math.min(1, k)}) translate(${-c[0]}, ${-c[1]})`} opacity={Math.min(1, k) * o}>
-      <defs><clipPath id={`${id}-clip`}><rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} /></clipPath></defs>
+      <defs>
+        <clipPath id={`${id}-clip`}><rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} /></clipPath>
+        <pattern id={`${id}-sea`} width={36} height={36} patternUnits="userSpaceOnUse">
+          <circle cx={6} cy={6} r={1.4} fill={WHITE} opacity={0.5} />
+          <circle cx={24} cy={24} r={1.4} fill={WHITE} opacity={0.3} />
+        </pattern>
+      </defs>
       <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} fill={SEA} />
       <g clipPath={`url(#${id}-clip)`}>
-        <path d={path(GRAT) || ''} stroke={WHITE} strokeWidth={1} fill="none" opacity={0.08} />
-        <path d={path(LAND_FC) || ''} fill={LAND} stroke={LAND2} strokeWidth={1.2} strokeLinejoin="round" />
-        {hi.length ? <path d={path(feats(hi)) || ''} fill={LAND2} stroke={AMBER} strokeWidth={2} strokeLinejoin="round" opacity={0.95} /> : null}
+        <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} fill={`url(#${id}-sea)`} opacity={0.35} />
+        <path d={path(GRAT) || ''} stroke={WHITE} strokeWidth={1} fill="none" opacity={0.14} />
+        <path d={path(LAND_ALL) || ''} stroke={COAST} strokeWidth={6} fill="none" strokeLinejoin="round" opacity={0.3} />
+        {LAND_SHAPES.map((f, i) => {
+          const on = hi.includes(f.properties.a3);
+          return <path key={i} d={path(f) || ''} fill={on ? HILAND : LAND} stroke={on ? AMBER : BORDER} strokeWidth={on ? 1.5 : 1} strokeLinejoin="round" />;
+        })}
         {rivers > 0 && RIVERS ? <path d={path(RIVERS) || ''} stroke={SKY} strokeWidth={rivers} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.85} /> : null}
+        {river && riverW > 0 ? <path d={path(river) || ''} stroke={SKY} strokeWidth={riverW} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.9} /> : null}
         {children}
       </g>
       <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} fill="none" stroke={WHITE} strokeWidth={2} opacity={0.25} />
@@ -956,7 +978,7 @@ function SceneA8({t, at, fps, a, b}) {
 const MAP_L = [80, 120, 780, 720];          // the usual map panel, left
 const MAP_W = [160, 100, 1600, 760];        // a wide map panel
 const LL = {GRC: [19, 34, 29.5, 42], CHN: [73, 18, 135, 54], IBERIA: [-10, 35.5, 4, 44], ENG: [-6, 49.8, 2, 55.8], FRA: [-5, 42, 9, 51.5],
-            PARIS: [2.0, 48.6, 2.7, 49.0], DEU: [5, 47, 16, 55.5], ATL: [-100, 25, 20, 62], USA: [-125, 24, -66, 50],
+            PARIS: [2.2, 48.79, 2.5, 48.93], DEU: [5, 47, 16, 55.5], ATL: [-100, 25, 20, 62], USA: [-125, 24, -66, 50],
             POTOMAC: [-77.7, 38.3, -76.3, 39.3], NCOH: [-85.5, 33.5, -74.5, 42.5], WORLD: [-170, -55, 180, 75]};
 // a dust puff at an impact: rings and grains, k 0..1
 const Puff = ({x, y, k, color = SAND2}) => (k <= 0 ? null : (
@@ -1437,29 +1459,46 @@ function Scene20a({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- line 20b: over Paris. the map zooms from France into Paris; a dotted ~9 KM path from La Muette to the Butte-aux-Cailles
-// draws under a small balloon on "stayed up ... nine kilometres"; a ~25 MIN timer counts on "twenty five"; FIRST PEOPLE TO FLY on "first" ----------
+// ---------- line 20b (review 3): over Paris. the map zooms from France into a close view of Paris: the Seine from geo.rivers.seine
+// (light blue, thick), old Paris in the 1780s as a soft oval about 5 x 4 km (the city inside the Farmers-General wall), the Ile de la
+// Cite in the river, the land around plain; a dotted ~9 KM path from La Muette to the Butte-aux-Cailles draws under a small balloon
+// on "stayed up ... nine kilometres"; a ~25 MIN timer counts on "twenty five"; FIRST PEOPLE TO FLY on "first" ----------
+// The Builder (review 3 check): Natural Earth's Seine is too coarse at city scale (it missed the Ile de la Cite), so the close view
+// draws the river through known points, downstream: Choisy, the Marne's mouth at Charenton, Pont National, Austerlitz, the Cite,
+// Pont Neuf, Concorde, Alma, Iena, Grenelle, Garigliano, Issy, Sevres, Saint-Cloud, Suresnes, Neuilly, Asnieres, Saint-Denis.
+const SEINE_PARIS = {type: 'Feature', properties: {}, geometry: {type: 'LineString', coordinates: [
+  [2.46, 48.775], [2.43, 48.805], [2.412, 48.817], [2.383, 48.829], [2.366, 48.844], [2.358, 48.849], [2.347, 48.854], [2.341, 48.857],
+  [2.33, 48.860], [2.32, 48.864], [2.30, 48.863], [2.292, 48.861], [2.287, 48.855], [2.279, 48.850], [2.274, 48.846], [2.268, 48.839],
+  [2.255, 48.830], [2.228, 48.828], [2.219, 48.844], [2.228, 48.869], [2.25, 48.885], [2.26, 48.895], [2.285, 48.910], [2.33, 48.930]]}};
 function Scene20b({t, at, fps, a, b}) {
   const paris = at(20, 'Paris'), stayed = at(20, 'stayed'), twenty5 = at(20, 'twenty', 1), nine = at(20, 'nine'), first2 = at(20, 'first', 1);
   const zk = ease(t, paris, 1.6, Easing.inOut(Easing.cubic));
   const proj = zoomBox(LL.FRA, LL.PARIS, MAP_W, zk, 60);
-  const parisPt = proj([2.35, 48.86]);
-  const A = proj([2.270, 48.862]), B = proj([2.351, 48.828]);
-  const C = [(A[0] + B[0]) / 2 + 40, (A[1] + B[1]) / 2 - 60];
+  const parisPt = proj([2.345, 48.858]);
+  const ovRx = proj([2.345 + 0.048, 48.858])[0] - parisPt[0], ovRy = parisPt[1] - proj([2.345, 48.858 + 0.025])[1];   // ~7 x 5.5 km: the city inside the Farmers-General wall (~34 km2)
+  const cite = proj([2.347, 48.854]);
+  const ciRx = proj([2.347 + 0.0068, 48.854])[0] - cite[0], ciRy = cite[1] - proj([2.347, 48.854 + 0.0014])[1];      // ~1 x 0.3 km
+  const A = proj([2.27, 48.858]), B = proj([2.35, 48.827]);
+  const C = [(A[0] + B[0]) / 2 + 40, (A[1] + B[1]) / 2 - 90];
   const p = ease(t, stayed, Math.max(1, nine + 0.8 - stayed), Easing.inOut(Easing.quad));
   const q = qb(A, C, B, p);
   const mins = 25 * ease(t, twenty5, 1.2, Easing.out(Easing.quad));
+  const inCity = zk >= 0.9;
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
-        <MapPanel proj={proj} hi={['FRA']} box={MAP_W} k={1} id="m20" rivers={zk >= 0.9 ? 6 : zk > 0.5 ? 2 : 0}>
+        <MapPanel proj={proj} hi={inCity ? [] : ['FRA']} box={MAP_W} k={1} id="m20" rivers={zk > 0.5 && zk < 0.9 ? 2 : 0}>
           {zk < 0.9 ? <Pin t={t} fps={fps} a={a - 1} pt={parisPt} label="PARIS" ly={-28} o={1 - zk} /> : null}
-          {zk >= 0.9 ? (
+          {inCity ? (
             <g opacity={(zk - 0.9) * 10}>
-              <circle cx={parisPt[0]} cy={parisPt[1]} r={150} fill="none" stroke={WHITE} strokeWidth={2} strokeDasharray="6 10" opacity={0.3} />
-              <Lbl x={parisPt[0]} y={parisPt[1] - 172} size={26} o={0.9}>PARIS</Lbl>
-              {RIVERS ? <Lbl x={proj([2.47, 48.81])[0]} y={proj([2.47, 48.81])[1]} anchor="start" size={20} color={SKY} o={0.9}>SEINE</Lbl> : null}
+              <ellipse cx={parisPt[0]} cy={parisPt[1]} rx={ovRx} ry={ovRy} fill={LAND2} opacity={0.55} />
+              <ellipse cx={parisPt[0]} cy={parisPt[1]} rx={ovRx} ry={ovRy} fill="none" stroke={WHITE} strokeWidth={2} strokeDasharray="8 10" opacity={0.6} />
+              <path d={geoPath(proj)(SEINE_PARIS) || ''} stroke={SKY} strokeWidth={12} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
+              <ellipse cx={cite[0]} cy={cite[1]} rx={ciRx} ry={ciRy} fill={LAND2} stroke={WHITE} strokeWidth={1} opacity={0.95} transform={`rotate(-12, ${cite[0]}, ${cite[1]})`} />
+              <Lbl x={cite[0]} y={cite[1] - ciRy - 10} size={16} o={0.85}>ILE DE LA CITE</Lbl>
+              <Lbl x={parisPt[0]} y={parisPt[1] - ovRy - 16} size={24} o={0.95}>PARIS, 1780s</Lbl>
+              {SEINE || true ? <Lbl x={proj([2.425, 48.80])[0]} y={proj([2.425, 48.80])[1] + 34} anchor="start" size={20} color={SKY} o={0.9}>SEINE</Lbl> : null}
               {p > 0 ? dotted(A, C, B, p, 40, AMBER, 4) : null}
               <Pin t={t} fps={fps} a={stayed} pt={A} label="LA MUETTE" ly={-26} r={9} size={18} />
               <Pin t={t} fps={fps} a={nine} pt={B} label="BUTTE-AUX-CAILLES" ly={40} r={9} size={18} />
@@ -1618,7 +1657,7 @@ function Scene24({t, at, fps, a, b}) {
   const cities = [[-0.1, 51.5], [2.35, 48.86], [-74.0, 40.7], [72.8, 19.1], [151.2, -33.9], [18.4, -33.9], [-43.2, -22.9]];
   const kMap = pop(t, pictures, fps, soft) * (1 - ease(t, steam3, 0.4));
   const kScale = pop(t, steam3, fps, soft);
-  const tip = 18 * ease(t, heavy, 0.9, Easing.out(Easing.back(1.5)));
+  const tip = -18 * ease(t, Math.min(heavy, at(24, 'far')), 0.9, Easing.out(Easing.back(1.5)));   // the Builder: from "far", so it has tipped before the cut   // negative: the left (STEAM ENGINE) side goes DOWN (review 3)
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
@@ -1700,32 +1739,30 @@ function NewsCard({x, y, k, w = 200, h = 150, rot = 0, src = 'av-lilienthal-2.jp
     </div>
   );
 }
-// ---------- line 26: the photographs spread. av-lilienthal-2 in the centre; on "printed" it multiplies into newspaper-like cards that
-// scatter over a map of the Atlantic world; on "two brothers" a line draws from Berlin across the Atlantic to OHIO ----------
+// ---------- line 26 (review 3: the line now ends "... around the world", the Ohio brothers moved to line 31): av-lilienthal-2 in the
+// centre; on "printed" it shrinks and newspaper-like cards pop over European and American cities; on "magazines" a second wave of
+// cards reaches the rest of the world ----------
 function Scene26({t, at, fps, a, b}) {
-  const printed = at(26, 'printed'), two = at(26, 'two'), ohio = at(26, 'Ohio');
-  const proj = fitBox(LL.ATL, MAP_W, 40);
-  const berlinPt = proj([13.4, 52.5]), dayton = proj([-84.19, 39.76]);
-  const spots = [[-0.1, 51.5], [2.35, 48.86], [13.4, 52.5], [-74.0, 40.7], [-87.6, 41.9], [-71.1, 42.4], [-3.7, 40.4], [-43.2, -22.9]];
+  const printed = at(26, 'printed'), magazines = at(26, 'magazines');
+  const proj = fitBox(LL.WORLD, MAP_W, 20);
+  const wave1 = [[-0.1, 51.5], [2.35, 48.86], [13.4, 52.5], [-74.0, 40.7], [-87.6, 41.9], [12.5, 41.9]];
+  const wave2 = [[-43.2, -22.9], [-99.1, 19.4], [72.8, 19.1], [139.7, 35.7], [151.2, -33.9], [18.4, -33.9], [37.6, 55.8]];
   const sh = ease(t, printed, 0.9, Easing.inOut(Easing.cubic));
-  const big = [lerp(960, 960, sh), lerp(480, 480, sh)];
-  const kLine = ease(t, two, Math.max(0.8, ohio + 0.3 - two), Easing.inOut(Easing.quad));
-  const C = [(berlinPt[0] + dayton[0]) / 2, Math.min(berlinPt[1], dayton[1]) - 160];
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
-        <MapPanel proj={proj} hi={['DEU', 'USA']} box={MAP_W} k={1} id="m26" />
+        <MapPanel proj={proj} hi={['DEU']} box={MAP_W} k={1} id="m26" />
       </svg>
-      <Photo src="av-lilienthal-2.jpg" id="s26" a={a} b={b} t={t} box={[big[0] - lerp(440, 120, sh), big[1] - lerp(300, 80, sh), lerp(880, 240, sh), lerp(600, 160, sh)]} fit="cover" radius={10} zoom={[1.0, 1.06]} gray credit={sh < 0.5} />
-      {spots.map((c, i) => {
+      <Photo src="av-lilienthal-2.jpg" id="s26" a={a} b={b} t={t} box={[960 - lerp(440, 120, sh), 480 - lerp(300, 80, sh), lerp(880, 240, sh), lerp(600, 160, sh)]} fit="cover" radius={10} zoom={[1.0, 1.06]} gray credit={sh < 0.5} />
+      {wave1.map((c, i) => {
         const pt = proj(c);
         return pt ? <NewsCard key={i} x={pt[0]} y={pt[1]} k={pop(t, printed + 0.3 + i * 0.12, fps, soft)} rot={(rnd(i + 200) - 0.5) * 16} w={170} h={130} /> : null;
       })}
-      <svg width={W} height={H} style={{position: 'absolute'}}>
-        {kLine > 0 ? dotted(berlinPt, C, dayton, kLine, 60, AMBER, 4) : null}
-        <Pin t={t} fps={fps} a={ohio} pt={dayton} label="OHIO" ly={44} />
-      </svg>
+      {wave2.map((c, i) => {
+        const pt = proj(c);
+        return pt ? <NewsCard key={i} x={pt[0]} y={pt[1]} k={pop(t, magazines + i * 0.1, fps, soft)} rot={(rnd(i + 230) - 0.5) * 16} w={150} h={116} /> : null;
+      })}
     </Scene>
   );
 }
@@ -1787,9 +1824,9 @@ function Scene28({t, at, fps, a, b}) {
     <Scene t={t} a={a}>
       <Bg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
-        <MapPanel proj={proj} hi={['USA']} box={MAP_W} k={1} id="m28" rivers={zk > 0.5 ? 2 + 5 * zk : 0}>
-          {RIVERS ? null : <path d={riverD} stroke={SEA} strokeWidth={10 + 60 * zk} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={zk} />}
-          {RIVERS ? null : <path d={riverD} stroke={SKY} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.5 * zk} />}
+        <MapPanel proj={proj} hi={['USA']} box={MAP_W} k={1} id="m28" rivers={zk > 0.5 ? 2 + 5 * zk : 0} river={POTOMAC_R} riverW={zk > 0.5 ? 3 + 7 * zk : 0}>
+          {RIVERS || POTOMAC_R ? null : <path d={riverD} stroke={SEA} strokeWidth={10 + 60 * zk} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={zk} />}
+          {RIVERS || POTOMAC_R ? null : <path d={riverD} stroke={SKY} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.5 * zk} />}
           <Pin t={t} fps={fps} a={smith} pt={dc} label="WASHINGTON" lx={22} ly={10} anchor="start" />
           {zk > 0.8 ? <Lbl x={river[5][0] + 60} y={river[5][1]} anchor="start" size={20} color={SKY} o={(zk - 0.8) * 5}>POTOMAC RIVER</Lbl> : null}
           {zk > 0.8 ? <Pin t={t} fps={fps} a={flew} pt={quantico} label="QUANTICO" ly={40} r={8} size={18} o={(zk - 0.8) * 5} /> : null}
@@ -1831,11 +1868,55 @@ const aeroPose = (t, L, D, F) => {
   const run = ease(t, L, Math.max(0.6, D - L), Easing.out(Easing.quad));
   const x = lerp(820, 1380, run);
   const sag = 60 * lin(t, L + 0.5, Math.max(0.3, D - L - 0.5));
-  const fold = F === undefined ? 0 : ease(t, F, 0.5, Easing.in(Easing.quad));
+  const fold = F === undefined ? 0 : ease(t, F, 0.3, Easing.in(Easing.quad));
   if (t < D) return {x, y: 470 + sag, rot: 6 * run - 10 * fold, fold, sunk: 0};
   const f = ease(t, D, 0.75, Easing.in(Easing.quad));
   return {x: 1380 + 40 * f, y: 470 + sag + 230 * f, rot: 6 - 10 * fold + 55 * f, fold, sunk: ease(t, D + 0.75, 1.5)};
 };
+// the Aerodrome breaking apart (review 3): six pieces leave the wreck at t0 from (x0, y0), each with its own throw, spin and landing
+// moment; each lands in the water with a small splash and sinks. Pieces: the two rear wings (folded), the front wing pair, the frame
+// with the pilot's seat, the two propellers
+const WATER_Y = 712, GRAV = 700;
+const AERO_PIECES = [
+  {name: 'rearL', ox: -45, oy: -4, vx: -70, vy: -170, spin: 260},
+  {name: 'rearR', ox: -45, oy: -4, vx: -10, vy: -120, spin: -320},
+  {name: 'front', ox: 55, oy: -4, vx: 80, vy: -50, spin: 110},
+  {name: 'frame', ox: 0, oy: 0, vx: 30, vy: 10, spin: 45},
+  {name: 'prop1', ox: 5, oy: -14, vx: 120, vy: -230, spin: 760},
+  {name: 'prop2', ox: 5, oy: 6, vx: -100, vy: -190, spin: -680},
+];
+const PieceShape = ({name, color = WHITE}) => {
+  if (name === 'rearL') return <path d="M0,0 L-34,-18 L-26,-18 L8,0 Z" fill={color} opacity={0.9} />;
+  if (name === 'rearR') return <path d="M0,0 L36,-10 L42,-10 L8,0 Z" fill={color} opacity={0.8} />;
+  if (name === 'front') return <g><path d="M0,0 L-14,-18 L-6,-18 L8,0 Z" fill={color} opacity={0.9} /><path d="M0,0 L16,-10 L22,-10 L8,0 Z" fill={color} opacity={0.7} /><path d="M-68,-2 L68,-2 L68,1 L-68,1 Z" fill={color} opacity={0.55} /></g>;
+  if (name === 'frame') return <g><rect x={-80} y={-2} width={160} height={4} rx={2} fill={color} /><path d="M-80,-2 L-96,-12 L-96,8 L-80,2 Z" fill={color} opacity={0.8} /><rect x={-10} y={-6} width={20} height={8} rx={2} fill={color} opacity={0.5} /></g>;
+  return <ellipse rx={2} ry={9} fill={color} opacity={0.7} />;
+};
+function AeroPieces({t, t0, x0, y0, s, rot}) {
+  if (t < t0) return null;
+  return (
+    <g>
+      {AERO_PIECES.map((p, i) => {
+        const dt = t - t0;
+        const px0 = x0 + p.ox * s, py0 = y0 + p.oy * s;
+        const disc = p.vy * p.vy + 2 * GRAV * (WATER_Y - py0);
+        const tl = (-p.vy + Math.sqrt(Math.max(0, disc))) / GRAV;   // when this piece hits the water
+        const d = Math.min(dt, tl);
+        const x = px0 + p.vx * d, y = py0 + p.vy * d + 0.5 * GRAV * d * d;
+        const landed = dt >= tl;
+        const sink = landed ? clamp01((dt - tl) / 1.2) : 0;
+        return (
+          <g key={i}>
+            <g transform={`translate(${x}, ${y + 18 * sink}) rotate(${rot + p.spin * d}) scale(${s})`} opacity={1 - sink}>
+              <PieceShape name={p.name} />
+            </g>
+            {landed ? <g transform={`translate(${x}, ${WATER_Y}) scale(0.5)`}><Puff x={0} y={0} k={clamp01((dt - tl) / 0.7)} color={SKY} /></g> : null}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
 // ---------- line 29: 7 OCT 1903 and 8 DEC 1903. With the real houseboat picture: the photo alone (slow push, "7 OCT 1903") until "it
 // was launched", then a cut to the drawing (review 1). The drawing: the houseboat with its roof-top rail, the Aerodrome (tandem wings,
 // ~14.6 m span) launched on "launched", dropping into the Potomac on "dropped"; a second Aerodrome on "On the eighth", launched on
@@ -1844,9 +1925,10 @@ function Scene29({t, at, fps, a, b}) {
   const aero = at(29, 'Aerodrome'), petrol = at(29, 'petrol'), october = at(29, 'October'), it = at(29, 'it'), launched = at(29, 'launched'), dropped = at(29, 'dropped');
   const on = at(29, 'On'), eighth = at(29, 'eighth'), tried = at(29, 'tried'), broke = at(29, 'broke'), fell = at(29, 'fell'), charles = at(29, 'Charles'), pulled = at(29, 'pulled');
   const cut = HAVE.langleyBoat ? it : a;   // the drawing starts here
-  const p1 = aeroPose(t, launched, dropped), p2 = aeroPose(t, tried, fell, broke);
-  const k1 = pop(t, Math.max(aero, cut), fps, soft) * (1 - p1.sunk), k2 = pop(t, on, fps, soft) * (1 - p2.sunk);
-  const splash1 = lin(t, dropped + 0.75, 0.9), splash2 = lin(t, fell + 0.75, 0.9);
+  const split = broke + 0.3;               // the rear wings fold for 0.3 s, then the Aerodrome breaks into pieces (review 3)
+  const p1 = aeroPose(t, launched, dropped), p2 = aeroPose(t, tried, fell, broke), pb = aeroPose(split, tried, fell, broke);
+  const k1 = pop(t, Math.max(aero, cut), fps, soft) * (1 - p1.sunk), k2 = pop(t, on, fps, soft);
+  const splash1 = lin(t, dropped + 0.75, 0.9);
   const swim = ease(t, pulled, 1.6, Easing.inOut(Easing.quad));
   const kMan = pop(t, pulled - 0.3, fps, soft);
   const kDraw = cut > a ? ease(t, cut, 0.3) : 1;
@@ -1870,9 +1952,9 @@ function Scene29({t, at, fps, a, b}) {
           </g>
           {t >= petrol && t < launched ? [0, 1, 2].map((i) => { const ph = ((t - petrol) * 0.8 + i * 0.33) % 1; return <circle key={i} cx={840 + ph * 60} cy={440 - ph * 100} r={8 + ph * 14} fill={WHITE} opacity={0.4 * (1 - ph)} />; }) : null}
           {k1 > 0 ? <Aerodrome x={p1.x} y={p1.y} s={2.2} rot={p1.rot} fold={p1.fold} o={Math.min(1, k1)} /> : null}
-          {k2 > 0 && t >= on ? <Aerodrome x={p2.x} y={p2.y} s={2.2} rot={p2.rot} fold={p2.fold} o={Math.min(1, k2)} /> : null}
+          {k2 > 0 && t >= on && t < split ? <Aerodrome x={p2.x} y={p2.y} s={2.2} rot={p2.rot} fold={p2.fold} o={Math.min(1, k2)} /> : null}
+          <AeroPieces t={t} t0={split} x0={pb.x} y0={pb.y} s={2.2} rot={pb.rot} />
           <Puff x={1420} y={712} k={splash1} color={SKY} />
-          <Puff x={1420} y={712} k={splash2} color={SKY} />
           {kMan > 0 ? <g opacity={Math.min(1, kMan)}><Man x={lerp(1400, 1000, swim)} y={760 + Math.sin(t * 4) * 5} s={7} pose="arms" flap={Math.sin(t * 6) * 0.5} /><ellipse cx={lerp(1400, 1000, swim)} cy={742} rx={60} ry={14} fill="none" stroke={SKY} strokeWidth={2} opacity={0.5} /></g> : null}
           <Lbl x={300} y={440} anchor="start" size={18} o={0.6 * Math.min(1, k1 + k2)}>AERODROME · 14.6 M SPAN · 16 M LONG</Lbl>
         </g>
@@ -1943,14 +2025,20 @@ function Beach({t, fps, flyerAt, wind, fx = 1290, fs = 9.5, k = 1}) {
     </g>
   );
 }
-// ---------- line 31: 17 DEC 1903. a map with KILL DEVIL HILLS and DAYTON, OHIO; "9 DAYS LATER"; wind across the beach on "windy";
-// the Wright Flyer waiting on its rail on "beach"; the two brothers on their names ----------
+// ---------- line 31 (review 3: the line now ends "... and Lilienthal's flights had inspired them"): a map with KILL DEVIL HILLS and
+// DAYTON · OHIO; "9 DAYS LATER"; wind across the beach on "windy"; the Wright Flyer waiting on its rail on "beach"; the two brothers
+// on their names; on "Lilienthal's" a small round photo badge of him gliding (top right, labelled), and on "inspired" a dotted line
+// from the badge to the Flyer ----------
 function Scene31({t, at, fps, a, b}) {
   const nine = at(31, 'nine'), cold = at(31, 'cold'), windy = at(31, 'windy'), beach = at(31, 'beach'), north = at(31, 'North'), two = at(31, 'two'), ohio = at(31, 'Ohio'), wilbur = at(31, 'Wilbur'), orville = at(31, 'Orville');
+  const lil = at(31, "Lilienthal's"), inspired = at(31, 'inspired');
   const box = [40, 120, 620, 620];
   const proj = fitBox(LL.NCOH, box, 40);
   const kdh = proj([-75.67, 36.02]), dayton = proj([-84.19, 39.76]);
   const kLine = ease(t, ohio, 1.0, Easing.inOut(Easing.quad));
+  const kB = pop(t, lil, fps, soft);
+  const kIns = ease(t, inspired, 0.9, Easing.inOut(Easing.quad));
+  const BX = 1560, BY = 300, BR = 90;
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
@@ -1965,6 +2053,15 @@ function Scene31({t, at, fps, a, b}) {
         <SvgPill t={t} fps={fps} a={cold} x={350} y={230} w={220} size={22} bg={WHITE}>17 DEC 1903</SvgPill>
         {t >= two ? <Man x={1000} y={800} s={8} pose="stand" /> : null}
         {t >= two ? <Man x={1600} y={800} s={8} pose="stand" /> : null}
+      </svg>
+      {kB > 0 ? (
+        <div style={{position: 'absolute', left: BX - BR, top: BY - BR, width: 2 * BR, height: 2 * BR, borderRadius: '50%', overflow: 'hidden', border: `4px solid ${AMBER}`, boxShadow: '0 10px 30px rgba(0,0,0,0.45)', transform: `scale(${Math.min(1, kB)})`, opacity: Math.min(1, kB)}}>
+          <Img src={staticFile('fs/av-lilienthal-2.jpg')} style={{width: '100%', height: '100%', objectFit: 'cover', filter: 'grayscale(1) contrast(1.1)'}} />
+        </div>
+      ) : null}
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        {kB > 0 ? <Lbl x={BX} y={BY + BR + 34} size={20} color={AMBER} o={Math.min(1, kB)}>LILIENTHAL</Lbl> : null}
+        {kIns > 0 ? dotted([BX - BR - 10, BY + 30], [1380, 300], [1310, 480], kIns, 30, AMBER, 4) : null}
       </svg>
       <Tag t={t} a={wilbur} fps={fps} x={1000} y={826} bg={WHITE}>Wilbur</Tag>
       <Tag t={t} a={orville} fps={fps} x={1600} y={826} bg={WHITE}>Orville</Tag>
@@ -2013,7 +2110,7 @@ const yearSchedule = (at, lines, T) => {
   return s;
 };
 
-export const AviHistory1 = ({lines = [], words = [], seconds = 366}) => {
+export const AviHistory1 = ({lines = [], words = [], seconds = 368}) => {
   const {fps} = useVideoConfig();
   const frame = useCurrentFrame();
   const t = frame / fps;
