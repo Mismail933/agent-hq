@@ -1,5 +1,5 @@
 // AviHistory1.jsx: History of aviation, Chapter 1 "Before the first flight" (client: Bassel), made with Fable.
-// 1920x1080, 30 fps, 6 min 9 s, plays under the recorded narration (timing.json: 33 lines, word times). Lines 0-8 are the client's
+// 1920x1080, 30 fps, 6 min 6 s, plays under the recorded narration (timing.json: 33 lines, word times). Lines 0-8 are the client's
 // approved "why ~10 km" Short (ref/Aviation.jsx, AviAltitude) re-laid for 16:9: same content, same beats, same footage windows.
 // Lines 9-32 are the chapter: the honey/aviation look (deep navy, white, amber, flat infographics, gentle springs) mixed with real
 // public-domain period pictures and real maps (geo.json + d3-geo). Every drawn aircraft uses REAL proportions (client's rule):
@@ -708,31 +708,61 @@ function SceneA3({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- lines 4-5: the flight envelope, larger. a speed/altitude chart: the airliner sits at 10 km with room on both sides; on
-// "too high" a ghost plane climbs towards the corner; the STALL SPEED line draws on "the speed at which the wing stalls rises"; the
-// MAX SPEED line draws to meet it on "to meet the plane's top speed"; the amber envelope narrows to a point = COFFIN CORNER on
-// "coffin corner". Line 5: the ghost fades on "ten", a tick on the 10 km plane on "sweet", the "10 km" pill on "spot", a slow push ----------
+// a small red flash pill (STALL / TOO FAST), blinking
+const Flash = ({x, y, on, t, children, w = 110}) => (on ? (
+  <g transform={`translate(${x}, ${y})`} opacity={Math.sin(t * 14) > 0 ? 1 : 0.25}>
+    <rect x={-w / 2} y={-16} width={w} height={32} rx={10} fill={RED} />
+    <text y={7} textAnchor="middle" fontFamily={SMALL} fontWeight={800} fontSize={20} fill={WHITE} letterSpacing={2}>{children}</text>
+  </g>
+) : null);
+// a two-line explanation in the chart: the name (22 px, coloured) and the plain words under it (18 px, white, lighter)
+const Explain = ({x, y, anchor = 'start', color, name, words, o = 1}) => (
+  <g opacity={o}>
+    <Lbl x={x} y={y} anchor={anchor} size={22} color={color}>{name}</Lbl>
+    <text x={x} y={y + 26} textAnchor={anchor} fontFamily={SMALL} fontWeight={600} fontSize={18} fill={WHITE} opacity={0.9}>{words}</text>
+  </g>
+);
+// ---------- lines 4-5 (review 2, after NOTES-chart.md): the flight envelope explained on the words. From the first frame: a speed axis
+// (SLOWER / FASTER) and an altitude axis (HIGHER), the two limits sketched faintly, the triangle between them filled GREEN and
+// labelled SAFE SPEEDS, the airliner at 10 km in the middle with room on both sides. On "Climb" a ghost climbs slowly up the middle
+// of the band through the whole sentence, so the band narrows around it, and reaches the point as "top speed" ends. On "stalls" the
+// left line draws solid red with STALL SPEED / "too slow: the wing stops lifting" and a live example (a small airliner noses up, hangs,
+// STALL flashes, it drops and fades, loops 1.8 s) until "top". On "top" the right line draws solid blue with MAX SPEED / "too fast: the
+// airframe is overstressed" and a second example (shaking at 45 Hz, stress marks, TOO FAST flashing) until "coffin". On "coffin
+// corner" a red dot with rings: COFFIN CORNER / "no safe speed left". Line 5: the ghost fades on "ten", a green tick on "sweet",
+// SWEET SPOT · 10 km on "spot", then a slow push ----------
 function SceneA4({t, at, fps, a, b}) {
-  const too = at(4, 'too'), speed = at(4, 'speed'), stalls = at(4, 'stalls'), meet = at(4, 'meet'), top = at(4, 'top'), coffin = at(4, 'coffin');
+  const climbW = at(4, 'Climb'), stalls = at(4, 'stalls'), top = at(4, 'top'), speed2 = at(4, 'speed', 1), coffin = at(4, 'coffin');
   const ten = at(5, 'ten'), sweet = at(5, 'sweet'), spot = at(5, 'spot');
   const cy = (h) => 840 - h * 44, xs = (h) => 620 + 34 * h, xt = (h) => 1500 - 28 * h;
   const HM = (1500 - 620) / (34 + 28), XM = xs(HM), YM = cy(HM);
   const mid = (h) => (xs(h) + xt(h)) / 2;
   const axes = ease(t, a, 0.6);
-  const pS = ease(t, speed, 1.9, Easing.inOut(Easing.quad)), pT = ease(t, meet, 1.3, Easing.inOut(Easing.quad));
+  const pS = ease(t, stalls, 1.2, Easing.inOut(Easing.quad)), pT = ease(t, top, 1.0, Easing.inOut(Easing.quad));
   const kCC = pop(t, coffin, fps, bouncy);
-  const climb = ease(t, too, 1.5, Easing.inOut(Easing.quad));
-  const hg = lerp(10, HM - 0.3, climb);
-  const ghostO = (t >= too ? 0.55 : 0) * (1 - ease(t, ten, 0.5));
-  const shake = Math.sin(t * 40) * 4 * (climb >= 1 ? 1 : 0) * ghostO;
+  // the ghost: climbs from 10 km through the whole sentence, arrives at the point as "top speed" ends, shivers there, fades on "ten"
+  const climb = ease(t, climbW, Math.max(1, speed2 + 0.35 - climbW), Easing.inOut(Easing.quad));
+  const hg = lerp(10, HM - 0.25, climb);
+  const ghostO = (t >= climbW ? 0.6 : 0) * (1 - ease(t, ten, 0.5));
+  const shake = climb >= 1 ? Math.sin(t * 40) * 4 : 0;
   const pts = [];
   for (let i = 0; i <= 30; i++) pts.push(HM * i / 30);
   const stallD = pts.map((h, i) => `${i ? 'L' : 'M'}${xs(h).toFixed(1)},${cy(h).toFixed(1)}`).join(' ');
   const topD = pts.map((h, i) => `${i ? 'L' : 'M'}${xt(h).toFixed(1)},${cy(h).toFixed(1)}`).join(' ');
-  const hb = HM * Math.min(pS, pT);
-  const band = hb > 0 ? closed([[xs(0), cy(0)], [xs(hb), cy(hb)], [xt(hb), cy(hb)], [xt(0), cy(0)]]) : '';
+  const band = closed([[xs(0), cy(0)], [XM, YM], [xt(0), cy(0)]]);
+  const bandO = 0.14 + 0.05 * (0.5 + 0.5 * Math.sin(t * 1.5));
   const cam = 1 + 0.04 * lin(t, sweet, Math.max(0.5, b - sweet));
   const yP = cy(10) + Math.sin(t * 2) * 4;
+  // the stall example (left of the stall line, ~7.5 km): a 1.8 s loop from "stalls" until "top"
+  const exS = t >= stalls && t < top;
+  const ph = exS ? ((t - stalls) % 1.8) / 1.8 : 0;
+  const nose = clamp01(ph / 0.35), fall = clamp01((ph - 0.5) / 0.35);
+  const sRot = -28 * nose * (1 - fall) + 24 * fall, sY = -20 * nose + 110 * fall * fall;
+  const sO = 1 - clamp01((ph - 0.85) / 0.15);
+  // the overspeed example (right of the max line, same height): shaking, stress marks, from "top" until "coffin"
+  const exT = t >= top && t < coffin;
+  const jit = exT ? 4 * Math.sin(t * Math.PI * 2 * 45) : 0, wob = exT ? 3 * Math.sin(t * Math.PI * 2 * 7) : 0;
+  const EX = cy(7.5), SX = 740, TX = 1430;
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
@@ -749,27 +779,50 @@ function SceneA4({t, at, fps, a, b}) {
                 <Lbl x={492} y={cy(k) + 8} anchor="end" size={22} o={0.85}>{k} km</Lbl>
               </g>
             ))}
-            <Lbl x={1560} y={876} anchor="end" size={20} o={0.7}>SPEED</Lbl>
-            <Lbl x={520} y={160} size={20} o={0.7}>ALTITUDE</Lbl>
+            <Lbl x={520} y={160} size={18} o={0.8}>HIGHER</Lbl>
+            <Lbl x={560} y={876} anchor="start" size={18} o={0.8}>SLOWER</Lbl>
+            <Lbl x={1560} y={876} anchor="end" size={18} o={0.8}>FASTER</Lbl>
+            <line x1={690} y1={868} x2={1430} y2={868} stroke={WHITE} strokeWidth={2} opacity={0.5} />
+            <polygon points={polyPts(690, 868, 8, 3, Math.PI)} fill={WHITE} opacity={0.5} />
+            <polygon points={polyPts(1430, 868, 8, 3, 0)} fill={WHITE} opacity={0.5} />
             <line x1={534} y1={cy(10)} x2={1560} y2={cy(10)} stroke={WHITE} strokeWidth={2} strokeDasharray="8 12" opacity={0.25} />
           </g>
-          {band ? <path d={band} fill={AMBER} opacity={0.14} /> : null}
+          <path d={band} fill={GREEN} opacity={bandO * axes} />
+          <Lbl x={mid(6.5)} y={cy(6.5)} size={20} color={GREEN} o={0.9 * axes}>SAFE SPEEDS</Lbl>
+          <path d={stallD} stroke={RED} strokeWidth={3} fill="none" strokeDasharray="10 12" opacity={0.45 * axes} />
+          <path d={topD} stroke={SKY} strokeWidth={3} fill="none" strokeDasharray="10 12" opacity={0.45 * axes} />
           <path d={stallD} stroke={RED} strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - pS} opacity={pS > 0 ? 1 : 0} />
           <path d={topD} stroke={SKY} strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - pT} opacity={pT > 0 ? 1 : 0} />
-          {t >= stalls ? <Lbl x={xs(1.5) + 18} y={cy(1.5) - 10} anchor="start" size={22} color={RED} o={ease(t, stalls, 0.3)}>STALL SPEED</Lbl> : null}
-          {t >= top ? <Lbl x={xt(1.5) - 18} y={cy(1.5) - 10} anchor="end" size={22} color={SKY} o={ease(t, top, 0.3)}>MAX SPEED</Lbl> : null}
-          {ghostO > 0 ? <AirlinerSide x={mid(hg) + shake} y={cy(hg)} s={0.5} color={SKY} accent={SKY} o={ghostO} rot={-8 * climb * (1 - climb) * 4} /> : null}
+          {t >= stalls ? <Explain x={xs(2) + 16} y={cy(2)} color={RED} name="STALL SPEED" words="too slow: the wing stops lifting" o={ease(t, stalls, 0.3)} /> : null}
+          {t >= top ? <Explain x={xt(4.5) - 16} y={cy(4.5)} anchor="end" color={SKY} name="MAX SPEED" words="too fast: the airframe is overstressed" o={ease(t, top, 0.3)} /> : null}
+          {exS ? <g transform={`translate(${SX}, ${EX + sY})`} opacity={sO}><AirlinerSide x={0} y={0} s={0.3} rot={sRot} /></g> : null}
+          <Flash x={SX} y={EX - 70} on={exS && ph > 0.3 && ph < 0.8} t={t}>STALL</Flash>
+          {exT ? (
+            <g transform={`translate(${TX + jit}, ${EX}) rotate(${wob})`}>
+              <AirlinerSide x={0} y={0} s={0.3} />
+              {[[-74, -36], [62, -42], [8, 44]].map(([mx, my], i) => (
+                <path key={i} d="M0,0 L9,-12 L4,-12 L13,-26" transform={`translate(${mx}, ${my})`} stroke={RED} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={Math.sin(t * 37 + i * 2.1) > 0.1 ? 1 : 0.15} />
+              ))}
+            </g>
+          ) : null}
+          <Flash x={TX} y={EX - 70} on={exT} t={t} w={130}>TOO FAST</Flash>
+          {ghostO > 0 ? <AirlinerSide x={mid(hg) + shake} y={cy(hg)} s={0.5} color={SKY} accent={SKY} o={ghostO} rot={-6 * climb * (1 - climb) * 4} /> : null}
           <AirlinerSide x={mid(10)} y={yP} s={0.5} />
           <g transform={`translate(${XM}, ${YM})`}>
             {t >= coffin ? [0, 1].map((i) => {
-              const ph = ((t - coffin) * 0.9 + i * 0.5) % 1;
-              return <circle key={i} r={30 + ph * 90} fill="none" stroke={RED} strokeWidth={6 * (1 - ph)} opacity={(1 - ph) * 0.8} />;
+              const rp = ((t - coffin) * 0.9 + i * 0.5) % 1;
+              return <circle key={i} r={30 + rp * 90} fill="none" stroke={RED} strokeWidth={6 * (1 - rp)} opacity={(1 - rp) * 0.8} />;
             }) : null}
             <circle r={24 * kCC} fill={RED} stroke={WHITE} strokeWidth={5} opacity={Math.min(1, kCC)} />
           </g>
-          {kCC > 0 ? <Lbl x={XM} y={YM - 52} size={26} color={RED} o={Math.min(1, kCC)}>COFFIN CORNER</Lbl> : null}
+          {kCC > 0 ? (
+            <g opacity={Math.min(1, kCC)}>
+              <Lbl x={XM} y={YM - 72} size={26} color={RED}>COFFIN CORNER</Lbl>
+              <text x={XM} y={YM - 46} textAnchor="middle" fontFamily={SMALL} fontWeight={600} fontSize={18} fill={WHITE} opacity={0.9}>no safe speed left</text>
+            </g>
+          ) : null}
           <Tick x={mid(10)} y={yP - 110} k={pop(t, sweet, fps, bouncy)} r={50} />
-          <SvgPill t={t} fps={fps} a={spot} x={mid(10)} y={yP + 92} w={150} size={24}>10 km</SvgPill>
+          <SvgPill t={t} fps={fps} a={spot} x={mid(10)} y={yP + 92} w={270} size={22} bg={GREEN}>SWEET SPOT · 10 km</SvgPill>
         </g>
       </svg>
     </Scene>
@@ -845,18 +898,19 @@ function SceneA7p({t, at, fps, a, b}) {
 // the small framed print the photo shrinks into on line 8: lower left, clear of the captions
 const PRINT_BOX = [60, 520, 540, 340];
 const printBox = (sh) => [lerp(0, PRINT_BOX[0], sh), lerp(0, PRINT_BOX[1], sh), lerp(W, PRINT_BOX[2], sh), lerp(H, PRINT_BOX[3], sh)];
-// ---------- line 8: on "how" the photo shrinks into a small framed print lower left; on the clean navy beside it a split ladder: the
-// bottom part (0-20 m) holds the Flyer at 3 M, the top part (10,000 M) holds the jet; on "climb" the top part slides up and the break
-// between them stretches, a dotted climb joining the two; "3 M" on "three", "10,000 M" counts on "ten thousand"; then hold, calm ----------
+// ---------- line 8 (review 2: the line now ends on "ten thousand?", ~3 s): on "how" the photo shrinks into a small framed print lower
+// left; on the clean navy beside it a split ladder: the bottom part (0-20 m) holds the Flyer at 3 M, the top part (10,000 M) holds the
+// jet; on "climb" the top part slides up and the break between them stretches, a dotted climb joining the two, landing exactly on
+// "ten thousand"; "3 M" on "three", "10,000 M" counts on "ten"; a short calm push into line 9 ----------
 function SceneA8({t, at, fps, a, b}) {
   const how = at(8, 'how'), climbW = at(8, 'climb'), three = at(8, 'three'), ten = at(8, 'ten');
-  const sh = ease(t, how, 1.0, Easing.inOut(Easing.cubic));
+  const sh = ease(t, how, 0.8, Easing.inOut(Easing.cubic));
   const box = printBox(sh);
-  const split = ease(t, climbW, 2.0, Easing.inOut(Easing.cubic));
+  const split = ease(t, climbW, Math.max(0.8, ten - climbW), Easing.inOut(Easing.cubic));
   const AX = 1000, botTop = 720, flyerY = 839;
   const topBase = lerp(640, 330, split);
   const jetY = topBase - 100;
-  const metres = 10000 * ease(t, ten, 0.9, Easing.out(Easing.quad));
+  const metres = 10000 * ease(t, ten, 0.7, Easing.out(Easing.quad));
   const zig = [];
   for (let i = 0; i < 4; i++) zig.push(`L${AX + (i % 2 ? 14 : -14)},${botTop - 12 - i * 10}`);
   const cam = 1 + 0.04 * lin(t, ten, Math.max(0.5, b - ten));
@@ -1959,7 +2013,7 @@ const yearSchedule = (at, lines, T) => {
   return s;
 };
 
-export const AviHistory1 = ({lines = [], words = [], seconds = 369}) => {
+export const AviHistory1 = ({lines = [], words = [], seconds = 366}) => {
   const {fps} = useVideoConfig();
   const frame = useCurrentFrame();
   const t = frame / fps;

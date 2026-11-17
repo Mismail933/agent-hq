@@ -213,21 +213,40 @@ const PlaneSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, accent = AMBER})
     <path d="M30,-9 L40,-9 L36,-4 L28,-4 Z" fill={NAVY} opacity={0.6} />
   </g>
 );
-// the 1903 Wright Flyer seen from the side, nose to +x (canard in front, props behind), about 200 px wide at scale 1; the pilot lies on the lower wing
+// ---------- drawn aircraft at REAL proportions, 10 px per metre at scale 1 (review 4: the same drawings as the long version) ----------
+// a modern airliner (A320 / 737 class) seen from the side, nose to +x: fuselage 37.6 m long, 4 m tall (10:1), the fin swept up
+// off the tail, the wing seen edge-on as a thin slanted line, two engines slung under it
+const AirlinerSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, accent = AMBER}) => (
+  <g transform={`translate(${x}, ${y}) rotate(${rot}) scale(${s})`} opacity={o}>
+    <path d="M14,-4 L-62,-22 L-72,-20 L-4,-1 Z" fill={color} opacity={0.45} />
+    <path d="M188,0 C187,-11 174,-20 150,-20 L-120,-20 L-188,-9 L-188,-3 L-100,20 L150,20 C174,20 187,11 188,0 Z" fill={color} />
+    <path d="M-104,-20 L-160,-84 L-186,-84 L-150,-20 Z" fill={color} />
+    <path d="M-150,-10 L-206,-20 L-208,-15 L-156,-4 Z" fill={color} opacity={0.85} />
+    <path d="M160,-14 L178,-13 L172,-6 L150,-6 Z" fill={NAVY} opacity={0.7} />
+    {Array.from({length: 24}, (_, i) => <rect key={i} x={118 - i * 10} y={-10} width={4} height={5} rx={1} fill={NAVY} opacity={0.45} />)}
+    <rect x={-150} y={-2} width={290} height={5} rx={2} fill={accent} opacity={0.9} />
+    <path d="M34,6 L-46,24 L-58,22 L10,2 Z" fill={color} />
+    <rect x={-22} y={12} width={44} height={20} rx={9} fill={color} opacity={0.75} stroke={NAVY} strokeWidth={2} />
+    <rect x={4} y={18} width={46} height={22} rx={10} fill={color} stroke={NAVY} strokeWidth={2} />
+    <circle cx={6} cy={29} r={8} fill={NAVY} opacity={0.5} />
+  </g>
+);
+// the 1903 Wright Flyer seen from the side, nose to +x: 6.4 m long, two wings of 2 m chord 1.8 m apart, canard ahead, rudder behind,
+// the pilot prone on the lower wing. A long thin biplane: in side view the wings are short bars (their chord)
 const FlyerSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1}) => (
   <g transform={`translate(${x}, ${y}) rotate(${rot}) scale(${s})`} opacity={o}>
-    <rect x={-80} y={-34} width={160} height={6} rx={3} fill={color} />
-    <rect x={-80} y={6} width={160} height={6} rx={3} fill={color} />
-    {[-60, -30, 0, 30, 60].map((sx) => <line key={sx} x1={sx} y1={-30} x2={sx} y2={8} stroke={color} strokeWidth={2.5} opacity={0.8} />)}
-    {[-60, 0, 60].map((sx) => <line key={sx} x1={sx} y1={-30} x2={sx + 30} y2={8} stroke={color} strokeWidth={1.5} opacity={0.5} />)}
-    <line x1={70} y1={-12} x2={120} y2={-16} stroke={color} strokeWidth={3} />
-    <rect x={100} y={-26} width={34} height={5} rx={2} fill={color} />
-    <rect x={100} y={-10} width={34} height={5} rx={2} fill={color} />
-    <line x1={-78} y1={-12} x2={-118} y2={-10} stroke={color} strokeWidth={3} />
-    <rect x={-124} y={-30} width={6} height={36} rx={2} fill={color} />
-    <rect x={-30} y={-2} width={44} height={10} rx={5} fill={AMBER} />
-    <circle cx={16} cy={2} r={6} fill={AMBER} />
-    <ellipse cx={-62} cy={-12} rx={4} ry={22} fill={color} opacity={0.7} />
+    <path d="M-10,-18 Q0,-21.5 12,-18 L12,-16 Q0,-19.5 -10,-16 Z" fill={color} />
+    <path d="M-10,0 Q0,-3.5 12,0 L12,2 Q0,-1.5 -10,2 Z" fill={color} />
+    {[-8, 10].map((sx) => <line key={sx} x1={sx} y1={-16} x2={sx} y2={0} stroke={color} strokeWidth={1} />)}
+    <line x1={-8} y1={-16} x2={10} y2={0} stroke={color} strokeWidth={0.5} opacity={0.6} />
+    <path d="M-12,4 L34,2 M-12,4 L-12,-16 M34,2 L34,-14" stroke={color} strokeWidth={1} fill="none" />
+    <rect x={24} y={-15} width={12} height={1.6} fill={color} />
+    <rect x={24} y={-7} width={12} height={1.6} fill={color} />
+    <path d="M-12,-14 L-32,-13 M-12,-2 L-32,-3" stroke={color} strokeWidth={0.8} />
+    <rect x={-33} y={-16} width={2} height={16} fill={color} />
+    <ellipse cx={-14} cy={-9} rx={1.2} ry={12} fill={color} opacity={0.7} />
+    <rect x={-8} y={-4.5} width={17} height={3} rx={1.5} fill={AMBER} />
+    <circle cx={10} cy={-3.5} r={2} fill={AMBER} />
   </g>
 );
 // a 1914 flying boat seen from above (biplane, hull), nose to +x, about 120 px long at scale 1
@@ -1052,7 +1071,9 @@ export const AviRoutes = ({lines = [], words = [], seconds = 58}) => {
 };
 
 // =====================================================================================================================
-// SAMPLE 3: ALTITUDE (9 lines, ~53.0 s; lines 6-8 are the transition into the history video)
+// SAMPLE 3: ALTITUDE (9 lines, ~53.0 s; lines 6-8 are the transition into the history video). Review 4: the same drawings as the long
+// version (ref/AviHistory1.jsx lines 0-8: the airliner and the Flyer at real proportions) ported back to 9:16, and the coffin-corner
+// chart explaining itself on the existing words
 // =====================================================================================================================
 const LY = (h) => 1100 - h * 45;   // the altitude ladder: 0 km at y 1100, 20 km at y 200
 // an arrow with its head at the far end; dir 'left' or 'up'; len in px
@@ -1103,26 +1124,26 @@ function Ladder({t, fps, a, h, tilt = 0, drag = 0, dragK = 0, lift = 0, liftK = 
       {/* Concorde for scale */}
       <g opacity={kC * 0.6}>
         <line x1={420} y1={LY(18)} x2={1040} y2={LY(18)} stroke={WHITE} strokeWidth={3} strokeDasharray="12 14" />
-        <PlaneSide x={960} y={LY(18) - 2} s={0.8} />
+        <AirlinerSide x={940} y={LY(18) - 3} s={0.28} />
         <Lbl x={430} y={LY(18) - 14} anchor="start" size={20}>CONCORDE ~18 km</Lbl>
       </g>
-      {/* the airliner */}
-      <line x1={px - 150} y1={y + 4} x2={px - 420} y2={y + 10} stroke={WHITE} strokeWidth={10} strokeLinecap="round" opacity={0.18} />
-      <PlaneSide x={px} y={y} s={2.2} rot={-tilt} />
+      {/* the airliner (real proportions, 37.6 m long at 6 px per metre) */}
+      <line x1={px - 150} y1={y + 4} x2={px - 440} y2={y + 10} stroke={WHITE} strokeWidth={10} strokeLinecap="round" opacity={0.18} />
+      <AirlinerSide x={px} y={y} s={0.6} rot={-tilt} />
       {/* drag: backward arrows behind the plane */}
       {dragK > 0 ? (
         <g>
-          <Arrow x={px - 140} y={y - 26} len={60 + 140 * drag} dir="left" color={RED} k={dragK} />
-          <Arrow x={px - 140} y={y + 30} len={60 + 140 * drag} dir="left" color={RED} k={dragK} />
-          <Lbl x={px - 140 - (60 + 140 * drag) / 2} y={y + 80} size={22} color={RED} o={dragK}>DRAG</Lbl>
+          <Arrow x={px - 132} y={y - 22} len={60 + 140 * drag} dir="left" color={RED} k={dragK} />
+          <Arrow x={px - 132} y={y + 26} len={60 + 140 * drag} dir="left" color={RED} k={dragK} />
+          <Lbl x={px - 132 - (60 + 140 * drag) / 2} y={y + 76} size={22} color={RED} o={dragK}>DRAG</Lbl>
         </g>
       ) : null}
       {/* lift: upward arrows from the wing */}
       {liftK > 0 ? (
         <g>
-          <Arrow x={px - 20} y={y - 36} len={50 + 130 * lift} dir="up" color={AMBER} k={liftK} />
-          <Arrow x={px + 60} y={y - 36} len={50 + 130 * lift} dir="up" color={AMBER} k={liftK} />
-          <Lbl x={px + 20} y={y - 36 - (50 + 130 * lift) - 18} size={22} color={AMBER} o={liftK}>LIFT</Lbl>
+          <Arrow x={px - 26} y={y - 36} len={50 + 130 * lift} dir="up" color={AMBER} k={liftK} />
+          <Arrow x={px + 46} y={y - 36} len={50 + 130 * lift} dir="up" color={AMBER} k={liftK} />
+          <Lbl x={px + 10} y={y - 36 - (50 + 130 * lift) - 18} size={22} color={AMBER} o={liftK}>LIFT</Lbl>
         </g>
       ) : null}
     </g>
@@ -1270,75 +1291,139 @@ function SceneA3({t, at, fps, a, b}) {
   );
 }
 
-// ---------- lines 4-5: the flight envelope. a speed/altitude chart: the airliner sits at 10 km with room on both sides; on "too high" a
-// ghost plane climbs towards the corner; the STALL SPEED line (leaning right) draws from the bottom on "the speed at which the wing
-// stalls rises"; the MAX SPEED line (leaning left) draws to meet it on "to meet the plane's top speed"; the amber envelope between
-// them narrows to a point = COFFIN CORNER (~14.5 km) on "coffin corner". Line 5: the ghost fades on "ten", a tick on the 10 km plane
-// on "sweet", the "10 km" pill on "spot", then a calm last beat with a slow push ----------
+// a small red flash label inside an <svg> (the live examples' "STALL" / "TOO FAST")
+const Flash = ({x, y, w = 110, o = 1, children}) => (o <= 0 ? null : (
+  <g transform={`translate(${x}, ${y})`} opacity={o}>
+    <rect x={-w / 2} y={-18} width={w} height={36} rx={8} fill={RED} />
+    <text y={7} textAnchor="middle" fontFamily={SMALL} fontWeight={800} fontSize={20} fill={WHITE} letterSpacing={2}>{children}</text>
+  </g>
+));
+
+// ---------- lines 4-5 (review 4): the flight envelope, explained on the words. Axes SLOWER <-> FASTER and HIGHER; from the start the two
+// limits are sketched faintly with the green SAFE SPEEDS band between them; the airliner (real proportions) sits at 10 km with room on
+// both sides. On "Climb too high" a ghost climbs slowly up the narrowing band through the whole sentence. On "stalls" the left line
+// draws solid: STALL SPEED · too slow: the wing stops lifting, with a live example beside it (a small plane noses up, stalls with a red
+// STALL flash and drops, looping). On "top" the right line draws: MAX SPEED · too fast: the airframe is overstressed, with its example
+// (a small plane shaking, stress marks, a red TOO FAST flash). Where the lines meet: COFFIN CORNER · no safe speed left on "coffin
+// corner", the ghost shivering there. Line 5: the ghost fades on "ten"; a tick on the airliner on "sweet", SWEET SPOT · 10 km on "spot",
+// then a calm last beat with a slow push ----------
 function SceneA4({t, at, fps, a, b}) {
-  const too = at(4, 'too'), speed = at(4, 'speed'), stalls = at(4, 'stalls'), meet = at(4, 'meet'), top = at(4, 'top'), coffin = at(4, 'coffin');
+  const climbW = at(4, 'Climb'), stalls = at(4, 'stalls'), top = at(4, 'top'), coffin = at(4, 'coffin');
   const ten = at(5, 'ten'), sweet = at(5, 'sweet'), spot = at(5, 'spot');
-  const cy = (h) => 1080 - h * 44, xs = (h) => 290 + 24 * h, xt = (h) => 920 - 19.45 * h;
+  const cy = (h) => 1040 - h * 42, xs = (h) => 290 + 24 * h, xt = (h) => 920 - 19.45 * h;
   const HM = (920 - 290) / (24 + 19.45), XM = xs(HM), YM = cy(HM);
   const mid = (h) => (xs(h) + xt(h)) / 2;
   const axes = ease(t, a, 0.6);
-  const pS = ease(t, speed, 1.9, Easing.inOut(Easing.quad)), pT = ease(t, meet, 1.3, Easing.inOut(Easing.quad));
+  const sketch = ease(t, a + 0.3, 0.8);                                     // the faint envelope, there from the start
+  const pS = ease(t, stalls, 1.0, Easing.inOut(Easing.quad)), pT = ease(t, top, 0.9, Easing.inOut(Easing.quad));
   const kCC = pop(t, coffin, fps, bouncy);
-  // the ghost: climbs from 10 km to the corner on "too high", shivers there, fades on "ten"
-  const climb = ease(t, too, 1.5, Easing.inOut(Easing.quad));
-  const hg = lerp(10, HM - 0.3, climb);
-  const ghostO = (t >= too ? 0.55 : 0) * (1 - ease(t, ten, 0.5));
+  // the ghost climbs slowly through the whole sentence and reaches the corner as the two lines meet
+  const climb = ease(t, climbW, Math.max(1, top + 0.6 - climbW), Easing.inOut(Easing.quad));
+  const hg = lerp(10, HM - 0.35, climb);
+  const ghostO = (t >= climbW ? 0.6 : 0) * (1 - ease(t, ten, 0.5));
   const shake = Math.sin(t * 40) * 4 * (climb >= 1 ? 1 : 0) * ghostO;
   const pts = [];
   for (let i = 0; i <= 30; i++) pts.push(HM * i / 30);
   const stallD = pts.map((h, i) => `${i ? 'L' : 'M'}${xs(h).toFixed(1)},${cy(h).toFixed(1)}`).join(' ');
   const topD = pts.map((h, i) => `${i ? 'L' : 'M'}${xt(h).toFixed(1)},${cy(h).toFixed(1)}`).join(' ');
-  const hb = HM * Math.min(pS, pT);
-  const band = hb > 0 ? closed([[xs(0), cy(0)], [xs(hb), cy(hb)], [xt(hb), cy(hb)], [xt(0), cy(0)]]) : '';
+  const band = closed([[xs(0), cy(0)], [XM, YM], [xt(0), cy(0)]]);        // the whole envelope: wide below, a point at the top
+  const glow = 0.14 + 0.05 * Math.sin(t * 2.5);
   const cam = 1 + 0.04 * lin(t, sweet, Math.max(0.5, b - sweet));
   const yP = cy(10) + Math.sin(t * 2) * 4;
+  // the two live examples, in turn: the stall (from "stalls" until "top"), the overspeed (from "top" until "coffin")
+  const oStall = ease(t, stalls, 0.3) * (1 - ease(t, top, 0.3));
+  const oFast = ease(t, top, 0.3) * (1 - ease(t, coffin, 0.3));
+  const cyc = t >= stalls ? ((t - stalls) % 1.8) / 1.8 : 0;                 // the stall loop: nose up, hang, stall, drop, reset
+  const noseUp = clamp01(cyc / 0.3), dropP = clamp01((cyc - 0.45) / 0.35);
+  const stRot = cyc < 0.45 ? -28 * noseUp : lerp(-28, 14, dropP);
+  const stDrop = 70 * dropP * dropP;
+  const stO = cyc > 0.8 ? 1 - (cyc - 0.8) / 0.2 : 1;
+  const stFlash = cyc > 0.4 && cyc < 0.8 ? 0.6 + 0.4 * Math.sin(t * 24) : 0;
+  const SX = xs(7.5) - 95, SY = cy(7.5), FX = xt(7.5) + 95, FY = cy(7.5);
+  const fsh = Math.sin(t * 45) * 4;
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <g transform={`translate(${mid(10)}, ${cy(10)}) scale(${cam}) translate(${-mid(10)}, ${-cy(10)})`}>
+          {/* axes: SLOWER <-> FASTER, HIGHER */}
           <g opacity={axes}>
-            <line x1={200} y1={1080} x2={200 + 780 * axes} y2={1080} stroke={WHITE} strokeWidth={4} opacity={0.6} />
-            <line x1={200} y1={1080} x2={200} y2={1080 - 840 * axes} stroke={WHITE} strokeWidth={4} opacity={0.6} />
-            <polygon points={polyPts(985, 1080, 14, 3, 0)} fill={WHITE} opacity={0.6} />
-            <polygon points={polyPts(200, 235, 14, 3, -Math.PI / 2)} fill={WHITE} opacity={0.6} />
+            <line x1={200} y1={1040} x2={200 + 780 * axes} y2={1040} stroke={WHITE} strokeWidth={4} opacity={0.6} />
+            <line x1={200} y1={1040} x2={200} y2={1040 - 740 * axes} stroke={WHITE} strokeWidth={4} opacity={0.6} />
+            <polygon points={polyPts(985, 1040, 14, 3, 0)} fill={WHITE} opacity={0.6} />
+            <polygon points={polyPts(200, 295, 14, 3, -Math.PI / 2)} fill={WHITE} opacity={0.6} />
             {[0, 5, 10, 15].map((k) => (
               <g key={k}>
                 <line x1={186} y1={cy(k)} x2={214} y2={cy(k)} stroke={WHITE} strokeWidth={4} opacity={0.6} />
-                <Lbl x={172} y={cy(k) + 8} anchor="end" size={22} o={0.85}>{k} km</Lbl>
+                <Lbl x={172} y={cy(k) + 8} anchor="end" size={20} o={0.85}>{k} km</Lbl>
               </g>
             ))}
-            <Lbl x={980} y={1124} anchor="end" size={20} o={0.7}>SPEED</Lbl>
-            <Lbl x={200} y={206} size={20} o={0.7}>ALTITUDE</Lbl>
+            <Lbl x={222} y={1076} anchor="start" size={18} o={0.8}>SLOWER</Lbl>
+            <Lbl x={980} y={1076} anchor="end" size={18} o={0.8}>FASTER</Lbl>
+            <line x1={340} y1={1068} x2={860} y2={1068} stroke={WHITE} strokeWidth={2} opacity={0.45} />
+            <polygon points={polyPts(340, 1068, 8, 3, Math.PI)} fill={WHITE} opacity={0.5} />
+            <polygon points={polyPts(860, 1068, 8, 3, 0)} fill={WHITE} opacity={0.5} />
+            <Lbl x={200} y={272} size={18} o={0.8}>HIGHER</Lbl>
             <line x1={214} y1={cy(10)} x2={980} y2={cy(10)} stroke={WHITE} strokeWidth={2} strokeDasharray="8 12" opacity={0.25} />
           </g>
-          {/* the envelope between the two lines */}
-          {band ? <path d={band} fill={AMBER} opacity={0.14} /> : null}
+          {/* the envelope: the green SAFE SPEEDS band between the two limits, wide at 10 km, a point at the top */}
+          <path d={band} fill={GREEN} opacity={glow * sketch} />
+          <path d={stallD} stroke={RED} strokeWidth={4} fill="none" strokeDasharray="10 12" opacity={0.35 * sketch} />
+          <path d={topD} stroke={SKY} strokeWidth={4} fill="none" strokeDasharray="10 12" opacity={0.35 * sketch} />
+          <Lbl x={mid(6)} y={cy(6) + 6} size={20} color={GREEN} o={0.9 * sketch}>SAFE SPEEDS</Lbl>
+          {/* the limits draw solid on their words */}
           <path d={stallD} stroke={RED} strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - pS} opacity={pS > 0 ? 1 : 0} />
           <path d={topD} stroke={SKY} strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - pT} opacity={pT > 0 ? 1 : 0} />
-          {t >= stalls ? <Lbl x={xs(1.5) + 18} y={cy(1.5) - 10} anchor="start" size={22} color={RED} o={ease(t, stalls, 0.3)}>STALL SPEED</Lbl> : null}
-          {t >= top ? <Lbl x={xt(1.5) - 18} y={cy(1.5) - 10} anchor="end" size={22} color={SKY} o={ease(t, top, 0.3)}>MAX SPEED</Lbl> : null}
+          {t >= stalls ? (
+            <g opacity={ease(t, stalls, 0.3)}>
+              <Lbl x={xs(1.2) + 16} y={cy(1.2) - 14} anchor="start" size={22} color={RED}>STALL SPEED</Lbl>
+              <Lbl x={xs(1.2) + 16} y={cy(1.2) + 12} anchor="start" size={18} weight={600} o={0.9}>too slow: the wing stops lifting</Lbl>
+            </g>
+          ) : null}
+          {t >= top ? (
+            <g opacity={ease(t, top, 0.3)}>
+              <Lbl x={xt(4) - 16} y={cy(4) - 14} anchor="end" size={22} color={SKY}>MAX SPEED</Lbl>
+              <Lbl x={xt(4) - 16} y={cy(4) + 12} anchor="end" size={18} weight={600} o={0.9}>too fast: the airframe is overstressed</Lbl>
+            </g>
+          ) : null}
+          {/* live example 1, beside the stall line: a small plane noses up, stalls and drops */}
+          {oStall > 0 ? (
+            <g opacity={oStall * stO}>
+              <AirlinerSide x={SX} y={SY + stDrop} s={0.22} rot={stRot} />
+              <Flash x={SX} y={SY - 58} w={100} o={stFlash}>STALL</Flash>
+            </g>
+          ) : null}
+          {/* live example 2, beside the max-speed line: a small plane shaking, stress marks, TOO FAST */}
+          {oFast > 0 ? (
+            <g opacity={oFast}>
+              <AirlinerSide x={FX + fsh} y={FY} s={0.22} rot={Math.sin(t * 38) * 3} />
+              {[[-54, -30], [46, -34], [-10, 32]].map(([mx, my], i) => (
+                <path key={i} d={`M${FX + mx},${FY + my} l 10 -6 l -4 10 l 10 -6`} stroke={RED} strokeWidth={3} fill="none" strokeLinecap="round" opacity={Math.sin(t * 21 + i * 2) > 0 ? 1 : 0.2} />
+              ))}
+              <Flash x={FX} y={FY - 58} w={130} o={0.6 + 0.4 * Math.sin(t * 9)}>TOO FAST</Flash>
+            </g>
+          ) : null}
           {/* the ghost climbing into the corner */}
-          {ghostO > 0 ? <PlaneSide x={mid(hg) + shake} y={cy(hg)} s={1.1} color={SKY} accent={SKY} o={ghostO} rot={-8 * climb * (1 - climb) * 4} /> : null}
-          {/* the airliner at 10 km, inside the envelope */}
-          <PlaneSide x={mid(10)} y={yP} s={1.1} />
-          {/* the coffin corner */}
+          {ghostO > 0 ? <AirlinerSide x={mid(hg) + shake} y={cy(hg)} s={0.35} color={SKY} accent={SKY} o={ghostO} rot={-6 * Math.sin(climb * Math.PI)} /> : null}
+          {/* the airliner at 10 km, inside the band with room on both sides */}
+          <AirlinerSide x={mid(10)} y={yP} s={0.35} />
+          {/* the coffin corner: no safe speed left */}
           <g transform={`translate(${XM}, ${YM})`}>
             {t >= coffin ? [0, 1].map((i) => {
               const ph = ((t - coffin) * 0.9 + i * 0.5) % 1;
               return <circle key={i} r={30 + ph * 90} fill="none" stroke={RED} strokeWidth={6 * (1 - ph)} opacity={(1 - ph) * 0.8} />;
             }) : null}
-            <circle r={24 * kCC} fill={RED} stroke={WHITE} strokeWidth={5} opacity={Math.min(1, kCC)} />
+            <circle r={22 * kCC} fill={RED} stroke={WHITE} strokeWidth={5} opacity={Math.min(1, kCC)} />
           </g>
-          {kCC > 0 ? <Lbl x={XM} y={YM - 52} size={26} color={RED} o={Math.min(1, kCC)}>COFFIN CORNER</Lbl> : null}
+          {kCC > 0 ? (
+            <g opacity={Math.min(1, kCC)}>
+              <Lbl x={XM} y={YM - 58} size={26} color={RED}>COFFIN CORNER</Lbl>
+              <Lbl x={XM} y={YM - 32} size={18} weight={600} o={0.9}>no safe speed left</Lbl>
+            </g>
+          ) : null}
           {/* line 5: the sweet spot */}
-          <Tick x={mid(10)} y={yP - 110} k={pop(t, sweet, fps, bouncy)} r={50} />
-          <SvgPill t={t} fps={fps} a={spot} x={mid(10)} y={yP + 92} w={150} size={24}>10 km</SvgPill>
+          <Tick x={mid(10)} y={yP - 96} k={pop(t, sweet, fps, bouncy)} r={44} />
+          <SvgPill t={t} fps={fps} a={spot} x={mid(10)} y={yP + 84} w={250} size={22} bg={GREEN}>SWEET SPOT · 10 km</SvgPill>
         </g>
       </svg>
     </Scene>
@@ -1371,7 +1456,7 @@ function SceneA7({t, at, fps, a, b}) {
   const first = at(7, 'first'), year = at(7, '1903'), three = at(7, 'three');
   const zoomIn = 1.5 - 0.5 * ease(t, a, 0.9, Easing.out(Easing.cubic));
   const fly = ease(t, first, 1.1, Easing.out(Easing.cubic));
-  const fx = lerp(-220, 640, fly), fy = LYM(3) + Math.sin(t * 2.2) * 5;
+  const fx = lerp(-300, 640, fly), fy = LYM(3) - 18 + Math.sin(t * 2.2) * 5;   // the Flyer to scale: 45 px per metre, 6.4 m long
   const kThree = pop(t, three, fps, soft);
   return (
     <Scene t={t} a={a}>
@@ -1392,8 +1477,9 @@ function SceneA7({t, at, fps, a, b}) {
           {/* the 3 m mark */}
           <line x1={214} y1={LYM(3)} x2={1040} y2={LYM(3)} stroke={AMBER} strokeWidth={3} strokeDasharray="10 14" opacity={0.6 * kThree} />
           <line x1={640} y1={1100} x2={640} y2={LYM(3) + 30} stroke={AMBER} strokeWidth={3} opacity={0.5 * kThree} strokeDasharray="4 8" />
-          <FlyerSide x={fx} y={fy} s={1.2} rot={-3 + 4 * Math.sin(t * 1.7)} />
-          <SvgPill t={t} fps={fps} a={three} x={640} y={LYM(3) - 110} w={140} size={24}>~3 M</SvgPill>
+          <FlyerSide x={fx} y={fy} s={4.5} rot={-3 + 4 * Math.sin(t * 1.7)} />
+          <SvgPill t={t} fps={fps} a={three} x={640} y={LYM(3) - 150} w={140} size={24}>~3 M</SvgPill>
+          <Lbl x={640} y={LYM(3) + 60} size={18} o={0.6 * kThree}>12.3 M SPAN · 6.4 M LONG</Lbl>
         </g>
       </svg>
       <Num t={t} a={year} fps={fps} x={60} y={160} size={100} color={WHITE} align="left">1903</Num>
@@ -1446,7 +1532,7 @@ function SceneA8({t, at, fps, a, b}) {
           <Lbl x={AX - 28} y={1108} anchor="end" size={20} o={0.7}>0 m</Lbl>
           <Lbl x={AX - 28} y={botTop + 8} anchor="end" size={20} o={0.7}>20 m</Lbl>
           <line x1={AX} y1={flyerY} x2={AX + 160} y2={flyerY} stroke={AMBER} strokeWidth={3} strokeDasharray="8 10" opacity={0.7} />
-          <FlyerSide x={AX + 250} y={flyerY - 6} s={0.6} />
+          <FlyerSide x={AX + 250} y={flyerY - 4} s={0.9} />
           {/* the break: the top segment slides up, the gap between them stretches */}
           <path d={`M${AX},${botTop} ${zig.join(' ')} L${AX},${botTop - 60}`} stroke={WHITE} strokeWidth={5} fill="none" strokeLinejoin="round" opacity={0.85} />
           <line x1={AX} y1={botTop - 60} x2={AX} y2={topBase + 50} stroke={WHITE} strokeWidth={3} strokeDasharray="6 18" opacity={0.5 * split} />
@@ -1455,10 +1541,7 @@ function SceneA8({t, at, fps, a, b}) {
           <line x1={AX} y1={topBase} x2={AX} y2={topBase - 240} stroke={WHITE} strokeWidth={5} opacity={0.85} />
           <line x1={AX - 16} y1={jetY} x2={AX + 16} y2={jetY} stroke={WHITE} strokeWidth={4} opacity={0.7} />
           <line x1={AX} y1={jetY} x2={AX + 160} y2={jetY} stroke={AMBER} strokeWidth={3} strokeDasharray="8 10" opacity={0.7} />
-          <g transform={`translate(${AX + 250}, ${jetY + Math.sin(t * 2) * 4})`}>
-            <PlaneSide x={0} y={0} s={1.6} />
-            <Tray x={110} y={-6} s={0.45} dish="steak" t={t} />
-          </g>
+          <AirlinerSide x={AX + 280} y={jetY + Math.sin(t * 2) * 4} s={0.4} />
           {/* the dotted climb from the Flyer to the jet */}
           {Array.from({length: 40}, (_, i) => {
             const u = (i + 1) / 40;
