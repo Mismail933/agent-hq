@@ -14,13 +14,20 @@ import geo from './geo.json';   // Natural Earth (public domain): geo.world.feat
 // fallback. Files: av2-wilbur-lemans-1908.jpg, av2-santos-dumont-14bis.jpg, av2-bleriot-1909.jpg, av2-fokker-eindecker.jpg,
 // av2-wwi-fighters.jpg, av2-alcock-brown-1919.jpg, av2-lindbergh-1927.jpg, av2-earhart-1932.jpg, av2-dc3.jpg, av2-hindenburg-1937.jpg,
 // av2-he178.jpg, av2-spitfire.jpg, av2-p51.jpg, av2-me262.jpg, av2-b17-formation.jpg, av2-chicago-1944.jpg, av2-x1-1947.jpg, av2-comet-1949.jpg
-const HAVE = {wilbur: true, santos: false, bleriot: true, fokker: true, camel: true, vimy: true, lindbergh: true, earhart: true,
-  dc3: true, hindenburg: true, he178: true, spitfire: true, p51: true, me262: true, b17: true, chicago: false, x1: true, comet: false};
+const HAVE = {wilbur: false, santos: false, bleriot: false, fokker: false, camel: false, vimy: false, lindbergh: false, earhart: false,
+  dc3: false, hindenburg: false, he178: false, spitfire: false, p51: false, me262: false, b17: false, chicago: false, x1: false, comet: false};
 const PIC = {wilbur: 'av2-wilbur-lemans-1908.jpg', santos: 'av2-santos-dumont-14bis.jpg', bleriot: 'av2-bleriot-1909.jpg', fokker: 'av2-fokker-eindecker.jpg',
   camel: 'av2-wwi-fighters.jpg', vimy: 'av2-alcock-brown-1919.jpg', lindbergh: 'av2-lindbergh-1927.jpg', earhart: 'av2-earhart-1932.jpg', dc3: 'av2-dc3.jpg',
   hindenburg: 'av2-hindenburg-1937.jpg', he178: 'av2-he178.jpg', spitfire: 'av2-spitfire.jpg', p51: 'av2-p51.jpg', me262: 'av2-me262.jpg',
   b17: 'av2-b17-formation.jpg', chicago: 'av2-chicago-1944.jpg', x1: 'av2-x1-1947.jpg', comet: 'av2-comet-1949.jpg'};
 const NEWSREEL = 'hindenburg-newsreel-1937.mp4';   // Universal Newsreel 1937, 1920x1440 (4:3, cropped to 16:9 by object-fit cover). Only 6-55 s and 68-105 s are used.
+// real films that are always there (review 2)
+const LINDBERGH = 'lindbergh-paris-1927.mp4';   // a 4:3 newsreel letterboxed in 1920x1080: ALWAYS zoom >= 1.35, focus left/down (the black bars and the AP logo top-right crop out)
+const A380 = 'a380-takeoff-yyz.mp4';            // today: an A380 head-on in mist, 0-34 s, airborne from ~12 s
+const B747 = 'b747-takeoff-pae.mp4';            // today: a 747-8 climbing past, 0-14 s
+// real films still downloading (review 2): the Builder switches them on; each has an animated fallback. First 60 s of each are used.
+const FILMS = {airDepot: false, junkers: false, ju52: false, p51: false, warbirds: false};
+const FILM = {airDepot: 'air-depot-1918.mp4', junkers: 'junkers-f13-1922.mp4', ju52: 'ju52-flight.mp4', p51: 'p51-flyby.mp4', warbirds: 'warbirds-flyby.mp4'};
 
 const W = 1920, H = 1080;
 const NAVY = '#0B1B33', NAVY2 = '#152C4F', WHITE = '#FFFFFF', AMBER = '#FFB547';
@@ -89,7 +96,12 @@ const gcAt = (proj, A, B, u) => {
 const LAND_FC = geo.world;
 const RIVERS = geo.rivers || null;
 const GRAT = geoGraticule10();
-const feats = (a3s) => ({type: 'FeatureCollection', features: LAND_FC.features.filter((f) => a3s.includes(f.properties.a3))});
+// review 2: geo.detail holds DETAILED outlines for the countries the chapter shows; where one exists it replaces the world shape
+const DETAIL_FC = geo.detail && geo.detail.features ? geo.detail : {type: 'FeatureCollection', features: []};
+const DETAIL_SET = new Set(DETAIL_FC.features.map((f) => f.properties.a3));
+const LAND_ALL = {type: 'FeatureCollection', features: LAND_FC.features.filter((f) => !DETAIL_SET.has(f.properties.a3)).concat(DETAIL_FC.features)};
+const feats = (a3s) => ({type: 'FeatureCollection', features: LAND_ALL.features.filter((f) => a3s.includes(f.properties.a3))});
+const COAST = '#6D8DBB', BORDER = '#4E6C9C', LAND_HI = '#4A6CA8';
 const fitBox = (ll, box, pad = 0) => geoMercator().fitExtent([[box[0] + pad, box[1] + pad], [box[0] + box[2] - pad, box[1] + box[3] - pad]],
   {type: 'MultiPoint', coordinates: [[ll[0], ll[1]], [ll[2], ll[1]], [ll[2], ll[3]], [ll[0], ll[3]]]});
 const camState = (p, c) => ({scale: p.scale(), center: p.invert(c)});
@@ -267,18 +279,28 @@ const Chevrons = ({t, x, y, n = 3, k = 1, color = AMBER, len = 60, size = 26}) =
     })}
   </g>
 ));
+// a map panel (review 2: a real-map look): sea with a subtle dot texture and graticule, the land from the detailed outlines where
+// they exist (else the world shapes), a lighter coastline (a wide pale stroke under the fills), thin lighter-navy borders between
+// countries, the highlighted countries in a brighter fill with an accent stroke
 function MapPanel({proj, hi = [], box, k = 1, id, children, o = 1, rx = 28, rivers = 0, hiColor = AMBER}) {
   if (k <= 0) return null;
   const path = geoPath(proj.clipExtent([[box[0], box[1]], [box[0] + box[2], box[1] + box[3]]]));
   const c = boxC(box);
+  const landD = path(LAND_ALL) || '';
   return (
     <g transform={`translate(${c[0]}, ${c[1]}) scale(${0.92 + 0.08 * Math.min(1, k)}) translate(${-c[0]}, ${-c[1]})`} opacity={Math.min(1, k) * o}>
-      <defs><clipPath id={`${id}-clip`}><rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} /></clipPath></defs>
+      <defs>
+        <clipPath id={`${id}-clip`}><rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} /></clipPath>
+        <pattern id={`${id}-sea`} width={14} height={14} patternUnits="userSpaceOnUse"><circle cx={7} cy={7} r={1.1} fill={WHITE} opacity={0.5} /></pattern>
+      </defs>
       <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} fill={SEA} />
       <g clipPath={`url(#${id}-clip)`}>
-        <path d={path(GRAT) || ''} stroke={WHITE} strokeWidth={1} fill="none" opacity={0.08} />
-        <path d={path(LAND_FC) || ''} fill={LAND} stroke={LAND2} strokeWidth={1.2} strokeLinejoin="round" />
-        {hi.length ? <path d={path(feats(hi)) || ''} fill={LAND2} stroke={hiColor} strokeWidth={2} strokeLinejoin="round" opacity={0.95} /> : null}
+        <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} fill={`url(#${id}-sea)`} opacity={0.12} />
+        <path d={path(GRAT) || ''} stroke={WHITE} strokeWidth={1} fill="none" opacity={0.1} />
+        <path d={landD} fill="none" stroke={COAST} strokeWidth={3.5} strokeLinejoin="round" opacity={0.55} />
+        <path d={landD} fill={LAND} stroke="none" />
+        <path d={landD} fill="none" stroke={BORDER} strokeWidth={1} strokeLinejoin="round" opacity={0.9} />
+        {hi.length ? <path d={path(feats(hi)) || ''} fill={LAND_HI} stroke={hiColor} strokeWidth={2} strokeLinejoin="round" opacity={0.95} /> : null}
         {rivers > 0 && RIVERS ? <path d={path(RIVERS) || ''} stroke={SKY} strokeWidth={rivers} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.85} /> : null}
         {children}
       </g>
@@ -565,16 +587,33 @@ const FlyerSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, pilot = 1, spin 
 );
 // the Wright Flyer seen from behind: 12.3 m span, the wings 1.8 m apart with struts, the pilot in the middle, the engine beside him,
 // two propellers (spin 0..1 blurs them), skids below. warp -1..1 twists the wing tips: one side's trailing edge down, the other's up
+// (review 2) ONE connected wing cell: both wings are built from the same spanwise function, the struts run from the lower wing to the
+// upper wing at every bay, the wires cross between consecutive struts with their ends ON the strut ends; warping moves the outer
+// cell (wings, struts and wires together) and leans the struts with the local slope, so nothing floats apart
 const FlyerFront = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, spin = 0, warp = 0}) => {
-  const wing = (yy) => `M-61.5,${yy + 7 * warp} Q-30,${yy - 2.5 + 2 * warp} 0,${yy - 5} Q30,${yy - 2.5 - 2 * warp} 61.5,${yy - 7 * warp} L61.5,${yy + 2 - 7 * warp} Q30,${yy - 0.5 - 2 * warp} 0,${yy - 3} Q-30,${yy - 0.5 + 2 * warp} -61.5,${yy + 2 + 7 * warp} Z`;
+  const smooth = (u) => { const v = clamp01(u); return v * v * (3 - 2 * v); };
+  const off = (sx) => warp * 9 * Math.sign(sx) * smooth((Math.abs(sx) - 18) / 43.5);          // the cell's vertical shift at sx
+  const slope = (sx) => (off(sx + 2) - off(sx - 2)) / 4;
+  const camber = (sx) => -2.5 * (1 - (sx / 61.5) * (sx / 61.5));
+  const wingY = (sx, base) => base + camber(sx) + off(sx);
+  const wing = (base) => {
+    const top = [], bot = [];
+    for (let i = 0; i <= 24; i++) { const sx = -61.5 + i * (123 / 24); top.push([sx, wingY(sx, base) - 1.1]); bot.push([sx, wingY(sx, base) + 1.1]); }
+    return closed(top.concat(bot.reverse()));
+  };
+  const bays = [-61, -43, -26, -9, 9, 26, 43, 61];
+  const strut = (sx) => { const lean = slope(sx) * 10; return [[sx - lean, wingY(sx, 2)], [sx + lean, wingY(sx, -16)]]; };   // [bottom, top]
   return (
     <g transform={`translate(${x}, ${y}) rotate(${rot}) scale(${s})`} opacity={o}>
-      {[-1, 1].map((sg) => <g key={sg} opacity={0.55}><ellipse cx={sg * 28} cy={-9} rx={2 + 11 * spin} ry={13} fill={color} /><line x1={sg * 28} y1={-22} x2={sg * 28} y2={4} stroke={color} strokeWidth={1.2} /></g>)}
+      {[-1, 1].map((sg) => <g key={sg} opacity={0.55}><ellipse cx={sg * 28} cy={-9} rx={2 + 11 * spin} ry={13} fill={color} /><line x1={sg * 28} y1={wingY(sg * 28, -16)} x2={sg * 28} y2={wingY(sg * 28, 2)} stroke={color} strokeWidth={1.2} /></g>)}
+      {bays.slice(0, -1).map((sx, i) => {
+        const a = strut(sx), b = strut(bays[i + 1]);
+        return <g key={sx} opacity={0.65}><line x1={a[0][0]} y1={a[0][1]} x2={b[1][0]} y2={b[1][1]} stroke={color} strokeWidth={0.45} /><line x1={a[1][0]} y1={a[1][1]} x2={b[0][0]} y2={b[0][1]} stroke={color} strokeWidth={0.45} /></g>;
+      })}
+      {bays.map((sx) => { const p = strut(sx); return <line key={sx} x1={p[0][0]} y1={p[0][1]} x2={p[1][0]} y2={p[1][1]} stroke={color} strokeWidth={1.1} strokeLinecap="round" />; })}
       <path d={wing(-16)} fill={color} />
       <path d={wing(2)} fill={color} />
-      {[-52, -35, -18, 18, 35, 52].map((sx) => <line key={sx} x1={sx} y1={-16 + Math.abs(sx) * 0.05 + (sx / 61.5) * 7 * warp} x2={sx} y2={2 + Math.abs(sx) * 0.05 + (sx / 61.5) * 7 * warp} stroke={color} strokeWidth={1} />)}
-      {[-52, -18, 18].map((sx) => <line key={sx} x1={sx} y1={-14 + (sx / 61.5) * 7 * warp} x2={sx + 17} y2={2 + ((sx + 17) / 61.5) * 7 * warp} stroke={color} strokeWidth={0.5} opacity={0.6} />)}
-      <path d="M-18,4 L-18,9 L18,9 L18,4" stroke={color} strokeWidth={1.2} fill="none" />
+      <path d={`M-18,${wingY(-18, 2) + 1} L-18,9 L18,9 L18,${wingY(18, 2) + 1}`} stroke={color} strokeWidth={1.2} fill="none" />
       <rect x={-25} y={-10} width={50} height={1.6} fill={color} opacity={0.8} />
       <rect x={-9} y={-6} width={18} height={6} rx={3} fill={AMBER} />
       <circle cx={0} cy={-8} r={2.6} fill={AMBER} />
@@ -996,7 +1035,8 @@ function Scene7({t, at, fps, a, b}) {
 // cruise past each other; trenches draw in below on "war"; a dotted line of sight down to the trenches on "watch"; little waves
 // between the pilots on "wave"; short pistol-shot dashes on "shooting" (no hits, no blood) ----------
 function Scene8({t, at, fps, a, b}) {
-  const war = at(8, 'war'), watch = at(8, 'watch'), wave = at(8, 'wave'), shooting = at(8, 'shooting');
+  const war = at(8, 'war'), atFirst = at(8, 'At'), watch = at(8, 'watch'), wave = at(8, 'wave'), shooting = at(8, 'shooting');
+  const kDraw = FILMS.airDepot ? ease(t, atFirst, 0.4) : 1;   // with the air-depot film: the real 1918 aircraft open the line, the drawing follows on "At first"
   const kIn = pop(t, a, fps, soft);
   const drift = Math.sin(t * 0.6) * 24;
   const A = [640 + drift, 360], B = [1300 - drift, 440];
@@ -1007,7 +1047,8 @@ function Scene8({t, at, fps, a, b}) {
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
-      <svg width={W} height={H} style={{position: 'absolute'}}>
+      {FILMS.airDepot ? <Clip src={FILM.airDepot} from={0} a={a} b={atFirst} t={t} fps={fps} zoom={[1.04, 1.12]} dark={0.25} /> : null}
+      <svg width={W} height={H} style={{position: 'absolute', opacity: kDraw}}>
         <g opacity={kT}>
           <rect x={0} y={740} width={W} height={180} fill={WOOD} opacity={0.25} />
           <path d={zig(790, 40)} stroke={WOOD} strokeWidth={10} fill="none" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - kT} />
@@ -1166,12 +1207,13 @@ function Scene11({t, at, fps, a, b}) {
             })}
           </g>
         </g>
-        {kTh > 0 ? Array.from({length: 36}, (_, i) => {
+        {kTh > 0 && !FILMS.airDepot ? Array.from({length: 36}, (_, i) => {
           const col = i % 12, row = Math.floor(i / 12);
           const k = clamp01(kTh * 2.2 - (col + row * 12) / 36);
           return k > 0 ? <g key={i} opacity={k}><Plane ac="camel" x={200 + col * 130} y={760 + row * 48} s={0.9} rot={0} /><Man x={260 + col * 130} y={775 + row * 48} s={2.6} color={WHITE} /></g> : null;
         }) : null}
       </svg>
+      {FILMS.airDepot ? <Clip src={FILM.airDepot} from={20} a={ends} b={b} t={t} fps={fps} zoom={[1.04, 1.12]} dark={0.25} /> : null}
     </Scene>
   );
 }
@@ -1302,7 +1344,8 @@ function Scene15({t, at, fps, a, b}) {
   const proj = fitBox(LL.ATL_NY, MB, 40);
   const A = [-73.6, 40.73], B = [2.44, 48.97];
   const pts = greatCircle(proj, A, B, 70);
-  const p = ease(t, flies, Math.max(1.5, lands - 0.2 - flies), Easing.inOut(Easing.quad));
+  const itW = at(15, 'It');   // the takeoff newsreel runs from "flies" to "It takes him"; the map crossing starts when it ends
+  const p = ease(t, itW, Math.max(1.5, lands - 0.2 - itW), Easing.inOut(Easing.quad));
   const g = gcAt(proj, A, B, p);
   const h = 33.5 * ease(t, thirty, Math.max(0.5, hours + 0.6 - thirty), Easing.out(Easing.quad));
   const pa = proj(A), pb = proj(B);
@@ -1319,7 +1362,7 @@ function Scene15({t, at, fps, a, b}) {
           }) : null}
           <Pin t={t} fps={fps} a={ny} pt={pa} label="NEW YORK" lx={-22} ly={34} anchor="end" />
           <Pin t={t} fps={fps} a={paris} pt={pb} label="PARIS" lx={22} ly={-16} anchor="start" />
-          {t >= flies ? <Plane ac="spirit" x={g.x} y={g.y} s={1.5} rot={g.ang} spin={p < 1 ? 1 : 0} /> : null}
+          {t >= itW ? <Plane ac="spirit" x={g.x} y={g.y} s={1.5} rot={g.ang} spin={p < 1 ? 1 : 0} /> : null}
           <Tick x={pb[0] + 50} y={pb[1] - 60} k={pop(t, lands, fps, bouncy)} r={30} />
         </MapPanel>
         <SvgPill t={t} fps={fps} a={may} x={MB[0] + 170} y={MB[1] + 50} w={190} size={22}>MAY 1927</SvgPill>
@@ -1328,8 +1371,10 @@ function Scene15({t, at, fps, a, b}) {
         <Plane ac="spirit" x={PB[0] + PB[2] / 2 - 30} y={PB[1] + PB[3] / 2 - 20} s={3.2} rot={-90} dims spin={0} />
       )} />
       <Num t={t} a={thirty} fps={fps} x={MB[0] + MB[2] - 60} y={MB[1] + 60} size={80} align="right">{h.toFixed(1)} H</Num>
-      <Num t={t} a={hundred} fps={fps} x={PB[0] + PB[2] / 2} y={PB[1] + PB[3] + 120} size={80} color={WHITE}>~100,000</Num>
       <Tag t={t} a={charles} fps={fps} x={PB[0] + PB[2] / 2} y={PB[1] + PB[3] + 40}>Charles Lindbergh</Tag>
+      <Clip src={LINDBERGH} from={12} a={flies} b={itW} t={t} fps={fps} zoom={[1.38, 1.46]} fx={42} fy={58} dark={0.2} credit="Newsreel, 1927" />
+      <Clip src={LINDBERGH} from={122} a={hundred} b={b} t={t} fps={fps} zoom={[1.38, 1.46]} fx={42} fy={58} dark={0.25} credit="Newsreel, 1927" />
+      <Num t={t} a={hundred} fps={fps} x={960} y={700} size={96} color={WHITE}>~100,000</Num>
     </Scene>
   );
 }
@@ -1372,6 +1417,8 @@ function Scene16({t, at, fps, a, b}) {
 // "twenty one"; "~21" on "passengers"; the seats turn amber on "money" ----------
 function Scene17({t, at, fps, a, b}) {
   const metal = at(17, 'metal'), wood = at(17, 'wood'), fabric = at(17, 'fabric'), y1935 = at(17, '1935'), dc3 = at(17, 'DC-3'), takes = at(17, 'takes'), twenty = at(17, 'twenty'), passengers = at(17, 'passengers'), money = at(17, 'money');
+  const andW = at(17, 'and', 1);   // "and it is the first airliner": the Ju 52 film (a 1930s metal airliner flying) from here
+  const card = FILMS.junkers;      // with the Junkers F 13 film under it, the cutaway sits in a small card on the right
   const kCut = pop(t, a, fps, soft) * (1 - ease(t, y1935, 0.5));
   const al = ease(t, metal, 1.0, Easing.inOut(Easing.quad));
   const kD = pop(t, y1935, fps, soft);
@@ -1384,8 +1431,10 @@ function Scene17({t, at, fps, a, b}) {
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
+      {card ? <Clip src={FILM.junkers} from={0} a={a} b={y1935} t={t} fps={fps} zoom={[1.04, 1.12]} dark={0.25} /> : null}
       <svg width={W} height={H} style={{position: 'absolute'}}>
-        <g transform={`translate(960, 500) scale(${0.9 + 0.1 * Math.min(1, kCut)})`} opacity={Math.min(1, kCut)}>
+        <g transform={`translate(${card ? 1470 : 960}, 500) scale(${(card ? 0.45 : 1) * (0.9 + 0.1 * Math.min(1, kCut))})`} opacity={Math.min(1, kCut)}>
+          {card ? <rect x={-800} y={-220} width={1600} height={440} rx={40} fill={NAVY} opacity={0.78} /> : null}
           <g transform="translate(-400, 0)">
             <path d="M-300,40 C-200,-100 100,-120 300,-40 C200,20 -100,70 -300,40 Z" fill={PAPER} opacity={0.35} />
             {[-240, -160, -80, 0, 80, 160, 240].map((x) => <path key={x} d={`M${x},${40 - (x + 300) * 0.12} C${x},${-60 + (x + 300) * 0.02} ${x + 10},${-70 + (x + 300) * 0.04} ${x + 20},${-50 + (x + 300) * 0.02}`} stroke={WOOD} strokeWidth={6} fill="none" />)}
@@ -1407,9 +1456,10 @@ function Scene17({t, at, fps, a, b}) {
         </g>
         <SvgPill t={t} fps={fps} a={y1935} x={960} y={130} w={140} size={24}>1935</SvgPill>
       </svg>
-      <Num t={t} a={passengers} fps={fps} x={1620} y={360} size={110} sub="seats">~21</Num>
-      <Tag t={t} a={dc3} fps={fps} x={960} y={870} bg={WHITE}>Douglas DC-3</Tag>
-      {HAVE.dc3 ? <Photo src={PIC.dc3} id="s17" a={dc3} b={b} t={t} box={[80, 560, 420, 300]} fit="cover" radius={16} zoom={[1.0, 1.08]} gray /> : null}
+      <Num t={t} a={passengers} fps={fps} x={1620} y={360} size={110} sub="seats" until={FILMS.ju52 ? andW : undefined}>~21</Num>
+      <Tag t={t} a={dc3} fps={fps} x={960} y={870} bg={WHITE} until={FILMS.ju52 ? andW : undefined}>Douglas DC-3</Tag>
+      {HAVE.dc3 ? <Photo src={PIC.dc3} id="s17" a={dc3} b={FILMS.ju52 ? andW : b} t={t} box={[80, 560, 420, 300]} fit="cover" radius={16} zoom={[1.0, 1.08]} gray /> : null}
+      {FILMS.ju52 ? <Clip src={FILM.ju52} from={0} a={andW} b={b} t={t} fps={fps} zoom={[1.04, 1.12]} dark={0.2} /> : null}
     </Scene>
   );
 }
@@ -1602,14 +1652,16 @@ function Scene23({t, at, fps, a, b}) {
 // thousand" with "US-BUILT AIRCRAFT 1940-45" ----------
 function Scene24({t, at, fps, a, b}) {
   const spit = at(24, 'Spitfire'), must = at(24, 'Mustang'), bombers = at(24, 'bombers'), fill = at(24, 'fill'), factories = at(24, 'Factories'), three = at(24, 'three'), aircraft = at(24, 'aircraft');
-  const kS = pop(t, spit, fps, soft), kM = pop(t, must, fps, soft);
+  const wb = FILMS.warbirds;   // with the warbirds film: the real fighters open the line, the two drawings follow on "bombers"
+  const kS = pop(t, wb ? bombers : spit, fps, soft), kM = pop(t, wb ? bombers + 0.2 : must, fps, soft);
   const bk = ease(t, bombers, 2.6, Easing.inOut(Easing.quad));
   const n = 300000 * ease(t, three, Math.max(0.8, aircraft + 0.6 - three), Easing.out(Easing.quad));
   const S = 4.2;
-  const fade = 1 - 0.55 * ease(t, bombers, 1.0);
+  const fade = wb ? 0.8 : 1 - 0.55 * ease(t, bombers, 1.0);
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
+      {wb ? <Clip src={FILM.warbirds} from={0} a={a} b={bombers} t={t} fps={fps} zoom={[1.04, 1.12]} dark={0.2} /> : null}
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <g opacity={fade}>
           <g transform={`translate(560, 470) scale(${Math.min(1, kS)})`} opacity={Math.min(1, kS)}>
@@ -1618,8 +1670,8 @@ function Scene24({t, at, fps, a, b}) {
           <g transform={`translate(1360, 470) scale(${Math.min(1, kM)})`} opacity={Math.min(1, kM)}>
             <Plane ac="p51" x={0} y={0} s={S} rot={-90} dims spin={1} />
           </g>
-          <SvgPill t={t} fps={fps} a={spit} x={560} y={150} w={190} size={22}>SPITFIRE</SvgPill>
-          <SvgPill t={t} fps={fps} a={must} x={1360} y={150} w={240} size={22} bg={WHITE}>P-51 MUSTANG</SvgPill>
+          <SvgPill t={t} fps={fps} a={wb ? bombers : spit} x={560} y={150} w={190} size={22}>SPITFIRE</SvgPill>
+          <SvgPill t={t} fps={fps} a={wb ? bombers + 0.2 : must} x={1360} y={150} w={240} size={22} bg={WHITE}>P-51 MUSTANG</SvgPill>
         </g>
         {bk > 0 ? [0, 1, 2, 3, 4].map((i) => {
           const col = i - 2, row = Math.abs(col);
@@ -1660,7 +1712,8 @@ function Scene25({t, at, fps, a, b}) {
         <SvgPill t={t} fps={fps} a={allies} x={300} y={690} w={240} size={22} bg={WHITE}>P-51 MUSTANG</SvgPill>
         <SvgPill t={t} fps={fps} a={first} x={960} y={130} w={320} size={22} bg={RED} fg={WHITE}>FIRST JET FIGHTER</SvgPill>
       </svg>
-      {HAVE.me262 ? <Photo src={PIC.me262} id="s25" a={messer} b={b} t={t} box={[1400, 60, 440, 260]} fit="cover" radius={16} zoom={[1.0, 1.08]} gray /> : null}
+      {HAVE.me262 ? <Photo src={PIC.me262} id="s25" a={messer} b={FILMS.p51 ? faster : b} t={t} box={[1400, 60, 440, 260]} fit="cover" radius={16} zoom={[1.0, 1.08]} gray /> : null}
+      {FILMS.p51 ? <Clip src={FILM.p51} from={0} a={faster} b={b} t={t} fps={fps} zoom={[1.04, 1.12]} dark={0.2} /> : null}
     </Scene>
   );
 }
@@ -1815,6 +1868,7 @@ function Scene29({t, at, fps, a, b}) {
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
+      <Clip src={A380} from={11} a={jets} b={b} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.5} credit="Real footage · today" />
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <g opacity={Math.min(1, kIn)}>
           <line x1={X0} y1={TY} x2={X1} y2={TY} stroke={WHITE} strokeWidth={4} opacity={0.4} />
@@ -1838,24 +1892,15 @@ function Scene29({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- line 30 (from "Now" in line 29): a calm last beat. the Comet climbs into a sunset, a slow push, the jets glowing; fade to
-// navy on "chapter" ----------
+// ---------- line 30 (from "Now" in line 29): a calm last beat on real footage of today (review 2): a 747-8 climbing past, a slow
+// push, "Real footage · today"; fade to navy on "chapter" ----------
 function Scene30({t, at, fps, a, b, seconds}) {
   const chapter = at(30, 'chapter');
-  const k = ease(t, a, 5.0, Easing.inOut(Easing.quad));
   const out = ease(t, chapter, Math.max(0.5, seconds - chapter), Easing.inOut(Easing.quad));
-  const px = lerp(520, 980, k), py = lerp(600, 380, k);
   return (
     <Scene t={t} a={a}>
-      <AbsoluteFill style={{background: `linear-gradient(180deg, ${NAVY} 0%, #3A2E4F 45%, #B5602F 78%, ${AMBER} 100%)`}} />
-      <svg width={W} height={H} style={{position: 'absolute'}}>
-        <Sun x={1360} y={760} r={110} k={1} t={t} />
-        <rect x={0} y={790} width={W} height={300} fill="#2A1E36" opacity={0.9} />
-        <CloudTops t={t} y={820} k={1} color="#5A3E58" o={0.8} />
-        <g transform={`translate(960, 540) scale(${1 + 0.12 * k}) translate(-960, -540)`}>
-          <Side ac="comet" x={px} y={py} s={2.8} rot={-10} glow={1} />
-        </g>
-      </svg>
+      <Bg t={t} />
+      <Clip src={B747} from={0} a={a} b={seconds} t={t} fps={fps} zoom={[1.0, 1.1]} dark={0.2} credit="Real footage · today" />
       <AbsoluteFill style={{background: NAVY, opacity: out, pointerEvents: 'none'}} />
     </Scene>
   );

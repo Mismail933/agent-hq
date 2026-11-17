@@ -1,5 +1,5 @@
 // AviHistory3.jsx: History of aviation, Chapter 3 "Everyone on board" (commercial aviation to today) (client: Bassel), made with Fable.
-// 1920x1080, 30 fps, 5 min 52 s, plays under the recorded narration (timing.json: 29 lines, word times). Same series as Chapters 1-2
+// 1920x1080, 30 fps, 6 min 17 s, plays under the recorded narration (timing.json: 30 lines, word times). Same series as Chapters 1-2
 // (ref/AviHistory2.jsx): the same look (deep navy, white, amber, flat infographics, gentle springs), the same helpers, year chip,
 // MapPanel, picture frames, the Flyer and the airliner drawings. Real maps (geo.json + d3-geo). Every drawn aircraft uses REAL
 // proportions (the client's rule): 10 px per metre at scale 1, the length:height (side) or span:length (top) ratio is in a comment
@@ -14,24 +14,25 @@ import geo from './geo.json';   // Natural Earth (public domain): geo.world.feat
 // the pictures. The Builder switches on the ones that exist; each has a drawn fallback. Files: av3-707-panam.jpg (three Pan Am 707s at
 // the factory, b/w, PD), av3-787.jpg (the 787's first flight 2009, CC BY 2.0), av3-comet-boac.jpg, av3-747-1969.jpg, av3-concorde.jpg,
 // av3-concorde2.jpg, av3-a300.jpg, av3-a320.jpg, av3-777.jpg, av3-707-cabin.jpg
-const HAVE = {panam707: true, b787: true, comet: false, b747: true, concorde: true, concorde2: true, a300: false, a320: true,
+const HAVE = {panam707: true, b787: true, comet: false, b747: false, concorde: false, concorde2: false, a300: false, a320: false,
   b777: false, cabin707: false};
 const PIC = {panam707: 'av3-707-panam.jpg', b787: 'av3-787.jpg', comet: 'av3-comet-boac.jpg', b747: 'av3-747-1969.jpg', concorde: 'av3-concorde.jpg',
   concorde2: 'av3-concorde2.jpg', a300: 'av3-a300.jpg', a320: 'av3-a320.jpg', b777: 'av3-777.jpg', cabin707: 'av3-707-cabin.jpg'};
 const CREDIT = {panam707: 'Public domain', b787: 'CC BY 2.0', comet: 'Public domain', b747: 'Public domain', concorde: 'Public domain',
   concorde2: 'Public domain', a300: 'Public domain', a320: 'Public domain', b777: 'Public domain', cabin707: 'Public domain'};
-// the real film (always there; tag "Real footage"). Windows used here differ from the Shorts (yyz from 8 s, dubai from 10 s, oak from 62 s):
-//   a380-takeoff-yyz.mp4   head-on take-off in mist, 0-34 s          -> line 20 from 22 s
-//   a380-dubai.mp4         0-60 s taxiing from a window, 100-128 s climbing over Dubai, NEVER 60-100 s -> line 23 from 104 s
-//   b747-takeoff-pae.mp4   a 747-8 climbing past, 0-14 s             -> line 9 from 0 s
-//   takeoff-oak.mp4        window view: 0-40 runway roll, 60-75 lift-off, 80-128 climb -> line 24 from 20 s (the runway roll)
-const FILM = {yyz: 'a380-takeoff-yyz.mp4', dubai: 'a380-dubai.mp4', pae: 'b747-takeoff-pae.mp4', oak: 'takeoff-oak.mp4'};
+// the real film (tag "Real footage", cover, slow push). Available now (review 2): a380-dubai.mp4 (an Emirates A380 taxiing seen from a
+// window, 0-60 s ONLY) -> line 20 from 24 s; takeoff-oak.mp4 (window view: 0-40 runway roll, 60-75 lift-off, 80-128 climb) -> line 27
+// from 20 s. b747-takeoff-pae.mp4 belongs to Chapter 2 and is not used here. The rest sit behind FILMS (still downloading); each has
+// an animated fallback when false. First 60 s unless told otherwise; the Builder checks the windows before the render.
+const FILM = {dubai: 'a380-dubai.mp4', oak: 'takeoff-oak.mp4', concorde: 'concorde-helsinki-1985.mp4', b747sca: 'b747-sca-nasa.mp4',
+  a300: 'a300-landing.mp4', b777: 'b777-takeoff.mp4', b787: 'b787-moon.mp4'};
+const FILMS = {concorde: false, b747sca: false, a300: false, b777: false, b787: false};
 
 const W = 1920, H = 1080;
 const NAVY = '#0B1B33', NAVY2 = '#152C4F', WHITE = '#FFFFFF', AMBER = '#FFB547';
 const SKY = '#7FB8E6', RED = '#FF5C5C', GREEN = '#6FD48F', LAND = '#2A4570', LAND2 = '#3D5C8E', SEA = '#0E2447';
 const SAND = '#C9B27A', SAND2 = '#E2CF9A', PAPER = '#F1E8D2', INK = '#2B2416', SILVER = '#C9D3E0', STONE = '#8A8F9A';
-const ORANGE = '#FF6A1A', BLACK = '#1C1C1C', EASY = '#FF8C1A';
+const ORANGE = '#FF6A1A', BLACK = '#1C1C1C', EASY = '#FF8C1A', COPPER = '#C47A3A', STORMY = '#1A2238';
 const BIG = "'Archivo Black', sans-serif", SMALL = "'Montserrat', sans-serif";
 const CL = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'};
 const XF = 5 / 30;   // crossfade between shots: 5 frames
@@ -91,14 +92,20 @@ const dottedPts = (pts, p, color = AMBER, r = 4.5) => pts.map((q, i) => (q && (i
 
 // ---------- real geography ----------
 const LAND_FC = geo.world;
+// the detailed outlines (review 2): geo.detail.features, 95 countries (USA, CAN, GBR, FRA, ESP, ITA, ZAF, CHN, JPN, ...); the coarse
+// world is the fallback when a shape is missing
+const DETAIL_FC = geo.detail && geo.detail.features && geo.detail.features.length ? geo.detail : LAND_FC;
 const GRAT = geoGraticule10();
-const feats = (a3s) => ({type: 'FeatureCollection', features: LAND_FC.features.filter((f) => a3s.includes(f.properties.a3))});
+const feats = (a3s) => {
+  const d = DETAIL_FC.features.filter((f) => a3s.includes(f.properties.a3));
+  return {type: 'FeatureCollection', features: d.length ? d : LAND_FC.features.filter((f) => a3s.includes(f.properties.a3))};
+};
 const fitBox = (ll, box, pad = 0) => geoMercator().fitExtent([[box[0] + pad, box[1] + pad], [box[0] + box[2] - pad, box[1] + box[3] - pad]],
   {type: 'MultiPoint', coordinates: [[ll[0], ll[1]], [ll[2], ll[1]], [ll[2], ll[3]], [ll[0], ll[3]]]});
 const boxC = (box) => [box[0] + box[2] / 2, box[1] + box[3] / 2];
 const MAP_W = [160, 90, 1600, 790];         // a wide map panel
 const LL = {ATL_NY: [-82, 33, 12, 60], EUR: [-11, 34, 33, 61], USA: [-125, 24, -66, 50], WORLD: [-170, -55, 180, 75], LON_JNB: [-28, -38, 48, 62],
-            MED: [4, 35.5, 20.5, 46], AUS: [112, -45, 155, -9], CANARY: [-18.6, 27.4, -13.2, 29.6], KOREA: [124.3, 32.6, 130.6, 39], GB_FR: [-11, 41.5, 10, 60]};
+            MED: [4, 35.5, 20.5, 46], AUS: [112, -45, 155, -9], CANARY: [-18.6, 27.4, -13.2, 29.6], GB_FR: [-11, 41.5, 10, 60], USA_E: [-92, 30, -66, 46]};
 
 // ---------- shared building blocks (Chapter 1-2's) ----------
 function Bg({t}) {
@@ -271,6 +278,8 @@ const Chevrons = ({t, x, y, n = 3, k = 1, color = AMBER, len = 60, size = 26}) =
     })}
   </g>
 ));
+// a map panel on the detailed outlines (review 2): a light coastline glow (its inland half is covered by the fills, so only the coast
+// keeps it), every country filled with a thin border, the highlighted ones brighter with an amber edge, a subtle graticule
 function MapPanel({proj, hi = [], box, k = 1, id, children, o = 1, rx = 28, hiColor = AMBER}) {
   if (k <= 0) return null;
   const path = geoPath(proj.clipExtent([[box[0], box[1]], [box[0] + box[2], box[1] + box[3]]]));
@@ -280,9 +289,11 @@ function MapPanel({proj, hi = [], box, k = 1, id, children, o = 1, rx = 28, hiCo
       <defs><clipPath id={`${id}-clip`}><rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} /></clipPath></defs>
       <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} fill={SEA} />
       <g clipPath={`url(#${id}-clip)`}>
-        <path d={path(GRAT) || ''} stroke={WHITE} strokeWidth={1} fill="none" opacity={0.08} />
-        <path d={path(LAND_FC) || ''} fill={LAND} stroke={LAND2} strokeWidth={1.2} strokeLinejoin="round" />
+        <path d={path(GRAT) || ''} stroke={WHITE} strokeWidth={1} fill="none" opacity={0.1} />
+        <path d={path(DETAIL_FC) || ''} stroke={SKY} strokeWidth={4} fill="none" strokeLinejoin="round" opacity={0.28} />
+        <path d={path(DETAIL_FC) || ''} fill={LAND} stroke={LAND2} strokeWidth={0.9} strokeLinejoin="round" />
         {hi.length ? <path d={path(feats(hi)) || ''} fill={LAND2} stroke={hiColor} strokeWidth={2} strokeLinejoin="round" opacity={0.95} /> : null}
+        <path d={path(DETAIL_FC) || ''} fill="none" stroke={WHITE} strokeWidth={0.6} strokeLinejoin="round" opacity={0.35} />
         {children}
       </g>
       <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} fill="none" stroke={WHITE} strokeWidth={2} opacity={0.25} />
@@ -428,6 +439,35 @@ const TailFin = ({x, y, k = 1, color = AMBER, name, o = 1}) => (k <= 0 ? null : 
     <text x={290} y={-30} fontFamily={SMALL} fontWeight={800} fontSize={30} fill={WHITE} letterSpacing={3}>{name}</text>
   </g>
 ));
+// a lightning bolt: a jagged line from (x0, y0) to (x1, y1), seeded, with a soft glow; k 0..1
+const boltD = (x0, y0, x1, y1, seed, n = 7) => {
+  let d = `M${x0.toFixed(1)},${y0.toFixed(1)}`;
+  for (let i = 1; i < n; i++) {
+    const u = i / n;
+    d += ` L${(lerp(x0, x1, u) + (rnd(seed + i) - 0.5) * 70).toFixed(1)},${(lerp(y0, y1, u) + (rnd(seed + i + 20) - 0.5) * 24).toFixed(1)}`;
+  }
+  return d + ` L${x1.toFixed(1)},${y1.toFixed(1)}`;
+};
+const Bolt = ({x0, y0, x1, y1, seed = 0, k = 1, w = 6}) => (k <= 0 ? null : (
+  <g opacity={Math.min(1, k)}>
+    <path d={boltD(x0, y0, x1, y1, seed)} stroke={SKY} strokeWidth={w * 2.4} fill="none" strokeLinejoin="round" strokeLinecap="round" opacity={0.35} />
+    <path d={boltD(x0, y0, x1, y1, seed)} stroke={WHITE} strokeWidth={w} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+  </g>
+));
+// a night storm: a dark wash, a cloud deck along the top, rain streaks, a distant flash now and then (seeded, no Math.random)
+const Storm = ({t, seed = 0}) => {
+  const slot = Math.floor(t / 0.6), frac = t / 0.6 - slot;
+  const far = rnd(slot + seed) > 0.62, fx = 200 + 1500 * rnd(slot + seed + 9);
+  return (
+    <g>
+      <rect x={0} y={0} width={W} height={H} fill="#060C1A" opacity={0.55} />
+      {far ? <Bolt x0={fx} y0={200} x1={fx + 40} y1={640} seed={slot + seed} k={0.3 * (1 - frac)} w={3} /> : null}
+      <rect x={0} y={0} width={W} height={190} fill={STORMY} />
+      {Array.from({length: 15}, (_, i) => <ellipse key={i} cx={-100 + i * 150 + ((t * 14) % 150)} cy={180 + 10 * Math.sin(i * 1.3)} rx={120 + 40 * rnd(i + 70)} ry={50 + 30 * rnd(i + 71)} fill={STORMY} />)}
+      {Array.from({length: 40}, (_, i) => { const ph = ((t * 1.4 + rnd(i + 80)) % 1); const x = 20 + i * 48 + rnd(i) * 20, y = 230 + ph * 680; return <line key={i} x1={x} y1={y} x2={x - 6} y2={y + 34} stroke={SKY} strokeWidth={2} strokeLinecap="round" opacity={(1 - ph) * 0.35} />; })}
+    </g>
+  );
+};
 // =====================================================================================================================
 // drawn aircraft, all at 10 px per metre at scale 1 (REAL proportions, the client's rule). Top views: nose to +x, origin at the
 // centre of the fuselage. Side views: nose to +x, origin at the centre of the fuselage. The spec tables give the real dimensions.
@@ -442,7 +482,7 @@ const PlaneTop = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, span, len, fw = 1
   const xw = L / 2 - wingAt * L, c = chord * 10, tc = c * taper, sw = sweep * 10;
   const le = xw + c * 0.6, te = xw - c * 0.4;
   const wing = ogee
-    ? `M${le},${-hw} C${le - sw * 0.25},${-S * 0.1} ${le - sw * 0.5},${-S * 0.28} ${le - sw},${-S / 2} L${le - sw - tc},${-S / 2} L${te},${-hw} L${te},${hw} L${le - sw - tc},${S / 2} L${le - sw},${S / 2} C${le - sw * 0.5},${S * 0.28} ${le - sw * 0.25},${S * 0.1} ${le},${hw} Z`
+    ? `M${le},${-hw} C${le - sw * 0.5},${-hw - S * 0.05} ${le - sw * 0.72},${-S * 0.5} ${le - sw},${-S / 2} L${le - sw - tc},${-S / 2} L${te},${-hw} L${te},${hw} L${le - sw - tc},${S / 2} L${le - sw},${S / 2} C${le - sw * 0.72},${S * 0.5} ${le - sw * 0.5},${hw + S * 0.05} ${le},${hw} Z`
     : closed([[le, -hw], [le - sw, -S / 2], [le - sw - tc, -S / 2], [te, -hw], [te, hw], [le - sw - tc, S / 2], [le - sw, S / 2], [le, hw]]);
   const TS = tailSpan * 10, tcr = tailChord * 10, xt = -L / 2 + tcr * 0.15;
   const tail = TS > 0 ? closed([[xt + tcr, -hw * 0.5], [xt + tcr * 0.45, -TS / 2], [xt, -TS / 2], [xt, hw * 0.5], [xt, TS / 2], [xt + tcr * 0.45, TS / 2], [xt + tcr, hw * 0.5]]) : '';
@@ -484,15 +524,15 @@ const PlaneTop = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, span, len, fw = 1
 };
 // the real aircraft seen from above (span x length in metres) with their layouts; the span:length ratio is the comment
 const AC = {
-  comet: {span: 35, len: 28.6, fw: 3.0, wingAt: 0.52, chord: 6, taper: 0.3, sweep: 7, tailSpan: 11, tailChord: 3, jets: [[1.6, -2.4, 5, 1], [1.6, -3.9, 5, 1], [1.6, 2.4, 5, 1], [1.6, 3.9, 5, 1]]},                       // Comet 1: 35 x 28.6 (1.22:1), four jets buried in the wing roots
-  b707: {span: 44.4, len: 46.6, fw: 3.8, wingAt: 0.5, chord: 9.5, taper: 0.3, sweep: 15, tailSpan: 14, tailChord: 5, jets: [[3.2, -7.5, 5.5], [-0.6, -13.5, 5.5], [3.2, 7.5, 5.5], [-0.6, 13.5, 5.5]]},               // 707: 44.4 x 46.6 (0.95:1), four engines on pylons, swept wing
-  b747: {span: 59.6, len: 70.6, fw: 6.5, wingAt: 0.5, chord: 16, taper: 0.25, sweep: 22, tailSpan: 22, tailChord: 8, hump: true, jets: [[4.6, -11.9, 7, 0, 2.5], [-1.9, -21.6, 7, 0, 2.5], [4.6, 11.9, 7, 0, 2.5], [-1.9, 21.6, 7, 0, 2.5]]},   // 747-100: 59.6 x 70.6 (0.84:1), four engines
-  concorde: {span: 25.6, len: 61.7, fw: 2.9, wingAt: 0.73, chord: 29, taper: 0.1, sweep: 26, ogee: true, tailSpan: 0, jets: [[-13, -5.1, 11, 0, 1.5], [-13, -6.7, 11, 0, 1.5], [-13, 5.1, 11, 0, 1.5], [-13, 6.7, 11, 0, 1.5]]},   // Concorde: 25.6 x 61.7 (0.41:1), slender ogee delta, paired engine boxes
-  a300: {span: 44.8, len: 54, fw: 5.6, wingAt: 0.5, chord: 11, taper: 0.3, sweep: 14, tailSpan: 16.9, tailChord: 6, jets: [[4.4, -8, 7, 0, 2.6], [4.4, 8, 7, 0, 2.6]]},                                              // A300: 44.8 x 54 (0.83:1), two engines, wide body
-  a320: {span: 35.8, len: 37.6, fw: 4, wingAt: 0.5, chord: 7, taper: 0.3, sweep: 10, tailSpan: 12.5, tailChord: 3, jets: [[6, -5.7, 4.6, 0, 2.0], [6, 5.7, 4.6, 0, 2.0]]},                                               // A320: 35.8 x 37.6 (0.95:1)
-  b737: {span: 35.8, len: 39.5, fw: 3.8, wingAt: 0.5, chord: 7.5, taper: 0.3, sweep: 9, tailSpan: 14.3, tailChord: 3.5, jets: [[5.5, -5.7, 4.4, 0, 2.1], [5.5, 5.7, 4.4, 0, 2.1]]},                                       // 737-800: 35.8 x 39.5 (0.91:1)
-  b777: {span: 64.8, len: 73.9, fw: 6.2, wingAt: 0.5, chord: 14, taper: 0.25, sweep: 18, tailSpan: 21.5, tailChord: 7, jets: [[7, -9.7, 8, 0, 3.4], [7, 9.7, 8, 0, 3.4]]},                                               // 777-300ER: 64.8 x 73.9 (0.88:1), two huge engines
-  a380: {span: 79.8, len: 72.7, fw: 7.1, wingAt: 0.5, chord: 17.5, taper: 0.2, sweep: 24, tailSpan: 30.4, tailChord: 9, jets: [[6.4, -13.5, 8, 0, 3], [-0.8, -25.5, 8, 0, 3], [6.4, 13.5, 8, 0, 3], [-0.8, 25.5, 8, 0, 3]]},   // A380: 79.8 x 72.7 (1.10:1), four engines
+  comet: {span: 35, len: 28.6, fw: 3.0, wingAt: 0.52, chord: 8.5, taper: 0.28, sweep: 6.5, tailSpan: 11, tailChord: 3, jets: [[1.6, -2.4, 5, 1], [1.6, -3.9, 5, 1], [1.6, 2.4, 5, 1], [1.6, 3.9, 5, 1]]},                // Comet 1: 35 x 28.6 (1.22:1), a wide-rooted 20-degree wing, four jets buried in the roots
+  b707: {span: 44.4, len: 46.6, fw: 3.8, wingAt: 0.5, chord: 9.5, taper: 0.3, sweep: 15.5, tailSpan: 14, tailChord: 5, jets: [[3.2, -7.5, 5.5], [-0.6, -13.5, 5.5], [3.2, 7.5, 5.5], [-0.6, 13.5, 5.5]]},             // 707: 44.4 x 46.6 (0.95:1), four engines on pylons, a 35-degree swept wing
+  b747: {span: 59.6, len: 70.6, fw: 6.5, wingAt: 0.5, chord: 16.5, taper: 0.25, sweep: 22.5, tailSpan: 22, tailChord: 8, hump: true, jets: [[4.6, -12, 7, 0, 2.5], [-1.9, -21.3, 7, 0, 2.5], [4.6, 12, 7, 0, 2.5], [-1.9, 21.3, 7, 0, 2.5]]},   // 747-100: 59.6 x 70.6 (0.84:1), four engines, 37.5-degree sweep
+  concorde: {span: 25.6, len: 61.7, fw: 2.9, wingAt: 0.70, chord: 38, taper: 0.06, sweep: 34.8, ogee: true, tailSpan: 0, jets: [[-21, -5.0, 11, 0, 1.5], [-21, -6.6, 11, 0, 1.5], [-21, 5.0, 11, 0, 1.5], [-21, 6.6, 11, 0, 1.5]]},   // Concorde: 25.6 x 61.7 (0.41:1), a long slim ogival delta starting a third back from the needle nose and running to the tail, four engines in two paired boxes under the wing (review 2)
+  a300: {span: 44.8, len: 54, fw: 5.6, wingAt: 0.5, chord: 11, taper: 0.3, sweep: 12, tailSpan: 16.9, tailChord: 6, jets: [[4.4, -8.2, 7, 0, 2.6], [4.4, 8.2, 7, 0, 2.6]]},                                            // A300: 44.8 x 54 (0.83:1), two engines, wide body, 28-degree sweep
+  a320: {span: 35.8, len: 37.6, fw: 4, wingAt: 0.5, chord: 7, taper: 0.3, sweep: 8.5, tailSpan: 12.5, tailChord: 3, jets: [[6, -5.7, 4.6, 0, 2.0], [6, 5.7, 4.6, 0, 2.0]]},                                              // A320: 35.8 x 37.6 (0.95:1), 25-degree sweep
+  b737: {span: 35.8, len: 39.5, fw: 3.8, wingAt: 0.5, chord: 7.5, taper: 0.3, sweep: 8.5, tailSpan: 14.3, tailChord: 3.5, jets: [[5.5, -5.0, 4.4, 0, 2.1], [5.5, 5.0, 4.4, 0, 2.1]]},                                      // 737-800: 35.8 x 39.5 (0.91:1), the engines close in under the wing
+  b777: {span: 64.8, len: 73.9, fw: 6.2, wingAt: 0.5, chord: 14, taper: 0.25, sweep: 20, tailSpan: 21.5, tailChord: 7, jets: [[7, -9.9, 8, 0, 3.4], [7, 9.9, 8, 0, 3.4]]},                                               // 777-300ER: 64.8 x 73.9 (0.88:1), two huge engines (3.4 m), 31.6-degree sweep
+  a380: {span: 79.8, len: 72.7, fw: 7.1, wingAt: 0.5, chord: 17.5, taper: 0.2, sweep: 26, tailSpan: 30.4, tailChord: 9, jets: [[6.4, -14.5, 8, 0, 3], [-0.8, -25.5, 8, 0, 3], [6.4, 14.5, 8, 0, 3], [-0.8, 25.5, 8, 0, 3]]},   // A380: 79.8 x 72.7 (1.10:1), four engines, 33.5-degree sweep
   b787: {span: 60.1, len: 56.7, fw: 5.8, wingAt: 0.5, chord: 12, taper: 0.18, sweep: 21, tailSpan: 19.8, tailChord: 6, jets: [[4.4, -9.6, 7, 0, 2.8], [4.4, 9.6, 7, 0, 2.8]]},                                           // 787-8: 60.1 x 56.7 (1.06:1), long raked wings
 };
 const Plane = ({ac, ...rest}) => <PlaneTop {...AC[ac]} {...rest} />;
@@ -504,12 +544,14 @@ const Plane = ({ac, ...rest}) => <PlaneTop {...AC[ac]} {...rest} />;
 // (winRx rounds them: 0.5 = square-ish), decks 2 = a second row (the A380), hump = the 747's upper deck height (m), humpLen = its
 // length as a fraction of len, noseLen = a long pointed nose (m), droop 0..1 droops it (Concorde), tailplane false = none (a delta)
 const JetSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, len, fh, fin, finRoot = 0.12, wingAt = 0.5, chord, tipChord = 0.25, sweep = 0, dih = 2, flex = 0,
-                  jets = [], windows = 0, winRx = 0.3, decks = 1, hump = 0, humpLen = 0.3, noseLen = 0, droop = 0, tailplane = true, glow = 0, accent = AMBER, children}) => {
+                  jets = [], windows = 0, winRx = 0.3, decks = 1, hump = 0, humpLen = 0.3, noseLen = 0, needle = false, droop = 0, tailplane = true, glow = 0, accent = AMBER, children}) => {
   const L = len * 10, h = fh * 5, FIN = fin * 10, root = L * finRoot, C = chord * 10;
   const nl = noseLen ? noseLen * 10 : Math.min(L * 0.14, h * 2.2), tl = L * 0.24;
   const nx = L / 2 - nl, tx = -L / 2 + tl;
   const body = `M${nx + 3},${-h} L${tx},${-h} C${tx - tl * 0.45},${-h} ${-L / 2 + tl * 0.25},${-h * 0.8} ${-L / 2},${-h * 0.5} L${-L / 2},${-h * 0.18} C${-L / 2 + tl * 0.3},${h * 0.35} ${tx - tl * 0.35},${h} ${tx},${h} L${nx + 3},${h} Z`;
-  const nose = `M${nx + 3},${-h} C${L / 2 - nl * 0.45},${-h} ${L / 2},${-h * 0.55} ${L / 2},0 C${L / 2},${h * 0.55} ${L / 2 - nl * 0.45},${h} ${nx + 3},${h} Z`;
+  const nose = needle
+    ? `M${nx + 3},${-h} Q${L / 2 - nl * 0.35},${-h * 0.55} ${L / 2},0 Q${L / 2 - nl * 0.35},${h * 0.55} ${nx + 3},${h} Z`
+    : `M${nx + 3},${-h} C${L / 2 - nl * 0.45},${-h} ${L / 2},${-h * 0.55} ${L / 2},0 C${L / 2},${h * 0.55} ${L / 2 - nl * 0.45},${h} ${nx + 3},${h} Z`;
   const HUMP = hump * 10;
   const humpD = hump > 0 ? `M${nx + nl * 0.45},${-h} C${nx + nl * 0.35},${-h - HUMP * 0.9} ${nx + nl * 0.1},${-h - HUMP} ${nx - nl * 0.3},${-h - HUMP} L${nx - L * humpLen * 0.55},${-h - HUMP} C${nx - L * humpLen * 0.8},${-h - HUMP} ${nx - L * humpLen * 0.92},${-h - HUMP * 0.3} ${nx - L * humpLen},${-h} Z` : '';
   const rootLE = -L / 2 + root, tipTE = -L / 2 + root * 0.06, tipLE = tipTE + root * 0.42;
@@ -563,7 +605,8 @@ const JetSide = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, len, fh, fin, finR
 //   Comet 1      28.6 x 3.0  (9.5:1),  fin 4.5 m above the top, four jets buried in the wing roots, small square-ish windows
 //   Boeing 707   46.6 x 3.8  (12.3:1), fin 6.3 m, four engines on pylons (two show from the side)
 //   747-100      70.6 x 6.5  (10.9:1), the hump (upper deck) 2 m on top at the front, fin 8.5 m, four engines
-//   Concorde     61.7 x 3.3  (18.7:1), an 11 m pointed nose that droops, tall fin 5.8 m, no tailplane, the engine boxes under the delta
+//   Concorde     61.7 x 3.1  (19.9:1), pencil-thin, an 11 m needle nose that droops, a tall thin fin 6.2 m, no tailplane, the delta
+//                starting a third back and running to the tail, the engine boxes under it (review 2)
 //   Airbus A300  54 x 5.6    (9.6:1),  two engines, the wide body
 //   Airbus A320  37.6 x 4.0  (9.4:1)
 //   737-800      39.5 x 3.8  (10.4:1), the engines close under the wing
@@ -574,7 +617,7 @@ const SIDE = {
   comet: {len: 28.6, fh: 3.0, fin: 4.5, finRoot: 0.13, wingAt: 0.55, chord: 6.5, sweep: 7, dih: 1.4, windows: 12, winRx: 0.15, jets: [[1.0, 0, 0, 5.5]]},
   b707: {len: 46.6, fh: 3.8, fin: 6.3, finRoot: 0.12, wingAt: 0.5, chord: 9.5, sweep: 15, dih: 2.2, windows: 24, jets: [[3.2, 1.3, 1.1, 5.5], [-0.6, 1.3, 1.2, 5.5]]},
   b747: {len: 70.6, fh: 6.5, fin: 8.5, finRoot: 0.12, wingAt: 0.5, chord: 16, sweep: 22, dih: 3.0, windows: 34, hump: 2.0, humpLen: 0.3, jets: [[4.6, 2.5, 1.6, 7], [-1.9, 2.5, 1.9, 7]]},
-  concorde: {len: 61.7, fh: 3.3, fin: 5.8, finRoot: 0.16, wingAt: 0.73, chord: 29, tipChord: 0.08, sweep: 26, dih: -0.8, windows: 24, noseLen: 11, tailplane: false, jets: [[-13, 1.7, 1.0, 12]]},
+  concorde: {len: 61.7, fh: 3.1, fin: 6.2, finRoot: 0.17, wingAt: 0.70, chord: 38, tipChord: 0.06, sweep: 34.8, dih: -0.8, windows: 24, noseLen: 11, needle: true, tailplane: false, jets: [[-21, 1.7, 1.0, 11]]},
   a300: {len: 54, fh: 5.6, fin: 7.5, finRoot: 0.12, wingAt: 0.5, chord: 11, sweep: 14, dih: 2.5, windows: 28, jets: [[4.4, 2.6, 1.7, 7]]},
   a320: {len: 37.6, fh: 4.0, fin: 5.9, finRoot: 0.13, wingAt: 0.5, chord: 7, sweep: 10, dih: 2, windows: 20, jets: [[6, 2.0, 1.4, 4.6]]},
   b737: {len: 39.5, fh: 3.8, fin: 6.2, finRoot: 0.13, wingAt: 0.5, chord: 7.5, sweep: 9, dih: 2, windows: 22, jets: [[5.5, 2.1, 1.1, 4.4]]},
@@ -697,7 +740,7 @@ function Scene0({t, at, fps, a, b}) {
           {dottedPts(pts, p, AMBER, 4)}
           <Pin t={t} fps={fps} a={london} pt={pa} label="LONDON" lx={22} ly={10} anchor="start" />
           <Pin t={t} fps={fps} a={jnb} pt={pb} label="JOHANNESBURG" lx={0} ly={40} />
-          {t >= bound && p < 1 ? <Plane ac="comet" x={g.x} y={g.y} s={0.9} rot={g.ang} glow={0.6} /> : null}
+          {t >= bound && p < 1 ? <Plane ac="comet" x={g.x} y={g.y} s={0.45} rot={g.ang} glow={0.6} /> : null}
         </MapPanel>
         <SvgPill t={t} fps={fps} a={second} x={MB[0] + 180} y={MB[1] + 50} w={220} size={22}>2 MAY 1952</SvgPill>
         <g opacity={Math.min(1, kC)}>
@@ -995,8 +1038,8 @@ function Scene6({t, at, fps, a, b}) {
           <Pin t={t} fps={fps} a={atlantic} pt={proj(NY)} label="NEW YORK" lx={-22} ly={34} anchor="end" />
           <Pin t={t} fps={fps} a={atlantic} pt={proj(LON)} label="LONDON" lx={22} ly={-14} anchor="start" />
           <Pin t={t} fps={fps} a={b707} pt={proj(PAR)} label="PARIS" lx={22} ly={34} anchor="start" r={9} size={20} />
-          {t >= cross ? <Plane ac="comet" x={g1.x} y={g1.y} s={1.0} rot={g1.ang} glow={p1 < 1 ? 0.8 : 0} /> : null}
-          {t >= then ? <Plane ac="b707" x={g2.x} y={g2.y} s={1.0} rot={g2.ang} glow={p2 < 1 ? 0.8 : 0} /> : null}
+          {t >= cross ? <Plane ac="comet" x={g1.x} y={g1.y} s={0.5} rot={g1.ang} glow={p1 < 1 ? 0.8 : 0} /> : null}
+          {t >= then ? <Plane ac="b707" x={g2.x} y={g2.y} s={0.5} rot={g2.ang} glow={p2 < 1 ? 0.8 : 0} /> : null}
         </MapPanel>
         <SvgPill t={t} fps={fps} a={october} x={MB[0] + 170} y={MB[1] + 50} w={200} size={22}>OCT 1958</SvgPill>
         <SvgPill t={t} fps={fps} a={comet} x={MB[0] + 170} y={MB[1] + 110} w={160} size={20} bg={WHITE}>COMET 4</SvgPill>
@@ -1142,9 +1185,9 @@ function Scene8({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- line 9: real film: a 747 climbing past (file 0-14 s) with "22 JAN 1970" on "January"; on "cost" a chart: seats per plane
-// rise (707 -> 747 icons at one scale), the fare bar falls on "falls" and "fares"; on "ordinary" a crowd fills the bottom, most of
-// them lit amber (the opposite of line 7) ----------
+// ---------- line 9: real film when FILMS.b747sca (NASA's 747 flying, file from 0 s), otherwise the 747 side view climbing through
+// cloud with chevrons; "22 JAN 1970" on "January"; on "cost" a chart: seats per plane rise (707 -> 747 icons at one scale), the fare
+// bar falls on "falls" and "fares"; on "ordinary" a crowd fills the bottom, most of them lit amber (the opposite of line 7) ----------
 function Scene9({t, at, fps, a, b}) {
   const january = at(9, 'January'), cost = at(9, 'cost'), seat = at(9, 'seat'), falls = at(9, 'falls'), fares = at(9, 'fares'), ordinary = at(9, 'ordinary');
   const kIn = ease(t, cost, 0.5);
@@ -1155,7 +1198,15 @@ function Scene9({t, at, fps, a, b}) {
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
-      <Clip src={FILM.pae} from={0} a={a} b={cost} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.2} />
+      {FILMS.b747sca ? <Clip src={FILM.b747sca} from={0} a={a} b={cost} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.2} /> : (t < cost + XF ? (
+        <AbsoluteFill style={{opacity: 1 - ease(t, cost, 0.4)}}>
+          <svg width={W} height={H} style={{position: 'absolute'}}>
+            <CloudBand t={t} y={720} x0={0} x1={1920} k={1} color={SILVER} o={0.35} n={16} />
+            <Chevrons t={t} x={lerp(700, 1100, lin(t, a, cost - a)) - 760} y={lerp(640, 420, ease(t, a, cost - a, Easing.inOut(Easing.quad)))} n={5} k={1} color={AMBER} len={80} size={26} />
+            <Side ac="b747" x={lerp(700, 1100, lin(t, a, cost - a))} y={lerp(640, 420, ease(t, a, cost - a, Easing.inOut(Easing.quad)))} s={2.0} rot={-12} glow={1} />
+          </svg>
+        </AbsoluteFill>
+      ) : null)}
       <Tag t={t} a={january} fps={fps} x={960} y={62} until={cost} bg="rgba(11,27,51,0.75)" fg={WHITE}>22 JAN 1970</Tag>
       {t >= cost ? (
         <AbsoluteFill style={{opacity: kIn}}>
@@ -1225,9 +1276,9 @@ function Scene10({t, at, fps, a, b}) {
 // ---------- line 11: LONDON -> NEW YORK on a real map, Concorde flies it from "carries"; "~3.5 H" on "three"; a London clock at
 // 10:30 on "London", a New York clock on "land" whose hands run back to 09:30 on "before"; "BY THE LOCAL CLOCK" on "local"; the
 // Concorde side view below droops its nose on "land"; sound rings on "noisy", fuel drops on "thirsty", "$" on "expensive";
-// "20 BUILT" on "twenty" ----------
+// "20 BUILT" on "twenty". When FILMS.concorde, real film (a BA Concorde at Helsinki, 1985) takes the frame from "But" ----------
 function Scene11({t, at, fps, a, b}) {
-  const y1976 = at(11, '1976'), concorde = at(11, 'Concorde'), carries = at(11, 'carries'), london = at(11, 'London'), ny = at(11, 'New'), three = at(11, 'three'), hours = at(11, 'hours'), land = at(11, 'land'), before = at(11, 'before'), local = at(11, 'local'), noisy = at(11, 'noisy'), thirsty = at(11, 'thirsty'), expensive = at(11, 'expensive'), twenty = at(11, 'twenty');
+  const y1976 = at(11, '1976'), concorde = at(11, 'Concorde'), carries = at(11, 'carries'), london = at(11, 'London'), ny = at(11, 'New'), three = at(11, 'three'), hours = at(11, 'hours'), land = at(11, 'land'), before = at(11, 'before'), local = at(11, 'local'), but = at(11, 'But'), noisy = at(11, 'noisy'), thirsty = at(11, 'thirsty'), expensive = at(11, 'expensive'), twenty = at(11, 'twenty');
   const MB = [80, 90, 1080, 560];
   const proj = fitBox(LL.ATL_NY, MB, 40);
   const LON = [-0.45, 51.47], NY = [-73.78, 40.64];
@@ -1247,7 +1298,7 @@ function Scene11({t, at, fps, a, b}) {
           {dottedPts(greatCircle(proj, LON, NY, 60), p, AMBER, 4)}
           <Pin t={t} fps={fps} a={london} pt={proj(LON)} label="LONDON" lx={22} ly={-14} anchor="start" />
           <Pin t={t} fps={fps} a={ny} pt={proj(NY)} label="NEW YORK" lx={-22} ly={34} anchor="end" />
-          {t >= carries ? <Plane ac="concorde" x={g.x} y={g.y} s={1.0} rot={g.ang} glow={p < 1 ? 1 : 0} /> : null}
+          {t >= carries ? <Plane ac="concorde" x={g.x} y={g.y} s={0.5} rot={g.ang} glow={p < 1 ? 1 : 0} /> : null}
         </MapPanel>
         <SvgPill t={t} fps={fps} a={y1976} x={MB[0] + 150} y={MB[1] + 50} w={140} size={24}>1976</SvgPill>
         <Clock x={1360} y={250} r={105} h={10} m={30} k={pop(t, london, fps, soft)} />
@@ -1257,21 +1308,24 @@ function Scene11({t, at, fps, a, b}) {
         <SvgPill t={t} fps={fps} a={local} x={1520} y={450} w={340} size={20} bg={WHITE}>BY THE LOCAL CLOCK</SvgPill>
         <g opacity={Math.min(1, kS)}>
           <Side ac="concorde" x={cx} y={cy} s={1.5} droop={droop} glow={0.8} />
-          <Lbl x={cx} y={cy + 72} size={16} o={0.55}>CONCORDE · 61.7 M LONG · 3.3 M TALL · THE NOSE DROOPS TO LAND</Lbl>
+          <Lbl x={cx} y={cy + 72} size={16} o={0.55}>CONCORDE · 61.7 M LONG · 3.1 M TALL · THE NOSE DROOPS TO LAND</Lbl>
           {t >= noisy ? [0, 1, 2].map((i) => { const ph = ((t - noisy) * 0.8 + i * 0.33) % 1; return <path key={i} d={`M${cx - 200 - ph * 160},${cy - 60} a 60 60 0 0 0 0 120`} stroke={RED} strokeWidth={4 * (1 - ph)} fill="none" strokeLinecap="round" opacity={(1 - ph) * 0.8} />; }) : null}
           {t >= thirsty ? [0, 1, 2].map((i) => { const ph = ((t - thirsty) * 0.9 + i * 0.33) % 1; return <path key={i} d={`M${cx - 120 + i * 60},${cy + 30 + ph * 60} c -10,-14 -10,-26 0,-30 c 10,4 10,16 0,30 Z`} fill={SKY} opacity={(1 - ph) * 0.9} />; }) : null}
         </g>
         <SvgPill t={t} fps={fps} a={expensive} x={1600} y={cy - 40} w={90} size={26} bg={RED} fg={WHITE}>$</SvgPill>
       </svg>
-      <Num t={t} a={three} fps={fps} x={MB[0] + MB[2] - 60} y={MB[1] + 60} size={80} align="right">~{h.toFixed(1)} H</Num>
+      {FILMS.concorde ? <Clip src={FILM.concorde} from={30} a={but} b={b} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.25} /> : null}
+      {FILMS.concorde ? <Tag t={t} a={but} fps={fps} x={960} y={62} bg="rgba(11,27,51,0.75)" fg={WHITE}>Concorde · 1985</Tag> : null}
+      <Num t={t} a={three} fps={fps} x={MB[0] + MB[2] - 60} y={MB[1] + 60} size={80} align="right" until={FILMS.concorde ? but : undefined}>~{h.toFixed(1)} H</Num>
       <Num t={t} a={twenty} fps={fps} x={1520} y={520} size={90} color={WHITE}>20 BUILT</Num>
     </Scene>
   );
 }
 // ---------- line 12: Europe on a real map: France and Germany light on their names (1970), Britain (1979) and Spain (1971) on
-// theirs, the dates small; "AIRBUS" on the name; the A300 seen from above pops on "A300" with its dimensions; "1972" ----------
+// theirs, the dates small; "AIRBUS" on the name; the A300 seen from above pops on "A300" with its dimensions; "1972". When FILMS.a300,
+// real film (an A300 landing at sunset) takes the frame from "Its first plane" ----------
 function Scene12({t, at, fps, a, b}) {
-  const y1970 = at(12, '1970'), french = at(12, 'French'), german = at(12, 'German'), british = at(12, 'British'), spanish = at(12, 'Spanish'), airbus = at(12, 'Airbus'), a300 = at(12, 'A300'), y1972 = at(12, '1972');
+  const y1970 = at(12, '1970'), french = at(12, 'French'), german = at(12, 'German'), british = at(12, 'British'), spanish = at(12, 'Spanish'), airbus = at(12, 'Airbus'), its = at(12, 'Its'), a300 = at(12, 'A300'), y1972 = at(12, '1972');
   const MB = [80, 90, 960, 790];
   const proj = fitBox(LL.EUR, MB, 30);
   const gp = geoPath(proj.clipExtent([[MB[0], MB[1]], [MB[0] + MB[2], MB[1] + MB[3]]]));
@@ -1303,6 +1357,8 @@ function Scene12({t, at, fps, a, b}) {
         <SvgPill t={t} fps={fps} a={a300} x={1420} y={110} w={220} size={22}>AIRBUS A300</SvgPill>
         <SvgPill t={t} fps={fps} a={y1972} x={1420} y={850} w={140} size={24} bg={WHITE}>1972</SvgPill>
       </svg>
+      {FILMS.a300 ? <Clip src={FILM.a300} from={0} a={its} b={b} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.25} /> : null}
+      {FILMS.a300 ? <Tag t={t} a={a300} fps={fps} x={960} y={62} bg="rgba(11,27,51,0.75)" fg={WHITE}>Airbus A300 · 1972</Tag> : null}
     </Scene>
   );
 }
@@ -1560,7 +1616,8 @@ function Scene17({t, at, fps, a, b}) {
 }
 // ---------- line 18: a 747 seen from above crosses the ocean on a real map; on "two" only two of its engines stay lit; on "777" it
 // crossfades into the 777 at the same scale, its two huge engines glowing; the four engine dots at top-left become two on
-// "replacing"; "1995" on the chip ----------
+// "replacing"; "1995" on the chip. When FILMS.b777, real film (a 777 taking off) takes the frame from "Boeing", the engine dots
+// staying on top ----------
 function Scene18({t, at, fps, a, b}) {
   const two = at(18, 'two'), boeing = at(18, 'Boeing'), b777 = at(18, '777'), replacing = at(18, 'replacing');
   const proj = fitBox(LL.ATL_NY, MAP_W, 40);
@@ -1569,7 +1626,7 @@ function Scene18({t, at, fps, a, b}) {
   const sw = ease(t, boeing, 0.8, Easing.inOut(Easing.quad));
   const dimOuter = ease(t, two, 0.6);
   const twoLeft = ease(t, replacing, 0.6);
-  const S = 0.8;
+  const S = 0.4;   // half size on the map (review 2)
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
@@ -1583,6 +1640,9 @@ function Scene18({t, at, fps, a, b}) {
           </g>
           {sw > 0 ? <Plane ac="b777" x={x} y={y} s={S} rot={0} glow={1} o={sw} /> : null}
         </MapPanel>
+      </svg>
+      {FILMS.b777 ? <Clip src={FILM.b777} from={0} a={boeing} b={b} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.25} /> : null}
+      <svg width={W} height={H} style={{position: 'absolute'}}>
         <g transform="translate(240, 150)">
           {[0, 1, 2, 3].map((i) => <circle key={i} cx={i * 50} cy={0} r={16} fill={AMBER} opacity={i === 0 || i === 3 ? 1 - 0.85 * twoLeft : 1} />)}
           <Lbl x={75} y={50} size={16} o={0.7}>ENGINES</Lbl>
@@ -1651,9 +1711,10 @@ function Scene19({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- line 20: real film: the A380 head-on in mist (file from 22 s) until "largest"; then the 747 and the A380 side views at
-// ONE scale (the A380's full double deck: two window rows), "DOUBLE DECK" on "enters"; on "Four" the 787's picture (CC BY 2.0) or its
-// drawing with the wings flexing up; "CARBON FIBRE" on "carbon"; "2007", "2011" on the chip ----------
+// ---------- line 20: real film: the A380 taxiing seen from a window (dubai, file from 24 s, inside 0-60) until "largest"; then the 747
+// and the A380 side views at ONE scale (the A380's full double deck: two window rows), "DOUBLE DECK" on "enters"; on "Four" real film
+// of the 787 crossing the Moon when FILMS.b787, else the 787's picture (CC BY 2.0) or its drawing with the wings flexing up;
+// "Carbon fibre" on "carbon"; "2007", "2011" on the chip ----------
 function Scene20({t, at, fps, a, b}) {
   const airbus = at(20, 'Airbus'), largest = at(20, 'largest'), enters = at(20, 'enters'), four = at(20, 'Four'), b787 = at(20, '787'), body = at(20, 'body'), carbon = at(20, 'carbon');
   const S = 1.8;
@@ -1664,7 +1725,7 @@ function Scene20({t, at, fps, a, b}) {
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
-      <Clip src={FILM.yyz} from={22} a={a} b={largest} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.2} />
+      <Clip src={FILM.dubai} from={24} a={a} b={largest} t={t} fps={fps} zoom={[1.0, 1.08]} dark={0.2} />
       <Tag t={t} a={airbus} fps={fps} x={960} y={62} until={largest} bg="rgba(11,27,51,0.75)" fg={WHITE}>Airbus A380</Tag>
       {t >= largest ? (
         <AbsoluteFill style={{opacity: kIn * (1 - kB)}}>
@@ -1683,12 +1744,14 @@ function Scene20({t, at, fps, a, b}) {
           </svg>
         </AbsoluteFill>
       ) : null}
-      <Pic have="b787" id="s20" a={four} b={b} t={t} fps={fps} box={PB} fit="cover" gray={false} fallback={() => (
-        <g>
-          <Side ac="b787" x={PB[0] + PB[2] / 2} y={PB[1] + PB[3] / 2 + 40} s={2.0} rot={-8} flex={flex} glow={0.9} />
-          <Lbl x={PB[0] + PB[2] / 2} y={PB[1] + PB[3] - 60} size={18} o={0.6}>BOEING 787-8 · 56.7 M LONG · 60.1 M SPAN · THE WINGS FLEX UP</Lbl>
-        </g>
-      )} />
+      {FILMS.b787 ? <Clip src={FILM.b787} from={0} a={four} b={b} t={t} fps={fps} zoom={[1.0, 1.06]} dark={0.2} /> : (
+        <Pic have="b787" id="s20" a={four} b={b} t={t} fps={fps} box={PB} fit="cover" gray={false} fallback={() => (
+          <g>
+            <Side ac="b787" x={PB[0] + PB[2] / 2} y={PB[1] + PB[3] / 2 + 40} s={2.0} rot={-8} flex={flex} glow={0.9} />
+            <Lbl x={PB[0] + PB[2] / 2} y={PB[1] + PB[3] - 60} size={18} o={0.6}>BOEING 787-8 · 56.7 M LONG · 60.1 M SPAN · THE WINGS FLEX UP</Lbl>
+          </g>
+        )} />
+      )}
       <Tag t={t} a={b787} fps={fps} x={960} y={130} bg={WHITE}>Boeing 787</Tag>
       <Tag t={t} a={carbon} fps={fps} x={960} y={PB[1] + PB[3] - 60} bg={NAVY} fg={AMBER}>Carbon fibre</Tag>
     </Scene>
@@ -1731,7 +1794,7 @@ function Scene21({t, at, fps, a, b}) {
               </g>
             </g>
           )) : null}
-          <Plane ac="a320" x={pp[0]} y={pp[1]} s={0.6} rot={ang} color={AMBER} />
+          <Plane ac="a320" x={pp[0]} y={pp[1]} s={0.3} rot={ang} color={AMBER} />
           <Lbl x={cx} y={cy + R + 50} size={16} o={0.55}>SATELLITES · THE PLANE KNOWS WHERE IT IS</Lbl>
         </g>
         <g opacity={Math.min(1, kR)}>
@@ -1792,42 +1855,177 @@ function Scene22({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- line 23: real film: the A380 climbing over Dubai (file from 104 s) under the whole line; over it a simple chart "RISK
-// PER KM": one bar per decade, falling, no values; bars grow on "safest", a tick lands on each on "lesson"; TODAY on the chip ----------
+// ---------- line 23 (review 2): a night storm: a dark cloud deck, rain, distant flashes; an A320 (real proportions) flies through it;
+// on "struck" a bolt hits the NOSE with a frame flash; "~1 PER YEAR" on "once" ----------
+const STORM_CX = 760, STORM_CY = 480, STORM_S = 2.2;   // the airliner's place in lines 23-24 (the same, so the cut is invisible)
+// the A320 side view's skin as a polyline in its local coordinates (nose tip, nose top, roof, tail cone, tail end), see JetSide
+const A320_SKIN = [[188, 0], [144, -20], [-98, -20], [-165.5, -16], [-188, -10], [-188, -3.6]];
+const skinPts = () => A320_SKIN.map(([px, py]) => [STORM_CX + px * STORM_S, STORM_CY + py * STORM_S]);
+const strikeK = (t, s) => (t >= s ? Math.max(0, 1 - (t - s) / 0.55) * (0.75 + 0.25 * Math.sin(t * 70)) : 0);
 function Scene23({t, at, fps, a, b}) {
-  const safest = at(23, 'safest'), lesson = at(23, 'lesson');
-  const decades = [1960, 1970, 1980, 1990, 2000, 2010, 2020];
-  const hts = [420, 300, 210, 150, 100, 62, 38];
-  const X0 = 260, DX = 100, BY = 800;
+  const struck = at(23, 'struck'), once = at(23, 'once');
+  const kIn = pop(t, a, fps, soft);
+  const bob = 6 * Math.sin(t * 1.7);
+  const nose = [STORM_CX + 188 * STORM_S, STORM_CY + bob];
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
-      <Clip src={FILM.dubai} from={104} a={a} b={b} t={t} fps={fps} zoom={[1.0, 1.06]} dark={0.35} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <Storm t={t} seed={3} />
+        <g opacity={Math.min(1, kIn)}>
+          <Side ac="a320" x={STORM_CX} y={STORM_CY + bob} s={STORM_S} rot={-2} glow={0.8} />
+          <Lbl x={STORM_CX} y={STORM_CY + 120} size={16} o={0.5}>A320 · 37.6 M · SIDE VIEW</Lbl>
+        </g>
+        <Bolt x0={nose[0] + 90} y0={190} x1={nose[0]} y1={nose[1]} seed={11} k={strikeK(t, struck)} />
+        <SvgPill t={t} fps={fps} a={once} x={1500} y={330} w={220} size={22}>~1 PER YEAR</SvgPill>
+      </svg>
+      <AbsoluteFill style={{background: WHITE, opacity: t >= struck ? 0.45 * Math.max(0, 1 - (t - struck) / 0.25) : 0, pointerEvents: 'none'}} />
+    </Scene>
+  );
+}
+// ---------- line 24 (review 2): the same storm and airliner. a bolt hits the NOSE on "hits", another the WINGTIP on "wingtip"; from
+// "runs" the current runs along the skin as a bright line nose to tail and leaves from the TAIL on "leaves"; on "cage" a cutaway shows
+// the passengers inside, calm, the current only on the outside (a tick on "safe"); on "carbon" a 787 skin panel with a fine copper
+// mesh drawn into it on "mesh" ----------
+function Scene24({t, at, fps, a, b}) {
+  const hits = at(24, 'hits'), wingtip = at(24, 'wingtip'), runs = at(24, 'runs'), tail = at(24, 'tail'), leaves = at(24, 'leaves'), cage = at(24, 'cage'), safe = at(24, 'safe'), carbon = at(24, 'carbon'), mesh = at(24, 'mesh');
+  const cx = STORM_CX, cy = STORM_CY, S = STORM_S;
+  const skin = skinPts();
+  const nose = skin[0], tailEnd = skin[5];
+  const tip = [cx - 46.5 * S, cy - 11 * S];
+  const run = ease(t, runs, Math.max(0.8, tail + 0.2 - runs), Easing.inOut(Easing.quad));
+  const head = polyAt(skin, run);
+  const kCut = ease(t, cage, 0.8), kPanel = pop(t, carbon, fps, soft), meshK = ease(t, mesh, 1.4);
+  const flash = Math.max(strikeK(t, hits), strikeK(t, wingtip)) * 0.45;
+  const seats = Array.from({length: 18}, (_, i) => <Seated key={i} x={cx + (120 - i * 15) * S} y={cy + 6 * S} s={S * 0.9} color={AMBER} />);
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <Storm t={t} seed={5} />
+        <Side ac="a320" x={cx} y={cy} s={S} rot={0} glow={0.8} />
+        {kCut > 0 ? (
+          <g opacity={kCut}>
+            <rect x={cx - 150 * S} y={cy - 14 * S} width={280 * S} height={28 * S} rx={10 * S} fill={NAVY} opacity={0.92} />
+            {seats}
+            <Lbl x={cx} y={cy + 120} size={16} color={SKY} o={0.8}>THE CURRENT STAYS ON THE SKIN</Lbl>
+          </g>
+        ) : null}
+        <Bolt x0={nose[0] + 90} y0={190} x1={nose[0]} y1={nose[1]} seed={21} k={strikeK(t, hits)} />
+        <Bolt x0={tip[0] - 80} y0={190} x1={tip[0]} y1={tip[1]} seed={31} k={strikeK(t, wingtip)} w={5} />
+        {run > 0 ? (
+          <g>
+            <path d={polyD(skin)} stroke={SKY} strokeWidth={14} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.35} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - run} />
+            <path d={polyD(skin)} stroke={WHITE} strokeWidth={5} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - run} />
+            {run < 1 ? <circle cx={head[0]} cy={head[1]} r={12} fill={WHITE} opacity={0.9} /> : null}
+          </g>
+        ) : null}
+        <Bolt x0={tailEnd[0]} y0={tailEnd[1]} x1={tailEnd[0] - 70} y1={880} seed={41} k={strikeK(t, leaves)} />
+        <Tick x={cx + 150 * S + 60} y={cy - 60} k={pop(t, safe, fps, bouncy)} r={30} />
+        <g transform={`translate(1540, 500) scale(${Math.min(1, kPanel)})`} opacity={Math.min(1, kPanel)}>
+          <Side ac="b787" x={0} y={-260} s={0.5} flex={1.5} glow={0.5} />
+          <rect x={-180} y={-170} width={360} height={340} rx={18} fill="#2B2F36" stroke={SILVER} strokeWidth={3} />
+          <defs><clipPath id="panel24"><rect x={-180} y={-170} width={360} height={340} rx={18} /></clipPath></defs>
+          <g clipPath="url(#panel24)">
+            {Array.from({length: 26}, (_, i) => <line key={i} x1={-200 + i * 30} y1={-190} x2={-200 + i * 30 - 360} y2={190} stroke={WHITE} strokeWidth={1} opacity={0.12} />)}
+            {Array.from({length: 26}, (_, i) => <line key={`b${i}`} x1={-200 + i * 30} y1={190} x2={-200 + i * 30 - 360} y2={-190} stroke={WHITE} strokeWidth={1} opacity={0.12} />)}
+            {Array.from({length: 15}, (_, i) => <line key={`m${i}`} x1={-168 + i * 24} y1={-170} x2={-168 + i * 24} y2={170} stroke={COPPER} strokeWidth={1.5} opacity={0.9 * clamp01(meshK * 2 - i / 15)} />)}
+            {Array.from({length: 15}, (_, i) => <line key={`n${i}`} x1={-180} y1={-158 + i * 24} x2={180} y2={-158 + i * 24} stroke={COPPER} strokeWidth={1.5} opacity={0.9 * clamp01(meshK * 2 - 1 - i / 15)} />)}
+          </g>
+          <Lbl x={0} y={210} size={16} o={0.7}>787 SKIN · CARBON FIBRE</Lbl>
+          <Lbl x={0} y={236} size={16} color={COPPER} o={0.9 * ease(t, mesh, 0.4)}>COPPER MESH</Lbl>
+        </g>
+      </svg>
+      <AbsoluteFill style={{background: WHITE, opacity: flash, pointerEvents: 'none'}} />
+    </Scene>
+  );
+}
+// ---------- line 25 (review 2), calm and respectful: the US east coast on a detailed map, "8 DEC 1963" on "December", a flash at
+// ELKTON, MARYLAND on "lightning", a small 707 flies up the coast on "Pan Am" and stops there on "Maryland"; on the right a 707 wing
+// cross-section with the fuel tank and vapour on "ignited", a spark on "vapour" (no fire, no crash drawn); "81" small on "eighty"; on
+// "Since" today's tank: the spark crossed out on "spark", a SAFE tick on "can't" ----------
+function Scene25({t, at, fps, a, b}) {
+  const december = at(25, 'December'), lightning = at(25, 'lightning'), ignited = at(25, 'ignited'), vapour = at(25, 'vapour'), pan = at(25, 'Pan'), maryland = at(25, 'Maryland'), eighty = at(25, 'eighty'), since = at(25, 'Since'), spark = at(25, 'spark'), cant = at(25, 'can');
+  const MB = [80, 90, 900, 790];
+  const proj = fitBox(LL.USA_E, MB, 40);
+  const ELK = [-75.83, 39.61], DCA = [-77.04, 38.85];
+  const p = ease(t, pan, Math.max(1.2, maryland + 0.3 - pan), Easing.inOut(Easing.quad));
+  const g = gcAt(proj, DCA, ELK, p);
+  const elk = proj(ELK);
+  const kSec = pop(t, ignited, fps, soft);
+  const now = ease(t, since, 0.8, Easing.inOut(Easing.quad));
+  const sparkOn = t >= vapour && t < vapour + 0.9 ? (Math.floor((t - vapour) / 0.15) % 2 === 0 ? 1 : 0.2) : 0;
+  const glowK = t >= vapour ? Math.max(0, 1 - (t - vapour) / 1.6) : 0;
+  const SX = 1440, SY = 400;
+  const foil = 'M-300,0 C-300,-70 -120,-104 0,-92 C150,-80 300,-24 300,10 C200,32 -100,52 -300,0 Z';
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
+      <svg width={W} height={H} style={{position: 'absolute'}}>
+        <MapPanel proj={proj} hi={['USA']} box={MB} k={pop(t, a, fps, soft)} id="m25">
+          <Bolt x0={elk[0] + 30} y0={elk[1] - 160} x1={elk[0]} y1={elk[1]} seed={51} k={strikeK(t, lightning)} w={4} />
+          {t >= pan ? <Plane ac="b707" x={g.x} y={g.y} s={0.5} rot={g.ang} o={0.95} /> : null}
+          <Pin t={t} fps={fps} a={maryland} pt={elk} label="ELKTON · MARYLAND" lx={22} ly={-16} anchor="start" r={9} size={20} />
+        </MapPanel>
+        <SvgPill t={t} fps={fps} a={december} x={MB[0] + 180} y={MB[1] + 50} w={220} size={22}>8 DEC 1963</SvgPill>
+        <SvgPill t={t} fps={fps} a={pan} x={MB[0] + 180} y={MB[1] + 110} w={220} size={20} bg={WHITE}>PAN AM 707</SvgPill>
+        <g transform={`translate(${SX}, ${SY}) scale(${Math.min(1, kSec)})`} opacity={Math.min(1, kSec)}>
+          <path d={foil} fill={SILVER} />
+          <path d={foil} fill="none" stroke={WHITE} strokeWidth={3} opacity={0.6} />
+          <rect x={-200} y={-58} width={300} height={82} rx={14} fill={NAVY2} />
+          <rect x={-200} y={-58} width={300} height={82} rx={14} fill={GREEN} opacity={0.35 * now} />
+          <rect x={-200} y={-6} width={300} height={30} rx={8} fill={SKY} opacity={0.55} />
+          {Array.from({length: 7}, (_, i) => { const ph = ((t * 0.5 + rnd(i + 120)) % 1); return <circle key={i} cx={-180 + i * 42 + 8 * Math.sin(t * 2 + i)} cy={-12 - ph * 36} r={3} fill={SKY} opacity={(1 - ph) * 0.8 * (1 - now)} />; })}
+          <circle cx={-60} cy={-30} r={90} fill={RED} opacity={0.22 * glowK * (1 - now)} />
+          <g transform="translate(-60, -30)">
+            <path d="M0,-18 L4,-4 L18,0 L4,4 L0,18 L-4,4 L-18,0 L-4,-4 Z" fill={AMBER} opacity={Math.max(sparkOn, 0.35 * now)} />
+            <Cross x={0} y={0} k={pop(t, spark, fps, bouncy)} r={22} />
+          </g>
+          <Lbl x={0} y={-130} size={16} o={0.7}>{now > 0.5 ? 'FUEL TANK · TODAY' : '707 WING · FUEL TANK · 1963'}</Lbl>
+          <Lbl x={0} y={80} size={14} o={0.5}>WING CROSS-SECTION</Lbl>
+        </g>
+        <Tick x={SX + 200} y={SY - 90} k={pop(t, cant, fps, bouncy)} r={34} />
+        <SvgPill t={t} fps={fps} a={cant} x={SX} y={SY + 150} w={140} size={22} bg={GREEN}>SAFE</SvgPill>
+      </svg>
+      <Num t={t} a={eighty} fps={fps} x={MB[0] + MB[2] - 60} y={MB[1] + 60} size={60} color={WHITE} align="right">81</Num>
+    </Scene>
+  );
+}
+// ---------- line 26 (the old line 23): a simple chart "RISK PER KM": one bar per decade, falling, no values; bars grow on "safest", a
+// tick lands on each on "lesson"; TODAY on the chip ----------
+function Scene26({t, at, fps, a, b}) {
+  const safest = at(26, 'safest'), lesson = at(26, 'lesson');
+  const decades = [1960, 1970, 1980, 1990, 2000, 2010, 2020];
+  const hts = [460, 330, 230, 165, 110, 68, 42];
+  const X0 = 500, DX = 134, BY = 800;
+  return (
+    <Scene t={t} a={a}>
+      <Bg t={t} />
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <g opacity={ease(t, safest, 0.4)}>
-          <rect x={X0 - 80} y={BY - 480} width={DX * 7 + 120} height={560} rx={20} fill={NAVY} opacity={0.55} />
+          <rect x={X0 - 90} y={BY - 540} width={DX * 7 + 140} height={620} rx={20} fill={NAVY2} opacity={0.45} />
           <line x1={X0 - 40} y1={BY} x2={X0 + DX * 7} y2={BY} stroke={WHITE} strokeWidth={3} opacity={0.6} />
           {decades.map((yr, i) => {
             const k = ease(t, safest + i * 0.14, 0.8, Easing.out(Easing.cubic));
             return (
               <g key={yr}>
-                <rect x={X0 + i * DX} y={BY - hts[i] * k} width={60} height={hts[i] * k} rx={10} fill={i < 3 ? RED : i < 5 ? AMBER : GREEN} opacity={0.9} />
-                <Lbl x={X0 + i * DX + 30} y={BY + 30} size={15} o={0.7}>{yr}</Lbl>
-                <Tick x={X0 + i * DX + 30} y={BY - hts[i] - 30} k={pop(t, lesson + i * 0.1, fps, bouncy)} r={13} />
+                <rect x={X0 + i * DX} y={BY - hts[i] * k} width={84} height={hts[i] * k} rx={12} fill={i < 3 ? RED : i < 5 ? AMBER : GREEN} opacity={0.9} />
+                <Lbl x={X0 + i * DX + 42} y={BY + 32} size={16} o={0.7}>{yr}</Lbl>
+                <Tick x={X0 + i * DX + 42} y={BY - hts[i] - 34} k={pop(t, lesson + i * 0.1, fps, bouncy)} r={14} />
               </g>
             );
           })}
-          <Lbl x={X0 - 40} y={BY - 430} anchor="start" size={20} color={AMBER} o={0.95}>RISK PER KM</Lbl>
+          <Lbl x={X0 - 40} y={BY - 490} anchor="start" size={22} color={AMBER} o={0.95}>RISK PER KM</Lbl>
         </g>
       </svg>
     </Scene>
   );
 }
-// ---------- line 24: real film from a window seat on the runway (oak, file from 20 s) until "climbs"; then the altitude ladder
-// (Chapter 1's look): an A320 climbs the ladder to 10 km, "~10 KM" on "ten"; the air dots thin out upward on "thin"; the engines
-// glow on "engines" ----------
-function Scene24({t, at, fps, a, b}) {
-  const climbs = at(24, 'climbs'), ten = at(24, 'ten'), km = at(24, 'kilometres'), thin = at(24, 'thin'), engines = at(24, 'engines');
+// ---------- line 27 (the old line 24): real film from a window seat on the runway (oak, file from 20 s) until "climbs"; then the
+// altitude ladder (Chapter 1's look): an A320 climbs the ladder to 10 km, "~10 KM" on "ten"; the air dots thin out upward on "thin";
+// the engines glow on "engines" ----------
+function Scene27({t, at, fps, a, b}) {
+  const climbs = at(27, 'climbs'), ten = at(27, 'ten'), km = at(27, 'kilometres'), thin = at(27, 'thin'), engines = at(27, 'engines');
   const yOf = (k) => 840 - k * 55;
   const climb = ease(t, climbs, Math.max(1.6, km + 0.6 - climbs), Easing.inOut(Easing.quad));
   const px = lerp(760, 1250, climb), py = yOf(0.3 + 9.7 * climb);
@@ -1865,86 +2063,10 @@ function Scene24({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- line 25: the cockpit again; CAPTAIN / CO-PILOT on "two pilots"; two trays with different meals pop on "meals"; a red
-// cross lands on the omelette on "bad"; "1975" ----------
-function Scene25({t, at, fps, a, b}) {
-  const two = at(25, 'two'), pilots = at(25, 'pilots'), meals = at(25, 'meals'), bad = at(25, 'bad'), omelette = at(25, 'omelette'), y1975 = at(25, '1975');
-  const kT = pop(t, meals, fps, soft);
-  const zoom = 1 + 0.2 * ease(t, omelette, 0.4);
-  return (
-    <Scene t={t} a={a}>
-      <Bg t={t} />
-      <svg width={W} height={H} style={{position: 'absolute'}}>
-        <Cockpit x={960} y={560} s={0.9} />
-        <SvgPill t={t} fps={fps} a={two} x={753} y={430} w={170} size={20} bg={WHITE}>CAPTAIN</SvgPill>
-        <SvgPill t={t} fps={fps} a={pilots} x={1167} y={430} w={170} size={20} bg={WHITE}>CO-PILOT</SvgPill>
-        <g transform={`translate(480, 760) scale(${Math.min(1, kT)})`} opacity={Math.min(1, kT)}>
-          <rect x={-110} y={-56} width={220} height={112} rx={14} fill={SILVER} />
-          <circle cx={-30} cy={0} r={42} fill={WHITE} /><circle cx={-30} cy={0} r={30} fill="none" stroke={SKY} strokeWidth={2} />
-          <g transform={`translate(-30, 0) scale(${zoom})`}>
-            <path d="M-26,8 Q-20,-16 10,-12 Q28,-8 24,8 Z" fill="#F2C14E" />
-            <Cross x={0} y={0} k={pop(t, bad, fps, bouncy)} r={22} />
-          </g>
-          <circle cx={60} cy={-10} r={16} fill={WHITE} opacity={0.9} /><rect x={44} y={16} width={32} height={22} rx={4} fill={WHITE} opacity={0.9} />
-        </g>
-        <g transform={`translate(1440, 760) scale(${Math.min(1, kT)})`} opacity={Math.min(1, kT)}>
-          <rect x={-110} y={-56} width={220} height={112} rx={14} fill={SILVER} />
-          <circle cx={-30} cy={0} r={42} fill={WHITE} /><circle cx={-30} cy={0} r={30} fill="none" stroke={SKY} strokeWidth={2} />
-          <ellipse cx={-34} cy={2} rx={22} ry={12} fill="#B5773D" /><rect x={-16} y={-4} width={22} height={6} rx={3} fill={PAPER} />
-          {[-48, -40, -32].map((dx) => <circle key={dx} cx={dx} cy={-16} r={4} fill={GREEN} />)}
-          <circle cx={60} cy={-10} r={16} fill={WHITE} opacity={0.9} /><rect x={44} y={16} width={32} height={22} rx={4} fill={WHITE} opacity={0.9} />
-        </g>
-        <line x1={590} y1={760} x2={700} y2={700} stroke={WHITE} strokeWidth={2} strokeDasharray="6 8" opacity={0.4 * Math.min(1, kT)} />
-        <line x1={1330} y1={760} x2={1220} y2={700} stroke={WHITE} strokeWidth={2} strokeDasharray="6 8" opacity={0.4 * Math.min(1, kT)} />
-        <SvgPill t={t} fps={fps} a={y1975} x={960} y={120} w={140} size={24}>1975</SvgPill>
-      </svg>
-    </Scene>
-  );
-}
-// ---------- line 26: Korea on a real map, GIMPO (Seoul) and JEJU pin on their names, the route draws on "busiest", little planes
-// shuttle both ways from "route"; on the right an A320 lifts off a runway on "taking off"; "200+ FLIGHTS A DAY" on "two hundred" ----------
-function Scene26({t, at, fps, a, b}) {
-  const busiest = at(26, 'busiest'), route = at(26, 'route'), seoul = at(26, 'Seoul'), jeju = at(26, 'Jeju'), taking = at(26, 'taking'), two = at(26, 'two');
-  const MB = [80, 90, 900, 790], RB = [1020, 90, 820, 520];
-  const proj = fitBox(LL.KOREA, MB, 40);
-  const GMP = [126.79, 37.56], CJU = [126.49, 33.51];
-  const line = ease(t, busiest, 1.2, Easing.inOut(Easing.quad));
-  const shuttle = Array.from({length: 6}, (_, i) => {
-    if (t < route) return null;
-    const raw = ((t - route) * 0.09 + i / 6) % 1;
-    const back = i % 2 === 1;
-    const g = gcAt(proj, GMP, CJU, back ? 1 - raw : raw);
-    return <Plane key={i} ac="a320" x={g.x} y={g.y} s={0.5} rot={g.ang + (back ? 180 : 0)} color={AMBER} o={ease(t, route + i * 0.15, 0.4)} />;
-  });
-  const roll = ease(t, taking, 2.4, Easing.in(Easing.quad));
-  const lift = clamp01((roll - 0.5) / 0.5);
-  const hx = lerp(RB[0] + 200, RB[0] + RB[2] - 120, roll), hy = RB[1] + RB[3] - 90 - 260 * lift * lift;
-  const kR = pop(t, taking - 0.3, fps, soft);
-  return (
-    <Scene t={t} a={a}>
-      <Bg t={t} />
-      <svg width={W} height={H} style={{position: 'absolute'}}>
-        <MapPanel proj={proj} hi={['KOR']} box={MB} k={pop(t, a, fps, soft)} id="m26">
-          {dottedPts(greatCircle(proj, GMP, CJU, 40), line, WHITE, 3)}
-          {shuttle}
-          <Pin t={t} fps={fps} a={seoul} pt={proj(GMP)} label="SEOUL · GIMPO" lx={24} ly={10} anchor="start" />
-          <Pin t={t} fps={fps} a={jeju} pt={proj(CJU)} label="JEJU" lx={24} ly={10} anchor="start" />
-        </MapPanel>
-        <g opacity={Math.min(1, kR)}>
-          <rect x={RB[0]} y={RB[1]} width={RB[2]} height={RB[3]} rx={20} fill={NAVY2} opacity={0.6} />
-          <line x1={RB[0] + 40} y1={RB[1] + RB[3] - 60} x2={RB[0] + RB[2] - 40} y2={RB[1] + RB[3] - 60} stroke={WHITE} strokeWidth={3} opacity={0.4} />
-          {[0, 1, 2, 3, 4, 5].map((i) => <rect key={i} x={RB[0] + 80 + i * 120} y={RB[1] + RB[3] - 52} width={60} height={5} fill={WHITE} opacity={0.25} />)}
-          <Side ac="a320" x={hx} y={hy - 28} s={1.4} rot={-14 * lift} glow={0.4 + 0.6 * roll} />
-        </g>
-        <SvgPill t={t} fps={fps} a={two} x={RB[0] + RB[2] / 2} y={RB[1] + RB[3] + 70} w={340} size={22}>200+ FLIGHTS A DAY</SvgPill>
-      </svg>
-    </Scene>
-  );
-}
-// ---------- line 27: a quick visual rewind in three shots: people watching birds (from the start), Eilmer's tower on "monk" with
-// the monk leaping on "jumping", the Flyer on the beach on "twelve" with "12 S" on "seconds" ----------
-function Scene27({t, at, fps, a, b}) {
-  const monk = at(27, 'monk'), jumping = at(27, 'jumping'), twelve = at(27, 'twelve'), seconds = at(27, 'seconds'), north = at(27, 'North');
+// ---------- line 28 (the old line 27): a quick visual rewind in three shots: people watching birds (from the start), Eilmer's tower
+// on "monk" with the monk leaping on "jumping", the Flyer on the beach on "twelve" with "12 S" on "seconds" ----------
+function Scene28({t, at, fps, a, b}) {
+  const monk = at(28, 'monk'), jumping = at(28, 'jumping'), twelve = at(28, 'twelve'), seconds = at(28, 'seconds'), north = at(28, 'North');
   const kA = 1 - ease(t, monk, 0.35), kM = ease(t, monk, 0.35) * (1 - ease(t, twelve, 0.35)), kF = ease(t, twelve, 0.35);
   const jump = ease(t, jumping, 1.6, Easing.inOut(Easing.quad));
   const mx = lerp(760, 1400, jump), my = lerp(352, 820, jump * jump) - 110 * Math.sin(jump * Math.PI);
@@ -1995,9 +2117,10 @@ function Scene27({t, at, fps, a, b}) {
     </Scene>
   );
 }
-// ---------- line 28: a calm last beat. a 787 climbs into a sunset, wings flexed up, a slow push; fade to navy from "still" ----------
-function Scene28({t, at, fps, a, b, seconds}) {
-  const still = at(28, 'still');
+// ---------- line 29 (the old line 28): a calm last beat. a 787 climbs into a sunset, wings flexed up, a slow push; fade to navy from
+// "still" ----------
+function Scene29({t, at, fps, a, b, seconds}) {
+  const still = at(29, 'still');
   const k = ease(t, a, 5.0, Easing.inOut(Easing.quad));
   const out = ease(t, still, Math.max(0.5, seconds - still), Easing.inOut(Easing.quad));
   const px = lerp(560, 1000, k), py = lerp(620, 400, k);
@@ -2035,13 +2158,15 @@ const yearSchedule = (at, lines) => {
   if (has(19)) s.push([at(19, '2001'), '2001']);
   if (has(20)) { s.push([at(20, '2007'), '2007']); s.push([at(20, 'Four'), '2011']); }
   if (has(22)) { s.push([at(22, '2019'), '2019']); s.push([at(22, 'next'), '2020']); }
-  if (has(23)) s.push([at(23, 'today'), 'TODAY']);
+  if (has(23)) s.push([at(23, 'lightning'), 'TODAY']);
+  if (has(25)) s.push([at(25, '1963'), '1963']);
+  if (has(26)) s.push([at(26, 'today'), 'TODAY']);
   return s;
 };
 const SCENES = [Scene0, Scene1, Scene2, Scene3, Scene4, Scene5, Scene6, Scene7, Scene8, Scene9, Scene10, Scene11, Scene12, Scene13, Scene14,
-                Scene15, Scene16, Scene17, Scene18, Scene19, Scene20, Scene21, Scene22, Scene23, Scene24, Scene25, Scene26, Scene27, Scene28];
+                Scene15, Scene16, Scene17, Scene18, Scene19, Scene20, Scene21, Scene22, Scene23, Scene24, Scene25, Scene26, Scene27, Scene28, Scene29];
 
-export const AviHistory3 = ({lines = [], words = [], seconds = 351.5}) => {
+export const AviHistory3 = ({lines = [], words = [], seconds = 376.9}) => {
   const {fps} = useVideoConfig();
   const frame = useCurrentFrame();
   const t = frame / fps;
