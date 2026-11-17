@@ -76,7 +76,8 @@ def make(folder):
     L = folder.parent
     spec = json.loads((folder / "script.json").read_text(encoding="utf-8"))
     vspec = {"story": [{"text": l["text"], **({"say": l["say"]} if l.get("say") else {}), **({"speed": l["speed"]} if l.get("speed") else {})}
-                       for l in spec["lines"]], "story_speed": spec.get("speed", 1.1), "story_gap": spec.get("gap", 0.15)}
+                       for l in spec["lines"]], "story_speed": spec.get("speed", 1.1), "story_gap": spec.get("gap", 0.15),
+             **({"voice": spec["voice"]} if spec.get("voice") else {})}   # "eleven:<id>" = a paid voice, only when the client asks (Bassel 11-17: Chris)
     lines, total = maplong.voice(vspec, folder)
     words = align(folder, lines)
     (folder / "voice.json").write_text(json.dumps({"lines": lines, "seconds": total}, indent=1), encoding="utf-8")

@@ -425,7 +425,14 @@ def _facts(c):
     meta = p.get("meta") or {}
     eps = cp.list_episodes(c["project"], limit=50)
     lines = [f"- #{e['id']} \"{e['title']}\": {e['status'].replace('_', ' ')}" for e in eps[:20]]
-    return meta, ("Videos and scripts in his project:\n" + "\n".join(lines) if lines else "No scripts or videos made yet for his project.")
+    facts = "Videos and scripts in his project:\n" + "\n".join(lines) if lines else "No scripts or videos made yet for his project."
+    # Bassel 11-17 ("check with the team all the videos i have and memorise them"): the studio's own list of every video it SENT
+    # him (Shorts, chapters, samples made outside the episodes table). Never tell him a video in this list doesn't exist.
+    idx = ROOT / "content" / f"project-{c['project']}" / "final" / "INDEX.md"
+    if idx.exists():
+        facts += ("\n\nEvery video the studio has sent him (the team's list; these all exist, talk about them by these names):\n"
+                  + idx.read_text(encoding="utf-8")[:6000])
+    return meta, facts
 
 
 def draft(slug, text, files=()):

@@ -58,10 +58,18 @@ def voice(spec, folder):
             fj = f.with_suffix(".json")
             if not f.exists():
                 import elevenlabs
-                a, told, chars = elevenlabs.speak(eleven, texts[i], previous=texts[i - 1] if i else "", following=texts[i + 1] if i + 1 < len(texts) else "", model_id="eleven_multilingual_v2")
+                for k in range(3):   # Bassel 11-17: two honey lines stopped mid-word (the take ended at -16 dB); a take must end in silence
+                    a, told, chars = elevenlabs.speak(eleven, texts[i], previous=texts[i - 1] if i else "", following=texts[i + 1] if i + 1 < len(texts) else "", model_id="eleven_multilingual_v2")
+                    a = np.asarray(a, np.float32)
+                    end_db = 20 * np.log10(np.max(np.abs(a[-int(0.03 * SR):])) + 1e-9)
+                    print("VOICED", i, chars, "end %.0f dB" % end_db, flush=True)
+                    if end_db < -40:
+                        break
+                if end_db >= -40:   # still cut after 3 takes: fade the last 60 ms so at least it doesn't click
+                    n = int(0.06 * SR)
+                    a[-n:] *= np.linspace(1, 0, n, dtype=np.float32)
                 sf.write(f, a, SR)
                 fj.write_text(json.dumps(told or []), encoding="utf-8")
-                print("VOICED", i, chars, flush=True)
             told = json.loads(fj.read_text(encoding="utf-8")) or None
         else:
             f = cache / (hashlib.sha1(f"am_michael|{speed}|{says[i]}".encode()).hexdigest()[:16] + ".wav")

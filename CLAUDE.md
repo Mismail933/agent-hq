@@ -446,6 +446,10 @@ Agents never spend money without the owner's explicit approval.
   2.84.5 Bassel's aviation samples (11-16, his three topics: pilots' meals, busiest routes, why ~10 km): `maps/src/Aviation.jsx` (AviMeals,
   AviRoutes, AviAltitude) written by Fable from ~/fable-avi/BRIEF.md (+ REVIEW-N.md), real maps from geo.json + d3-geo; `AviShort.jsx` =
   the wrapper with captions (prop `which`); voices from `factshort.py make` (Kokoro, free), render = scratchpad render_avi.py <which>.
+  2.84.10 (Bassel 11-17): `clientbot._facts` also gives the bot content/project-N/final/INDEX.md = Ocean's list of every video sent
+  to him (the bot kept saying his Shorts didn't exist; keep that list current with every send). factshort script.json `voice`
+  ("eleven:<id>", Chris = iP95p4xoKVk53GoZ742B, only when he asks); maplong re-voices an ElevenLabs line whose take ends louder
+  than -40 dB (two honey lines stopped mid-word), up to 3 takes, then fades the last 60 ms.
 - `phone.py` (2.22.0, the owner chose Telegram): his private bot. Token `TELEGRAM_BOT_TOKEN` in .env only (START-HERE asks once,
   `.telegram-skip`; or Spend & limits -> Your phone, `POST /api/phone`; never logged, never shown). Pairing: a 6-digit code shown
   in that card and the START-HERE window; the first chat that sends it is the owner (`~/.agent-hq/telegram.json`: chat, seen
