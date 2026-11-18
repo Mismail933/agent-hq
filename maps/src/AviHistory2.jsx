@@ -58,6 +58,8 @@ const makeAt = (lines) => (li, word, nth = 0) => {
   for (const w of L.words) { if (cleanW(w[0]).startsWith(target)) { if (k === nth) return w[1]; k++; } }
   return L.t0;
 };
+// a word's time only if that line really says it, else never (the Builder 11-18: the merged video drops words some scenes listened for)
+const said = (lines, li, word) => Boolean(lines[li] && lines[li].words.some((w) => cleanW(w[0]).startsWith(cleanW(word))));
 const polyPts = (cx, cy, r, n, rot = -Math.PI / 2) => {
   const p = [];
   for (let i = 0; i < n; i++) { const a = rot + Math.PI * 2 / n * i; p.push(`${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`); }
@@ -1823,8 +1825,9 @@ function Scene27({t, at, fps, a, b}) {
 // ---------- line 28: 1947. the Bell X-1 (9.4 m, a bullet with thin wings) side on; chevrons on "faster", shock rings and a Mach cone on
 // "sound" with "MACH 1"; on "July 1949" the de Havilland Comet seen from above (35 m span, drawn to scale) takes over, its four jets
 // glowing in the wing roots on "jet engines", lifting on "takes off"; "27 JUL 1949" ----------
-function Scene28({t, at, fps, a, b}) {
-  const chuck = at(28, 'Chuck'), faster = at(28, 'faster'), sound = at(28, 'sound'), july = at(28, 'July'), four = at(28, 'four'), jet = at(28, 'jet'), takes = at(28, 'takes'), comet = at(28, 'Comet');
+function Scene28({t, at, fps, a, b, lines}) {
+  const NO = 1e9, cue = (w) => (said(lines, 28, w) ? at(28, w) : NO);   // the merged video's line 28 (Bassel 11-18) stops at Mach 1: no Comet
+  const chuck = at(28, 'Chuck'), faster = at(28, 'faster'), sound = at(28, 'sound'), july = cue('July'), four = cue('four'), jet = cue('jet'), takes = cue('takes'), comet = cue('Comet');
   const kX = pop(t, a, fps, soft) * (1 - ease(t, july, 0.5));
   const fast = ease(t, faster, 1.0);
   const mach = ease(t, sound, 0.6);
@@ -1863,8 +1866,9 @@ function Scene28({t, at, fps, a, b}) {
 // ---------- line 29: a timeline 1903 -> 1949; from "flight" the Flyer morphs step by step (a crossfade per step) through the Blériot,
 // the Vimy, the Spirit, the DC-3, the He 178, the Me 262 into the Comet, all seen from above at ONE scale; "<50 YEARS" on "fifty",
 // "12 S" at the left end on "twelve", "CONTINENTS" at the right end on "continents" ----------
-const STEPS = [['flyer', 1903], ['bleriot', 1909], ['vimy', 1919], ['spirit', 1927], ['dc3', 1935], ['he178', 1939], ['me262', 1944], ['comet', 1949]];
-function Scene29({t, at, fps, a, b}) {
+const STEPS_ALL = [['flyer', 1903], ['bleriot', 1909], ['vimy', 1919], ['spirit', 1927], ['dc3', 1935], ['he178', 1939], ['me262', 1944], ['comet', 1949]];
+function Scene29({t, at, fps, a, b, lines}) {
+  const STEPS = said(lines, 28, 'Comet') ? STEPS_ALL : STEPS_ALL.slice(0, -1);   // the merged video: the Comet is Chapter 3's, not shown here
   const fifty = at(29, 'fifty'), flight = at(29, 'flight'), twelve = at(29, 'twelve'), jets = at(29, 'jets'), continents = at(29, 'continents');
   const X0 = 300, X1 = 1620, TY = 800;
   const step = Math.max(0.3, (jets - flight) / (STEPS.length - 1));
@@ -1902,8 +1906,8 @@ function Scene29({t, at, fps, a, b}) {
 }
 // ---------- line 30 (from "Now" in line 29): a calm last beat on real footage of today (review 2): a 747-8 climbing past, a slow
 // push, "Real footage · today"; fade to navy on "chapter" ----------
-function Scene30({t, at, fps, a, b, seconds}) {
-  const chapter = at(30, 'chapter');
+function Scene30({t, at, fps, a, b, seconds, lines}) {
+  const chapter = lines && lines[30] ? at(30, 'chapter') : seconds + 10;   // no 'next chapter' line (the merged video): no fade
   const out = ease(t, chapter, Math.max(0.5, seconds - chapter), Easing.inOut(Easing.quad));
   return (
     <Scene t={t} a={a}>
@@ -1936,7 +1940,7 @@ const yearSchedule = (at, lines) => {
   if (has(23)) s.push([at(23, '1940'), '1940']);
   if (has(25)) s.push([at(25, '1944'), '1944']);
   if (has(27)) s.push([at(27, '1945'), '1945']);
-  if (has(28)) { s.push([at(28, '1947'), '1947']); s.push([at(28, '1949'), '1949']); }
+  if (has(28)) { s.push([at(28, '1947'), '1947']); if (said(lines, 28, '1949')) s.push([at(28, '1949'), '1949']); }
   return s;
 };
 
