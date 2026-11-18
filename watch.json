@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.326",
-   "checked": "2026-11-17"
+   "last_seen": "2.1.327",
+   "checked": "2026-11-18"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "last_seen": "2026-11-16 text watermark on older models; 2026-11-12 self-hosted Managed Agents; 2026-11-09 Fable 5.2",
-   "checked": "2026-11-17"
+   "last_seen": "2026-11-17 Linked billing beta; 2026-11-16 watermark; 2026-11-09 Fable 5.2",
+   "checked": "2026-11-18"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-11-10 IPO roadshow (unchanged)",
-   "checked": "2026-11-17"
+   "checked": "2026-11-18"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",

@@ -1,0 +1,63 @@
+{
+ "date": "2026-11-18",
+ "focus": "reliability",
+ "note": "Light run, no idea today. Claude Code 2.1.327 fixes a `claude -p` hang that could hit our workers; nothing else in the sweep needs the owner's time.",
+ "research": {
+  "searches": 3,
+  "pages_read": 4,
+  "minutes": 6,
+  "questions": [
+   "Did Claude Code 2.1.327 change anything our `claude -p` workers rely on?",
+   "Did the API notes or Anthropic news change model or billing choices?"
+  ],
+  "gaps": [
+   "Below the 15 searches / 8 pages target: nothing in the sweep pointed to an idea, so I stopped.",
+   "Did not open repo READMEs/LICENSE files; the new repos are small or off-topic.",
+   "No web-search tool was used; only GitHub API queries."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.327: `claude -p` no longer hangs before its first request when the model-settings fetch stalls (continues after 10 s); fixes for headless sessions losing stored messages on resume; /status lists broken agent/skill files",
+  "API notes 2026-11-17: Linked billing beta (customers pay for usage in your app); not relevant to us",
+  "Anthropic news: nothing new since Fable 5.2 (2026-11-09)"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.327 -p hang fix is relevant to workers.py timeouts, no change needed"
+  },
+  {
+   "title": "Claude Platform release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Only Linked billing beta since last run"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "No new models or products"
+  },
+  {
+   "title": "GitHub search: claude code subagents hooks",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+hooks",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Hubs and viewers; no fit"
+  },
+  {
+   "title": "GitHub search: YouTube Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+ffmpeg+captions",
+   "tier": "B",
+   "result": "rejected",
+   "why": "Tiny repos; we have our own pipeline"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}
