@@ -14,7 +14,7 @@ import geo from './geo.json';   // Natural Earth (public domain): geo.world.feat
 // the pictures. The Builder switches on the ones that exist; each has a drawn fallback. Files: av3-707-panam.jpg (three Pan Am 707s at
 // the factory, b/w, PD), av3-787.jpg (the 787's first flight 2009, CC BY 2.0), av3-comet-boac.jpg, av3-747-1969.jpg, av3-concorde.jpg,
 // av3-concorde2.jpg, av3-a300.jpg, av3-a320.jpg, av3-777.jpg, av3-707-cabin.jpg
-const HAVE = {panam707: true, b787: true, comet: false, b747: false, concorde: false, concorde2: false, a300: false, a320: false,
+const HAVE = {panam707: true, b787: true, comet: false, b747: true, concorde: true, concorde2: true, a300: false, a320: true,
   b777: false, cabin707: false};
 const PIC = {panam707: 'av3-707-panam.jpg', b787: 'av3-787.jpg', comet: 'av3-comet-boac.jpg', b747: 'av3-747-1969.jpg', concorde: 'av3-concorde.jpg',
   concorde2: 'av3-concorde2.jpg', a300: 'av3-a300.jpg', a320: 'av3-a320.jpg', b777: 'av3-777.jpg', cabin707: 'av3-707-cabin.jpg'};
@@ -95,6 +95,10 @@ const LAND_FC = geo.world;
 // the detailed outlines (review 2): geo.detail.features, 95 countries (USA, CAN, GBR, FRA, ESP, ITA, ZAF, CHN, JPN, ...); the coarse
 // world is the fallback when a shape is missing
 const DETAIL_FC = geo.detail && geo.detail.features && geo.detail.features.length ? geo.detail : LAND_FC;
+// the Builder (Bassel 11-18: 'the map is incomplete', 'missing a lot of countries'): every country of the world, the detailed
+// shape where one exists, the coarse one everywhere else
+const DETAIL_SET = new Set(DETAIL_FC.features.map((f) => f.properties.a3));
+const LAND_ALL = {type: 'FeatureCollection', features: LAND_FC.features.filter((f) => !DETAIL_SET.has(f.properties.a3)).concat(DETAIL_FC.features)};
 const GRAT = geoGraticule10();
 const feats = (a3s) => {
   const d = DETAIL_FC.features.filter((f) => a3s.includes(f.properties.a3));
@@ -290,10 +294,10 @@ function MapPanel({proj, hi = [], box, k = 1, id, children, o = 1, rx = 28, hiCo
       <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} fill={SEA} />
       <g clipPath={`url(#${id}-clip)`}>
         <path d={path(GRAT) || ''} stroke={WHITE} strokeWidth={1} fill="none" opacity={0.1} />
-        <path d={path(DETAIL_FC) || ''} stroke={SKY} strokeWidth={4} fill="none" strokeLinejoin="round" opacity={0.28} />
-        <path d={path(DETAIL_FC) || ''} fill={LAND} stroke={LAND2} strokeWidth={0.9} strokeLinejoin="round" />
+        <path d={path(LAND_ALL) || ''} stroke={SKY} strokeWidth={4} fill="none" strokeLinejoin="round" opacity={0.28} />
+        <path d={path(LAND_ALL) || ''} fill={LAND} stroke={LAND2} strokeWidth={0.9} strokeLinejoin="round" />
         {hi.length ? <path d={path(feats(hi)) || ''} fill={LAND2} stroke={hiColor} strokeWidth={2} strokeLinejoin="round" opacity={0.95} /> : null}
-        <path d={path(DETAIL_FC) || ''} fill="none" stroke={WHITE} strokeWidth={0.6} strokeLinejoin="round" opacity={0.35} />
+        <path d={path(LAND_ALL) || ''} fill="none" stroke={WHITE} strokeWidth={0.6} strokeLinejoin="round" opacity={0.35} />
         {children}
       </g>
       <rect x={box[0]} y={box[1]} width={box[2]} height={box[3]} rx={rx} fill="none" stroke={WHITE} strokeWidth={2} opacity={0.25} />
@@ -477,11 +481,14 @@ const Storm = ({t, seed = 0}) => {
 // width]] (m) nacelles on pylons (buried = inside the wing root), hump = the 747's upper deck as a lighter patch, glow 0..1 lights
 // the exhausts, dims draws the span and length dimension lines
 const PlaneTop = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, span, len, fw = 1.1, wingAt = 0.45, chord = 2, taper = 0.6, sweep = 0, ogee = false,
-                   tailSpan = 0, tailChord = 1, jets = [], hump = false, glow = 0, dims = false, accent = AMBER, children}) => {
+                   tailSpan = 0, tailChord = 1, jets = [], hump = false, glow = 0, dims = false, accent = AMBER, planform = null, children}) => {
   const L = len * 10, S = span * 10, hw = fw * 5;
   const xw = L / 2 - wingAt * L, c = chord * 10, tc = c * taper, sw = sweep * 10;
   const le = xw + c * 0.6, te = xw - c * 0.4;
-  const wing = ogee
+  // planform = the real wing outline as [metres from the nose, half-span in metres] from the root's leading edge round to its trailing edge
+  const wing = planform
+    ? (() => { const P = planform.map(([d, h]) => [L / 2 - d * 10, h * 10]); const up = P.map(([a, b]) => `${a},${-b}`).join(' L'); const dn = P.slice().reverse().map(([a, b]) => `${a},${b}`).join(' L'); return `M${up} L${dn} Z`; })()
+    : ogee
     ? `M${le},${-hw} C${le - sw * 0.5},${-hw - S * 0.05} ${le - sw * 0.72},${-S * 0.5} ${le - sw},${-S / 2} L${le - sw - tc},${-S / 2} L${te},${-hw} L${te},${hw} L${le - sw - tc},${S / 2} L${le - sw},${S / 2} C${le - sw * 0.72},${S * 0.5} ${le - sw * 0.5},${hw + S * 0.05} ${le},${hw} Z`
     : closed([[le, -hw], [le - sw, -S / 2], [le - sw - tc, -S / 2], [te, -hw], [te, hw], [le - sw - tc, S / 2], [le - sw, S / 2], [le, hw]]);
   const TS = tailSpan * 10, tcr = tailChord * 10, xt = -L / 2 + tcr * 0.15;
@@ -500,7 +507,7 @@ const PlaneTop = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, span, len, fw = 1
         const hh = (jw || 1.2) * 5;
         return (
           <g key={i} transform={`translate(${jx * 10}, ${jy * 10})`}>
-            {buried ? <rect x={-jl * 5} y={-3.5} width={jl * 10} height={7} rx={2} fill={NAVY} opacity={0.8} /> : <rect x={-jl * 5} y={-hh} width={jl * 10} height={hh * 2} rx={hh * 0.8} fill={color} stroke={NAVY} strokeWidth={1.2} />}
+            {buried ? <rect x={-jl * 5} y={-3.5} width={jl * 10} height={7} rx={2} fill={NAVY} opacity={0.8} /> : <rect x={-jl * 5} y={-hh} width={jl * 10} height={hh * 2} rx={buried === 0 && jets[i][5] ? 3 : hh * 0.8} fill={color} stroke={NAVY} strokeWidth={1.2} />}
             {glow > 0 ? <ellipse cx={-jl * 5 - 10 * glow} cy={0} rx={14 * glow} ry={hh * 0.7} fill={AMBER} opacity={0.9 * glow} /> : null}
             {glow > 0 ? <ellipse cx={-jl * 5 - 28 * glow} cy={0} rx={22 * glow} ry={hh * 0.5} fill={AMBER} opacity={0.4 * glow} /> : null}
           </g>
@@ -527,7 +534,7 @@ const AC = {
   comet: {span: 35, len: 28.6, fw: 3.0, wingAt: 0.52, chord: 8.5, taper: 0.28, sweep: 6.5, tailSpan: 11, tailChord: 3, jets: [[1.6, -2.4, 5, 1], [1.6, -3.9, 5, 1], [1.6, 2.4, 5, 1], [1.6, 3.9, 5, 1]]},                // Comet 1: 35 x 28.6 (1.22:1), a wide-rooted 20-degree wing, four jets buried in the roots
   b707: {span: 44.4, len: 46.6, fw: 3.8, wingAt: 0.5, chord: 9.5, taper: 0.3, sweep: 15.5, tailSpan: 14, tailChord: 5, jets: [[3.2, -7.5, 5.5], [-0.6, -13.5, 5.5], [3.2, 7.5, 5.5], [-0.6, 13.5, 5.5]]},             // 707: 44.4 x 46.6 (0.95:1), four engines on pylons, a 35-degree swept wing
   b747: {span: 59.6, len: 70.6, fw: 6.5, wingAt: 0.5, chord: 16.5, taper: 0.25, sweep: 22.5, tailSpan: 22, tailChord: 8, hump: true, jets: [[4.6, -12, 7, 0, 2.5], [-1.9, -21.3, 7, 0, 2.5], [4.6, 12, 7, 0, 2.5], [-1.9, 21.3, 7, 0, 2.5]]},   // 747-100: 59.6 x 70.6 (0.84:1), four engines, 37.5-degree sweep
-  concorde: {span: 25.6, len: 61.7, fw: 2.9, wingAt: 0.70, chord: 38, taper: 0.06, sweep: 34.8, ogee: true, tailSpan: 0, jets: [[-21, -5.0, 11, 0, 1.5], [-21, -6.6, 11, 0, 1.5], [-21, 5.0, 11, 0, 1.5], [-21, 6.6, 11, 0, 1.5]]},   // Concorde: 25.6 x 61.7 (0.41:1), a long slim ogival delta starting a third back from the needle nose and running to the tail, four engines in two paired boxes under the wing (review 2)
+  concorde: {span: 25.6, len: 61.7, fw: 2.9, tailSpan: 0, planform: [[16, 1.45], [20, 1.9], [24, 2.7], [28, 3.9], [32, 5.5], [35, 7.0], [38, 8.7], [41, 10.3], [44, 11.6], [47, 12.4], [50, 12.8], [52.5, 12.8], [55.5, 11.2], [57.8, 7.5], [58.6, 4.5], [59, 1.45]], jets: [[-22.2, -5.6, 14, 0, 2.7, 1], [-22.2, 5.6, 14, 0, 2.7, 1]]},   // Concorde: 25.6 x 61.7 (0.41:1); the ogival delta from 16 m behind the nose to the tail, its edge running close along the body, then curving out to the tips; two engine boxes (two engines each) under the wing, ending just behind it (the Builder, Bassel 11-18 'distorted')
   a300: {span: 44.8, len: 54, fw: 5.6, wingAt: 0.5, chord: 11, taper: 0.3, sweep: 12, tailSpan: 16.9, tailChord: 6, jets: [[4.4, -8.2, 7, 0, 2.6], [4.4, 8.2, 7, 0, 2.6]]},                                            // A300: 44.8 x 54 (0.83:1), two engines, wide body, 28-degree sweep
   a320: {span: 35.8, len: 37.6, fw: 4, wingAt: 0.5, chord: 7, taper: 0.3, sweep: 8.5, tailSpan: 12.5, tailChord: 3, jets: [[6, -5.7, 4.6, 0, 2.0], [6, 5.7, 4.6, 0, 2.0]]},                                              // A320: 35.8 x 37.6 (0.95:1), 25-degree sweep
   b737: {span: 35.8, len: 39.5, fw: 3.8, wingAt: 0.5, chord: 7.5, taper: 0.3, sweep: 8.5, tailSpan: 14.3, tailChord: 3.5, jets: [[5.5, -5.0, 4.4, 0, 2.1], [5.5, 5.0, 4.4, 0, 2.1]]},                                      // 737-800: 35.8 x 39.5 (0.91:1), the engines close in under the wing
@@ -740,7 +747,7 @@ function Scene0({t, at, fps, a, b}) {
           {dottedPts(pts, p, AMBER, 4)}
           <Pin t={t} fps={fps} a={london} pt={pa} label="LONDON" lx={22} ly={10} anchor="start" />
           <Pin t={t} fps={fps} a={jnb} pt={pb} label="JOHANNESBURG" lx={0} ly={40} />
-          {t >= bound && p < 1 ? <Plane ac="comet" x={g.x} y={g.y} s={0.45} rot={g.ang} glow={0.6} /> : null}
+          {t >= bound && p < 1 ? <Plane ac="comet" x={g.x} y={g.y} s={0.22} rot={g.ang} glow={0.6} /> : null}
         </MapPanel>
         <SvgPill t={t} fps={fps} a={second} x={MB[0] + 180} y={MB[1] + 50} w={220} size={22}>2 MAY 1952</SvgPill>
         <g opacity={Math.min(1, kC)}>
@@ -1035,11 +1042,11 @@ function Scene6({t, at, fps, a, b}) {
         <MapPanel proj={proj} hi={['USA', 'GBR', 'FRA']} box={MB} k={1} id="m6">
           {dottedPts(greatCircle(proj, LON, NY, 60), p1, AMBER, 4)}
           {dottedPts(greatCircle(proj, NY, PAR, 60), p2, WHITE, 4)}
-          <Pin t={t} fps={fps} a={atlantic} pt={proj(NY)} label="NEW YORK" lx={-22} ly={34} anchor="end" />
+          <Pin t={t} fps={fps} a={atlantic} pt={proj(NY)} label="NEW YORK" lx={22} ly={44} anchor="start" />
           <Pin t={t} fps={fps} a={atlantic} pt={proj(LON)} label="LONDON" lx={22} ly={-14} anchor="start" />
           <Pin t={t} fps={fps} a={b707} pt={proj(PAR)} label="PARIS" lx={22} ly={34} anchor="start" r={9} size={20} />
-          {t >= cross ? <Plane ac="comet" x={g1.x} y={g1.y} s={0.5} rot={g1.ang} glow={p1 < 1 ? 0.8 : 0} /> : null}
-          {t >= then ? <Plane ac="b707" x={g2.x} y={g2.y} s={0.5} rot={g2.ang} glow={p2 < 1 ? 0.8 : 0} /> : null}
+          {t >= cross ? <Plane ac="comet" x={g1.x} y={g1.y} s={0.25} rot={g1.ang} glow={p1 < 1 ? 0.8 : 0} /> : null}
+          {t >= then ? <Plane ac="b707" x={g2.x} y={g2.y} s={0.25} rot={g2.ang} glow={p2 < 1 ? 0.8 : 0} /> : null}
         </MapPanel>
         <SvgPill t={t} fps={fps} a={october} x={MB[0] + 170} y={MB[1] + 50} w={200} size={22}>OCT 1958</SvgPill>
         <SvgPill t={t} fps={fps} a={comet} x={MB[0] + 170} y={MB[1] + 110} w={160} size={20} bg={WHITE}>COMET 4</SvgPill>
@@ -1297,8 +1304,8 @@ function Scene11({t, at, fps, a, b}) {
         <MapPanel proj={proj} hi={['USA', 'GBR']} box={MB} k={1} id="m11">
           {dottedPts(greatCircle(proj, LON, NY, 60), p, AMBER, 4)}
           <Pin t={t} fps={fps} a={london} pt={proj(LON)} label="LONDON" lx={22} ly={-14} anchor="start" />
-          <Pin t={t} fps={fps} a={ny} pt={proj(NY)} label="NEW YORK" lx={-22} ly={34} anchor="end" />
-          {t >= carries ? <Plane ac="concorde" x={g.x} y={g.y} s={0.5} rot={g.ang} glow={p < 1 ? 1 : 0} /> : null}
+          <Pin t={t} fps={fps} a={ny} pt={proj(NY)} label="NEW YORK" lx={22} ly={44} anchor="start" />
+          {t >= carries ? <Plane ac="concorde" x={g.x} y={g.y} s={0.25} rot={g.ang} glow={p < 1 ? 1 : 0} /> : null}
         </MapPanel>
         <SvgPill t={t} fps={fps} a={y1976} x={MB[0] + 150} y={MB[1] + 50} w={140} size={24}>1976</SvgPill>
         <Clock x={1360} y={250} r={105} h={10} m={30} k={pop(t, london, fps, soft)} />
@@ -1626,7 +1633,7 @@ function Scene18({t, at, fps, a, b}) {
   const sw = ease(t, boeing, 0.8, Easing.inOut(Easing.quad));
   const dimOuter = ease(t, two, 0.6);
   const twoLeft = ease(t, replacing, 0.6);
-  const S = 0.4;   // half size on the map (review 2)
+  const S = 0.2;   // half size on the map (review 2), halved again (Bassel 11-18)
   return (
     <Scene t={t} a={a}>
       <Bg t={t} />
@@ -1794,7 +1801,7 @@ function Scene21({t, at, fps, a, b}) {
               </g>
             </g>
           )) : null}
-          <Plane ac="a320" x={pp[0]} y={pp[1]} s={0.3} rot={ang} color={AMBER} />
+          <Plane ac="a320" x={pp[0]} y={pp[1]} s={0.15} rot={ang} color={AMBER} />
           <Lbl x={cx} y={cy + R + 50} size={16} o={0.55}>SATELLITES · THE PLANE KNOWS WHERE IT IS</Lbl>
         </g>
         <g opacity={Math.min(1, kR)}>
@@ -1964,7 +1971,7 @@ function Scene25({t, at, fps, a, b}) {
       <svg width={W} height={H} style={{position: 'absolute'}}>
         <MapPanel proj={proj} hi={['USA']} box={MB} k={pop(t, a, fps, soft)} id="m25">
           <Bolt x0={elk[0] + 30} y0={elk[1] - 160} x1={elk[0]} y1={elk[1]} seed={51} k={strikeK(t, lightning)} w={4} />
-          {t >= pan ? <Plane ac="b707" x={g.x} y={g.y} s={0.5} rot={g.ang} o={0.95} /> : null}
+          {t >= pan ? <Plane ac="b707" x={g.x} y={g.y} s={0.25} rot={g.ang} o={0.95} /> : null}
           <Pin t={t} fps={fps} a={maryland} pt={elk} label="ELKTON · MARYLAND" lx={22} ly={-16} anchor="start" r={9} size={20} />
         </MapPanel>
         <SvgPill t={t} fps={fps} a={december} x={MB[0] + 180} y={MB[1] + 50} w={220} size={22}>8 DEC 1963</SvgPill>
@@ -2052,8 +2059,6 @@ function Scene27({t, at, fps, a, b}) {
               </g>
             ))}
             <CloudBand t={t} y={yOf(2.5)} x0={460} x1={1900} k={1} color={SILVER} o={0.4} n={16} />
-            <path d={`M1480,${yOf(8.85)} L1520,${yOf(8.85) + 70} L1440,${yOf(8.85) + 70} Z`} fill={SILVER} opacity={0.7} />
-            <Lbl x={1480} y={yOf(8.85) + 100} size={14} o={0.6}>EVEREST · 8.8 KM</Lbl>
             {climb > 0 ? Array.from({length: 30}, (_, i) => { const v = climb - i * 0.03; if (v < 0) return null; return <circle key={i} cx={lerp(760, 1250, v)} cy={yOf(0.3 + 9.7 * v)} r={3.5} fill={AMBER} opacity={0.8 * (1 - i / 30)} />; }) : null}
             <Side ac="a320" x={px} y={py} s={1.3} rot={-16 * Math.sin(climb * Math.PI)} glow={glow} />
             <SvgPill t={t} fps={fps} a={ten} x={1250} y={yOf(10) - 130} w={150} size={24}>~10 KM</SvgPill>

@@ -14,8 +14,8 @@ import geo from './geo.json';   // Natural Earth (public domain): geo.world.feat
 // fallback. Files: av2-wilbur-lemans-1908.jpg, av2-santos-dumont-14bis.jpg, av2-bleriot-1909.jpg, av2-fokker-eindecker.jpg,
 // av2-wwi-fighters.jpg, av2-alcock-brown-1919.jpg, av2-lindbergh-1927.jpg, av2-earhart-1932.jpg, av2-dc3.jpg, av2-hindenburg-1937.jpg,
 // av2-he178.jpg, av2-spitfire.jpg, av2-p51.jpg, av2-me262.jpg, av2-b17-formation.jpg, av2-chicago-1944.jpg, av2-x1-1947.jpg, av2-comet-1949.jpg
-const HAVE = {wilbur: false, santos: false, bleriot: false, fokker: false, camel: false, vimy: false, lindbergh: false, earhart: false,
-  dc3: false, hindenburg: false, he178: false, spitfire: false, p51: false, me262: false, b17: false, chicago: false, x1: false, comet: false};
+const HAVE = {wilbur: true, santos: false, bleriot: true, fokker: true, camel: true, vimy: true, lindbergh: true, earhart: true,
+  dc3: true, hindenburg: true, he178: true, spitfire: true, p51: true, me262: true, b17: true, chicago: false, x1: true, comet: false};
 const PIC = {wilbur: 'av2-wilbur-lemans-1908.jpg', santos: 'av2-santos-dumont-14bis.jpg', bleriot: 'av2-bleriot-1909.jpg', fokker: 'av2-fokker-eindecker.jpg',
   camel: 'av2-wwi-fighters.jpg', vimy: 'av2-alcock-brown-1919.jpg', lindbergh: 'av2-lindbergh-1927.jpg', earhart: 'av2-earhart-1932.jpg', dc3: 'av2-dc3.jpg',
   hindenburg: 'av2-hindenburg-1937.jpg', he178: 'av2-he178.jpg', spitfire: 'av2-spitfire.jpg', p51: 'av2-p51.jpg', me262: 'av2-me262.jpg',
@@ -442,6 +442,8 @@ const PlaneTop = ({x, y, s = 1, rot = 0, color = WHITE, o = 1, span, len, fw = 1
       {bi > 0 ? [-0.44, -0.22, 0.22, 0.44].map((u) => <line key={u} x1={le - 2} y1={u * S} x2={te + 2} y2={u * S} stroke={NAVY} strokeWidth={1.2} opacity={0.5} />) : null}
       {tail ? <path d={tail} fill={color} /> : null}
       {canard ? <rect x={canard[0] * 10 - 5} y={-canard[1] * 5} width={10} height={canard[1] * 10} fill={color} opacity={0.9} /> : null}
+      {canard ? [-3, 3].map((ry) => <rect key={ry} x={-L / 2 - 4} y={ry - 1.5} width={13} height={3} rx={1.5} fill={color} />) : null}{/* the twin rudders at the tail (the Builder, Bassel 11-18: 'circling backwards') */}
+      {canard ? <line x1={canard[0] * 10} y1={0} x2={-L / 2 + 3} y2={0} stroke={color} strokeWidth={2.5} /> : null}
       <path d={fus} fill={color} />
       <rect x={-L / 2} y={-1} width={Math.max(8, L * 0.16)} height={2} fill={accent} opacity={0.9} />
       <path d={`M${L / 2 - hw * (bullet ? 7 : 4.5)},${-hw * 0.55} L${L / 2 - hw * (bullet ? 5 : 2.5)},${-hw * 0.5} L${L / 2 - hw * (bullet ? 5 : 2.5)},${hw * 0.5} L${L / 2 - hw * (bullet ? 7 : 4.5)},${hw * 0.55} Z`} fill={NAVY} opacity={0.55} />
@@ -821,8 +823,12 @@ function Scene3({t, at, fps, a, b}) {
   const n = Math.round(200 * ease(t, two, Math.max(0.5, shapes + 0.5 - two), Easing.out(Easing.quad)));
   const idx = Math.floor(Math.max(0, t - tested) * 8);
   const kC = ease(t, control, 0.6);
-  const warp = t >= twisting ? Math.sin((t - twisting) * 2.4) * ease(t, twisting, 0.6) : 0;
-  const roll = -20 * ease(t, bank, 1.0, Easing.inOut(Easing.quad)) * (0.75 + 0.25 * Math.sin((t - bank) * 1.5));
+  // the Builder (Bassel 11-18: the twisting tips were 'not logical'): no moving parts, the whole plane simply banks into a turn from
+  // "twisting" and slides towards the inside of the turn
+  const warp = 0;
+  const kTurn = ease(t, twisting, Math.max(1.2, bank - twisting + 0.6), Easing.inOut(Easing.quad));
+  const roll = -22 * kTurn;
+  const slide = -170 * ease(t, twisting + 0.4, Math.max(2, bird - twisting + 1.5), Easing.inOut(Easing.quad));
   const foil = (i, w) => { const cam = 0.25 + 0.5 * rnd(i), th = 0.06 + 0.12 * rnd(i + 1); return `M${-w},0 Q0,${-cam * w} ${w},0 Q0,${th * w} ${-w},0 Z`; };
   const kTips = ease(t, tips, 0.4);
   return (
@@ -845,10 +851,8 @@ function Scene3({t, at, fps, a, b}) {
           {[0, 1, 2, 3, 4].map((i) => (idx - i - 1 >= 0 ? <path key={i} d={foil(idx - i - 1, 40)} transform={`translate(${1420 + i * 44 - 90}, 640)`} fill={WHITE} opacity={0.5 - i * 0.08} /> : null))}
         </g>
         <g opacity={kC}>
-          <g transform={`translate(960, 560) rotate(${roll})`}>
-            <FlyerFront x={0} y={0} s={12} warp={warp} spin={1} />
-            {kTips > 0 ? <Arrow x={-61.5 * 12} y={-8 * 12} len={70} dir={warp >= 0 ? 'down' : 'up'} color={AMBER} k={kTips * Math.min(1, Math.abs(warp) * 3)} w={8} /> : null}
-            {kTips > 0 ? <Arrow x={61.5 * 12} y={-8 * 12} len={70} dir={warp >= 0 ? 'up' : 'down'} color={AMBER} k={kTips * Math.min(1, Math.abs(warp) * 3)} w={8} /> : null}
+          <g transform={`translate(${960 + slide}, ${560 + 40 * kTurn}) rotate(${roll})`}>
+            <FlyerFront x={0} y={0} s={9} warp={warp} spin={1} />
           </g>
           {t >= bird ? <Bird x={1560} y={260} s={5} rot={roll} ph={(t - bird) * 7} o={ease(t, bird, 0.4)} /> : null}
           <Lbl x={960} y={840} size={18} o={0.6 * kC}>12.3 M SPAN · SEEN FROM BEHIND</Lbl>
@@ -902,7 +906,10 @@ function Scene5({t, at, fps, a, b}) {
   const proj = fitBox(LL.OHIO, MB, 50);
   const dayton = proj([-84.19, 39.76]);
   const cx = 1340, cy = 500, rx = 380, ry = 230;
-  const ang = t >= circle ? (t - circle) * 1.1 + Math.PI : Math.PI;
+  // the Builder (Bassel 11-18: 'circling backwards'): the loop starts on the year, so it is seen for longer, with an arrow ahead of the
+  // nose; the Flyer flies elevator first (it really had its elevator in front), the twin rudders at its tail
+  const go = Math.min(circle, y1905 + 0.3);
+  const ang = t >= go ? (t - go) * 1.1 + Math.PI : Math.PI;
   const pos = (an) => [cx + rx * Math.cos(an), cy + ry * Math.sin(an)];
   const q = pos(ang), head = Math.atan2(ry * Math.cos(ang), -rx * Math.sin(ang)) * 180 / Math.PI;
   const mins = 39 * ease(t, thirty, Math.max(0.6, minutes + 0.6 - thirty), Easing.out(Easing.quad));
@@ -919,14 +926,15 @@ function Scene5({t, at, fps, a, b}) {
           <ellipse cx={cx} cy={cy + 40} rx={rx + 140} ry={ry + 150} fill={GREEN} opacity={0.14} />
           <ellipse cx={cx} cy={cy + 40} rx={rx + 140} ry={ry + 150} fill="none" stroke={GREEN} strokeWidth={3} opacity={0.4} strokeDasharray="10 14" />
           {[0, 1, 2].map((i) => <Man key={i} x={cx - 440 + i * 60} y={cy + 230} s={5} color={WHITE} o={0.7} />)}
-          {t >= circle ? Array.from({length: 50}, (_, i) => {
+          {t >= go ? Array.from({length: 50}, (_, i) => {
             const an = ang - i * 0.06;
             if (an < Math.PI) return null;
             const d = pos(an);
             return <circle key={i} cx={d[0]} cy={d[1]} r={3.5} fill={AMBER} opacity={0.9 * (1 - i / 50)} />;
           }) : null}
           <g transform={`translate(${q[0]}, ${q[1]}) rotate(${head})`}>
-            <Plane ac="flyer" x={0} y={0} s={2.6} spin={t >= circle ? 1 : 0} />
+            <Plane ac="flyer" x={0} y={0} s={2.6} spin={t >= go ? 1 : 0} />
+            {t >= go ? <path d="M104,-16 L124,0 L104,16" fill="none" stroke={AMBER} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" opacity={ease(t, go, 0.4)} /> : null}
           </g>
         </g>
       </svg>
