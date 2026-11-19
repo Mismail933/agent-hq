@@ -1951,7 +1951,10 @@ export const AviHistory2 = ({lines = [], words = [], seconds = 376}) => {
   const at = makeAt(lines);
   const T = (i) => (lines[i] ? lines[i].t0 : seconds);
   const now = lines[29] ? at(29, 'Now') : T(30);
-  const scenes = [[0, T(1), Scene0], [T(1), T(2), Scene1], [T(2), T(3), Scene2], [T(3), T(4), Scene3], [T(4), T(5), Scene4], [T(5), T(6), Scene5],
+  // the merged video (Bassel 11-19): line 0 is a bridge ("...it is time to put their machine to the test") instead of the Kill Devil
+  // Hills opening, and there is no map before Orville on the wing: Orville's shot runs from the first frame through lines 0 and 1
+  const bridge = lines[0] && !said(lines, 0, 'Kill');
+  const scenes = [...(bridge ? [[0, T(2), Scene1]] : [[0, T(1), Scene0], [T(1), T(2), Scene1]]), [T(2), T(3), Scene2], [T(3), T(4), Scene3], [T(4), T(5), Scene4], [T(5), T(6), Scene5],
                   [T(6), T(7), Scene6], [T(7), T(8), Scene7], [T(8), T(9), Scene8], [T(9), T(10), Scene9], [T(10), T(11), Scene10], [T(11), T(12), Scene11],
                   [T(12), T(13), Scene12], [T(13), T(14), Scene13], [T(14), T(15), Scene14], [T(15), T(16), Scene15], [T(16), T(17), Scene16], [T(17), T(18), Scene17],
                   [T(18), T(19), Scene18], [T(19), T(20), Scene19], [T(20), T(21), Scene20], [T(21), T(22), Scene21], [T(22), T(23), Scene22], [T(23), T(24), Scene23],
