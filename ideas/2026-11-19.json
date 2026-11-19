@@ -1,0 +1,83 @@
+{
+ "date": "2026-11-19",
+ "focus": "tokens",
+ "note": "A short run today: I swept the daily sources and found no change that justifies the owner's time, so there are no ideas. Claude Code 2.1.328 and Fable 5.2 (cheaper) were already known or minor. Token-tracking repos exist (codeburn, caliper) but we already measure usage in our own usage table.",
+ "research": {
+  "searches": 3,
+  "pages_read": 5,
+  "minutes": 8,
+  "questions": [
+   "Is there a Claude Code or API change since 2.1.327 that cuts tokens for our claude -p workers?",
+   "Is there a maintained, MIT tool that would measure per-agent token cost better than our usage table?"
+  ],
+  "gaps": [
+   "Below the 15 searches / 8 pages target: this run was shortened, so the repo scorecards are shallow (README/LICENSE not opened).",
+   "Did not open the YouTube policy pages (not a results day)."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.328: CLAUDE_CODE_DISABLE_DEFERRED_TOOL_RESUME, background-subagent wait ceiling env var; nothing that changes our workers",
+  "Anthropic news 2026-11-18: IPO pricing; nothing product-related",
+  "API release notes: no entry after 2026-11-17"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "2.1.328 only; no effect on claude -p workers"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "newest entry 2026-11-17 already seen"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "IPO pricing 2026-11-18 only"
+  },
+  {
+   "title": "GitHub search: claude code token cost",
+   "url": "https://api.github.com/search/repositories?q=claude+code+token+cost",
+   "tier": "B",
+   "result": "rejected",
+   "why": "tracking tools duplicate our usage table"
+  },
+  {
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "generic automation kits; our pipeline is further along"
+  }
+ ],
+ "repo_watch": [
+  {
+   "name": "edonadei/caliper",
+   "url": "https://github.com/edonadei/caliper",
+   "licence": "MIT",
+   "stars": 236,
+   "last_commit": "2026-11-17",
+   "verdict": "watch",
+   "fit": "Runs an agent with and without skills/rules to show token cost; could test prompt changes",
+   "why": "Young; README and security not read today"
+  },
+  {
+   "name": "getagentseal/codeburn",
+   "url": "https://github.com/getagentseal/codeburn",
+   "licence": "MIT",
+   "stars": 11865,
+   "last_commit": "2026-11-18",
+   "verdict": "skip",
+   "fit": "Token tracker; we already have the usage table",
+   "why": "Duplicates cp.record_usage"
+  }
+ ],
+ "ideas": []
+}
