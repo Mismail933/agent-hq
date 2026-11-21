@@ -1,30 +1,26 @@
 {
- "date": "2026-11-20",
- "focus": "results",
- "note": "Nothing new worth your time today. YouTube's Shorts money and originality rules are unchanged since the August and October posts we already put in Atlas's notes; the new Fable 5.2 and Claude Code 2.1.329 changes are covered by earlier ideas. No idea is better than a weak idea.",
+ "date": "2026-11-21",
+ "focus": "tools",
+ "note": "Light run, no idea today. Claude Code is now 2.1.330 (small fixes: a full disk makes `claude -p` exit 1 instead of silently 0; scheduled tasks last up to 30 days). No new API notes after 11-17, and Anthropic news is only the IPO. No YouTube policy dated November. This run was shorter than the usual 15 searches / 8 pages, so I propose nothing.",
  "research": {
-  "searches": 10,
-  "pages_read": 10,
-  "minutes": 15,
+  "searches": 5,
+  "pages_read": 4,
+  "minutes": 8,
   "questions": [
-   "Did YouTube change Shorts monetization, originality or AI-label rules since 2026-11-15?",
-   "Does the Oct 1 'original content on Shorts' reach rule apply to clips we cut from our own long videos (clipper.py)?",
-   "Is there reliable data on hook retention or Shorts length for history/education Shorts?",
-   "Did Claude Code or the API release anything that changes how we run claude -p workers?"
+   "Did Claude Code 2.1.328-2.1.330 change `claude -p` or --json-schema in a way our workers need to handle?",
+   "Is there a new, healthy, MIT/Apache repo that replaces part of our Shorts pipeline?",
+   "Any YouTube Shorts policy change dated November 2026?"
   ],
   "gaps": [
-   "No November 2026 Creator Insider or YouTube Help post on Shorts found.",
-   "No primary-source (YouTube) data on first-3-second retention; only vendor blogs (C).",
-   "YouTube has not said whether cutting Shorts from your own long video counts as 're-uploaded'; no start date for the reach change."
+   "No search deep enough for a new repo that beats ours; the faceless-Shorts repos found have 0-1 stars",
+   "Did not open YouTube Help Center or Creator Insider today",
+   "Run was below the 15 searches / 8 pages bar"
   ]
  },
  "new_today": [
-  "Claude Code 2.1.329: /teleport starts a new session; saved scheduled tasks mostly need re-scheduling in new signed-in sessions (matters for Richard's routine only if re-created); /usage reports exhausted credits",
-  "Claude Code 2.1.328: CLAUDE_CODE_DISABLE_DEFERRED_TOOL_RESUME for claude -p --resume; subagent progress summaries cost far fewer tokens; better prompt caching with MCP servers",
-  "Claude Code 2.1.326: /update-config context 93k -> 13k tokens; claude -p shows output while retrying overloaded API",
-  "API notes: no new entries after 2026-11-17 (linked billing beta); Fable 5.2 fast mode $16/$80 per MTok; Opus 4.8 fast mode removed 2026-11-30",
-  "Anthropic news: IPO priced 2026-11-18; nothing about models or products",
-  "GitHub: video-autopilot-kit (2.3k stars, MIT) and yutu (YouTube CLI/MCP, Apache-2.0) appeared in Shorts-automation search"
+  "Claude Code 2.1.330: `claude -p` exits 1 on a full disk; recurring tasks and /loop run up to 30 days; fixes for invalid MCP tool schemas",
+  "Claude Code 2.1.328: CLAUDE_CODE_DISABLE_DEFERRED_TOOL_RESUME for `claude -p --resume`; better caching for Code Mode",
+  "Anthropic: IPO closed 2026-11-20 (no product change)"
  ],
  "checked": [
   {
@@ -32,125 +28,58 @@
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "used",
-   "why": "2.1.326-2.1.329; nothing that needs a change in workers.py"
+   "why": "2.1.330 is the latest; nothing that needs a change on our side"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "Latest entry 2026-11-17 linked billing; Fable 5.2 already handled in earlier ideas"
+   "why": "Latest entry 2026-11-17 linked billing beta; nothing we use"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Only IPO items since Fable 5.2"
+   "why": "Only IPO items since Fable 5.2 on 11-09"
   },
   {
-   "title": "YouTube Partner Program eligibility",
-   "url": "https://support.google.com/youtube/answer/72851",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "4,000 h / 10M Shorts views in 90 days today; terms by 2027-01-31"
-  },
-  {
-   "title": "YouTube Creator updates page",
-   "url": "https://support.google.com/youtube/answer/9072033",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "No Shorts, AI or monetization entries in the visible part"
-  },
-  {
-   "title": "PPC Land: re-uploaded Shorts lose reach",
-   "url": "https://ppc.land/re-uploaded-shorts-lose-reach-as-youtube-favours-original-clips/",
-   "tier": "B",
-   "result": "used",
-   "why": "Oct 1 TeamYouTube post targets other creators' videos; own-clip case unaddressed; no start date"
-  },
-  {
-   "title": "PPC Land: ad-watched Shorts views excluded",
-   "url": "https://ppc.land/shorts-watched-as-ads-do-not-count-toward-youtubes-20-million-view-bar/",
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
    "tier": "B",
    "result": "nothing new",
-   "why": "Aug 14 detail already in Atlas notes thinking"
+   "why": "Same big repos (wshobson/agents) already on watch; new ones are generic skill hubs"
   },
   {
-   "title": "GitHub search: YouTube Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
-   "tier": "A",
+   "title": "GitHub search: faceless YouTube Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "tier": "B",
    "result": "rejected",
-   "why": "Generic automation kits; we already have our own pipeline"
+   "why": "All 0-1 stars, several with no licence"
   },
   {
-   "title": "GitHub search: Claude Code skills/subagents",
-   "url": "https://api.github.com/search/repositories?q=claude+code+skills+subagents",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "wshobson/agents already known as a source; nothing we would install"
-  },
-  {
-   "title": "GitHub search: token cost / prompt caching",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "Zero results for the query"
-  },
-  {
-   "title": "Search: YouTube inauthentic content 2026",
-   "url": "https://invideo.io/blog/youtube-kills-ai-faceless-channels/",
-   "tier": "C",
-   "result": "rejected",
-   "why": "SEO blogs; no primary source for the July 2026 'three categories' claim beyond what Israa's review already uses"
-  },
-  {
-   "title": "Search: Shorts hook retention benchmarks",
-   "url": "https://www.bytecap.io/research/youtube-shorts-retention-benchmarks",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Vendor blogs, figures disagree"
-  },
-  {
-   "title": "Search: Shorts length study",
-   "url": "https://www.adobe.com/express/learn/blog/youtube-shorts-length-study",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Within-channel data shows no consistent length effect; the story sets the length anyway"
-  },
-  {
-   "title": "Search: Shorts custom thumbnails",
-   "url": "https://ppc.land/youtube-ends-2-year-wait-for-shorts-thumbnails-but-blocks-a-b-testing/",
+   "title": "GitHub search: token cost reduction prompt caching",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching",
    "tier": "B",
    "result": "nothing new",
-   "why": "Since 2026-07-25, Partner Program channels, desktop only; not useful before we are partners"
+   "why": "Zero results for the window"
   },
   {
-   "title": "Search: AI disclosure for realistic content",
-   "url": "https://www.engadget.com/youtube-lays-out-new-rules-for-realistic-ai-generated-videos-154248008.html",
+   "title": "Web search: YouTube Shorts policy Nov 2026",
+   "url": "https://www.tubefilter.com/2026/08/10/youtube-partner-program-ad-eligibility-requirements-shorts/",
    "tier": "B",
    "result": "nothing new",
-   "why": "Cartoon/animated content is exempt; already in our checks"
+   "why": "Only the August YPP overhaul (Feb 2027) already known"
   },
   {
-   "title": "Search: Claude Code usage monitors",
-   "url": "https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor",
-   "tier": "C",
-   "result": "rejected",
-   "why": "Snippets only; our usage table and cp.usage_today already do this"
+   "title": "Web search: claude -p --json-schema changes",
+   "url": "https://code.claude.com/docs/en/headless.md",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Only older bug reports, nothing for 2.1.330"
   }
  ],
- "repo_watch": [
-  {
-   "name": "eat-pray-ai/yutu",
-   "url": "https://github.com/eat-pray-ai/yutu",
-   "licence": "Apache-2.0",
-   "stars": 729,
-   "last_commit": "2026-11-18",
-   "verdict": "watch",
-   "fit": "YouTube CLI/MCP; would only matter if we ever automate uploads, which is owner-only today",
-   "why": "Healthy, but we upload by hand and Omar is read-only; stats from search results only, README not opened"
-  }
- ],
+ "repo_watch": [],
  "ideas": []
 }

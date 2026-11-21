@@ -1,0 +1,85 @@
+{
+ "date": "2026-11-21",
+ "focus": "tools",
+ "note": "Light run, no idea today. Claude Code is now 2.1.330 (small fixes: a full disk makes `claude -p` exit 1 instead of silently 0; scheduled tasks last up to 30 days). No new API notes after 11-17, and Anthropic news is only the IPO. No YouTube policy dated November. This run was shorter than the usual 15 searches / 8 pages, so I propose nothing.",
+ "research": {
+  "searches": 5,
+  "pages_read": 4,
+  "minutes": 8,
+  "questions": [
+   "Did Claude Code 2.1.328-2.1.330 change `claude -p` or --json-schema in a way our workers need to handle?",
+   "Is there a new, healthy, MIT/Apache repo that replaces part of our Shorts pipeline?",
+   "Any YouTube Shorts policy change dated November 2026?"
+  ],
+  "gaps": [
+   "No search deep enough for a new repo that beats ours; the faceless-Shorts repos found have 0-1 stars",
+   "Did not open YouTube Help Center or Creator Insider today",
+   "Run was below the 15 searches / 8 pages bar"
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.330: `claude -p` exits 1 on a full disk; recurring tasks and /loop run up to 30 days; fixes for invalid MCP tool schemas",
+  "Claude Code 2.1.328: CLAUDE_CODE_DISABLE_DEFERRED_TOOL_RESUME for `claude -p --resume`; better caching for Code Mode",
+  "Anthropic: IPO closed 2026-11-20 (no product change)"
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "used",
+   "why": "2.1.330 is the latest; nothing that needs a change on our side"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Latest entry 2026-11-17 linked billing beta; nothing we use"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Only IPO items since Fable 5.2 on 11-09"
+  },
+  {
+   "title": "GitHub search: claude code subagents skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Same big repos (wshobson/agents) already on watch; new ones are generic skill hubs"
+  },
+  {
+   "title": "GitHub search: faceless YouTube Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "tier": "B",
+   "result": "rejected",
+   "why": "All 0-1 stars, several with no licence"
+  },
+  {
+   "title": "GitHub search: token cost reduction prompt caching",
+   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Zero results for the window"
+  },
+  {
+   "title": "Web search: YouTube Shorts policy Nov 2026",
+   "url": "https://www.tubefilter.com/2026/08/10/youtube-partner-program-ad-eligibility-requirements-shorts/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Only the August YPP overhaul (Feb 2027) already known"
+  },
+  {
+   "title": "Web search: claude -p --json-schema changes",
+   "url": "https://code.claude.com/docs/en/headless.md",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Only older bug reports, nothing for 2.1.330"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": []
+}
