@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.330",
-   "checked": "2026-11-21"
+   "checked": "2026-11-22"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-11-17 Linked billing beta; 2026-11-16 watermark; 2026-11-09 Fable 5.2",
-   "checked": "2026-11-21"
+   "checked": "2026-11-22"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-11-20 IPO closing",
-   "checked": "2026-11-21"
+   "checked": "2026-11-22"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -256,6 +256,13 @@
    "verdict": "watch",
    "checked": "2026-11-08",
    "note": "MIT session dashboard; hooks + Node 22; source not read"
+  },
+  "failproofai": {
+   "stars": 10020,
+   "last_commit": "2026-11-21",
+   "verdict": "skip",
+   "checked": "2026-11-22",
+   "note": "licence NOASSERTION; overlaps control_plane.py"
   }
  },
  "issues": {

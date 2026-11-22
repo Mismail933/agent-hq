@@ -1,85 +1,81 @@
 {
- "date": "2026-11-21",
- "focus": "tools",
- "note": "Light run, no idea today. Claude Code is now 2.1.330 (small fixes: a full disk makes `claude -p` exit 1 instead of silently 0; scheduled tasks last up to 30 days). No new API notes after 11-17, and Anthropic news is only the IPO. No YouTube policy dated November. This run was shorter than the usual 15 searches / 8 pages, so I propose nothing.",
+ "date": "2026-11-22",
+ "focus": "reliability",
+ "note": "Light run, no idea today. Claude Code is still 2.1.330, the API notes stop at 11-17 and Anthropic news is only the IPO. Nothing in the sweep changes how our workers run. This run was below the 15 searches / 8 pages bar, so I propose nothing rather than pad.",
  "research": {
-  "searches": 5,
-  "pages_read": 4,
-  "minutes": 8,
+  "searches": 3,
+  "pages_read": 6,
+  "minutes": 6,
   "questions": [
-   "Did Claude Code 2.1.328-2.1.330 change `claude -p` or --json-schema in a way our workers need to handle?",
-   "Is there a new, healthy, MIT/Apache repo that replaces part of our Shorts pipeline?",
-   "Any YouTube Shorts policy change dated November 2026?"
+   "Did Claude Code 2.1.326-2.1.330 change failure or exit behaviour of `claude -p` that our workers.py must handle?",
+   "Is there a healthy MIT/Apache repo for agent loop/retry/cost guardrails that beats control_plane.py?"
   ],
   "gaps": [
-   "No search deep enough for a new repo that beats ours; the faceless-Shorts repos found have 0-1 stars",
-   "Did not open YouTube Help Center or Creator Insider today",
-   "Run was below the 15 searches / 8 pages bar"
+   "Below the 15 searches / 8 pages bar",
+   "Did not open failproofai's licence file or code",
+   "No YouTube sources opened (not a results day)"
   ]
  },
  "new_today": [
-  "Claude Code 2.1.330: `claude -p` exits 1 on a full disk; recurring tasks and /loop run up to 30 days; fixes for invalid MCP tool schemas",
-  "Claude Code 2.1.328: CLAUDE_CODE_DISABLE_DEFERRED_TOOL_RESUME for `claude -p --resume`; better caching for Code Mode",
-  "Anthropic: IPO closed 2026-11-20 (no product change)"
+  "Claude Code 2.1.330 (already seen): `claude -p` exits 1 on a full disk; nothing newer",
+  "No new API release notes after 2026-11-17",
+  "Anthropic news: IPO closed 11-20, nothing product-related"
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "used",
-   "why": "2.1.330 is the latest; nothing that needs a change on our side"
+   "result": "nothing new",
+   "why": "Newest is 2.1.330, same as yesterday"
   },
   {
    "title": "Claude API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "Latest entry 2026-11-17 linked billing beta; nothing we use"
+   "why": "Latest entry 2026-11-17"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Only IPO items since Fable 5.2 on 11-09"
+   "why": "IPO items only"
   },
   {
-   "title": "GitHub search: claude code subagents skills",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+skills",
+   "title": "GitHub search: claude code agents",
+   "url": "https://api.github.com/search/repositories?q=claude+code+agents",
    "tier": "B",
    "result": "nothing new",
-   "why": "Same big repos (wshobson/agents) already on watch; new ones are generic skill hubs"
+   "why": "Same big repos as before (ECC, caveman, ruflo)"
   },
   {
-   "title": "GitHub search: faceless YouTube Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation+faceless",
+   "title": "GitHub search: agent reliability guardrails",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+reliability+guardrails",
    "tier": "B",
    "result": "rejected",
-   "why": "All 0-1 stars, several with no licence"
+   "why": "failproofai licence is NOASSERTION; the rest have under 70 stars"
   },
   {
-   "title": "GitHub search: token cost reduction prompt caching",
-   "url": "https://api.github.com/search/repositories?q=llm+token+cost+reduction+prompt+caching",
+   "title": "GitHub search: youtube shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+automation",
    "tier": "B",
    "result": "nothing new",
-   "why": "Zero results for the window"
-  },
-  {
-   "title": "Web search: YouTube Shorts policy Nov 2026",
-   "url": "https://www.tubefilter.com/2026/08/10/youtube-partner-program-ad-eligibility-requirements-shorts/",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Only the August YPP overhaul (Feb 2027) already known"
-  },
-  {
-   "title": "Web search: claude -p --json-schema changes",
-   "url": "https://code.claude.com/docs/en/headless.md",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Only older bug reports, nothing for 2.1.330"
+   "why": "Known repos; small new ones add nothing we lack"
   }
  ],
- "repo_watch": [],
+ "repo_watch": [
+  {
+   "name": "failproofai",
+   "url": "https://github.com/search?q=failproofai",
+   "licence": "NOASSERTION",
+   "stars": 10020,
+   "last_commit": "2026-11-21",
+   "verdict": "skip",
+   "fit": "Policy enforcement for agent harnesses; overlaps control_plane.py",
+   "why": "Licence not clear; not read in depth"
+  }
+ ],
  "ideas": []
 }
