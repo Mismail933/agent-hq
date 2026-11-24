@@ -5,8 +5,9 @@ import {AbsoluteFill, useVideoConfig} from 'remotion';
 import {FONT_CSS} from './fonts';
 import {Captions} from './FactShort';
 import {AviMeals, AviRoutes, AviAltitude} from './Aviation';
+import {GtaPiece} from './GtaShort';
 
-const PIECES = {meals: AviMeals, routes: AviRoutes, altitude: AviAltitude};
+const PIECES = {meals: AviMeals, routes: AviRoutes, altitude: AviAltitude, gta: GtaPiece};
 
 export const AviShort = ({which = 'meals', lines = [], words = [], seconds = 40}) => {
   const {fps} = useVideoConfig();
