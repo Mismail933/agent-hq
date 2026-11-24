@@ -1,0 +1,175 @@
+{
+ "date": "2026-11-24",
+ "focus": "agents",
+ "note": "One idea today: our subscription workers never set an effort level, so every run uses Claude Code's default. Anthropic's docs say Sonnet 5.5 can step down to medium for well-specified agent tasks. Test it free on Vera first. Also: Opus 4.5 was deprecated yesterday (we don't use it) and Haiku 4.5's earliest retirement date has passed.",
+ "research": {
+  "searches": 14,
+  "pages_read": 10,
+  "minutes": 30,
+  "questions": [
+   "Do our one-shot claude -p workers (workers.run) set effort, and does Anthropic say a lower level is safe for Sonnet 5.5 agent tasks?",
+   "Does any model we name in settings.py get deprecated or retired soon?",
+   "Is there anything new in Claude Code 2.1.327-2.1.331 that touches claude -p, --json-schema, subagents or caching?",
+   "Is a message-threads or caching change worth adopting for the API backup path?"
+  ],
+  "gaps": [
+   "I could not find Claude Code's own default effort for -p with Sonnet 5.5 (the API default is high; Claude Code may differ). The first test step measures it.",
+   "No measured data on effort levels for structured-output (json-schema) runs, only vendor guidance.",
+   "No source found for a 'stranger test' script technique outside our own code; today's search gave generic LLM-eval advice only.",
+   "github.com/JuliusBrussee/caveman API call returned 403, so its health was not re-checked today."
+  ]
+ },
+ "new_today": [
+  "Claude Code 2.1.331 (was 2.1.330): fixes for prompt-cache loss on resume, subagent model permission rules, trace usage fields. Nothing that changes our claude -p calls.",
+  "Claude Code 2.1.330: claude -p now exits 1 with an error when the disk is full (was exit 0, silent). 2.1.329: new CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS.",
+  "API 2026-11-23: Claude Opus 4.5 deprecated, retires 2027-01-22 (recommended: claude-opus-5-5). We use opus-5-5, so no action.",
+  "Model deprecations page: claude-haiku-4-5-20251001 (our backup Atlas, settings.py line 12) is still Active but its 'not sooner than' date was 2026-10-15, so it can be deprecated with 60 days notice at any time. claude-haiku-5-5 is Active until at least 2027-10-07.",
+  "API 2026-11-02: message threads beta. Docs say it cuts request size and time to first token, not token price. Not worth adopting for our small backup path.",
+  "Anthropic news: only IPO items since 2026-11-09 (Fable 5.2)."
+ ],
+ "checked": [
+  {
+   "title": "Claude Code CHANGELOG",
+   "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+   "tier": "A",
+   "result": "nothing new for us",
+   "why": "2.1.331 newest; only bug fixes near claude -p, caching, subagents"
+  },
+  {
+   "title": "Claude API release notes",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "tier": "A",
+   "result": "used",
+   "why": "Opus 4.5 deprecation 2026-11-23, message threads beta 2026-11-02"
+  },
+  {
+   "title": "Anthropic news",
+   "url": "https://www.anthropic.com/news",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Only IPO announcements since Fable 5.2"
+  },
+  {
+   "title": "Model deprecations",
+   "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+   "tier": "A",
+   "result": "used",
+   "why": "Status and dates of every model in settings.py"
+  },
+  {
+   "title": "Pricing",
+   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+   "tier": "A",
+   "result": "used",
+   "why": "Confirmed Sonnet 5.5 $2/$10, Opus 5.5 $4/$20, Haiku 5.5 $0.10/$0.50"
+  },
+  {
+   "title": "Models overview",
+   "url": "https://platform.claude.com/docs/en/models/overview",
+   "tier": "A",
+   "result": "used",
+   "why": "Default effort: Sonnet 5.5 high, Opus 5.5 medium, Haiku 5.5 medium"
+  },
+  {
+   "title": "Effort docs",
+   "url": "https://platform.claude.com/docs/en/build-with-claude/effort",
+   "tier": "A",
+   "result": "used",
+   "why": "Sonnet 5.5: for agentic tasks start with medium for well-specified work; lower effort means fewer and terser tool calls; run your own sweep"
+  },
+  {
+   "title": "Claude Code CLI reference",
+   "url": "https://code.claude.com/docs/en/cli-reference",
+   "tier": "A",
+   "result": "used",
+   "why": "--effort flag accepts low, medium, high, xhigh, max"
+  },
+  {
+   "title": "Claude Code subagents docs",
+   "url": "https://code.claude.com/docs/en/sub-agents",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "effort and maxTurns controls confirmed; our startup-loading ideas already cover omitClaudeMd and --bare"
+  },
+  {
+   "title": "Message threads",
+   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "tier": "A",
+   "result": "rejected",
+   "why": "Latency feature, no token price change, data kept only up to 1 hour"
+  },
+  {
+   "title": "GitHub search: claude code skills",
+   "url": "https://api.github.com/search/repositories?q=claude+code+skills",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Large general repos; nothing that fits a faceless history channel"
+  },
+  {
+   "title": "GitHub search: faceless YouTube Shorts",
+   "url": "https://api.github.com/search/repositories?q=faceless+youtube+shorts+automation",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "All tiny repos (under 60 stars) or no licence"
+  },
+  {
+   "title": "GitHub search: LLM judge and eval rubrics",
+   "url": "https://api.github.com/search/repositories?q=llm+agent+evaluation+rubric+judge",
+   "tier": "B",
+   "result": "watch",
+   "why": "Calibre-Labs/reforge-ai-evals (MIT, 102 stars) already on watch"
+  },
+  {
+   "title": "GitHub search: prompt caching and token cost",
+   "url": "https://api.github.com/search/repositories?q=prompt+caching+token+cost+claude",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "Dashboards; token-goat has an unclear licence (NOASSERTION)"
+  },
+  {
+   "title": "Claude Code headless / --bare search",
+   "url": "https://code.claude.com/docs/en/headless",
+   "tier": "A",
+   "result": "nothing new",
+   "why": "Already covered by ideas 2026-10-21 and 2026-11-07"
+  },
+  {
+   "title": "Haiku 5.5 vs 4.5 comparisons",
+   "url": "https://ofox.ai/blog/claude-haiku-5-5-vs-4-5-batch-tasks/",
+   "tier": "C",
+   "result": "rejected",
+   "why": "Small informal test only; not a basis for an idea"
+  }
+ ],
+ "repo_watch": [],
+ "ideas": [
+  {
+   "id": "2026-11-24-1",
+   "title": "Set a lower effort level on the simple workers and measure it",
+   "area": "tokens",
+   "problem": "workers.run() builds the claude -p command (workers.py line 87: --output-format json, --no-session-persistence, --max-turns, --model, --tools) and never passes --effort. Every worker therefore runs at Claude Code's default level. Anthropic's effort page says Sonnet 5.5 defaults to high and that for well-specified multistep tool tasks you should 'start with medium'; lower effort also 'means fewer and terser tool calls'. Our Sonnet 5.5 workers (Vera, Doulya, Serge, Sage, Omar, Scout) have short, tightly specified jobs. I found no effort setting anywhere in settings.py or rules.py.",
+   "proposal": "Step 1 (free, no code): run Vera once as today and once with the environment variable CLAUDE_CODE_EFFORT_LEVEL=medium set by hand on the same idea; compare num_turns, api_value_usd and her verdict from the usage table (cp.usage_today). Repeat for Sage (short brief). Step 2, only if cost drops 15% or more and the verdict and the sources are unchanged: add a settings.WORKER_EFFORT dict ({'Vera': 'medium', 'Doulya': 'medium', ...}; absent = no flag) and in workers.run() add `if effort: cmd += ['--effort', effort]`; expose it as a rule worker.effort.<Agent> in rules.py so Atlas can change or undo it. Keep Israa, Calina, Rana, Tarek and Ghassan at the default: their work is judgement or long writing, where Anthropic says higher effort can matter. If the CLI rejects the flag (older bundled version), log it and run without it, the same way workers.py already handles --system-prompt-file.",
+   "gain": "Fewer thinking tokens and fewer tool calls on the subscription workers, so more daily allowance (SUBSCRIPTION_DAILY_VALUE_USD) is left for Calina, Israa and Tarek. Target: 15-30% lower api_value_usd for Vera, Doulya and Sage with an unchanged verdict. Measured from the usage table, no guessing.",
+   "test": "1) Normal: Vera on a past idea with a known verdict, effort medium; pass = same verdict and Path, api_value_usd lower by 15% or more. 2) Edge: Sage on a topic that needs 8 searches; pass = still 6+ distinct sources opened and the brief keeps its primary-source quotes (Anthropic warns that at low effort a model may skip a search). 3) Failure: an agent given an effort value its model does not support (for example xhigh on a model that lacks it); pass = workers.run logs the problem and falls back to the default instead of failing the job.",
+   "effort": "S",
+   "confidence": "moderate",
+   "confidence_why": "Rests on Anthropic's effort and CLI docs (A) saying medium suits well-specified agent tasks and that --effort works in the CLI. Weakest link: no measured result on OUR prompts, and Claude Code's own default for -p was not found, so the gain could be small if it already uses medium.",
+   "risks": "Lower effort can make a worker skip a search or a check (Anthropic says so for Haiku 5.5 at low). Keep to medium, not low, and check Sage's source counts. Judge quality may drop quietly, so compare verdicts on past ideas before turning it on. Easy to back out: remove the rule value.",
+   "links": [
+    {
+     "title": "Effort (Anthropic docs)",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/effort"
+    },
+    {
+     "title": "Claude Code CLI reference",
+     "url": "https://code.claude.com/docs/en/cli-reference"
+    },
+    {
+     "title": "Claude Code subagents docs",
+     "url": "https://code.claude.com/docs/en/sub-agents"
+    }
+   ],
+   "builds_on": ""
+  }
+ ]
+}
