@@ -58,11 +58,20 @@ function Pop({p, fps}) {
   const k = spring({frame: f, fps, config: {damping: 9, stiffness: 160, mass: 0.6}});
   const out = interpolate(f, [n - 6, n], [1, 0], clamp);
   const wob = Math.sin(f / 9) * 1.2;   // a slight living tilt
+  // count: the number rolls up from 0 to its value over ~0.7 s (Bassel 11-25: stats should flow into each other, not just pop)
+  let text = p.text;
+  const m = p.count ? /^([^\d]*)([\d,]+(?:\.\d+)?)(.*)$/.exec(p.text) : null;
+  if (m) {
+    const num = parseFloat(m[2].replace(/,/g, '')), dec = (m[2].split('.')[1] || '').length;
+    const v = num * interpolate(f, [0, Math.round(0.7 * fps)], [0, 1], {...clamp, easing: Easing.out(Easing.cubic)});
+    const s = v.toFixed(dec);
+    text = m[1] + (m[2].includes(',') ? Number(s).toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec}) : s) + m[3];
+  }
   return (
     <div style={{position: 'absolute', left: 50, right: 50, top: p.y ?? 330, textAlign: 'center', opacity: out,
                  transform: `scale(${0.3 + 0.7 * k}) rotate(${(p.tilt ?? -3) * (1 - k) + wob * 0.4}deg)`}}>
       <div style={{fontFamily: TH.font, fontSize: Math.round((p.size || 150) * 0.72), lineHeight: 1.0, color: p.color || TH.accent,
-                   WebkitTextStroke: '11px #111', paintOrder: 'stroke', textShadow: '0 10px 30px rgba(0,0,0,0.6)'}}>{p.text}</div>
+                   WebkitTextStroke: '11px #111', paintOrder: 'stroke', textShadow: '0 10px 30px rgba(0,0,0,0.6)'}}>{text}</div>
       {p.sub ? <div style={{marginTop: 14, fontFamily: TH.caption, fontWeight: 800, fontSize: 38, color: '#fff', textTransform: 'uppercase',
                             WebkitTextStroke: '9px #111', paintOrder: 'stroke', opacity: interpolate(f, [5, 12], [0, 1], clamp)}}>{p.sub}</div> : null}
     </div>

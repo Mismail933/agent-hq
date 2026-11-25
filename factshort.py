@@ -89,7 +89,8 @@ def make(folder):
     folder = Path(folder)
     L = folder.parent
     spec = json.loads((folder / "script.json").read_text(encoding="utf-8"))
-    vspec = {"story": [{"text": l["text"], **({"say": l["say"]} if l.get("say") else {}), **({"speed": l["speed"]} if l.get("speed") else {})}
+    vspec = {"story": [{"text": l["text"], **({"say": l["say"]} if l.get("say") else {}), **({"speed": l["speed"]} if l.get("speed") else {}),
+                       **({"hold": l["hold"]} if l.get("hold") else {})}   # seconds of silence after the line (a table on screen)
                        for l in spec["lines"]], "story_speed": spec.get("speed", 1.1), "story_gap": spec.get("gap", 0.15),
              **({"voice": spec["voice"]} if spec.get("voice") else {})}   # "eleven:<id>" = a paid voice, only when the client asks (Bassel 11-17: Chris)
     lines, total = maplong.voice(vspec, folder)
@@ -117,7 +118,7 @@ def make(folder):
         x["b"] = y["a"]
     shots[-1]["b"] = total
     hook = spec.get("hook")
-    props = {**({"theme": spec["theme"]} if spec.get("theme") else {}), "seconds": total, "lines_t0": [l["t0"] for l in lines], "shots": shots, "pops": pops, "words": words, **({"hook": {"text": hook["text"], "b": hook.get("dur", 2.4)}} if hook else {})}
+    props = {**({"theme": spec["theme"]} if spec.get("theme") else {}), **({"credit": spec["credit"]} if spec.get("credit") else {}), "seconds": total, "lines_t0": [l["t0"] for l in lines], "shots": shots, "pops": pops, "words": words, **({"hook": {"text": hook["text"], "b": hook.get("dur", 2.4)}} if hook else {})}
     pf = folder / "_props.json"
     pf.write_text(json.dumps(props), encoding="utf-8")
     (folder / "beats.json").write_text(json.dumps(props, indent=1), encoding="utf-8")
