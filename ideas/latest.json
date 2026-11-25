@@ -1,172 +1,200 @@
 {
- "date": "2026-11-24",
- "focus": "agents",
- "note": "One idea today: our subscription workers never set an effort level, so every run uses Claude Code's default. Anthropic's docs say Sonnet 5.5 can step down to medium for well-specified agent tasks. Test it free on Vera first. Also: Opus 4.5 was deprecated yesterday (we don't use it) and Haiku 4.5's earliest retirement date has passed.",
+ "date": "2026-11-25",
+ "focus": "tokens",
+ "note": "One idea today. Our workers may carry a hidden start-up load (skills list, memory, MCP) on every run. `--bare` would remove it but does not work on the subscription. Cheaper switches do exist. First step: one free measurement on your PC; only then change code.",
  "research": {
-  "searches": 14,
+  "searches": 16,
   "pages_read": 10,
   "minutes": 30,
   "questions": [
-   "Do our one-shot claude -p workers (workers.run) set effort, and does Anthropic say a lower level is safe for Sonnet 5.5 agent tasks?",
-   "Does any model we name in settings.py get deprecated or retired soon?",
-   "Is there anything new in Claude Code 2.1.327-2.1.331 that touches claude -p, --json-schema, subagents or caching?",
-   "Is a message-threads or caching change worth adopting for the API backup path?"
+   "Does `claude -p --bare` fit our subscription workers (workers.py)?",
+   "Which flags or env vars we can use today cut the per-run start-up load without losing our tools?",
+   "Is the start-up load big enough to matter next to a Vera run ($0.06) or a Sage run ($0.15)?"
   ],
   "gaps": [
-   "I could not find Claude Code's own default effort for -p with Sonnet 5.5 (the API default is high; Claude Code may differ). The first test step measures it.",
-   "No measured data on effort levels for structured-output (json-schema) runs, only vendor guidance.",
-   "No source found for a 'stranger test' script technique outside our own code; today's search gave generic LLM-eval advice only.",
-   "github.com/JuliusBrussee/caveman API call returned 403, so its health was not re-checked today."
+   "No official number for the start-up load of `claude -p --system-prompt` on a PC with skills; only user reports (about 12K to 72K tokens, different versions).",
+   "No official source on whether `--disable-slash-commands` removes the skills list in `-p` today (a May 2026 bug report says it did not; it is marked closed, fix version unknown).",
+   "Could not read the official memory page for exact CLAUDE_CODE_DISABLE_AUTO_MEMORY wording; only mirrors.",
+   "No YouTube policy change found for November 2026 (latest coverage is the July 2026 clarification)."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.331 (was 2.1.330): fixes for prompt-cache loss on resume, subagent model permission rules, trace usage fields. Nothing that changes our claude -p calls.",
-  "Claude Code 2.1.330: claude -p now exits 1 with an error when the disk is full (was exit 0, silent). 2.1.329: new CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS.",
-  "API 2026-11-23: Claude Opus 4.5 deprecated, retires 2027-01-22 (recommended: claude-opus-5-5). We use opus-5-5, so no action.",
-  "Model deprecations page: claude-haiku-4-5-20251001 (our backup Atlas, settings.py line 12) is still Active but its 'not sooner than' date was 2026-10-15, so it can be deprecated with 60 days notice at any time. claude-haiku-5-5 is Active until at least 2027-10-07.",
-  "API 2026-11-02: message threads beta. Docs say it cuts request size and time to first token, not token price. Not worth adopting for our small backup path.",
-  "Anthropic news: only IPO items since 2026-11-09 (Fable 5.2)."
+  "Claude Code 2.1.332: fixes for --effort with env var set; CLAUDE.md no longer sent twice after worktree move; reduced memory at start of `claude -p`. Nothing breaks our flags.",
+  "Claude Code 2.1.330: `claude -p` exits 1 when output goes to a full disk; subagent progress summaries use far fewer tokens.",
+  "Claude Code 2.1.328/2.1.331: better prompt caching for Code Mode with MCP; `--resume` in another permission mode kept cache. Not used by our one-shot workers.",
+  "API 2026-11-23: Opus 4.5 deprecated, retires 2027-01-22 (we use sonnet/opus aliases, no pinned 4.5 found in settings).",
+  "Docs: bare mode 'will become the default for -p in a future release'. It needs ANTHROPIC_API_KEY and never reads OAuth. Watch this: when it becomes default, subscription workers could break or silently need a key.",
+  "Anthropic news: IPO closing 2026-11-20; nothing about models since Fable 5.2 (2026-11-09)."
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "nothing new for us",
-   "why": "2.1.331 newest; only bug fixes near claude -p, caching, subagents"
+   "result": "used",
+   "why": "2.1.332 top; read 2.1.327-332 for -p, effort, caching, tokens"
   },
   {
-   "title": "Claude API release notes",
+   "title": "API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "used",
-   "why": "Opus 4.5 deprecation 2026-11-23, message threads beta 2026-11-02"
+   "result": "nothing new for us",
+   "why": "Opus 4.5 deprecation; Fable 5.2; Sonnet 5.5 cache read $0.10 (Oct 7)"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "Only IPO announcements since Fable 5.2"
+   "why": "IPO items only"
   },
   {
-   "title": "Model deprecations",
-   "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+   "title": "Claude Code headless docs (bare mode)",
+   "url": "https://code.claude.com/docs/en/headless",
    "tier": "A",
    "result": "used",
-   "why": "Status and dates of every model in settings.py"
-  },
-  {
-   "title": "Pricing",
-   "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-   "tier": "A",
-   "result": "used",
-   "why": "Confirmed Sonnet 5.5 $2/$10, Opus 5.5 $4/$20, Haiku 5.5 $0.10/$0.50"
-  },
-  {
-   "title": "Models overview",
-   "url": "https://platform.claude.com/docs/en/models/overview",
-   "tier": "A",
-   "result": "used",
-   "why": "Default effort: Sonnet 5.5 high, Opus 5.5 medium, Haiku 5.5 medium"
-  },
-  {
-   "title": "Effort docs",
-   "url": "https://platform.claude.com/docs/en/build-with-claude/effort",
-   "tier": "A",
-   "result": "used",
-   "why": "Sonnet 5.5: for agentic tasks start with medium for well-specified work; lower effort means fewer and terser tool calls; run your own sweep"
+   "why": "--bare needs API key, never reads OAuth; will become default for -p later"
   },
   {
    "title": "Claude Code CLI reference",
    "url": "https://code.claude.com/docs/en/cli-reference",
    "tier": "A",
    "result": "used",
-   "why": "--effort flag accepts low, medium, high, xhigh, max"
+   "why": "flags: --bare, --disable-slash-commands, --strict-mcp-config, --exclude-dynamic-system-prompt-sections (ignored with --system-prompt), --max-budget-usd"
   },
   {
-   "title": "Claude Code subagents docs",
-   "url": "https://code.claude.com/docs/en/sub-agents",
+   "title": "Claude Code costs doc",
+   "url": "https://code.claude.com/docs/en/costs",
    "tier": "A",
-   "result": "nothing new",
-   "why": "effort and maxTurns controls confirmed; our startup-loading ideas already cover omitClaudeMd and --bare"
+   "result": "used",
+   "why": "skills listing costs context every turn; MCP tools deferred; effort cannot be turned off on 5.5 models"
   },
   {
-   "title": "Message threads",
-   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "title": "Claude Code prompt caching doc",
+   "url": "https://code.claude.com/docs/en/prompt-caching",
    "tier": "A",
-   "result": "rejected",
-   "why": "Latency feature, no token price change, data kept only up to 1 hour"
+   "result": "used",
+   "why": "main -p conversation gets 1h TTL on subscription; usage.cache_creation shows TTL; tool/skill set changes break prefix"
   },
   {
-   "title": "GitHub search: claude code skills",
-   "url": "https://api.github.com/search/repositories?q=claude+code+skills",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Large general repos; nothing that fits a faceless history channel"
-  },
-  {
-   "title": "GitHub search: faceless YouTube Shorts",
-   "url": "https://api.github.com/search/repositories?q=faceless+youtube+shorts+automation",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "All tiny repos (under 60 stars) or no licence"
-  },
-  {
-   "title": "GitHub search: LLM judge and eval rubrics",
-   "url": "https://api.github.com/search/repositories?q=llm+agent+evaluation+rubric+judge",
-   "tier": "B",
-   "result": "watch",
-   "why": "Calibre-Labs/reforge-ai-evals (MIT, 102 stars) already on watch"
-  },
-  {
-   "title": "GitHub search: prompt caching and token cost",
-   "url": "https://api.github.com/search/repositories?q=prompt+caching+token+cost+claude",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "Dashboards; token-goat has an unclear licence (NOASSERTION)"
-  },
-  {
-   "title": "Claude Code headless / --bare search",
-   "url": "https://code.claude.com/docs/en/headless",
+   "title": "Claude Code skills doc",
+   "url": "https://code.claude.com/docs/en/skills",
    "tier": "A",
-   "result": "nothing new",
-   "why": "Already covered by ideas 2026-10-21 and 2026-11-07"
+   "result": "used",
+   "why": "every listed skill adds context on every turn; 1,536-char cap per description"
   },
   {
-   "title": "Haiku 5.5 vs 4.5 comparisons",
-   "url": "https://ofox.ai/blog/claude-haiku-5-5-vs-4-5-batch-tasks/",
+   "title": "DEV: what claude -p loads",
+   "url": "https://dev.to/rulestack/claude-p-what-headless-claude-code-actually-loads-and-when-bare-is-the-right-call-182c",
    "tier": "C",
-   "result": "rejected",
-   "why": "Small informal test only; not a basis for an idea"
+   "result": "rejected as base",
+   "why": "one author's ~150K tokens, no method; only used to know what to measure"
+  },
+  {
+   "title": "claudeissues mirror #60251 --disable-slash-commands still ships skills in -p",
+   "url": "https://claudeissues.com/issue/60251-bug-disable-slash-commands-still-ships-10-skills-as-api-call-attachment-in-p-mod",
+   "tier": "C",
+   "result": "used as lead",
+   "why": "reporter measured ~12K injected tokens/call with --system-prompt; closed 2026-05-22, fix unknown"
+  },
+  {
+   "title": "claudeissues mirror #39069 bare skips OAuth",
+   "url": "https://claudeissues.com/issue/39069-bare-bare-mode-skips-oauth-keychain-unusable-for-oauth-only-setups",
+   "tier": "C",
+   "result": "used",
+   "why": "confirms the docs: bare unusable on subscription"
+  },
+  {
+   "title": "GitHub search: token cost trackers",
+   "url": "https://api.github.com/search/repositories?q=claude+code+token+cost+tracking",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "codeburn (MIT, 11.9K stars) and TokenTracker duplicate our usage table"
+  },
+  {
+   "title": "GitHub search: faceless Shorts automation",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+faceless+automation",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "tiny repos (0-58 stars); awesome-faceless is a link list"
+  },
+  {
+   "title": "GitHub search: Claude Code multi-agent orchestration",
+   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+multi-agent+orchestration",
+   "tier": "C",
+   "result": "nothing new",
+   "why": "maestro-orchestrate, team-avatar: heavy frameworks, we already have our own pipeline"
+  },
+  {
+   "title": "Sonnet 5.5 cache price coverage",
+   "url": "https://www.unite.ai/?p=481687",
+   "tier": "C",
+   "result": "used with care",
+   "why": "cache read $0.10/M, 1h write $4/M; matches API release notes of Oct 7 (A)"
+  },
+  {
+   "title": "YouTube AI/inauthentic content coverage (TechCrunch, TechRepublic)",
+   "url": "https://techcrunch.com/2026/07/20/youtube-clarifies-policies-around-ai-slop-and-upsetting-videos/",
+   "tier": "B",
+   "result": "nothing new",
+   "why": "July 2026 clarification only; no November change"
   }
  ],
- "repo_watch": [],
+ "repo_watch": [
+  {
+   "name": "getagentseal/codeburn",
+   "url": "https://github.com/getagentseal/codeburn",
+   "licence": "MIT",
+   "stars": 11903,
+   "last_commit": "2026-11-23",
+   "verdict": "skip",
+   "fit": "Token and cost tracker across coding tools.",
+   "why": "Metadata only today (not opened). Our `usage` table + `hq credits` already do this."
+  },
+  {
+   "name": "edonadei/caliper",
+   "url": "https://github.com/edonadei/caliper",
+   "licence": "unknown",
+   "stars": 236,
+   "last_commit": "2026-11-17",
+   "verdict": "watch",
+   "fit": "With/without-skills token test; relevant to the measurement below.",
+   "why": "Seen on 11-19 watch list; not re-read today."
+  }
+ ],
  "ideas": [
   {
-   "id": "2026-11-24-1",
-   "title": "Set a lower effort level on the simple workers and measure it",
+   "id": "2026-11-25-1",
+   "title": "Measure the hidden start-up load of our workers, then switch off what they don't need",
    "area": "tokens",
-   "problem": "workers.run() builds the claude -p command (workers.py line 87: --output-format json, --no-session-persistence, --max-turns, --model, --tools) and never passes --effort. Every worker therefore runs at Claude Code's default level. Anthropic's effort page says Sonnet 5.5 defaults to high and that for well-specified multistep tool tasks you should 'start with medium'; lower effort also 'means fewer and terser tool calls'. Our Sonnet 5.5 workers (Vera, Doulya, Serge, Sage, Omar, Scout) have short, tightly specified jobs. I found no effort setting anywhere in settings.py or rules.py.",
-   "proposal": "Step 1 (free, no code): run Vera once as today and once with the environment variable CLAUDE_CODE_EFFORT_LEVEL=medium set by hand on the same idea; compare num_turns, api_value_usd and her verdict from the usage table (cp.usage_today). Repeat for Sage (short brief). Step 2, only if cost drops 15% or more and the verdict and the sources are unchanged: add a settings.WORKER_EFFORT dict ({'Vera': 'medium', 'Doulya': 'medium', ...}; absent = no flag) and in workers.run() add `if effort: cmd += ['--effort', effort]`; expose it as a rule worker.effort.<Agent> in rules.py so Atlas can change or undo it. Keep Israa, Calina, Rana, Tarek and Ghassan at the default: their work is judgement or long writing, where Anthropic says higher effort can matter. If the CLI rejects the flag (older bundled version), log it and run without it, the same way workers.py already handles --system-prompt-file.",
-   "gain": "Fewer thinking tokens and fewer tool calls on the subscription workers, so more daily allowance (SUBSCRIPTION_DAILY_VALUE_USD) is left for Calina, Israa and Tarek. Target: 15-30% lower api_value_usd for Vera, Doulya and Sage with an unchanged verdict. Measured from the usage table, no guessing.",
-   "test": "1) Normal: Vera on a past idea with a known verdict, effort medium; pass = same verdict and Path, api_value_usd lower by 15% or more. 2) Edge: Sage on a topic that needs 8 searches; pass = still 6+ distinct sources opened and the brief keeps its primary-source quotes (Anthropic warns that at low effort a model may skip a search). 3) Failure: an agent given an effort value its model does not support (for example xhigh on a model that lacks it); pass = workers.run logs the problem and falls back to the default instead of failing the job.",
+   "problem": "workers.py run() starts every worker as `claude -p --no-session-persistence --system-prompt ... --tools ...` in ~/Agent-HQ-workers/<agent>/ using the owner's normal Claude Code setup. A replaced system prompt does not stop Claude Code from adding the skills list (the owner has user skills such as senior-ui-ux), user memory, plugins and MCP tool names. Docs: 'Every skill in the skill listing adds to your context on every turn' (A, skills doc). A user measured ~12K injected tokens per call even with --system-prompt (C, issue #60251). Vera costs ~$0.06 and a short Sage ~$0.15 (CLAUDE.md), so a fixed ~12K cache write (1h write $4/M = ~$0.05) could be a third or more of a short run. We have never measured it: `usage` stores tokens, but nobody has looked at a run with no real task. `--bare` would remove all of it but cannot be used: docs say it 'never reads OAuth credentials or the system keychain', and the workers run on the subscription.",
+   "proposal": "Step 1 (free, 10 min, no code): in ~/Agent-HQ-workers/vera run `claude -p \"Reply OK\" --output-format json --no-session-persistence --system-prompt \"Reply OK\" --tools \"\"` and read usage.cache_creation_input_tokens + input_tokens. Repeat with `--disable-slash-commands --strict-mcp-config` and with env CLAUDE_CODE_DISABLE_AUTO_MEMORY=1. If the plain run is under ~3K tokens, STOP: nothing to gain, drop the idea. Step 2 (only if the load is >=8K): in workers.run() (workers.py line ~87) add those two flags and the env var to `cmd`/env, behind a new rule `workers.lean_start` (rules.py, default off, scope: Doulya/Sage/Vera/Serge/Calina/Israa, NOT Atlas, who needs his memory and skills). workers.py is protected from Ghassan, so the Builder chat does it. Step 3: record input+cache tokens of the first request per agent in the existing `usage` rows (already there: input_tokens, cache_tokens) and compare 5 runs on vs off.",
+   "gain": "Unknown until step 1. If the load is ~12K tokens: about $0.05 less API-value per run, or roughly 30-50% of a Vera run and 10-30% of a Sage run, which also stretches SUBSCRIPTION_DAILY_VALUE_USD allowances (Sage 6.00, Calina 6.00). Measure: median (input+cache_tokens) of the first turn per agent before/after, from the usage table.",
+   "test": "Normal: Vera runs a verdict with lean_start on; structured_output still arrives and the verdict matches the run with it off on the same idea. Edge: Calina with WebSearch/WebFetch and a JSON schema still returns structured_output (the tools she needs must not be removed by --strict-mcp-config; she uses built-in tools, not MCP). Failure: if a flag is unknown on the owner's installed Claude Code (older app copy) the run must fall back to the old command, not raise Unavailable. Pass = same answers on 3 test ideas, first-turn tokens down by the step-1 amount, zero new Unavailable events in 5 days.",
    "effort": "S",
-   "confidence": "moderate",
-   "confidence_why": "Rests on Anthropic's effort and CLI docs (A) saying medium suits well-specified agent tasks and that --effort works in the CLI. Weakest link: no measured result on OUR prompts, and Claude Code's own default for -p was not found, so the gain could be small if it already uses medium.",
-   "risks": "Lower effort can make a worker skip a search or a check (Anthropic says so for Haiku 5.5 at low). Keep to medium, not low, and check Sage's source counts. Judge quality may drop quietly, so compare verdicts on past ideas before turning it on. Easy to back out: remove the rule value.",
+   "confidence": "low",
+   "confidence_why": "Docs (A) prove the skills list costs tokens every turn and that --bare is unusable on the subscription. The size on the owner's PC rests on one user report (C, closed bug, fix version unknown). That is why step 1 is a measurement, not a change.",
+   "risks": "--disable-slash-commands may still ship the skills list in some versions (issue #60251), so the flag could do nothing: step 1 shows it. Turning memory off for workers changes nothing they rely on (they have no memory files; Atlas is excluded). When docs make --bare the default for -p ('in a future release'), subscription workers could stop authenticating: re-check the changelog daily; this is a separate warning item. No outside code is installed.",
    "links": [
     {
-     "title": "Effort (Anthropic docs)",
-     "url": "https://platform.claude.com/docs/en/build-with-claude/effort"
+     "title": "Bare mode (headless docs)",
+     "url": "https://code.claude.com/docs/en/headless"
     },
     {
-     "title": "Claude Code CLI reference",
+     "title": "CLI reference: flags",
      "url": "https://code.claude.com/docs/en/cli-reference"
     },
     {
-     "title": "Claude Code subagents docs",
-     "url": "https://code.claude.com/docs/en/sub-agents"
+     "title": "Skills cost context every turn",
+     "url": "https://code.claude.com/docs/en/skills"
+    },
+    {
+     "title": "Prompt cache TTL and usage.cache_creation",
+     "url": "https://code.claude.com/docs/en/prompt-caching"
+    },
+    {
+     "title": "User report: ~12K injected tokens with --system-prompt",
+     "url": "https://claudeissues.com/issue/60251-bug-disable-slash-commands-still-ships-10-skills-as-api-call-attachment-in-p-mod"
     }
    ],
    "builds_on": ""

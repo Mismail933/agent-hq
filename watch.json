@@ -2,18 +2,18 @@
  "sources": {
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
-   "last_seen": "2.1.331",
-   "checked": "2026-11-24"
+   "last_seen": "2.1.332",
+   "checked": "2026-11-25"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-11-23 Opus 4.5 deprecated (retires 2027-01-22); 2026-11-17 Linked billing; 2026-11-09 Fable 5.2",
-   "checked": "2026-11-24"
+   "checked": "2026-11-25"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-11-20 IPO closing",
-   "checked": "2026-11-24"
+   "checked": "2026-11-25"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
@@ -23,8 +23,8 @@
   },
   "claude-code-prompt-caching-docs": {
    "url": "https://code.claude.com/docs/en/prompt-caching",
-   "last_seen": "claude -p = main conversation (1h on subscription); subagentPromptCacheTtl setting v2.1.242+",
-   "checked": "2026-10-29"
+   "last_seen": "main -p = 1h TTL on subscription; read usage.cache_creation",
+   "checked": "2026-11-25"
   },
   "api-credits-subscribers": {
    "url": "https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers",
@@ -83,8 +83,8 @@
   },
   "claude-code-cli-reference": {
    "url": "https://code.claude.com/docs/en/cli-reference",
-   "last_seen": "--safe-mode works with subscription login; --bare needs API key",
-   "checked": "2026-10-21"
+   "last_seen": "--bare, --disable-slash-commands, --strict-mcp-config, --exclude-dynamic-system-prompt-sections (ignored with --system-prompt)",
+   "checked": "2026-11-25"
   },
   "youtube-engaged-views": {
    "url": "https://blog.youtube/inside-youtube/engaged-views-youtube-explained/",
@@ -128,8 +128,8 @@
   },
   "claude-code-headless-docs": {
    "url": "https://code.claude.com/docs/en/headless",
-   "last_seen": "--bare skips OAuth; will become default for -p",
-   "checked": "2026-11-07"
+   "last_seen": "bare mode needs API key, never OAuth; 'will become default for -p in a future release'",
+   "checked": "2026-11-25"
   },
   "claude-api-pricing": {
    "url": "https://platform.claude.com/docs/en/about-claude/pricing",
@@ -165,10 +165,10 @@
    "note": "MIT role-prompt library; reference only."
   },
   "getagentseal/codeburn": {
-   "stars": 11865,
-   "last_commit": "2026-11-18",
+   "stars": 11903,
+   "last_commit": "2026-11-23",
    "verdict": "skip",
-   "checked": "2026-11-19",
+   "checked": "2026-11-25",
    "note": "duplicates usage table"
   },
   "edonadei/caliper": {
@@ -176,7 +176,7 @@
    "last_commit": "2026-11-17",
    "verdict": "watch",
    "checked": "2026-11-19",
-   "note": "with/without skills token test"
+   "note": "with/without skills token test; relevant to idea 2026-11-25-1 measurement"
   },
   "shaharia-lab/agento": {
    "stars": 33,
