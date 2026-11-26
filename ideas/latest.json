@@ -1,203 +1,92 @@
 {
- "date": "2026-11-25",
- "focus": "tokens",
- "note": "One idea today. Our workers may carry a hidden start-up load (skills list, memory, MCP) on every run. `--bare` would remove it but does not work on the subscription. Cheaper switches do exist. First step: one free measurement on your PC; only then change code.",
+ "date": "2026-11-26",
+ "focus": "tools",
+ "note": "No idea today. The daily sweep found nothing new since yesterday (Claude Code is still 2.1.332). I looked at new repos and YouTube's Shorts rules: nothing worth your time. This run was lighter than the target (6 searches), so I will not stretch it into an idea.",
  "research": {
-  "searches": 16,
-  "pages_read": 10,
-  "minutes": 30,
+  "searches": 6,
+  "pages_read": 8,
+  "minutes": 12,
   "questions": [
-   "Does `claude -p --bare` fit our subscription workers (workers.py)?",
-   "Which flags or env vars we can use today cut the per-run start-up load without losing our tools?",
-   "Is the start-up load big enough to matter next to a Vera run ($0.06) or a Sage run ($0.15)?"
+   "Is there a new, safely licensed repo that replaces something we built (captions, TTS, token saving, Shorts pipeline)?",
+   "Did YouTube change Shorts rules in November 2026 that touch our channel?",
+   "Has the `claude -p` subscription/bare-mode picture changed since yesterday?"
   ],
   "gaps": [
-   "No official number for the start-up load of `claude -p --system-prompt` on a PC with skills; only user reports (about 12K to 72K tokens, different versions).",
-   "No official source on whether `--disable-slash-commands` removes the skills list in `-p` today (a May 2026 bug report says it did not; it is marked closed, fix version unknown).",
-   "Could not read the official memory page for exact CLAUDE_CODE_DISABLE_AUTO_MEMORY wording; only mirrors.",
-   "No YouTube policy change found for November 2026 (latest coverage is the July 2026 clarification)."
+   "Only 6 searches and 8 pages, under the 15/8 target for a full run; no repo was read beyond its README page.",
+   "No official YouTube Help page for the Oct 1 2026 re-upload recommendation change; only a press summary of the TeamYouTube post.",
+   "No release date for bare mode becoming the default for `claude -p`.",
+   "caveman's last-commit date and open issues were not visible on the page."
   ]
  },
  "new_today": [
-  "Claude Code 2.1.332: fixes for --effort with env var set; CLAUDE.md no longer sent twice after worktree move; reduced memory at start of `claude -p`. Nothing breaks our flags.",
-  "Claude Code 2.1.330: `claude -p` exits 1 when output goes to a full disk; subagent progress summaries use far fewer tokens.",
-  "Claude Code 2.1.328/2.1.331: better prompt caching for Code Mode with MCP; `--resume` in another permission mode kept cache. Not used by our one-shot workers.",
-  "API 2026-11-23: Opus 4.5 deprecated, retires 2027-01-22 (we use sonnet/opus aliases, no pinned 4.5 found in settings).",
-  "Docs: bare mode 'will become the default for -p in a future release'. It needs ANTHROPIC_API_KEY and never reads OAuth. Watch this: when it becomes default, subscription workers could break or silently need a key.",
-  "Anthropic news: IPO closing 2026-11-20; nothing about models since Fable 5.2 (2026-11-09)."
+  "Nothing new in Claude Code (top is still 2.1.332), API release notes (Nov 23 Opus 4.5 deprecation, already known) or Anthropic news (IPO only).",
+  "YouTube: no November 2026 Shorts policy change found. Known: Oct 1 2026 Shorts recommendations favour original material over re-uploads (press, B); AI narration that only describes on-screen clips is not 'original'. Our channel makes original scripts, so low risk, but keep Calina's sources/original angle."
  ],
  "checked": [
   {
    "title": "Claude Code CHANGELOG",
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
-   "result": "used",
-   "why": "2.1.332 top; read 2.1.327-332 for -p, effort, caching, tokens"
+   "result": "nothing new",
+   "why": "top still 2.1.332"
   },
   {
    "title": "API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
-   "result": "nothing new for us",
-   "why": "Opus 4.5 deprecation; Fable 5.2; Sonnet 5.5 cache read $0.10 (Oct 7)"
+   "result": "nothing new",
+   "why": "only Opus 4.5 deprecation (known) and analytics fixes"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "IPO items only"
+   "why": "IPO items; last model news Fable 5.2 on 2026-11-09"
   },
   {
-   "title": "Claude Code headless docs (bare mode)",
-   "url": "https://code.claude.com/docs/en/headless",
+   "title": "Use the Agent SDK with your Claude plan",
+   "url": "https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan",
    "tier": "A",
-   "result": "used",
-   "why": "--bare needs API key, never reads OAuth; will become default for -p later"
+   "result": "nothing new",
+   "why": "signed-in claude -p still draws subscription limits; same as Oct 7 note"
   },
   {
-   "title": "Claude Code CLI reference",
-   "url": "https://code.claude.com/docs/en/cli-reference",
-   "tier": "A",
-   "result": "used",
-   "why": "flags: --bare, --disable-slash-commands, --strict-mcp-config, --exclude-dynamic-system-prompt-sections (ignored with --system-prompt), --max-budget-usd"
+   "title": "JuliusBrussee/caveman README",
+   "url": "https://github.com/JuliusBrussee/caveman",
+   "tier": "B",
+   "result": "rejected",
+   "why": "telemetry on by default (incl. IP), remote install scripts, optional cloud routing of full requests; own small benchmark"
   },
   {
-   "title": "Claude Code costs doc",
-   "url": "https://code.claude.com/docs/en/costs",
-   "tier": "A",
-   "result": "used",
-   "why": "skills listing costs context every turn; MCP tools deferred; effort cannot be turned off on 5.5 models"
+   "title": "genpixy-ai/ai-whiteboard-video-generator",
+   "url": "https://github.com/genpixy-ai/ai-whiteboard-video-generator",
+   "tier": "B",
+   "result": "rejected",
+   "why": "3 commits, 1 star, core step is a paid third-party API"
   },
   {
-   "title": "Claude Code prompt caching doc",
-   "url": "https://code.claude.com/docs/en/prompt-caching",
-   "tier": "A",
-   "result": "used",
-   "why": "main -p conversation gets 1h TTL on subscription; usage.cache_creation shows TTL; tool/skill set changes break prefix"
-  },
-  {
-   "title": "Claude Code skills doc",
-   "url": "https://code.claude.com/docs/en/skills",
-   "tier": "A",
-   "result": "used",
-   "why": "every listed skill adds context on every turn; 1,536-char cap per description"
-  },
-  {
-   "title": "DEV: what claude -p loads",
-   "url": "https://dev.to/rulestack/claude-p-what-headless-claude-code-actually-loads-and-when-bare-is-the-right-call-182c",
+   "title": "awesome-faceless list",
+   "url": "https://github.com/sasharun/awesome-faceless",
    "tier": "C",
-   "result": "rejected as base",
-   "why": "one author's ~150K tokens, no method; only used to know what to measure"
+   "result": "nothing new",
+   "why": "lists Kokoro, Qwen3-TTS, CosyVoice (Apache-2.0); we already run Kokoro"
   },
   {
-   "title": "claudeissues mirror #60251 --disable-slash-commands still ships skills in -p",
-   "url": "https://claudeissues.com/issue/60251-bug-disable-slash-commands-still-ships-10-skills-as-api-call-attachment-in-p-mod",
-   "tier": "C",
-   "result": "used as lead",
-   "why": "reporter measured ~12K injected tokens/call with --system-prompt; closed 2026-05-22, fix unknown"
-  },
-  {
-   "title": "claudeissues mirror #39069 bare skips OAuth",
-   "url": "https://claudeissues.com/issue/39069-bare-bare-mode-skips-oauth-keychain-unusable-for-oauth-only-setups",
-   "tier": "C",
+   "title": "ppc.land: re-uploaded Shorts lose reach",
+   "url": "https://ppc.land/re-uploaded-shorts-lose-reach-as-youtube-favours-original-clips/",
+   "tier": "B",
    "result": "used",
-   "why": "confirms the docs: bare unusable on subscription"
+   "why": "Oct 1 2026 recommendation change; no threshold given"
   },
   {
-   "title": "GitHub search: token cost trackers",
-   "url": "https://api.github.com/search/repositories?q=claude+code+token+cost+tracking",
+   "title": "GitHub search: claude code skills / youtube shorts automation / cost reduction",
+   "url": "https://api.github.com/search/repositories",
    "tier": "B",
    "result": "nothing new",
-   "why": "codeburn (MIT, 11.9K stars) and TokenTracker duplicate our usage table"
-  },
-  {
-   "title": "GitHub search: faceless Shorts automation",
-   "url": "https://api.github.com/search/repositories?q=youtube+shorts+faceless+automation",
-   "tier": "C",
-   "result": "nothing new",
-   "why": "tiny repos (0-58 stars); awesome-faceless is a link list"
-  },
-  {
-   "title": "GitHub search: Claude Code multi-agent orchestration",
-   "url": "https://api.github.com/search/repositories?q=claude+code+subagents+multi-agent+orchestration",
-   "tier": "C",
-   "result": "nothing new",
-   "why": "maestro-orchestrate, team-avatar: heavy frameworks, we already have our own pipeline"
-  },
-  {
-   "title": "Sonnet 5.5 cache price coverage",
-   "url": "https://www.unite.ai/?p=481687",
-   "tier": "C",
-   "result": "used with care",
-   "why": "cache read $0.10/M, 1h write $4/M; matches API release notes of Oct 7 (A)"
-  },
-  {
-   "title": "YouTube AI/inauthentic content coverage (TechCrunch, TechRepublic)",
-   "url": "https://techcrunch.com/2026/07/20/youtube-clarifies-policies-around-ai-slop-and-upsetting-videos/",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "July 2026 clarification only; no November change"
+   "why": "results were big skill collections already on watch, or tiny unlicensed repos; OpenMontage is AGPL (skip)"
   }
  ],
- "repo_watch": [
-  {
-   "name": "getagentseal/codeburn",
-   "url": "https://github.com/getagentseal/codeburn",
-   "licence": "MIT",
-   "stars": 11903,
-   "last_commit": "2026-11-23",
-   "verdict": "skip",
-   "fit": "Token and cost tracker across coding tools.",
-   "why": "Metadata only today (not opened). Our `usage` table + `hq credits` already do this."
-  },
-  {
-   "name": "edonadei/caliper",
-   "url": "https://github.com/edonadei/caliper",
-   "licence": "unknown",
-   "stars": 236,
-   "last_commit": "2026-11-17",
-   "verdict": "watch",
-   "fit": "With/without-skills token test; relevant to the measurement below.",
-   "why": "Seen on 11-19 watch list; not re-read today."
-  }
- ],
- "ideas": [
-  {
-   "id": "2026-11-25-1",
-   "title": "Measure the hidden start-up load of our workers, then switch off what they don't need",
-   "area": "tokens",
-   "problem": "workers.py run() starts every worker as `claude -p --no-session-persistence --system-prompt ... --tools ...` in ~/Agent-HQ-workers/<agent>/ using the owner's normal Claude Code setup. A replaced system prompt does not stop Claude Code from adding the skills list (the owner has user skills such as senior-ui-ux), user memory, plugins and MCP tool names. Docs: 'Every skill in the skill listing adds to your context on every turn' (A, skills doc). A user measured ~12K injected tokens per call even with --system-prompt (C, issue #60251). Vera costs ~$0.06 and a short Sage ~$0.15 (CLAUDE.md), so a fixed ~12K cache write (1h write $4/M = ~$0.05) could be a third or more of a short run. We have never measured it: `usage` stores tokens, but nobody has looked at a run with no real task. `--bare` would remove all of it but cannot be used: docs say it 'never reads OAuth credentials or the system keychain', and the workers run on the subscription.",
-   "proposal": "Step 1 (free, 10 min, no code): in ~/Agent-HQ-workers/vera run `claude -p \"Reply OK\" --output-format json --no-session-persistence --system-prompt \"Reply OK\" --tools \"\"` and read usage.cache_creation_input_tokens + input_tokens. Repeat with `--disable-slash-commands --strict-mcp-config` and with env CLAUDE_CODE_DISABLE_AUTO_MEMORY=1. If the plain run is under ~3K tokens, STOP: nothing to gain, drop the idea. Step 2 (only if the load is >=8K): in workers.run() (workers.py line ~87) add those two flags and the env var to `cmd`/env, behind a new rule `workers.lean_start` (rules.py, default off, scope: Doulya/Sage/Vera/Serge/Calina/Israa, NOT Atlas, who needs his memory and skills). workers.py is protected from Ghassan, so the Builder chat does it. Step 3: record input+cache tokens of the first request per agent in the existing `usage` rows (already there: input_tokens, cache_tokens) and compare 5 runs on vs off.",
-   "gain": "Unknown until step 1. If the load is ~12K tokens: about $0.05 less API-value per run, or roughly 30-50% of a Vera run and 10-30% of a Sage run, which also stretches SUBSCRIPTION_DAILY_VALUE_USD allowances (Sage 6.00, Calina 6.00). Measure: median (input+cache_tokens) of the first turn per agent before/after, from the usage table.",
-   "test": "Normal: Vera runs a verdict with lean_start on; structured_output still arrives and the verdict matches the run with it off on the same idea. Edge: Calina with WebSearch/WebFetch and a JSON schema still returns structured_output (the tools she needs must not be removed by --strict-mcp-config; she uses built-in tools, not MCP). Failure: if a flag is unknown on the owner's installed Claude Code (older app copy) the run must fall back to the old command, not raise Unavailable. Pass = same answers on 3 test ideas, first-turn tokens down by the step-1 amount, zero new Unavailable events in 5 days.",
-   "effort": "S",
-   "confidence": "low",
-   "confidence_why": "Docs (A) prove the skills list costs tokens every turn and that --bare is unusable on the subscription. The size on the owner's PC rests on one user report (C, closed bug, fix version unknown). That is why step 1 is a measurement, not a change.",
-   "risks": "--disable-slash-commands may still ship the skills list in some versions (issue #60251), so the flag could do nothing: step 1 shows it. Turning memory off for workers changes nothing they rely on (they have no memory files; Atlas is excluded). When docs make --bare the default for -p ('in a future release'), subscription workers could stop authenticating: re-check the changelog daily; this is a separate warning item. No outside code is installed.",
-   "links": [
-    {
-     "title": "Bare mode (headless docs)",
-     "url": "https://code.claude.com/docs/en/headless"
-    },
-    {
-     "title": "CLI reference: flags",
-     "url": "https://code.claude.com/docs/en/cli-reference"
-    },
-    {
-     "title": "Skills cost context every turn",
-     "url": "https://code.claude.com/docs/en/skills"
-    },
-    {
-     "title": "Prompt cache TTL and usage.cache_creation",
-     "url": "https://code.claude.com/docs/en/prompt-caching"
-    },
-    {
-     "title": "User report: ~12K injected tokens with --system-prompt",
-     "url": "https://claudeissues.com/issue/60251-bug-disable-slash-commands-still-ships-10-skills-as-api-call-attachment-in-p-mod"
-    }
-   ],
-   "builds_on": ""
-  }
- ]
+ "repo_watch": [],
+ "ideas": []
 }
