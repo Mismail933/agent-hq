@@ -76,6 +76,15 @@ def voice(spec, folder):
             if not f.exists():
                 a = np.concatenate([np.asarray(r.audio, dtype=np.float32) for r in pipe(says[i], voice="am_michael", speed=speed)])
                 sf.write(f, a, SR)
+        tempo = float(spec.get("voice_tempo") or 1.0)
+        if eleven and abs(tempo - 1.0) > 0.01:   # Bassel 11-27: a paid voice at 125% pace (pitch kept); its word times scale with it
+            ft = f.with_name(f"{f.stem}-t{tempo:g}.wav")
+            if not ft.exists():
+                import shorts
+                subprocess.run([shorts.find_ffmpeg(), "-v", "error", "-y", "-i", str(f), "-af", f"atempo={tempo}", str(ft)], check=True)
+            f = ft
+            if told:
+                told = [[w[0], float(w[1]) / tempo, float(w[2]) / tempo] for w in told]
         a, _ = sf.read(f, dtype="float32")
         env = np.convolve(np.abs(a), np.ones(240) / 240, mode="same")
         on = np.where(env > 0.01 * env.max())[0]

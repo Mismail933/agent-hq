@@ -92,7 +92,8 @@ def make(folder):
     vspec = {"story": [{"text": l["text"], **({"say": l["say"]} if l.get("say") else {}), **({"speed": l["speed"]} if l.get("speed") else {}),
                        **({"hold": l["hold"]} if l.get("hold") else {})}   # seconds of silence after the line (a table on screen)
                        for l in spec["lines"]], "story_speed": spec.get("speed", 1.1), "story_gap": spec.get("gap", 0.15),
-             **({"voice": spec["voice"]} if spec.get("voice") else {})}   # "eleven:<id>" = a paid voice, only when the client asks (Bassel 11-17: Chris)
+             **({"voice": spec["voice"]} if spec.get("voice") else {}),
+             **({"voice_tempo": spec["voice_tempo"]} if spec.get("voice_tempo") else {})}   # e.g. 1.25 = a paid voice at 125% pace   # "eleven:<id>" = a paid voice, only when the client asks (Bassel 11-17: Chris)
     lines, total = maplong.voice(vspec, folder)
     words = align(folder, lines)
     (folder / "voice.json").write_text(json.dumps({"lines": lines, "seconds": total}, indent=1), encoding="utf-8")
