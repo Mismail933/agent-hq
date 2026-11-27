@@ -1,26 +1,25 @@
 {
- "date": "2026-11-26",
- "focus": "tools",
- "note": "No idea today. The daily sweep found nothing new since yesterday (Claude Code is still 2.1.332). I looked at new repos and YouTube's Shorts rules: nothing worth your time. This run was lighter than the target (6 searches), so I will not stretch it into an idea.",
+ "date": "2026-11-27",
+ "focus": "reliability",
+ "note": "No idea today. Claude Code, the API notes and Anthropic news have nothing new since yesterday. One small YouTube item: custom Shorts thumbnails opened to everyone on Nov 23 (press only). This was a short run, so I did not stretch it into an idea.",
  "research": {
-  "searches": 6,
-  "pages_read": 8,
-  "minutes": 12,
+  "searches": 3,
+  "pages_read": 6,
+  "minutes": 8,
   "questions": [
-   "Is there a new, safely licensed repo that replaces something we built (captions, TTS, token saving, Shorts pipeline)?",
-   "Did YouTube change Shorts rules in November 2026 that touch our channel?",
-   "Has the `claude -p` subscription/bare-mode picture changed since yesterday?"
+   "Did Claude Code, the API or Anthropic ship anything that touches claude -p reliability since yesterday?",
+   "Is there a new, safely licensed repo for stuck-job or repeated-failure guards in agent runs?",
+   "Did YouTube change Shorts rules in late November 2026?"
   ],
   "gaps": [
-   "Only 6 searches and 8 pages, under the 15/8 target for a full run; no repo was read beyond its README page.",
-   "No official YouTube Help page for the Oct 1 2026 re-upload recommendation change; only a press summary of the TeamYouTube post.",
-   "No release date for bare mode becoming the default for `claude -p`.",
-   "caveman's last-commit date and open issues were not visible on the page."
+   "Only 3 searches and 6 pages, under the 15/8 target for a full run.",
+   "No repo was read beyond its search-result line; licence files and issues not opened.",
+   "No official YouTube page found for the Nov 23 custom-thumbnail change; press summaries only."
   ]
  },
  "new_today": [
-  "Nothing new in Claude Code (top is still 2.1.332), API release notes (Nov 23 Opus 4.5 deprecation, already known) or Anthropic news (IPO only).",
-  "YouTube: no November 2026 Shorts policy change found. Known: Oct 1 2026 Shorts recommendations favour original material over re-uploads (press, B); AI narration that only describes on-screen clips is not 'original'. Our channel makes original scripts, so low risk, but keep Calina's sources/original angle."
+  "Claude Code 2.1.332 is still the top version (adds PreSkillShellCommand hook, MCP-server skills beta). Nothing for claude -p.",
+  "Press: custom thumbnails for Shorts now open to all creators (announced Nov 23). Omar's suggest() packaging could mention thumbnails later; unverified (B/C)."
  ],
  "checked": [
   {
@@ -28,63 +27,42 @@
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "tier": "A",
    "result": "nothing new",
-   "why": "top still 2.1.332"
+   "why": "top is 2.1.332, same as yesterday"
   },
   {
    "title": "API release notes",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "tier": "A",
    "result": "nothing new",
-   "why": "only Opus 4.5 deprecation (known) and analytics fixes"
+   "why": "newest entry Nov 23 (Opus 4.5 deprecation, known)"
   },
   {
    "title": "Anthropic news",
    "url": "https://www.anthropic.com/news",
    "tier": "A",
    "result": "nothing new",
-   "why": "IPO items; last model news Fable 5.2 on 2026-11-09"
+   "why": "IPO items; last model news Fable 5.2 on Nov 9"
   },
   {
-   "title": "Use the Agent SDK with your Claude plan",
-   "url": "https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan",
-   "tier": "A",
-   "result": "nothing new",
-   "why": "signed-in claude -p still draws subscription limits; same as Oct 7 note"
-  },
-  {
-   "title": "JuliusBrussee/caveman README",
-   "url": "https://github.com/JuliusBrussee/caveman",
+   "title": "GitHub search: claude code hooks reliability",
+   "url": "https://api.github.com/search/repositories?q=claude+code+hooks+reliability",
    "tier": "B",
    "result": "rejected",
-   "why": "telemetry on by default (incl. IP), remote install scripts, optional cloud routing of full requests; own small benchmark"
+   "why": "WhiteBite/dejavu-gates (16 stars), toyaji/anti-stuck (2): tiny, young, we already have job checkpoints and watchdogs"
   },
   {
-   "title": "genpixy-ai/ai-whiteboard-video-generator",
-   "url": "https://github.com/genpixy-ai/ai-whiteboard-video-generator",
+   "title": "GitHub search: youtube shorts captions ffmpeg",
+   "url": "https://api.github.com/search/repositories?q=youtube+shorts+captions+ffmpeg",
    "tier": "B",
    "result": "rejected",
-   "why": "3 commits, 1 star, core step is a paid third-party API"
+   "why": "clippers cut other people's videos; neonclipping is AGPL; we write original scripts"
   },
   {
-   "title": "awesome-faceless list",
-   "url": "https://github.com/sasharun/awesome-faceless",
+   "title": "WebSearch: YouTube Shorts policy Nov 2026",
+   "url": "https://socialbee.com/blog/youtube-updates/",
    "tier": "C",
-   "result": "nothing new",
-   "why": "lists Kokoro, Qwen3-TTS, CosyVoice (Apache-2.0); we already run Kokoro"
-  },
-  {
-   "title": "ppc.land: re-uploaded Shorts lose reach",
-   "url": "https://ppc.land/re-uploaded-shorts-lose-reach-as-youtube-favours-original-clips/",
-   "tier": "B",
    "result": "used",
-   "why": "Oct 1 2026 recommendation change; no threshold given"
-  },
-  {
-   "title": "GitHub search: claude code skills / youtube shorts automation / cost reduction",
-   "url": "https://api.github.com/search/repositories",
-   "tier": "B",
-   "result": "nothing new",
-   "why": "results were big skill collections already on watch, or tiny unlicensed repos; OpenMontage is AGPL (skip)"
+   "why": "originality change is recommendations only; custom Shorts thumbnails for all; no official page found"
   }
  ],
  "repo_watch": [],

@@ -3,17 +3,17 @@
   "claude-code-changelog": {
    "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
    "last_seen": "2.1.332",
-   "checked": "2026-11-26"
+   "checked": "2026-11-27"
   },
   "api-release-notes": {
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "last_seen": "2026-11-23 Opus 4.5 deprecated (retires 2027-01-22); 2026-11-17 Linked billing; 2026-11-09 Fable 5.2",
-   "checked": "2026-11-26"
+   "checked": "2026-11-27"
   },
   "anthropic-news": {
    "url": "https://www.anthropic.com/news",
    "last_seen": "2026-11-20 IPO closing",
-   "checked": "2026-11-26"
+   "checked": "2026-11-27"
   },
   "youtube-ypp-help": {
    "url": "https://support.google.com/youtube/answer/72851",
